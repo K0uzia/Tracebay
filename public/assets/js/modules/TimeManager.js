@@ -8,6 +8,7 @@ class TimeManager {
         this.timeElementId = options.timeElementId || 'current-time';
         this.format24h = options.format24h !== false; // Par défaut 24h
         this.updateInterval = options.updateInterval || 1000; // Mise à jour chaque 1000ms
+        this.intervalId = null; // Stocker l'ID de l'intervalle
         
         this.init();
     }
@@ -16,8 +17,18 @@ class TimeManager {
         // Afficher la date et heure immédiatement
         this.updateDateTime();
         
-        // Mettre à jour chaque minute
-        setInterval(() => this.updateDateTime(), this.updateInterval);
+        // Mettre à jour chaque seconde
+        this.intervalId = setInterval(() => this.updateDateTime(), this.updateInterval);
+    }
+
+    /**
+     * Arrêter le TimeManager
+     */
+    destroy() {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
     }
 
     /**
@@ -34,7 +45,7 @@ class TimeManager {
     updateDate() {
         const dateElement = document.getElementById(this.dateElementId);
         if (!dateElement) {
-            console.warn(`⚠️ Élément #${this.dateElementId} non trouvé`);
+            // Ne plus afficher de warning - l'élément peut ne pas exister sur certaines pages
             return;
         }
 
@@ -57,7 +68,7 @@ class TimeManager {
     updateTime() {
         const timeElement = document.getElementById(this.timeElementId);
         if (!timeElement) {
-            console.warn(`⚠️ Élément #${this.timeElementId} non trouvé`);
+            // Ne plus afficher de warning - l'élément peut ne pas exister sur certaines pages
             return;
         }
 

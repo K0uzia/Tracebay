@@ -3,6 +3,7 @@ menu {
     flex-direction: row;
     justify-content: space-between;
     align-items: center;
+    height: 45px;
     padding: var(--unit-1) var(--unit-2);
     background-color: var(--bleu1);
     box-shadow: var(--shadow-medium);

@@ -5,6 +5,7 @@
 
 import NavManager from './modules/NavManager.js';
 import TimeManager from './modules/TimeManager.js';
+import ChatWidgetManager from './modules/ChatWidgetManager.js';
 
 // Initialiser après le chargement complet du DOM
 document.addEventListener('DOMContentLoaded', () => {
@@ -35,6 +36,23 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         console.log('✅ TimeManager initialisé');
     }
+
+    // Initialiser ChatWidgetManager (widget flottant)
+    try {
+        window.chatWidgetManager = new ChatWidgetManager({
+            wrapperId: 'chat-widget-wrapper',
+            buttonId: 'chat-widget-btn',
+            panelId: 'chat-widget-panel',
+            closeButtonId: 'chat-widget-close',
+            pseudoModalId: 'chat-widget-pseudo-modal',
+            notificationBadgeId: 'chat-notification-badge'
+        });
+        console.log('✅ ChatWidgetManager initialisé');
+    } catch (error) {
+        console.error('❌ Erreur initialisation ChatWidgetManager:', error);
+    }
     
     // NOTE: ChatManager sera initialisé par app.js après le chargement de la page
+    // NOTE: Les éléments page-spécifiques seront initialisés par app.js
 });
+

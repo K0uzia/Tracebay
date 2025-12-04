@@ -4,6 +4,7 @@
     justify-content: center;
     align-items: center;
     height: var(--unit-5);
+    margin-top: var(--unit-5);
     background-color: var(--bleu1);
     color: var(--text);
 }
