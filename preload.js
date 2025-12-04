@@ -57,6 +57,13 @@ contextBridge.exposeInMainWorld('electron', {
      */
     openExternal: (url) => {
         ipcRenderer.send('open-external', url);
+    },
+
+    /**
+     * Ouvrir un fichier PDF avec l'application par défaut
+     */
+    openPDF: () => {
+        ipcRenderer.send('open-pdf');
     }
 });
 

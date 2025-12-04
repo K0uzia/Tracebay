@@ -1,52 +1,52 @@
 <section class="home section">
     <div class="section-title">
         <h2>Accueil</h2>
-        <span class="split"></span>
     </div>
+    <span class="split"></span>
     <div class="section-contain">
-        <div class="left-contain">
-            <!-- Section Heure et Date -->
-            <div class="section-time">
-                <span id="current-time"></span>
-                <span id="current-date"></span>
-            </div>
-
-            <!-- Section Chat -->
-            <div class="tempchat">
-                <h3>Chat en temps réel</h3>
-                <span class="split"></span>
-            <!-- Zone de saisie du pseudo -->
-                <div class="chat-pseudo-area">
-                    <div id="chat-pseudo-display"></div>
-                    <div id="chat-pseudo-input-wrapper" class="chat-pseudo-input-wrapper">
-                        <input type="text" id="chat-pseudo-input" placeholder="Votre pseudo (2-20 caractères)..."
-                            autocomplete="off" maxlength="20" aria-label="Saisir votre pseudo">
-                        <button type="button" id="chat-pseudo-confirm" aria-label="Confirmer le pseudo"><i
-                                class="fas fa-check"></i> Confirmer</button>
-                    </div>
-                    <div id="chat-pseudo-error" role="alert" aria-live="polite"></div>
+        <div class="home-contain">
+            <div class="contain-1">
+                <div class="section-time">
+                    <span id="current-time"></span>
+                    <span id="current-date"></span>
                 </div>
-
-                <!-- Conteneur de chat -->
-                <div class="chat-container">
-                    <div id="chat-messages" class="chat-messages" aria-live="polite"
-                        aria-label="Zone d'affichage des messages"></div>
-                    <div class="chat-input-container">
-                        <input type="text" id="chat-input" placeholder="Votre message..." autocomplete="off"
-                            maxlength="500" aria-label="Saisir un message">
-                        <button type="button" id="chat-send" aria-label="Envoyer le message"><i
-                                class="fas fa-paper-plane"></i></button>
-                        <button type="button" id="chat-clear-btn" aria-label="Effacer l'historique du chat"><i
-                                class="fas fa-trash-alt"></i></button>
+                <div class="capsule-info">
+                    <div class="capsule-title">
+                        <h2>La Capsule</h2>
+                    </div>
+                    <div class="capsule-content">
+                        <button id="rules-pdf-btn" class="pdf-link" aria-label="Ouvrir le réglement intérieur">
+                            <i class="fa-regular fa-file-pdf"></i> Réglement intérieur</button>
+                        <button id="fonte-pdf-btn" class="pdf-link" aria-label="Ouvrir la fonte pédagogique">
+                            <i class="fa-regular fa-file-pdf"></i> Fonte pédagogique</button>
+                        <button id="livret-pdf-btn" class="pdf-link" aria-label="Ouvrir le livret d'accueil">
+                            <i class="fa-regular fa-file-pdf"></i> Livret d'accueil</button>
+                    </div>
+                </div>
+                <div class="feedback">
+                    <button role="button" aria-label="Faire un retour">Faire un retour <i
+                            class="fa-regular fa-comment"></i></button>
+                </div>
+            </div>
+            <div class="contain-2">
+                <div class="today-calendar">
+                    <div class="calendar-title">
+                        <h2>Agenda du jour</h2>
+                    </div>
+                    <div class="calendar-content">
+                        <!-- Ajout Dynamique des éléments d'agenda -->
                     </div>
                 </div>
             </div>
-        </div>
-        <div class="right-contain">
-            <div class="today-calendar"></div>
-            <div class="feedback">
-                <a href="#" role="button" aria-label="Faire un retour">Faire un retour <i
-                        class="fa-regular fa-comment"></i></a>
+            <div class="contain-3">
+                <div class="recent-info">
+                    <div class="recent-title">
+                        <h2>Récents</h2>
+                    </div>
+                    <div class="recent-content">
+                        <!-- Ajout Dynamique des éléments récéments utiliser -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>

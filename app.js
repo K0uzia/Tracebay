@@ -14,18 +14,18 @@ class PageManager {
         
         // Pages et leur configuration de layout
         this.pagesConfig = {
-            // Pages normales (avec header et footer)
-            'home': { showHeader: true, showFooter: true },
-            'agenda': { showHeader: true, showFooter: true },
-            'dossier': { showHeader: true, showFooter: true },
-            'application': { showHeader: true, showFooter: true },
-            'reception': { showHeader: true, showFooter: true },
-            'shortcut': { showHeader: true, showFooter: true },
-            'option': { showHeader: true, showFooter: true },
+            // Pages normales (avec header, footer et chat)
+            'home': { showHeader: true, showFooter: true, showChat: true },
+            'agenda': { showHeader: true, showFooter: true, showChat: false },
+            'dossier': { showHeader: true, showFooter: true, showChat: true },
+            'application': { showHeader: true, showFooter: true, showChat: true },
+            'reception': { showHeader: true, showFooter: true, showChat: false },
+            'shortcut': { showHeader: true, showFooter: true, showChat: true },
+            'option': { showHeader: true, showFooter: true, showChat: false },
             
-            // Pages full-screen (sans header ni footer)
-            'login': { showHeader: false, showFooter: false },
-            'signup': { showHeader: false, showFooter: false },
+            // Pages full-screen (sans header ni footer ni chat)
+            'login': { showHeader: false, showFooter: false, showChat: false },
+            'signup': { showHeader: false, showFooter: false, showChat: false },
         };
         
         // Initialiser au démarrage
@@ -112,6 +112,9 @@ class PageManager {
             
             // Réinitialiser TimeManager si les éléments time existent
             this.initializeTimeIfNeeded();
+
+            // Initialiser les éléments page-spécifiques
+            this.initializePageElements(pageName);
             
             console.log(`✅ Page chargée : ${pageName}`);
         } catch (error) {
@@ -131,6 +134,7 @@ class PageManager {
             // Arrêter l'ancien TimeManager s'il existe
             if (window.timeManager) {
                 console.log('♻️ Réinitialisation TimeManager');
+                window.timeManager.destroy();
             }
             
             // Charger et créer une nouvelle instance
@@ -147,6 +151,12 @@ class PageManager {
                 .catch(error => {
                     console.error('❌ Erreur import TimeManager:', error);
                 });
+        } else {
+            // Arrêter le TimeManager si on change vers une page sans éléments de temps
+            if (window.timeManager) {
+                window.timeManager.destroy();
+                window.timeManager = null;
+            }
         }
     }
 
@@ -191,6 +201,29 @@ class PageManager {
     }
 
     /**
+     * Initialiser les éléments spécifiques à chaque page
+     */
+    initializePageElements(pageName) {
+        if (pageName === 'home') {
+            // Initialiser les boutons PDF
+            Promise.all([
+                import('./public/assets/js/modules/PDFManager.js'),
+                import('./public/assets/js/config/PDFConfig.js')
+            ]).then(([pdfModule, configModule]) => {
+                const PDFManager = pdfModule.default;
+                const pdfConfig = configModule.pdfConfig;
+                
+                window.pdfManager = new PDFManager();
+                window.pdfManager.attachPDFListeners(pdfConfig);
+                
+                console.log('✅ PDFManager initialisé');
+            }).catch(error => {
+                console.error('❌ Erreur import PDFManager:', error);
+            });
+        }
+    }
+
+    /**
      * Afficher/masquer header et footer selon la page
      * @param {string} pageName - Nom de la page
      */
@@ -213,8 +246,19 @@ class PageManager {
         header.style.display = config.showHeader ? 'block' : 'none';
         footer.style.display = config.showFooter ? 'block' : 'none';
         
+        // Gérer l'affichage du chat widget
+        const chatWidget = document.getElementById('chat-widget-wrapper');
+        if (chatWidget) {
+            chatWidget.style.display = config.showChat ? 'flex' : 'none';
+            
+            // Fermer le panel si on cache le widget
+            if (!config.showChat && window.chatWidgetManager) {
+                window.chatWidgetManager.closePanel();
+            }
+        }
+        
         const layoutType = config.showHeader ? '📱 Normal' : '🔒 Full-screen';
-        console.log(`${layoutType} (header: ${config.showHeader}, footer: ${config.showFooter})`);
+        console.log(`${layoutType} (header: ${config.showHeader}, footer: ${config.showFooter}, chat: ${config.showChat})`);
     }
 
     /**

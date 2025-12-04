@@ -1,490 +1,401 @@
 /**
- * ChatManager - Gestion du chat en temps réel avec localStorage
- * Multi-utilisateur sur réseau local via polling localStorage
+ * ChatManager - Gestion des messages du chat
+ * 
+ * Responsabilités:
+ * - Gérer le pseudo de l'utilisateur
+ * - Persister les messages en localStorage
+ * - Valider les messages (sécurité)
+ * - Intégrer avec ChatSecurityManager
  */
 
 import ChatSecurityManager from './ChatSecurityManager.js';
 
 class ChatManager {
     constructor(options = {}) {
-        // Configuration des éléments
-        this.pseudoWrapperId = options.pseudoWrapperId || 'chat-pseudo-input-wrapper';
-        this.pseudoDisplayId = options.pseudoDisplayId || 'chat-pseudo-display';
-        this.pseudoInputId = options.pseudoInputId || 'chat-pseudo-input';
-        this.pseudoConfirmId = options.pseudoConfirmId || 'chat-pseudo-confirm';
-        this.pseudoErrorId = options.pseudoErrorId || 'chat-pseudo-error';
-        
-        this.messagesContainerId = options.messagesContainerId || 'chat-messages';
-        this.inputId = options.inputId || 'chat-input';
-        this.sendButtonId = options.sendButtonId || 'chat-send';
-        this.clearChatBtnId = options.clearChatBtnId || 'chat-clear-btn';
-        
-        // Configuration
-        this.PSEUDO_MIN_LENGTH = 2;
-        this.PSEUDO_MAX_LENGTH = 20;
-        this.MESSAGE_MAX_LENGTH = 500;
-        this.SYNC_INTERVAL = 500;
-        this.MAX_MESSAGES = 100;
-        this.STORAGE_KEY = 'chat_messages';
-        this.PSEUDO_KEY = 'chatPseudo';
-        
-        // Initialiser le gestionnaire de sécurité
-        this.securityManager = new ChatSecurityManager(options.securityConfig || {});
+        // IDs des éléments
+        this.pseudoWrapperId = options.pseudoWrapperId || 'chat-widget-pseudo-area';
+        this.pseudoDisplayId = options.pseudoDisplayId || 'chat-widget-pseudo-display';
+        this.pseudoInputId = options.pseudoInputId || 'chat-widget-pseudo-input';
+        this.pseudoConfirmId = options.pseudoConfirmId || 'chat-widget-pseudo-confirm';
+        this.pseudoErrorId = options.pseudoErrorId || 'chat-widget-pseudo-error';
+        this.messagesContainerId = options.messagesContainerId || 'chat-widget-messages';
+        this.inputId = options.inputId || 'chat-widget-input';
+        this.sendButtonId = options.sendButtonId || 'chat-widget-send';
+        this.clearChatBtnId = options.clearChatBtnId || 'chat-widget-clear';
         
         // État
-        this.pseudo = localStorage.getItem(this.PSEUDO_KEY) || null;
+        this.pseudo = this.loadPseudo();
         this.messages = this.loadMessages();
+        this.securityConfig = options.securityConfig || {};
         
-        console.log('🔧 ChatManager créé');
+        // Initialiser ChatSecurityManager
+        this.securityManager = new ChatSecurityManager(this.securityConfig);
+        
+        console.log('🚀 ChatManager créé');
         this.init();
     }
 
     /**
-     * Initialiser le chat
+     * Initialiser le ChatManager
      */
     init() {
-        console.log('🚀 ChatManager.init() appelé');
-        this.initialize();
-    }
-
-    /**
-     * Initialisation complète
-     */
-    initialize() {
-        if (this.isInitialized) {
-            console.warn('⚠️ ChatManager déjà initialisé');
-            return;
-        }
-        this.isInitialized = true;
-
-        console.log('🔧 Initialisation en cours...');
-        this.setupUI();
+        console.log('🎯 Initialisation ChatManager');
+        
+        // Afficher le pseudo
+        this.displayPseudo();
+        
+        // Afficher les messages
+        this.renderMessages();
+        
+        // Attacher les écouteurs d'événements
         this.attachEventListeners();
-        this.displayMessages();
-        this.startSync();
         
-        console.log('✅ ChatManager initialisé avec succès');
-    }
-
-    /**
-     * Configurer l'interface
-     */
-    setupUI() {
-        console.log('🎨 setupUI()');
-        
-        const wrapper = document.getElementById(this.pseudoWrapperId);
-        const display = document.getElementById(this.pseudoDisplayId);
-        const input = document.getElementById(this.pseudoInputId);
-
-        console.log('🔍 Vérification éléments:', {
-            wrapper: this.pseudoWrapperId + ' = ' + (wrapper ? '✅' : '❌'),
-            display: this.pseudoDisplayId + ' = ' + (display ? '✅' : '❌'),
-            input: this.pseudoInputId + ' = ' + (input ? '✅' : '❌')
-        });
-
-        if (!wrapper || !display || !input) {
-            console.error('❌ Éléments chat introuvables');
-            console.log('IDs cherchés:', {
-                wrapper: this.pseudoWrapperId,
-                display: this.pseudoDisplayId,
-                input: this.pseudoInputId
-            });
-            return;
-        }
-
-        if (this.pseudo) {
-            console.log('✅ Pseudo trouvé, affichage mode confirmé');
-            this.showPseudoConfirmed();
-        } else {
-            console.log('❌ Pas de pseudo, affichage mode saisie');
-            this.showPseudoInput();
-        }
-    }
-
-    /**
-     * Afficher la zone d'entrée du pseudo
-     */
-    showPseudoInput() {
-        const wrapper = document.getElementById(this.pseudoWrapperId);
-        const display = document.getElementById(this.pseudoDisplayId);
-        const input = document.getElementById(this.pseudoInputId);
-        const confirmBtn = document.getElementById(this.pseudoConfirmId);
-
-        if (wrapper) {
-            wrapper.classList.remove('disabled');
-            wrapper.style.display = 'flex';
-        }
-        if (display) display.style.display = 'none';
-        if (input) {
-            input.disabled = false;
-            input.focus();
-            input.value = this.pseudo || '';
-        }
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-            confirmBtn.textContent = 'Confirmer';
-        }
-    }
-
-    /**
-     * Afficher le pseudo confirmé
-     */
-    showPseudoConfirmed() {
-        const wrapper = document.getElementById(this.pseudoWrapperId);
-        const display = document.getElementById(this.pseudoDisplayId);
-        const input = document.getElementById(this.pseudoInputId);
-        const confirmBtn = document.getElementById(this.pseudoConfirmId);
-
-        if (wrapper) {
-            wrapper.classList.add('disabled');
-            wrapper.style.display = 'flex';
-        }
-        if (display) {
-            display.style.display = 'flex';
-            display.innerHTML = `<strong>👤 ${this.escapeHtml(this.pseudo)}</strong>`;
-        }
-
-        if (input) {
-            input.disabled = true;
-            input.value = '';
-        }
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-            confirmBtn.textContent = 'Modifier';
-        }
-    }
-
-    /**
-     * Modifier le pseudo
-     */
-    modifyPseudo() {
-        console.log('✏️ modifyPseudo()');
-        this.pseudo = null;
-        localStorage.removeItem(this.PSEUDO_KEY);
-        this.showPseudoInput();
+        console.log('✅ ChatManager initialisé');
     }
 
     /**
      * Attacher les écouteurs d'événements
      */
     attachEventListeners() {
-        console.log('🔗 Attachement écouteurs...');
-
+        console.log('🔗 Attachement des écouteurs ChatManager');
+        
+        // Bouton de confirmation du pseudo
         const confirmBtn = document.getElementById(this.pseudoConfirmId);
-        const pseudoInput = document.getElementById(this.pseudoInputId);
-        const sendBtn = document.getElementById(this.sendButtonId);
-        const chatInput = document.getElementById(this.inputId);
-        const clearBtn = document.getElementById(this.clearChatBtnId);
-
-        console.log('🔍 Éléments trouvés:', {
-            confirmBtn: !!confirmBtn,
-            pseudoInput: !!pseudoInput,
-            sendBtn: !!sendBtn,
-            chatInput: !!chatInput,
-            clearBtn: !!clearBtn
-        });
-
-        // Pseudo
         if (confirmBtn) {
-            confirmBtn.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🔵 Clic confirmBtn');
-                
-                // Vérifier l'action selon le texte du bouton
-                if (confirmBtn.textContent === 'Modifier') {
-                    this.modifyPseudo();
-                } else {
-                    this.confirmPseudo();
-                }
-                return false;
-            };
-            console.log('✅ confirmBtn écouteur attaché');
+            confirmBtn.addEventListener('click', () => this.confirmPseudo());
         }
-
+        
+        // Clavier - Entrée pour confirmer pseudo
+        const pseudoInput = document.getElementById(this.pseudoInputId);
         if (pseudoInput) {
-            pseudoInput.onkeypress = (e) => {
+            pseudoInput.addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     e.preventDefault();
-                    console.log('🔵 Enter pseudoInput');
                     this.confirmPseudo();
                 }
-            };
-            console.log('✅ pseudoInput écouteur attaché');
+            });
         }
-
-        // Messages
+        
+        // Bouton d'envoi de message
+        const sendBtn = document.getElementById(this.sendButtonId);
         if (sendBtn) {
-            sendBtn.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🔵 Clic sendBtn');
-                this.sendMessage();
-                return false;
-            };
-            console.log('✅ sendBtn écouteur attaché');
+            sendBtn.addEventListener('click', () => this.sendMessage());
         }
-
-        if (chatInput) {
-            chatInput.onkeypress = (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    console.log('🔵 Enter chatInput');
-                    this.sendMessage();
-                }
-            };
-            console.log('✅ chatInput écouteur attaché');
-        }
-
+        
+        // Bouton de nettoyage du chat
+        const clearBtn = document.getElementById(this.clearChatBtnId);
         if (clearBtn) {
-            clearBtn.onclick = (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('🔵 Clic clearBtn');
-                this.clearChat();
-                return false;
-            };
-            console.log('✅ clearBtn écouteur attaché');
+            clearBtn.addEventListener('click', () => this.showClearModal());
         }
-
-        console.log('✅ Tous les écouteurs attachés');
+        
+        // Bouton de confirmation du clear
+        const clearConfirmBtn = document.getElementById('chat-widget-clear-confirm');
+        if (clearConfirmBtn) {
+            clearConfirmBtn.addEventListener('click', () => this.confirmClearChat());
+        }
+        
+        // Bouton d'annulation du clear
+        const clearCancelBtn = document.getElementById('chat-widget-clear-cancel');
+        if (clearCancelBtn) {
+            clearCancelBtn.addEventListener('click', () => this.hideClearModal());
+        }
+        
+        console.log('✅ Écouteurs attachés');
     }
 
     /**
-     * Valider le pseudo
+     * Charger le pseudo depuis localStorage
      */
-    validatePseudo(pseudo) {
-        if (!pseudo || pseudo.trim().length < this.PSEUDO_MIN_LENGTH) {
-            return `Minimum ${this.PSEUDO_MIN_LENGTH} caractères`;
-        }
-        if (pseudo.length > this.PSEUDO_MAX_LENGTH) {
-            return `Maximum ${this.PSEUDO_MAX_LENGTH} caractères`;
-        }
-        if (!/^[a-zA-Z0-9_\-éèêëàâäùûüôöîïœæçÉÈÊËÀÂÄÙÛÜÔÖÎÏŒÆÇ ]+$/.test(pseudo)) {
-            return 'Caractères non autorisés';
-        }
-        return null;
+    loadPseudo() {
+        const stored = localStorage.getItem('chatPseudo');
+        return stored || null;
+    }
+
+    /**
+     * Sauvegarder le pseudo
+     */
+    savePseudo(pseudo) {
+        localStorage.setItem('chatPseudo', pseudo);
+        this.pseudo = pseudo;
     }
 
     /**
      * Confirmer le pseudo
      */
     confirmPseudo() {
-        console.log('🔐 confirmPseudo()');
-
         const input = document.getElementById(this.pseudoInputId);
-        const errorDiv = document.getElementById(this.pseudoErrorId);
-
-        if (!input) {
-            console.error('❌ Input pseudo non trouvé');
-            return;
-        }
-
-        const pseudo = input.value.trim();
-        console.log('📝 Pseudo saisi:', pseudo);
-
-        // Valider
-        const error = this.validatePseudo(pseudo);
-        if (error) {
-            console.warn('⚠️ Erreur:', error);
-            if (errorDiv) {
-                errorDiv.textContent = error;
-                errorDiv.style.display = 'block';
-            }
-            input.focus();
-            return;
-        }
-
-        // Sauvegarder
-        this.pseudo = pseudo;
-        localStorage.setItem(this.PSEUDO_KEY, this.pseudo);
-        console.log('✅ Pseudo confirmé et sauvegardé:', this.pseudo);
-
-        if (errorDiv) errorDiv.style.display = 'none';
-
-        this.showPseudoConfirmed();
+        if (!input) return;
         
-        // Re-attacher les écouteurs pour les messages (au cas où)
-        this.attachEventListeners();
-    }
-
-    /**
-     * Envoyer un message
-     */
-    sendMessage() {
-        console.log('📤 sendMessage()');
-        console.log('👤 Pseudo:', this.pseudo);
-
-        if (!this.pseudo) {
-            console.warn('⚠️ Pseudo non défini');
-            return;
-        }
-
-        const input = document.getElementById(this.inputId);
-        if (!input) {
-            console.error('❌ Input #' + this.inputId + ' non trouvé');
-            return;
-        }
-
-        const message = input.value.trim();
-        console.log('💬 Message:', message);
-
-        if (!message) {
-            console.warn('⚠️ Message vide');
-            return;
-        }
-
-        if (message.length > this.MESSAGE_MAX_LENGTH) {
-            console.warn('⚠️ Message trop long');
-            return;
-        }
-
-        // Créer le message
-        const msgObj = {
-            pseudo: this.pseudo,
-            message: message,
-            timestamp: new Date().toLocaleTimeString('fr-FR', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-            })
-        };
-
-        console.log('✅ Message créé:', msgObj);
-
-        // Ajouter localement
-        this.messages.push(msgObj);
-        this.limitMessages();
-        this.saveMessages();
-        this.displayMessages();
-
-        input.value = '';
-        input.focus();
-
-        console.log('✅ Message envoyé et affiché');
-    }
-
-    /**
-     * Afficher les messages
-     */
-    displayMessages() {
-        const container = document.getElementById(this.messagesContainerId);
-        if (!container) return;
-
-        container.innerHTML = '';
-
-        if (this.messages.length === 0) {
-            container.innerHTML = '<div class="chat-empty">Aucun message</div>';
-        } else {
-            this.messages.forEach((msg, idx) => {
-                const msgElement = document.createElement('div');
-                msgElement.className = msg.pseudo === this.pseudo ? 'chat-message mine' : 'chat-message other';
-                
-                // Créer les éléments enfants
-                const pseudoEl = document.createElement('div');
-                pseudoEl.className = 'chat-pseudo';
-                pseudoEl.textContent = msg.pseudo;
-                
-                const contentEl = document.createElement('div');
-                contentEl.className = 'chat-content';
-                
-                // Traiter le message pour les liens sécurisés
-                // processMessage() retourne un DocumentFragment
-                const messageContent = this.securityManager.processMessage(msg.message);
-                contentEl.appendChild(messageContent);
-                
-                const timeEl = document.createElement('div');
-                timeEl.className = 'chat-time';
-                timeEl.textContent = msg.timestamp;
-                
-                msgElement.appendChild(pseudoEl);
-                msgElement.appendChild(contentEl);
-                msgElement.appendChild(timeEl);
-                container.appendChild(msgElement);
-            });
-        }
-
-        // Scroll vers le bas
-        setTimeout(() => {
-            container.scrollTop = container.scrollHeight;
-        }, 0);
-    }
-
-    /**
-     * Synchroniser depuis localStorage
-     */
-    startSync() {
-        setInterval(() => {
-            try {
-                const stored = localStorage.getItem(this.STORAGE_KEY);
-                if (stored) {
-                    const messages = JSON.parse(stored);
-                    // Si les messages ont changé, mettre à jour
-                    if (JSON.stringify(messages) !== JSON.stringify(this.messages)) {
-                        console.log('🔄 Synchronisation localStorage');
-                        this.messages = messages;
-                        this.displayMessages();
-                    }
-                }
-            } catch (error) {
-                console.error('❌ Erreur sync:', error);
+        const pseudo = input.value.trim();
+        const errorDisplay = document.getElementById(this.pseudoErrorId);
+        
+        // Valider le pseudo
+        if (!pseudo) {
+            if (errorDisplay) {
+                errorDisplay.textContent = 'Le pseudo ne peut pas être vide';
             }
-        }, this.SYNC_INTERVAL);
+            return;
+        }
+        
+        if (pseudo.length < 2) {
+            if (errorDisplay) {
+                errorDisplay.textContent = 'Le pseudo doit faire au moins 2 caractères';
+            }
+            return;
+        }
+        
+        if (pseudo.length > 20) {
+            if (errorDisplay) {
+                errorDisplay.textContent = 'Le pseudo ne peut pas dépasser 20 caractères';
+            }
+            return;
+        }
+        
+        // Valider : pas de caractères dangereux simples (XSS basique)
+        if (!/^[a-zA-Z0-9_\-\.àâäéèêëïîôöùûüœæçñ\s]+$/.test(pseudo)) {
+            if (errorDisplay) {
+                errorDisplay.textContent = 'Le pseudo contient des caractères non autorisés';
+            }
+            return;
+        }
+        
+        // Effacer le message d'erreur
+        if (errorDisplay) {
+            errorDisplay.textContent = '';
+        }
+        
+        // Sauvegarder le pseudo
+        this.savePseudo(pseudo);
+        
+        // Effacer l'input
+        input.value = '';
+        
+        // Afficher le pseudo
+        this.displayPseudo();
+        
+        // Dispacher un événement pour notifier ChatWidgetManager
+        window.dispatchEvent(new CustomEvent('pseudoChanged', { detail: { pseudo } }));
+        
+        console.log('✅ Pseudo confirmé:', pseudo);
     }
 
     /**
-     * Limiter le nombre de messages
+     * Afficher le pseudo actuel
      */
-    limitMessages() {
-        if (this.messages.length > this.MAX_MESSAGES) {
-            this.messages = this.messages.slice(-this.MAX_MESSAGES);
+    displayPseudo() {
+        const display = document.getElementById(this.pseudoDisplayId);
+        if (display) {
+            if (this.pseudo) {
+                display.innerHTML = `<i class="fas fa-user-circle"></i> ${this.pseudo}`;
+            } else {
+                display.innerHTML = '';
+            }
         }
     }
 
     /**
-     * Effacer le chat
+     * Charger les messages depuis localStorage
      */
-    clearChat() {
-        if (!confirm('Effacer tous les messages ?')) return;
-
-        this.messages = [];
-        this.saveMessages();
-        this.displayMessages();
-        console.log('🗑️ Chat effacé');
+    loadMessages() {
+        const stored = localStorage.getItem('chat_messages');
+        if (!stored) return [];
+        
+        try {
+            return JSON.parse(stored);
+        } catch (e) {
+            console.error('❌ Erreur lors du chargement des messages:', e);
+            return [];
+        }
     }
 
     /**
      * Sauvegarder les messages
      */
     saveMessages() {
-        try {
-            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.messages));
-            console.log('💾 Messages sauvegardés');
-        } catch (error) {
-            console.error('❌ Erreur sauvegarde:', error);
+        localStorage.setItem('chat_messages', JSON.stringify(this.messages));
+    }
+
+    /**
+     * Envoyer un message
+     */
+    sendMessage() {
+        const input = document.getElementById(this.inputId);
+        if (!input) return;
+        
+        const text = input.value.trim();
+        
+        if (!text) return;
+        if (!this.pseudo) {
+            console.warn('⚠️ Pseudo non défini');
+            return;
+        }
+        
+        // Simple validation : pas vide, longueur max
+        if (text.length > 500) {
+            console.warn('⚠️ Message trop long');
+            return;
+        }
+        
+        // Créer le message
+        const message = {
+            id: Date.now(),
+            pseudo: this.pseudo,
+            text: text,
+            timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            own: true  // C'est un message que j'envoie
+        };
+        
+        // Ajouter le message
+        this.messages.push(message);
+        
+        // Sauvegarder
+        this.saveMessages();
+        
+        // Effacer l'input
+        input.value = '';
+        
+        // Afficher les messages
+        this.renderMessages();
+        
+        // Scroll vers le bas
+        this.scrollToBottom();
+        
+        console.log('✅ Message envoyé');
+    }
+
+    /**
+     * Afficher les messages
+     */
+    renderMessages() {
+        const container = document.getElementById(this.messagesContainerId);
+        if (!container) return;
+        
+        if (this.messages.length === 0) {
+            container.innerHTML = '<div class="chat-widget-empty">Aucun message pour le moment</div>';
+            return;
+        }
+        
+        container.innerHTML = this.messages.map(msg => {
+            const className = msg.own ? 'chat-message own' : 'chat-message other';
+            const sanitized = this.sanitizeMessage(msg.text);
+            return `
+                <div class="${className}">
+                    <div class="chat-message-pseudo">${msg.pseudo}</div>
+                    <div class="chat-message-content">
+                        <div class="chat-message-text">${sanitized}</div>
+                    </div>
+                    <div class="chat-message-time">${msg.timestamp}</div>
+                </div>
+            `;
+        }).join('');
+        
+        // Scroll vers le bas
+        this.scrollToBottom();
+    }
+
+    /**
+     * Afficher la modal de confirmation du clear
+     */
+    showClearModal() {
+        console.log('🗑️ Affichage modal de confirmation du clear');
+        const clearModal = document.getElementById('chat-widget-clear-modal');
+        if (clearModal) {
+            clearModal.classList.add('show');
         }
     }
 
     /**
-     * Charger les messages
+     * Masquer la modal de confirmation du clear
      */
-    loadMessages() {
-        try {
-            const stored = localStorage.getItem(this.STORAGE_KEY);
-            return stored ? JSON.parse(stored) : [];
-        } catch (error) {
-            console.error('❌ Erreur chargement:', error);
-            return [];
+    hideClearModal() {
+        console.log('❌ Fermeture modal de clear');
+        const clearModal = document.getElementById('chat-widget-clear-modal');
+        if (clearModal) {
+            clearModal.classList.remove('show');
         }
     }
 
     /**
-     * Échapper les caractères HTML
+     * Confirmer et exécuter le clear du chat
      */
-    escapeHtml(text) {
+    confirmClearChat() {
+        console.log('✅ Suppression de tous les messages...');
+        this.messages = [];
+        this.saveMessages();
+        this.renderMessages();
+        this.hideClearModal();
+        console.log('🗑️ Chat complètement nettoyé');
+    }
+
+    /**
+     * Scroll vers le bas du chat
+     */
+    scrollToBottom() {
+        const container = document.getElementById(this.messagesContainerId);
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    /**
+     * Nettoyer les messages XSS
+     */
+    sanitizeMessage(text) {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    /**
+     * Ajouter un message reçu (pour simulation ou intégration avec backend)
+     */
+    addReceivedMessage(pseudo, text) {
+        const message = {
+            id: Date.now(),
+            pseudo: pseudo,
+            text: text,
+            timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+            own: false  // C'est un message reçu
+        };
+        
+        this.messages.push(message);
+        this.saveMessages();
+        this.renderMessages();
+        
+        console.log('✅ Message reçu de', pseudo);
+    }
+
+    /**
+     * Mettre à jour tous les messages du pseudo changé
+     * Si l'utilisateur change de pseudo, on met à jour les anciens messages
+     */
+    updateMessagesWithNewPseudo(newPseudo) {
+        // Chercher les anciens pseudos de l'utilisateur
+        // On identifie les messages avec own: true et pseudo différent du nouveau
+        const oldPseudos = new Set();
+        
+        this.messages.forEach(msg => {
+            if (msg.own === true && msg.pseudo !== newPseudo) {
+                oldPseudos.add(msg.pseudo);
+            }
+        });
+        
+        // Mettre à jour les messages avec les anciens pseudos
+        let updatedCount = 0;
+        oldPseudos.forEach(oldPseudo => {
+            this.messages.forEach(msg => {
+                if (msg.own === true && msg.pseudo === oldPseudo) {
+                    msg.pseudo = newPseudo;
+                    updatedCount++;
+                }
+            });
+        });
+        
+        // Sauvegarder et re-afficher
+        this.saveMessages();
+        this.renderMessages();
+        
+        console.log(`✅ ${updatedCount} messages mis à jour avec le nouveau pseudo "${newPseudo}"`);
     }
 }
 

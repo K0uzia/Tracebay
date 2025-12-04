@@ -1,20 +1,43 @@
 .section {
     padding: var(--unit-2) var(--unit-6);
 
-     & .split {
+    & .split {
         display: block;
         background-color: var(--orange);
         height: calc(var(--unit-1)/4);
         width: auto;
         border-radius: var(--unit-1);
     }
+
+    & button {
+        display: flex;
+        align-items: center;
+        gap: var(--unit-1);
+        padding: var(--unit-1) var(--unit-3);
+        background-color: var(--btn);
+        color: var(--btn-text);
+        border-radius: var(--radius-small);
+        border: none;
+        cursor: pointer;
+        font-size: 0.95rem;
+        transition: var(--transition);
+        text-decoration: none;
+        box-shadow: var(--shadow-medium);
+    }
+
+    & button:hover {
+        color: var(--jaune);
+        background-color: var(--btn-hover);
+    }
 }
 
 .section-title {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
 
     & h2 {
+        margin-right: var(--unit-2);
         font: var(--font-subtitle);
         color: var(--h2);
     }
@@ -28,11 +51,10 @@
 .section-contain {
     display: flex;
     flex-direction: row;
-    justify-content: space-around;
-    height: auto;
+    flex-wrap: wrap;
+    align-items: center;
+    height: 100%;
     padding: var(--unit-2);
-    gap: var(--unit-2);
-
 }
 
 /* ========== RESPONSIVE MOBILE ========== */

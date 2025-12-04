@@ -1,0 +1,97 @@
+<!-- Chat Widget - Floating button + collapsible panel -->
+<!-- Position: bottom-right, fixed to screen -->
+
+<div class="chat-widget-wrapper" id="chat-widget-wrapper">
+    <!-- Floating button -->
+    <button class="chat-widget-btn" id="chat-widget-btn" title="Ouvrir le chat">
+        <i class="fas fa-comments"></i>
+        <div class="notification-badge" id="chat-notification-badge">0</div>
+    </button>
+
+    <!-- Chat Panel (initially hidden) -->
+    <div class="chat-widget-panel" id="chat-widget-panel">
+        <!-- Header -->
+        <div class="chat-widget-header">
+            <h2><i class="fas fa-comments"></i> Chat</h2>
+            <button class="chat-widget-close" id="chat-widget-close" title="Fermer le chat">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Pseudo Selection Modal (shows if no pseudo) -->
+        <div class="chat-widget-pseudo-modal" id="chat-widget-pseudo-modal">
+            <div class="chat-widget-pseudo-content">
+                <h3>Bienvenue!</h3>
+                <p>Veuillez choisir un pseudo pour commencer</p>
+                <div class="chat-widget-pseudo-error" id="chat-widget-pseudo-error"></div>
+                <input 
+                    type="text" 
+                    class="chat-widget-pseudo-input" 
+                    id="chat-widget-pseudo-input" 
+                    placeholder="Votre pseudo..."
+                    maxlength="20"
+                />
+                <div class="chat-widget-pseudo-buttons">
+                    <button class="chat-widget-pseudo-submit" id="chat-widget-pseudo-confirm">
+                        <i class="fas fa-check"></i> Confirmer
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clear Chat Confirmation Modal -->
+        <div class="chat-widget-clear-modal" id="chat-widget-clear-modal">
+            <div class="chat-widget-clear-content">
+                <div class="chat-widget-clear-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3>Supprimer tous les messages ?</h3>
+                <p class="chat-widget-clear-warning">
+                    <strong>⚠️ Attention :</strong> Cela supprimera <strong>TOUS les messages du chat</strong>, pas seulement les vôtres. Cette action est irréversible.
+                </p>
+                <div class="chat-widget-clear-buttons">
+                    <button class="chat-widget-clear-cancel" id="chat-widget-clear-cancel">
+                        <i class="fas fa-times"></i> Annuler
+                    </button>
+                    <button class="chat-widget-clear-confirm" id="chat-widget-clear-confirm">
+                        <i class="fas fa-trash"></i> Supprimer tout
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Chat Content -->
+        <div class="chat-widget-content">
+            <!-- Pseudo display area -->
+            <div class="chat-widget-pseudo-area" id="chat-widget-pseudo-area">
+                <div id="chat-widget-pseudo-display"></div>
+                <button id="chat-widget-pseudo-change" class="chat-widget-pseudo-change-hidden">
+                    <i class="fas fa-edit"></i> Changer
+                </button>
+            </div>
+
+            <!-- Messages area -->
+            <div id="chat-widget-messages" class="chat-widget-empty">
+                Aucun message pour le moment
+            </div>
+
+            <!-- Input area -->
+            <div class="chat-widget-input-area">
+                <input 
+                    type="text" 
+                    id="chat-widget-input" 
+                    placeholder="Votre message..."
+                    maxlength="500"
+                />
+                <div class="chat-widget-actions">
+                    <button id="chat-widget-send" title="Envoyer (Entrée)">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                    <button id="chat-widget-clear" title="Effacer le chat">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
