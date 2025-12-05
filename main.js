@@ -9,8 +9,6 @@ let pdfWindows = new Map(); // Stocker les références des fenêtres PDF
  * Créer la fenêtre principale
  */
 function createWindow() {
-    console.log('🪟 Création de la fenêtre');
-    
     // Créer une fenêtre
     mainWindow = new BrowserWindow({
         width: 1200,           // Largeur
@@ -26,16 +24,13 @@ function createWindow() {
     // Charger la page HTML
     mainWindow.loadFile('index.html');
 
-    // // Ouvrir les DevTools (à enlever en production)
+    // Ouvrir les DevTools (à enlever en production)
     // mainWindow.webContents.openDevTools();
 
-    // console.log('✅ Fenêtre créée');
-
-    // // Gérer la fermeture
-    // mainWindow.on('closed', () => {
-    //     mainWindow = null;
-    //     console.log('❌ Fenêtre fermée');
-    // });
+    // Gérer la fermeture
+    mainWindow.on('closed', () => {
+        mainWindow = null;
+    });
 }
 
 /**
@@ -69,7 +64,6 @@ app.on('activate', () => {
  * Appelé par : window.electron.openExternal(url)
  */
 ipcMain.on('open-external', (event, url) => {
-    console.log(`🌐 Ouverture de l'URL externe: ${url}`);
     shell.openExternal(url).catch(error => {
         console.error('❌ Erreur ouverture URL:', error);
     });
@@ -81,7 +75,6 @@ ipcMain.on('open-external', (event, url) => {
  */
 ipcMain.on('open-pdf', (event) => {
     const pdfPath = path.join(__dirname, 'public', 'src', 'pdf', 'Règlement_intérieur_chantier_num.pdf');
-    console.log(`📄 Ouverture du PDF: ${pdfPath}`);
     shell.openPath(pdfPath).catch(error => {
         console.error('❌ Erreur ouverture PDF:', error);
     });
@@ -95,8 +88,6 @@ ipcMain.handle('open-pdf-window', async (event, data) => {
     try {
         const { pdfFile, title } = data;
         const pdfPath = path.join(__dirname, 'public', 'src', 'pdf', pdfFile);
-        
-        console.log(`📄 Création fenêtre PDF: ${title} (${pdfFile})`);
         
         // Créer une nouvelle fenêtre
         const pdfWindow = new BrowserWindow({
@@ -134,5 +125,3 @@ ipcMain.handle('open-pdf-window', async (event, data) => {
         return { success: false, error: error.message };
     }
 });
-
-console.log('🚀 Electron démarré');

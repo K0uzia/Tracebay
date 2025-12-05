@@ -39,7 +39,6 @@ class ChatWidgetManager {
             securityConfig: options.securityConfig || {}
         });
         
-        console.log('🚀 ChatWidgetManager créé');
         this.init();
     }
 
@@ -47,8 +46,6 @@ class ChatWidgetManager {
      * Initialiser le widget
      */
     init() {
-        console.log('🎯 Initialisation ChatWidgetManager');
-        
         // Vérifier que les éléments existent
         if (!this.buttonElement || !this.panelElement) {
             console.error('❌ Éléments widget introuvables');
@@ -63,16 +60,12 @@ class ChatWidgetManager {
         
         // Syncer les messages
         this.syncMessages();
-        
-        console.log('✅ ChatWidgetManager initialisé');
     }
 
     /**
      * Attacher les écouteurs d'événements
      */
     attachEventListeners() {
-        console.log('🔗 Attachement des écouteurs...');
-
         // Bouton flottant
         if (this.buttonElement) {
             this.buttonElement.addEventListener('click', () => this.togglePanel());
@@ -110,7 +103,6 @@ class ChatWidgetManager {
         // Événement de changement de pseudo
         window.addEventListener('pseudoChanged', (e) => {
             const newPseudo = e.detail.pseudo;
-            console.log('🎯 Pseudo changé:', newPseudo);
             this.hidePseudoModal();
             this.showPseudoChangeButton();
             
@@ -130,15 +122,12 @@ class ChatWidgetManager {
                 }
             }
         });
-
-        console.log('✅ Écouteurs attachés');
     }
 
     /**
      * Toggler l'ouverture/fermeture du panel
      */
     togglePanel() {
-        console.log('🔄 Toggling panel');
         if (this.isOpen) {
             this.closePanel();
         } else {
@@ -150,8 +139,6 @@ class ChatWidgetManager {
      * Ouvrir le panel
      */
     openPanel() {
-        console.log('👁️ Ouverture du panel');
-        
         if (this.isOpen) return;
         
         this.isOpen = true;
@@ -182,8 +169,6 @@ class ChatWidgetManager {
      * Fermer le panel
      */
     closePanel() {
-        console.log('👁️ Fermeture du panel');
-        
         if (!this.isOpen) return;
         
         this.isOpen = false;
@@ -194,14 +179,10 @@ class ChatWidgetManager {
      * Vérifier et afficher le modal de pseudo si nécessaire
      */
     checkAndShowPseudoModal() {
-        console.log('🔍 Vérification du pseudo...');
-        
         if (!this.chatManager.pseudo) {
-            console.log('❌ Pas de pseudo, affichage du modal');
             this.showPseudoModal();
             this.openPanel();
         } else {
-            console.log('✅ Pseudo trouvé:', this.chatManager.pseudo);
             this.hidePseudoModal();
             this.showPseudoChangeButton();
         }
@@ -211,8 +192,6 @@ class ChatWidgetManager {
      * Afficher le modal de pseudo
      */
     showPseudoModal() {
-        console.log('🎯 Affichage modal pseudo');
-        
         // Masquer le bouton de changement de pseudo
         this.hidePseudoChangeButton();
         
@@ -235,8 +214,6 @@ class ChatWidgetManager {
      * Masquer le modal de pseudo
      */
     hidePseudoModal() {
-        console.log('🎯 Masquage modal pseudo');
-        
         if (this.pseudoModalElement) {
             this.pseudoModalElement.classList.remove('show');
         }
@@ -266,8 +243,6 @@ class ChatWidgetManager {
      * Syncer les messages depuis ChatManager
      */
     syncMessages() {
-        console.log('🔄 Syncing messages...');
-        
         // Le ChatManager gère déjà la synchronisation
         // On peut ajouter une logique de notification ici si besoin
         
@@ -327,8 +302,7 @@ class ChatWidgetManager {
      * Afficher une notification toast (optionnel)
      */
     showNotification(message, type = 'info') {
-        console.log(`📢 Notification [${type}]:`, message);
-        // À implémenter si besoin
+        // A implementer si besoin
     }
 }
 

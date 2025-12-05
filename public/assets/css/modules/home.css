@@ -1,28 +1,34 @@
 .home-contain {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    align-items: center;
-    width: 100vw;
-    min-height: calc(100vh - 61px - 40px - var(--unit-4));
+    width: 100%;
+    gap: var(--unit-2);
+    height: auto;
+    padding: var(--unit-2);
 }
 
 .contain-1 {
-    width: calc(100% - var(--unit-3));
-    height: 80%;
-    margin-bottom: var(--unit-2);
+    width: 100%;
+    height: auto;
 
     & .section-time {
+        padding: var(--unit-3);
+        box-shadow: var(--shadow-medium);
+        border-radius: var(--radius-medium);
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        padding: var(--unit-3);
-        margin-top: var(--unit-3);
-        box-shadow: var(--shadow-medium);
-        border-radius: var(--radius-medium);
-        gap: var(--unit-2);
-        font: var(--font-subtitle);
-        color: var(--text2);
+
+        & #current-time {
+            font: var(--font-text2);
+            color: var(--h2);
+        }
+
+        & #current-date {
+            margin: 0 0 var(--unit-1) 0;
+            font: var(--font-text2);
+            color: var(--h2);
+        }
     }
 
     & .capsule-info {
@@ -38,8 +44,8 @@
 
             & h2 {
                 margin: 0 0 var(--unit-2) 0;
-                border-bottom: 2px solid var(--jaune);
-                font: var(--font-subtitle);
+                border-bottom: 2px solid var(--orange);
+                font: var(--font-text);
                 color: var(--h2);
             }
         }
@@ -55,7 +61,7 @@
         display: flex;
         justify-content: center;
         padding: var(--unit-2);
-        margin-top: var(--unit-2);
+        margin-top: var(--unit-3);
         box-shadow: var(--shadow-medium);
         border-radius: var(--radius-medium);
 
@@ -81,13 +87,11 @@
 }
 
 .contain-2 {
-    width: calc(100% - var(--unit-3));
-    height: 80%;
-    margin-bottom: var(--unit-2);
+    width: 100%;
+    height: auto;
 
     & .today-calendar {
         padding: var(--unit-3);
-        margin-top: var(--unit-3);
         box-shadow: var(--shadow-medium);
         border-radius: var(--radius-medium);
 
@@ -98,8 +102,8 @@
 
             & h2 {
                 margin: 0 0 var(--unit-2) 0;
-                border-bottom: 2px solid var(--jaune);
-                font: var(--font-subtitle);
+                border-bottom: 2px solid var(--orange);
+                font: var(--font-text);
                 color: var(--h2);
             }
         }
@@ -108,13 +112,11 @@
 }
 
 .contain-3 {
-    width: calc(100% - var(--unit-3));
-    height: 80%;
-    margin-bottom: var(--unit-2);
+    width: 100%;
+    height: auto;
 
     & .recent-info {
         padding: var(--unit-3);
-        margin-top: var(--unit-3);
         box-shadow: var(--shadow-medium);
         border-radius: var(--radius-medium);
 
@@ -125,12 +127,48 @@
 
             & h2 {
                 margin: 0 0 var(--unit-2) 0;
-                border-bottom: 2px solid var(--jaune);
-                font: var(--font-subtitle);
+                border-bottom: 2px solid var(--orange);
+                font: var(--font-text);
                 color: var(--h2);
             }
         }
     }
+}
+
+/* ========== ÉVÉNEMENTS DU JOUR ========== */
+
+.calendar-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.home-event-item {
+    padding: 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.home-event-item-title {
+    font-weight: 600;
+    color: var(--h2);
+}
+
+.home-event-item-time {
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.home-event-item-description {
+    font-size: 0.8rem;
+    color: #888;
+    margin-top: 0.25rem;
+}
+
+.home-event-item-empty {
+    color: #999;
+    font-style: italic;
 }
 
 @media (max-width: 980px) {

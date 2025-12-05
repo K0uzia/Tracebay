@@ -15,4 +15,5 @@
 @import url(./modules/reception.css);
 
 /* ----------CSS MODULES----------- */
+@import url(./modules/modal.css);
 @import url(./modules/chat-widget.css);

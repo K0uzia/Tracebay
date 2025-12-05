@@ -31,7 +31,6 @@ class ChatManager {
         // Initialiser ChatSecurityManager
         this.securityManager = new ChatSecurityManager(this.securityConfig);
         
-        console.log('🚀 ChatManager créé');
         this.init();
     }
 
@@ -39,8 +38,6 @@ class ChatManager {
      * Initialiser le ChatManager
      */
     init() {
-        console.log('🎯 Initialisation ChatManager');
-        
         // Afficher le pseudo
         this.displayPseudo();
         
@@ -49,16 +46,12 @@ class ChatManager {
         
         // Attacher les écouteurs d'événements
         this.attachEventListeners();
-        
-        console.log('✅ ChatManager initialisé');
     }
 
     /**
      * Attacher les écouteurs d'événements
      */
     attachEventListeners() {
-        console.log('🔗 Attachement des écouteurs ChatManager');
-        
         // Bouton de confirmation du pseudo
         const confirmBtn = document.getElementById(this.pseudoConfirmId);
         if (confirmBtn) {
@@ -99,8 +92,6 @@ class ChatManager {
         if (clearCancelBtn) {
             clearCancelBtn.addEventListener('click', () => this.hideClearModal());
         }
-        
-        console.log('✅ Écouteurs attachés');
     }
 
     /**
@@ -175,8 +166,6 @@ class ChatManager {
         
         // Dispacher un événement pour notifier ChatWidgetManager
         window.dispatchEvent(new CustomEvent('pseudoChanged', { detail: { pseudo } }));
-        
-        console.log('✅ Pseudo confirmé:', pseudo);
     }
 
     /**
@@ -259,8 +248,6 @@ class ChatManager {
         
         // Scroll vers le bas
         this.scrollToBottom();
-        
-        console.log('✅ Message envoyé');
     }
 
     /**
@@ -297,7 +284,6 @@ class ChatManager {
      * Afficher la modal de confirmation du clear
      */
     showClearModal() {
-        console.log('🗑️ Affichage modal de confirmation du clear');
         const clearModal = document.getElementById('chat-widget-clear-modal');
         if (clearModal) {
             clearModal.classList.add('show');
@@ -308,7 +294,6 @@ class ChatManager {
      * Masquer la modal de confirmation du clear
      */
     hideClearModal() {
-        console.log('❌ Fermeture modal de clear');
         const clearModal = document.getElementById('chat-widget-clear-modal');
         if (clearModal) {
             clearModal.classList.remove('show');
@@ -319,12 +304,10 @@ class ChatManager {
      * Confirmer et exécuter le clear du chat
      */
     confirmClearChat() {
-        console.log('✅ Suppression de tous les messages...');
         this.messages = [];
         this.saveMessages();
         this.renderMessages();
         this.hideClearModal();
-        console.log('🗑️ Chat complètement nettoyé');
     }
 
     /**
@@ -361,8 +344,6 @@ class ChatManager {
         this.messages.push(message);
         this.saveMessages();
         this.renderMessages();
-        
-        console.log('✅ Message reçu de', pseudo);
     }
 
     /**
@@ -394,8 +375,6 @@ class ChatManager {
         // Sauvegarder et re-afficher
         this.saveMessages();
         this.renderMessages();
-        
-        console.log(`✅ ${updatedCount} messages mis à jour avec le nouveau pseudo "${newPseudo}"`);
     }
 }
 

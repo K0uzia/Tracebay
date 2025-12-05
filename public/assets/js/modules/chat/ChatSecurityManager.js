@@ -15,14 +15,7 @@ class ChatSecurityManager {
         this.allowedProtocols = options.allowedProtocols || ['http', 'https', 'mailto', 'ftp'];
         
         // Regex pour détecter les URLs
-        this.urlRegex = /(\bhttps?:\/\/[^\s<>"\)]+|www\.[^\s<>"\)]+\.[a-z]{2,}|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi;
-        
-        console.log('🔐 ChatSecurityManager créé avec configuration:', {
-            strictMode: this.strictMode,
-            allowedDomains: this.allowedDomains.length,
-            blockedDomains: this.blockedDomains.length,
-            blockedKeywords: this.blockedKeywords.length
-        });
+        this.urlRegex = /(https?:\/\/[^\s<>"\)]+|www\.[^\s<>"\)]+\.[a-z]{2,}|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi;
     }
 
     /**
@@ -31,7 +24,6 @@ class ChatSecurityManager {
     addBlockedDomain(domain) {
         if (!this.blockedDomains.includes(domain)) {
             this.blockedDomains.push(domain);
-            console.log(`🚫 Domaine bloqué ajouté: ${domain}`);
         }
     }
 
@@ -41,7 +33,6 @@ class ChatSecurityManager {
     addBlockedKeyword(keyword) {
         if (!this.blockedKeywords.includes(keyword.toLowerCase())) {
             this.blockedKeywords.push(keyword.toLowerCase());
-            console.log(`🚫 Mot-clé bloqué ajouté: ${keyword}`);
         }
     }
 
@@ -117,19 +108,11 @@ class ChatSecurityManager {
             e.preventDefault();
             e.stopPropagation();
             
-            console.log(`🌐 CLIC sur lien détecté`);
-            console.log(`🌐 URL à ouvrir: ${url}`);
-            console.log(`🌐 window.electron disponible?`, typeof window.electron);
-            console.log(`🌐 window.electron.openExternal disponible?`, typeof window.electron?.openExternal);
-            
             // Utiliser l'API Electron pour ouvrir dans le navigateur par défaut
             if (window.electron && typeof window.electron.openExternal === 'function') {
-                console.log(`✅ Appel à window.electron.openExternal(${url})`);
                 window.electron.openExternal(url);
-                console.log(`✅ Fonction appelée`);
             } else {
                 console.warn('⚠️ window.electron.openExternal non disponible');
-                console.warn('window.electron:', window.electron);
             }
             
             return false;
@@ -177,12 +160,10 @@ class ChatSecurityManager {
             if (this.isValidUrl(url)) {
                 const link = this.createSafeLink(url);
                 fragment.appendChild(link);
-                console.log(`✅ Lien autorisé: ${url}`);
             } else {
                 // Si l'URL n'est pas valide, ajouter le texte brut
                 const textNode = document.createTextNode(url);
                 fragment.appendChild(textNode);
-                console.warn(`⛔ Lien bloqué: ${url}`);
             }
 
             lastIndex = match.index + url.length;
@@ -220,7 +201,6 @@ class ChatSecurityManager {
         if (config.blockedDomains) this.blockedDomains = config.blockedDomains;
         if (config.blockedKeywords) this.blockedKeywords = config.blockedKeywords;
         if (config.allowedProtocols) this.allowedProtocols = config.allowedProtocols;
-        console.log('📋 Configuration importée');
     }
 }
 

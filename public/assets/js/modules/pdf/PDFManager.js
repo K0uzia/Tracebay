@@ -14,15 +14,13 @@ class PDFManager {
      * @param {string} title - Titre de la fenêtre
      */
     openPDF(pdfFile, title = 'PDF Viewer') {
-        console.log(`📄 Ouverture du PDF: ${pdfFile}`);
-        
         // Envoyer une requête au processus principal
         window.electron.invoke('open-pdf-window', {
             pdfFile: pdfFile,
             title: title
         }).then(result => {
             if (result.success) {
-                console.log(`✅ PDF ouvert: ${pdfFile}`);
+                // PDF opened successfully
             } else {
                 console.error(`❌ Erreur ouverture PDF: ${result.error}`);
             }
@@ -48,8 +46,6 @@ class PDFManager {
                 finalBtn.addEventListener('click', () => {
                     this.openPDF(pdfConfig.pdfFile, pdfConfig.title);
                 });
-                
-                console.log(`✅ Listener attaché: ${pdfConfig.buttonId} → ${pdfConfig.pdfFile}`);
             }
         });
     }
