@@ -3,14 +3,12 @@
  * Importe et initialise tous les modules
  */
 
-import NavManager from './modules/NavManager.js';
-import TimeManager from './modules/TimeManager.js';
-import ChatWidgetManager from './modules/ChatWidgetManager.js';
+import NavManager from './modules/nav/NavManager.js';
+import TimeManager from './modules/time/TimeManager.js';
+import ChatWidgetManager from './modules/chat/ChatWidgetManager.js';
 
 // Initialiser après le chargement complet du DOM
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 DOMContentLoaded');
-
     // Ajouter un délai pour laisser le temps à app.js de charger le header
     setTimeout(() => {
         const navBurger = document.getElementById('navBurger');
@@ -18,7 +16,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (navBurger && navLinks) {
             window.navManager = new NavManager();
-            console.log('✅ NavManager initialisé');
         } else {
             console.warn('⚠️ Header pas trouvé');
         }
@@ -34,7 +31,6 @@ document.addEventListener('DOMContentLoaded', () => {
             timeElementId: 'current-time',
             updateInterval: 1000
         });
-        console.log('✅ TimeManager initialisé');
     }
 
     // Initialiser ChatWidgetManager (widget flottant)
@@ -47,7 +43,6 @@ document.addEventListener('DOMContentLoaded', () => {
             pseudoModalId: 'chat-widget-pseudo-modal',
             notificationBadgeId: 'chat-notification-badge'
         });
-        console.log('✅ ChatWidgetManager initialisé');
     } catch (error) {
         console.error('❌ Erreur initialisation ChatWidgetManager:', error);
     }

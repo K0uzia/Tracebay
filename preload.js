@@ -66,5 +66,3 @@ contextBridge.exposeInMainWorld('electron', {
         ipcRenderer.send('open-pdf');
     }
 });
-
-console.log('🔒 Preload script chargé');

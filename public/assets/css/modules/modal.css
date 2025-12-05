@@ -1,0 +1,556 @@
+/**
+ * MODALS.CSS - Styles pour toutes les modales du projet
+ * Utilise la classe universelle .universal-modal
+ * Variables depuis variables.css uniquement
+ */
+
+/* ====================================
+   DIALOG ELEMENT (HTML5)
+   ==================================== */
+
+dialog {
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-strong);
+    max-width: calc(var(--unit-2) * 37.5);
+    /* 600px */
+    width: calc(100% - var(--unit-2));
+    animation: slideUp 0.3s ease-out;
+    overflow-x: hidden;
+}
+
+dialog::backdrop {
+    background-color: rgba(13, 13, 13, 0.5);
+    animation: fadeIn 0.3s ease-out;
+}
+
+
+/* ====================================
+   UNIVERSAL MODAL STRUCTURE
+   ==================================== */
+
+.universal-modal {
+    background-color: var(--blanc);
+}
+
+.universal-modal::-webkit-scrollbar {
+    width: var(--unit-1);
+}
+
+.universal-modal::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+
+.universal-modal::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-color);
+    border-radius: var(--radius-medium);
+}
+
+.universal-modal::-webkit-scrollbar-thumb:hover {
+    background-color: var(--orange);
+}
+
+.modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - var(--unit-2));
+    overflow: hidden;
+    border-radius: var(--radius-large);
+}
+
+/* Header */
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--unit-3);
+    border-bottom: 1px solid rgba(13, 13, 13, 0.1);
+    flex-shrink: 0;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font: var(--font-title);
+    color: var(--h2);
+    flex: 1;
+}
+
+/* Close Button */
+.modal-close-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--unit-4);
+    height: var(--unit-4);
+    padding: 0;
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-medium);
+    font-size: var(--unit-3);
+    color: var(--text2);
+    cursor: pointer;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.modal-close-btn:hover {
+    background-color: rgba(13, 13, 13, 0.05);
+    color: var(--noir);
+}
+
+.modal-close-btn:active {
+    background-color: rgba(13, 13, 13, 0.1);
+}
+
+/* Body */
+.modal-body {
+    padding: var(--unit-3);
+    overflow: auto;
+    flex: 1;
+    color: var(--text2);
+    font: var(--font-text);
+}
+
+
+/* Footer */
+.modal-footer {
+    display: flex;
+    gap: var(--unit-2);
+    padding: var(--unit-3);
+    border-top: 1px solid rgba(13, 13, 13, 0.1);
+    flex-shrink: 0;
+    justify-content: flex-end;
+}
+
+.modal-footer.space-between {
+    justify-content: space-between;
+}
+
+/* ====================================
+   FORMS IN MODALS
+   ==================================== */
+
+.modal-body form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-2);
+}
+
+/* Form Groups */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--unit-1) / 2);
+}
+
+.form-group label {
+    font-weight: 500;
+    color: var(--h2);
+    font: var(--font-text);
+}
+
+.form-group input,
+.form-group textarea,
+.form-group select {
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid rgba(13, 13, 13, 0.15);
+    border-radius: var(--radius-medium);
+    font: var(--font-text);
+    font-family: inherit;
+    transition: var(--transition);
+    background-color: var(--blanc);
+    color: var(--text2);
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 3px rgba(62, 59, 140, 0.1);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: calc(var(--unit-1) * 12.5);
+}
+
+/* Row Groups */
+.row-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--unit-2);
+}
+
+.row-group.half {
+    grid-template-columns: 1fr;
+}
+
+.form-group.half {
+    grid-column: span 1;
+}
+
+/* Checkbox & Radio Groups */
+.checkbox-group,
+.color-selector {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-2);
+}
+
+.checkbox-label,
+.color-option {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
+    cursor: pointer;
+    user-select: none;
+}
+
+.checkbox-label input[type="checkbox"],
+.checkbox-label input[type="radio"],
+.color-option input[type="radio"] {
+    cursor: pointer;
+    width: calc(var(--unit-1) * 2);
+    height: calc(var(--unit-1) * 2);
+}
+
+/* Color Circles */
+.color-circle {
+    display: inline-flex;
+    width: var(--unit-4);
+    height: var(--unit-4);
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.color-option input[type="radio"]:checked+.color-circle {
+    border-color: var(--text2);
+    box-shadow: 0 0 0 2px var(--blanc), 0 0 0 4px var(--text2);
+}
+
+/* Color Picker (New Palette) */
+.color-picker-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-2);
+}
+
+.color-picker-favorites {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-1);
+}
+
+.color-favorite-btn {
+    width: var(--unit-4);
+    height: var(--unit-4);
+    border: 2px solid rgba(13, 13, 13, 0.15);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: var(--transition);
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.color-favorite-btn:hover {
+    border-color: var(--text2);
+    box-shadow: 0 0 0 2px var(--blanc), 0 0 0 4px var(--text2);
+    transform: scale(1.1);
+}
+
+.color-favorite-btn:active {
+    box-shadow: 0 0 0 2px var(--blanc), 0 0 0 6px var(--text2);
+}
+
+.color-picker-controls {
+    display: flex;
+    gap: var(--unit-1);
+    align-items: center;
+}
+
+.color-picker-controls input[type="color"] {
+    width: var(--unit-5);
+    height: var(--unit-5);
+    border: 1px solid rgba(13, 13, 13, 0.15);
+    border-radius: var(--radius-medium);
+    cursor: pointer;
+    padding: calc(var(--unit-1) / 2);
+}
+
+.color-picker-controls .btn.btn-sm {
+    padding: calc(var(--unit-1) - 2px) var(--unit-2);
+    font-size: 1.2rem;
+    min-height: auto;
+    background-color: var(--btn);
+    color: var(--btn-text);
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.color-picker-controls .btn.btn-sm:hover {
+    background-color: var(--btn-hover);
+}
+
+/* ====================================
+   MESSAGE BOXES
+   ==================================== */
+
+.modal-error-message,
+.modal-success-message {
+    padding: var(--unit-2);
+    border-radius: var(--radius-medium);
+    margin-bottom: var(--unit-2);
+    font: var(--font-text);
+    border: 1px solid;
+}
+
+.modal-error-message {
+    background-color: #fee2e2;
+    border-color: #fecaca;
+    color: #991b1b;
+}
+
+.modal-success-message {
+    background-color: #dcfce7;
+    border-color: #bbf7d0;
+    color: #166534;
+}
+
+.modal-error-message p,
+.modal-success-message p {
+    margin: 0;
+}
+
+/* ====================================
+   BUTTONS IN MODALS
+   ==================================== */
+
+.modal-footer .btn,
+.modal-body .btn {
+    padding: var(--btn-primary-padding);
+    border: none;
+    border-radius: var(--radius-small);
+    font: var(--font-btn);
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+    min-height: var(--unit-5);
+}
+
+/* Primary Button (Submit) */
+.modal-submit-btn,
+.btn-primary {
+    background-color: var(--btn);
+    color: var(--btn-text);
+}
+
+.modal-submit-btn:hover:not(:disabled),
+.btn-primary:hover {
+    background-color: var(--btn-hover);
+    box-shadow: var(--shadow-medium);
+}
+
+.modal-submit-btn:active:not(:disabled),
+.btn-primary:active {
+    opacity: 0.9;
+}
+
+.modal-submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Cancel Button */
+.modal-cancel-btn,
+.btn-annuler,
+.btn-cancel {
+    background-color: rgba(13, 13, 13, 0.1);
+    color: var(--h2);
+}
+
+.modal-cancel-btn:hover,
+.btn-annuler:hover,
+.btn-cancel:hover {
+    background-color: rgba(13, 13, 13, 0.15);
+}
+
+.modal-cancel-btn:active,
+.btn-annuler:active,
+.btn-cancel:active {
+    background-color: rgba(13, 13, 13, 0.2);
+}
+
+/* Danger Button */
+.btn-danger {
+    background-color: var(--error);
+    color: var(--blanc);
+}
+
+.btn-danger-outline {
+    background-color: var(--error);
+    color: var(--blanc);
+    border: 2px solid var(--blanc);
+}
+
+.btn-danger:hover {
+    box-shadow: var(--shadow-medium);
+}
+
+/* Warning Button */
+.btn-warning {
+    background-color: var(--orange);
+    color: var(--blanc);
+}
+
+/* Success Button */
+.btn-success {
+    background-color: var(--valid);
+    color: var(--blanc);
+}
+
+/* ====================================
+   PROGRESS BAR (UPLOAD, etc)
+   ==================================== */
+
+.modal-progress-container {
+    margin-bottom: var(--unit-2);
+}
+
+.modal-progress {
+    width: 100%;
+    height: calc(var(--unit-1) / 2);
+    background-color: rgba(13, 13, 13, 0.1);
+    border-radius: var(--radius-medium);
+    overflow: hidden;
+}
+
+.modal-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--bleu1), var(--jaune));
+    transition: width 0.3s ease;
+    border-radius: var(--radius-medium);
+}
+
+.modal-progress-text {
+    text-align: center;
+    font: var(--font-text);
+    color: var(--text2);
+    margin-top: var(--unit-1);
+}
+
+/* ====================================
+   ANIMATIONS
+   ==================================== */
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(var(--unit-2));
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(calc(var(--unit-1) * -1));
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ====================================
+   RESPONSIVE
+   ==================================== */
+
+@media (max-width: 768px) {
+    dialog {
+        width: calc(100vw - var(--unit-2));
+        max-height: calc(100vh - var(--unit-2));
+    }
+
+    .modal-content {
+        max-height: calc(100vh - var(--unit-2));
+    }
+
+    .modal-header {
+        padding: var(--unit-2);
+    }
+
+    .modal-header h2 {
+        font-size: 1.25rem;
+    }
+
+    .modal-body {
+        padding: var(--unit-2);
+    }
+
+    .modal-footer {
+        flex-direction: column-reverse;
+        padding: var(--unit-2);
+    }
+
+    .modal-footer .btn {
+        width: 100%;
+    }
+
+    .row-group {
+        grid-template-columns: 1fr;
+    }
+
+    .color-selector {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 480px) {
+    dialog {
+        max-height: calc(100vh - var(--unit-1));
+    }
+
+    .modal-header {
+        padding: var(--unit-2);
+    }
+
+    .modal-header h2 {
+        font-size: 1.1rem;
+    }
+
+    .modal-body {
+        padding: var(--unit-2);
+    }
+
+    .modal-footer {
+        padding: var(--unit-2);
+        gap: var(--unit-1);
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        font-size: 16px;
+    }
+}
