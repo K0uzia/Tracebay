@@ -1,105 +1,73 @@
 #!/usr/bin/env bash
-# ------------------------------------------------------------------------------
-# setup-local.sh — Setup local pour Workspace Electron + Node.js + SQLite3
-#   - Idempotent, lisible, avec logs.
-#   - Installe dépendances npm, initialise la DB SQLite, configure l'env.
+# ==============================================================================
+# setup-local.sh — Workspace Setup (Electron + Node.js + SQLite3)
+#   Simplifié avec electron-builder uniquement (no electron-forge)
 #
 # USAGE:
-#   ./setup-local.sh info         # affiche versions & état
-#   ./setup-local.sh deps         # installe Node.js, npm, SQLite3 (si nécessaire)
-#   ./setup-local.sh init         # crée data/, initialise BDD, génère bin/ & .env
-#   ./setup-local.sh reset        # réinitialise la DB depuis la migration
-#   ./setup-local.sh dev          # lance le serveur Node + Electron
-#   ./setup-local.sh server       # lance juste le serveur Node (npm run server)
-#   ./setup-local.sh db.shell     # ouvre un shell sqlite
-#   ./setup-local.sh db.backup    # sauvegarde la DB
-#   ./setup-local.sh build        # construit l'app Electron
-#
-# ENV (personnalisables):
-#   PORT=3000 DATA_DIR=./data DB_FILE=database.sqlite
-# ------------------------------------------------------------------------------
+#   ./setup-local.sh init         # Setup complet
+#   ./setup-local.sh deps         # Installe Node.js, npm, SQLite3
+#   ./setup-local.sh info         # État système
+#   ./setup-local.sh dev          # Serveur Node + Electron
+#   ./setup-local.sh server       # Juste serveur Node
+#   ./setup-local.sh db.shell     # Shell SQLite
+#   ./setup-local.sh db.backup    # Backup DB
+#   ./setup-local.sh build        # Build electron-builder
+# ==============================================================================
 
 set -euo pipefail
 
-# --- Paths & défauts ----------------------------------------------------------
 ROOT="$(pwd)"
 DATA_DIR="${DATA_DIR:-$ROOT/data}"
 DB_FILE="${DB_FILE:-database.sqlite}"
 DB_PATH="$DATA_DIR/$DB_FILE"
-PORT="${PORT:-3000}"
+PORT="${PORT:-8060}"
 
-# --- Logging helpers ----------------------------------------------------------
 log() { printf '· %s\n' "$*"; }
 ok() { printf '✅ %s\n' "$*"; }
 warn() { printf '⚠️  %s\n' "$*"; }
 err() { printf '❌ %s\n' "$*" >&2; }
-die() {
-    err "$*"
-    exit 1
-}
+die() { err "$*"; exit 1; }
+need() { command -v "$1" >/dev/null 2>&1 || die "Manque: $1"; }
 
-need() { command -v "$1" >/dev/null 2>&1 || die "Manque binaire: $1"; }
-
-# --- Common checks / ensure ---------------------------------------------------
+# --- Helpers ------------------------------------------------------------------
 ensure_dirs() { 
     mkdir -p "$DATA_DIR" "$ROOT/bin" "$ROOT/config"
-    log "Répertoires créés: data/, bin/, config/"
+    log "Répertoires: data/ bin/ config/"
 }
 
 ensure_env() {
-    local env_file="$ROOT/.env"
-    [[ -f "$env_file" ]] && return 0
-    
-    cat >"$env_file" <<ENV
-# Workspace - Configuration locale
+    [[ -f "$ROOT/.env" ]] && return 0
+    cat >"$ROOT/.env" <<ENV
 NODE_ENV=development
 PORT=$PORT
 DB_PATH=./data/$DB_FILE
 DB_DSN=sqlite:./data/$DB_FILE
-
-# Chat Widget (optionnel)
 CHAT_API_URL=http://localhost:$PORT
-
-# PDF (optionnel)
 PDF_OUTPUT_DIR=./public/src/pdf
-
 ENV
-    ok "Créé .env (personnalise-le au besoin)"
+    ok ".env créé"
 }
 
 ensure_gitignore() {
     local gitignore="$ROOT/.gitignore"
     [[ -f "$gitignore" ]] || touch "$gitignore"
-    
-    local items=("node_modules" "data/" ".env" "*.log" "dist/" ".env.local")
-    for item in "${items[@]}"; do
+    for item in node_modules data/ .env "*.log" dist/ .env.local out/; do
         grep -qF "$item" "$gitignore" 2>/dev/null || echo "$item" >>"$gitignore"
     done
     ok ".gitignore mis à jour"
 }
 
 get_migration_file() {
-    # Cherche les fichiers de migration courants
-    if [[ -f "$ROOT/migrations/init.sql" ]]; then
-        echo "$ROOT/migrations/init.sql"
-    elif [[ -f "$ROOT/migrations/schema.sql" ]]; then
-        echo "$ROOT/migrations/schema.sql"
-    elif [[ -f "$ROOT/migrations/sqlite_init.sql" ]]; then
-        echo "$ROOT/migrations/sqlite_init.sql"
-    elif [[ -f "$ROOT/migrations/tables.sql" ]]; then
-        echo "$ROOT/migrations/tables.sql"
-    else
-        return 1
-    fi
+    for f in ./migrations/{init,schema,sqlite_init,tables}.sql; do
+        [[ -f "$f" ]] && echo "$f" && return 0
+    done
+    return 1
 }
 
-# --- Package manager / Node.js ------------------------------------------------
 detect_pkg() {
-    if command -v dnf >/dev/null 2>&1; then
-        echo "dnf"
-    elif command -v apt-get >/dev/null 2>&1; then
-        echo "apt"
-    else echo "unknown"; fi
+    command -v dnf >/dev/null 2>&1 && echo "dnf" && return
+    command -v apt-get >/dev/null 2>&1 && echo "apt" && return
+    echo "unknown"
 }
 
 install_deps() {
@@ -107,325 +75,270 @@ install_deps() {
     pm="$(detect_pkg)"
     case "$pm" in
         dnf)
-            pkgs=(nodejs npm sqlite3)
-            log "Installer via dnf: ${pkgs[*]}"
-            if command -v sudo >/dev/null 2>&1; then
-                sudo dnf install -y "${pkgs[@]}"
-            else
-                dnf install -y "${pkgs[@]}"
-            fi
+            log "Installer: nodejs npm sqlite3 (dnf)"
+            command -v sudo >/dev/null 2>&1 && sudo dnf install -y nodejs npm sqlite3 || dnf install -y nodejs npm sqlite3
             ;;
         apt)
-            pkgs=(nodejs npm sqlite3)
-            log "Installer via apt: ${pkgs[*]}"
-            if command -v sudo >/dev/null 2>&1; then
-                sudo apt-get update
-                sudo apt-get install -y "${pkgs[@]}"
-            else
-                apt-get update
-                apt-get install -y "${pkgs[@]}"
-            fi
+            log "Installer: nodejs npm sqlite3 (apt)"
+            command -v sudo >/dev/null 2>&1 && { sudo apt-get update; sudo apt-get install -y nodejs npm sqlite3; } || { apt-get update; apt-get install -y nodejs npm sqlite3; }
             ;;
         *)
-            die "Gestionnaire de paquets non supporté. Installe manuellement :
-  - Fedora/RHEL : nodejs npm sqlite3
-  - Debian/Ubuntu : nodejs npm sqlite3"
+            die "Pkg manager unknown (apt/dnf). Install manuellement: nodejs npm sqlite3"
             ;;
     esac
-
-    ok "Dépendances système installées."
+    ok "Dépendances système installées"
 }
 
-npm_install_if_needed() {
-    if [[ -d "$ROOT/node_modules" && -f "$ROOT/node_modules/.bin/electron" ]]; then
-        log "Dépendances npm déjà installées (node_modules/ présent)."
-        return 0
-    fi
-
+npm_install() {
+    [[ -d "$ROOT/node_modules" ]] && [[ -f "$ROOT/node_modules/.bin/electron" ]] && log "npm déjà installé" && return
     need npm
-    log "Installation des dépendances npm..."
-    if npm install; then
-        ok "npm install terminé."
-    else
-        die "Échec de npm install. Vérifie ta connexion ou package.json."
-    fi
+    log "npm install..."
+    npm install || die "npm install failed"
+    ok "npm installé"
 }
 
-# --- SQLite actions -----------------------------------------------------------
-sqlite_apply_migration_fresh() {
+sqlite_init() {
     need sqlite3
-    local mig
+    [[ -f "$DB_PATH" ]] && log "DB déjà présente" && return
     
     if ! mig="$(get_migration_file)"; then
-        warn "Aucun fichier de migration trouvé. DB créée vide."
+        warn "Migration introuvable, DB vide créée"
         : >"$DB_PATH"
-        return 0
+        return
     fi
     
     : >"$DB_PATH"
     sqlite3 "$DB_PATH" <"$mig"
-    ok "SQLite initialisée (fresh): $DB_PATH"
+    ok "DB initialisée"
 }
 
-sqlite_apply_migration_if_absent() {
+sqlite_reset() {
     need sqlite3
-    local mig
-    
-    if [[ -f "$DB_PATH" ]]; then
-        log "DB déjà présente: $DB_PATH (skip init). Utilise 'reset' pour repartir de zéro."
-        return 0
-    fi
-    
     if ! mig="$(get_migration_file)"; then
-        warn "Aucun fichier de migration trouvé. DB créée vide."
-        : >"$DB_PATH"
-        return 0
+        die "Migration introuvable"
     fi
-    
+    rm -f "$DB_PATH"
     : >"$DB_PATH"
     sqlite3 "$DB_PATH" <"$mig"
-    ok "SQLite initialisée: $DB_PATH"
+    ok "DB réinitialisée"
 }
 
 sqlite_backup() {
     need sqlite3
-    
-    if [[ ! -f "$DB_PATH" ]]; then
-        warn "DB introuvable: $DB_PATH"
-        return 1
-    fi
-    
-    local backup_dir="$DATA_DIR/backups"
-    mkdir -p "$backup_dir"
-    
-    local timestamp=$(date +%Y%m%d_%H%M%S)
-    local backup_file="$backup_dir/${DB_FILE%.sqlite}_$timestamp.sqlite"
-    
-    cp "$DB_PATH" "$backup_file"
-    ok "Backup créé: $backup_file"
+    [[ -f "$DB_PATH" ]] || die "DB introuvable"
+    mkdir -p "$DATA_DIR/backups"
+    local ts=$(date +%Y%m%d_%H%M%S)
+    cp "$DB_PATH" "$DATA_DIR/backups/database_$ts.sqlite"
+    ok "Backup: $DATA_DIR/backups/database_$ts.sqlite"
 }
 
-# --- Import partners data -----------------------------------------------------
-import_partners_if_needed() {
-    local import_script="$ROOT/bin/import_partners_from_provider.php"
-    if [[ ! -f "$import_script" ]]; then
-        warn "Script d'import des partenaires introuvable: $import_script (skip)"
-        return 0
-    fi
-    
-    if [[ ! -f "$DB_SQLITE" ]]; then
-        warn "Base de données absente, impossible d'importer les partenaires"
-        return 0
-    fi
-    
-    log "Import des partenaires depuis PartnersProvider..."
-    if php "$import_script" 2>&1; then
-        ok "Partenaires importés avec succès"
-    else
-        warn "Échec de l'import des partenaires (peut être normal si déjà présents)"
-    fi
-}
-
-# --- bin/ scripts -------------------------------------------------------------
+# --- bin/ scripts simplifiés -------------------------------------------------
 bin_install() {
-    local db="$ROOT/bin/db" dev="$ROOT/bin/dev" server="$ROOT/bin/server"
+    local db="$ROOT/bin/db" server="$ROOT/bin/server" dev="$ROOT/bin/dev"
 
-    if [[ ! -f "$db" ]]; then
+    [[ -f "$db" ]] || {
         cat >"$db" <<'BASH'
 #!/usr/bin/env bash
 set -euo pipefail
 DB="./data/database.sqlite"
-
 get_migration() {
-    for f in ./migrations/init.sql ./migrations/schema.sql ./migrations/sqlite_init.sql ./migrations/tables.sql; do
+    for f in ./migrations/{init,schema,sqlite_init,tables}.sql; do
         [[ -f "$f" ]] && echo "$f" && return 0
     done
     return 1
 }
-
 mkdir -p ./data
 case "${1:-}" in
-  init)  
-    if mig=$(get_migration); then
-      : > "$DB"
-      sqlite3 "$DB" < "$mig"
-      echo "✅ DB initialized at $DB"
-    else
-      : > "$DB"
-      echo "⚠️  DB créée vide (pas de migration trouvée)"
-    fi
-    ;;
-  reset) 
-    if mig=$(get_migration); then
-      rm -f "$DB"
-      sqlite3 "$DB" < "$mig"
-      echo "✅ DB reset"
-    else
-      echo "❌ Pas de migration trouvée" >&2
-      exit 1
-    fi
-    ;;
+  init) mig=$(get_migration) && : > "$DB" && sqlite3 "$DB" < "$mig" && echo "✅ DB init" || { : > "$DB"; echo "⚠️  DB vide"; } ;;
+  reset) mig=$(get_migration) && rm -f "$DB" && : > "$DB" && sqlite3 "$DB" < "$mig" && echo "✅ DB reset" || { echo "❌ Migration introuvable" >&2; exit 1; } ;;
   shell) sqlite3 "$DB" ;;
-  backup)
-    mkdir -p ./data/backups
-    ts=$(date +%Y%m%d_%H%M%S)
-    cp "$DB" "./data/backups/database_$ts.sqlite"
-    echo "✅ Backup: ./data/backups/database_$ts.sqlite"
-    ;;
-  *) echo "Usage: bin/db {init|reset|shell|backup}" >&2; exit 1;;
+  backup) mkdir -p ./data/backups && ts=$(date +%Y%m%d_%H%M%S) && cp "$DB" "./data/backups/database_$ts.sqlite" && echo "✅ ./data/backups/database_$ts.sqlite" ;;
+  *) echo "Usage: bin/db {init|reset|shell|backup}" >&2; exit 1 ;;
 esac
 BASH
         chmod +x "$db"
-        ok "Créé bin/db"
-    fi
+        ok "bin/db créé"
+    }
 
-    if [[ ! -f "$server" ]]; then
+    [[ -f "$server" ]] || {
         cat >"$server" <<'BASH'
 #!/usr/bin/env bash
-set -euo pipefail
 PORT="${PORT:-3000}"
-NODE_ENV="${NODE_ENV:-development}"
-echo "🔌 Serveur Node → http://localhost:$PORT"
-NODE_ENV="$NODE_ENV" PORT="$PORT" node server.js
+echo "🔌 Serveur → http://localhost:$PORT"
+PORT="$PORT" node server.js
 BASH
         chmod +x "$server"
-        ok "Créé bin/server"
-    fi
+        ok "bin/server créé"
+    }
 
-    if [[ ! -f "$dev" ]]; then
+    [[ -f "$dev" ]] || {
         cat >"$dev" <<'BASH'
 #!/usr/bin/env bash
-set -euo pipefail
 PORT="${PORT:-3000}"
-echo "⚡ Mode dev: Serveur Node + Electron"
-echo "   → API: http://localhost:$PORT"
-PORT="$PORT" npm run dev
+echo "⚡ Dev: Serveur + Electron"
+PORT="$PORT" npm start
 BASH
         chmod +x "$dev"
-        ok "Créé bin/dev"
+        ok "bin/dev créé"
+    }
+}
+
+# --- Updates & Maintenance ---------------------------------------------------
+check_updates() {
+    need npm
+    log "Vérification des mises à jour npm..."
+    npm outdated || log "Toutes les dépendances sont à jour"
+}
+
+update_deps() {
+    need npm
+    local choice
+    
+    log "🔄 Mise à jour des dépendances npm..."
+    echo ""
+    echo "Options:"
+    echo "1) Mettre à jour les mineures/patches (npm update)"
+    echo "2) Mettre à jour interactivement (npm update -i)"
+    echo "3) Vérifier uniquement (npm outdated)"
+    echo ""
+    read -p "Choisir [1/2/3]: " choice
+    
+    case "$choice" in
+        1)
+            log "Mise à jour standard..."
+            npm update
+            ok "Dépendances mises à jour"
+            ;;
+        2)
+            log "Mode interactif..."
+            npm update -i --save || warn "Mise à jour interactive annulée"
+            ;;
+        3)
+            log "Vérification des versions outdated..."
+            npm outdated || log "Toutes les dépendances sont à jour"
+            ;;
+        *)
+            warn "Choix invalide"
+            return 1
+            ;;
+    esac
+}
+
+update_electron() {
+    need npm
+    local current_version latest_version
+    
+    log "Vérification de la version Electron..."
+    current_version=$(npm list electron 2>/dev/null | grep electron | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+    
+    if [[ -z "$current_version" ]]; then
+        warn "Impossible de déterminer la version Electron"
+        return 1
+    fi
+    
+    log "Version actuelle: $current_version"
+    
+    # Obtenir la dernière version disponible
+    latest_version=$(npm view electron@latest version 2>/dev/null)
+    
+    if [[ -z "$latest_version" ]]; then
+        warn "Impossible de récupérer la dernière version"
+        return 1
+    fi
+    
+    log "Dernière version disponible: $latest_version"
+    
+    if [[ "$current_version" == "$latest_version" ]]; then
+        ok "Electron est à jour!"
+        return 0
+    fi
+    
+    echo ""
+    read -p "Mettre à jour Electron vers $latest_version? (y/n) " -n 1 -r
+    echo ""
+    
+    if [[ $REPLY =~ ^[Yy]$ ]]; then
+        log "Mise à jour Electron $current_version → $latest_version..."
+        npm install --save-dev electron@latest || die "Erreur lors de la mise à jour"
+        ok "Electron mis à jour!"
+        
+        # Compiler les dépendances natives
+        if npm rebuild 2>/dev/null; then
+            ok "Dépendances natives recompilées"
+        fi
+    else
+        log "Mise à jour Electron annulée"
     fi
 }
 
-# --- Makefile minimal / enrichissement ---------------------------------------
-make_inject() {
-    local mk="$ROOT/Makefile"
-    if [[ ! -f "$mk" ]]; then
-        cat >"$mk" <<'MAKE'
-.PHONY: dev server db.init db.reset db.shell db.backup info build help
-
-help:
-	@echo "Workspace - Commandes disponibles:"
-	@echo "  make dev        - Lance serveur + Electron"
-	@echo "  make server     - Lance juste le serveur Node"
-	@echo "  make db.init    - Initialise la DB"
-	@echo "  make db.reset   - Réinitialise la DB"
-	@echo "  make db.shell   - Ouvre shell SQLite"
-	@echo "  make db.backup  - Sauvegarde la DB"
-	@echo "  make build      - Construit l'app Electron"
-	@echo "  make info       - Infos système"
-
-dev: ; bin/dev
-server: ; bin/server
-db.init: ; bin/db init
-db.reset: ; bin/db reset
-db.shell: ; bin/db shell
-db.backup: ; bin/db backup
-build: ; npm run build
-
-info:
-	@node -v
-	@npm -v
-	@sqlite3 --version || true
-	@echo "Port: 3000"
-	@echo "DB: ./data/database.sqlite"
-MAKE
-        ok "Créé Makefile"
-        return
-    fi
-
-    if ! grep -qE '^help:' "$mk"; then
-        cat >>"$mk" <<'MAKE'
-
-help:
-	@echo "Workspace - Commandes disponibles:"
-	@echo "  make dev        - Lance serveur + Electron"
-	@echo "  make server     - Lance juste le serveur Node"
-	@echo "  make db.init    - Initialise la DB"
-	@echo "  make db.reset   - Réinitialise la DB"
-	@echo "  make db.shell   - Ouvre shell SQLite"
-	@echo "  make db.backup  - Sauvegarde la DB"
-	@echo "  make build      - Construit l'app Electron"
-	@echo "  make info       - Infos système"
-MAKE
-    fi
-    ok "Makefile enrichi (non destructif)"
+audit_security() {
+    need npm
+    log "Audit de sécurité npm..."
+    npm audit || {
+        warn "Des vulnérabilités ont été détectées"
+        echo ""
+        read -p "Appliquer les correctifs automatiques? (y/n) " -n 1 -r
+        echo ""
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            npm audit fix || warn "Certains problèmes n'ont pas pu être corrigés automatiquement"
+        fi
+    }
 }
 
-# --- Commands -----------------------------------------------------------------
-cmd="${1:-help}"
+# --- Main commands -----------------------------------------------------------
+cmd="${1:-info}"
 
 case "$cmd" in
     info)
-        echo "=== Workspace Setup Info ==="
-        node -v
-        npm -v
-        sqlite3 --version || echo "(sqlite3 non installé)"
+        echo "=== Workspace Info ==="
+        node -v 2>/dev/null || echo "❌ Node manquant"
+        npm -v 2>/dev/null || echo "❌ npm manquant"
+        sqlite3 --version 2>/dev/null || echo "⚠️  SQLite3 manquant"
         echo ""
-        echo "Root directory: $ROOT"
-        echo "Data directory: $DATA_DIR"
-        echo "DB file:        $DB_PATH"
-        echo "Port:           $PORT"
-        echo ""
-        if [[ -d "$ROOT/node_modules" ]]; then
-            echo "✅ npm dependencies installées"
-        else
-            echo "❌ npm dependencies manquantes"
-        fi
-        if [[ -f "$DB_PATH" ]]; then
-            echo "✅ DB présente"
-            echo "   Tables: $(sqlite3 "$DB_PATH" ".tables" 2>/dev/null || echo "error")"
-        else
-            echo "❌ DB absente"
-        fi
-        ;;
-    deps)
-        install_deps
+        [[ -d "$ROOT/node_modules" ]] && echo "✅ npm dependencies" || echo "❌ npm dependencies"
+        [[ -f "$DB_PATH" ]] && echo "✅ DB: $DB_PATH" || echo "❌ DB manquante"
+        [[ -f "$ROOT/.env" ]] && echo "✅ .env" || echo "⚠️  .env absent"
+        echo "Port: $PORT | Data: $DATA_DIR"
         ;;
     init)
         need node
         need npm
+        log "Setup complet..."
         ensure_dirs
         ensure_env
         ensure_gitignore
         bin_install
-        make_inject
-        npm_install_if_needed
-        sqlite_apply_migration_if_absent
+        npm_install
+        sqlite_init
         ok ""
-        ok "✅ Init terminé!"
-        ok "Prochaines étapes:"
-        ok "  • make info       - Vérifier l'état"
-        ok "  • make server     - Lancer le serveur Node"
-        ok "  • make dev        - Lancer Electron + serveur"
+        ok "✅ Setup terminé!"
+        ok "Commandes:"
+        ok "  ./bin/server              # Serveur Node"
+        ok "  ./bin/dev                 # Electron"
+        ok "  ./setup-local.sh build    # Build l'app"
+        ;;
+    deps)
+        install_deps
+        npm_install
         ;;
     reset)
-        sqlite_apply_migration_fresh
-        ok "DB réinitialisée"
+        sqlite_reset
         ;;
     dev)
         need node
-        [[ -f "$ROOT/main.js" ]] || die "main.js manquant"
-        echo "⚡ Mode dev: Serveur Node + Electron"
-        PORT="$PORT" npm run dev
+        log "Serveur + Electron..."
+        export PORT="$PORT"
+        npm start
         ;;
     server)
         need node
-        echo "🔌 Serveur Node → http://localhost:$PORT"
-        PORT="$PORT" npm run server
+        log "Serveur → http://localhost:$PORT"
+        export PORT="$PORT"
+        npm run server
         ;;
     db.shell)
         need sqlite3
-        [[ -f "$DB_PATH" ]] || die "DB absente: $DB_PATH"
+        [[ -f "$DB_PATH" ]] || die "DB manquante"
         sqlite3 "$DB_PATH"
         ;;
     db.backup)
@@ -433,22 +346,51 @@ case "$cmd" in
         ;;
     build)
         need node
-        log "Construction de l'app Electron..."
+        log "Electron Builder..."
         npm run build
         ;;
+    check-updates)
+        check_updates
+        ;;
+    update-deps)
+        update_deps
+        ;;
+    update-electron)
+        update_electron
+        ;;
+    audit)
+        audit_security
+        ;;
     *)
-        cat <<USAGE
-Usage: $0 {info|deps|init|reset|dev|server|db.shell|db.backup|build}
+        cat <<HELP
+Usage: $0 {info|init|deps|reset|dev|server|db.shell|db.backup|build|check-updates|update-deps|update-electron|audit}
 
-Raccourcis recommandés:
-  ./setup-local.sh init           # Configuration initiale complète
-  ./setup-local.sh dev            # Lancer Electron + serveur
-  ./setup-local.sh server         # Lancer juste le serveur
-  make help                       # Liste les commandes make
+Setup:
+  init                 Configuration initiale
+  deps                 Dépendances système
+  info                 État du système
+
+Dev:
+  dev                  Serveur + Electron
+  server               Juste serveur Node
+
+DB:
+  reset                Réinitialiser
+  db.shell             Shell SQLite
+  db.backup            Backup
+
+Build:
+  build                Electron Builder
+
+Updates & Maintenance:
+  check-updates        Vérifier les mises à jour disponibles
+  update-deps          Mettre à jour les dépendances npm
+  update-electron      Mettre à jour Electron (manual)
+  audit                Audit de sécurité npm
 
 ENV:
   PORT=3000 DATA_DIR=./data DB_FILE=database.sqlite
-USAGE
+HELP
         exit 1
         ;;
 esac

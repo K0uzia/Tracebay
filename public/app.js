@@ -47,7 +47,7 @@ class PageManager {
      */
     async loadHeader() {
         try {
-            const response = await fetch('./public/components/header.html');
+            const response = await fetch('/components/header.html');
             if (!response.ok) throw new Error('Header not found');
             const html = await response.text();
             document.getElementById('header').innerHTML = html;
@@ -64,7 +64,7 @@ class PageManager {
      */
     async loadFooter() {
         try {
-            const response = await fetch('./public/components/footer.html');
+            const response = await fetch('/components/footer.html');
             if (!response.ok) throw new Error('Footer not found');
             const html = await response.text();
             document.getElementById('footer').innerHTML = html;
@@ -80,7 +80,7 @@ class PageManager {
     async loadPage(pageName) {
         try {
             // Construire le chemin
-            const filePath = `./public/pages/${pageName}.html`;
+            const filePath = `/pages/${pageName}.html`;
             
             // Récupérer le fichier
             const response = await fetch(filePath);
@@ -127,7 +127,7 @@ class PageManager {
             }
             
             // Charger et créer une nouvelle instance
-            import('./public/assets/js/modules/time/TimeManager.js')
+            import('/assets/js/modules/time/TimeManager.js')
                 .then(module => {
                     const TimeManager = module.default;
                     window.timeManager = new TimeManager({
@@ -162,8 +162,8 @@ class PageManager {
             
             // Créer une nouvelle instance avec config de sécurité
             Promise.all([
-                import('./public/assets/js/modules/chat/ChatManager.js'),
-                import('./public/assets/js/config/ChatSecurityConfig.js')
+                import('/assets/js/modules/chat/ChatManager.js'),
+                import('/assets/js/config/ChatSecurityConfig.js')
             ]).then(([chatModule, configModule]) => {
                 const ChatManager = chatModule.default;
                 const securityConfig = configModule.default;
@@ -194,8 +194,8 @@ class PageManager {
         if (pageName === 'home') {
             // Initialiser les boutons PDF
             Promise.all([
-                import('./public/assets/js/modules/pdf/PDFManager.js'),
-                import('./public/assets/js/config/PDFConfig.js')
+                import('/assets/js/modules/pdf/PDFManager.js'),
+                import('/assets/js/config/PDFConfig.js')
             ]).then(([pdfModule, configModule]) => {
                 const PDFManager = pdfModule.default;
                 const pdfConfig = configModule.pdfConfig;
@@ -207,7 +207,7 @@ class PageManager {
             });
 
             // Charger les événements du jour
-            import('./public/assets/js/modules/agenda/AgendaStore.js')
+            import('/assets/js/modules/agenda/AgendaStore.js')
                 .then(module => {
                     const AgendaStore = module.default;
                     this.loadTodayEvents(AgendaStore);
@@ -217,7 +217,7 @@ class PageManager {
                 });
         } else if (pageName === 'agenda') {
             // Initialiser l'agenda avec gestion de cleanup
-            import('./public/assets/js/modules/agenda/AgendaInit.js')
+            import('/assets/js/modules/agenda/AgendaInit.js')
                 .then(module => {
                     // Détruire l'ancienne instance si elle existe
                     module.destroyAgenda();

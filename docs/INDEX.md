@@ -4,6 +4,7 @@
 
 - **[Setup Complet](setup/SETUP.md)** - Installation et configuration détaillée
 - **[Quick Start](setup/QUICK_START.md)** - Démarrage rapide (5 min)
+- **[GitHub Releases](setup/GITHUB_RELEASES.md)** - Publication automatisée avec GitHub Releases
 
 ## 🏗️ Architecture & Conception
 
