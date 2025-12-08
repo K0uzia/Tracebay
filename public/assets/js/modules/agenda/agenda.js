@@ -34,7 +34,7 @@ function cleanupAgenda() {
 class ColorManager {
     constructor() {
         this.storageKey = 'agenda_favorite_colors';
-        this.defaultColors = ['#3788d8', '#43c466', '#fdb544', '#e74c3c', '#9b59b6', '#f39c12', '#1abc9c', '#34495e'];
+        this.defaultColors = ['#3788d8', '#43c466', '#fdb544'];
         this.initializeFavorites();
     }
 
@@ -392,11 +392,28 @@ function renderYearView(events) {
 function createEventChip(ev) {
     const button = document.createElement('button');
     button.className = 'calendar-event-chip';
-    button.style.backgroundColor = ev.color || '#1d72b8';
     button.type = 'button';
 
     const timeStr = ev.start.substring(11, 16); // HH:MM
-    button.textContent = `${timeStr} • ${ev.title}`;
+
+    // Créer la structure HTML interne
+    const titleEl = document.createElement('div');
+    titleEl.className = 'calendar-event-chip-title';
+    titleEl.textContent = ev.title;
+
+    const timeEl = document.createElement('div');
+    timeEl.className = 'calendar-event-chip-time';
+    timeEl.textContent = timeStr;
+
+    button.appendChild(titleEl);
+    button.appendChild(timeEl);
+
+    // Gestion du style des events dans l'agenda
+    const eventColor = ev.color || '#3788d8';
+    const backgroundColor = eventColor + '20'; // Ajouter la transparence
+    button.style.backgroundColor = backgroundColor;
+    button.style.borderLeft = `4px solid ${eventColor}`;
+    button.style.alignItems = 'flex-start';
 
     button.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -711,10 +728,10 @@ async function handleCreateSubmit(e) {
         
         closeModal(createModal);
         await renderCalendar();
-        alert('Événement créé avec succès');
+        showConfirmationModal('Succès', `L'événement "${title}" a été créé avec succès.`, 'success');
     } catch (error) {
         console.error('❌ Erreur création événement:', error);
-        alert('Erreur lors de la création de l\'événement');
+        showConfirmationModal('Erreur', 'Une erreur est survenue lors de la création de l\'événement.', 'error');
     }
 }
 
@@ -804,10 +821,10 @@ async function handleEditSubmit(e) {
         
         closeModal(editModal);
         await renderCalendar();
-        alert('Événement modifié avec succès');
+        showConfirmationModal('Succès', `L'événement "${title}" a été modifié avec succès.`, 'success');
     } catch (error) {
         console.error('❌ Erreur modification événement:', error);
-        alert('Erreur lors de la modification de l\'événement');
+        showConfirmationModal('Erreur', 'Une erreur est survenue lors de la modification de l\'événement.', 'error');
     }
 }
 
@@ -826,16 +843,74 @@ async function handleDeleteConfirm() {
         if (success) {
             closeModal(deleteModal);
             await renderCalendar();
-            alert('Événement supprimé avec succès');
+            showConfirmationModal('Succès', 'L\'événement a été supprimé avec succès.', 'success');
         } else {
-            alert('Événement introuvable');
+            showConfirmationModal('Erreur', 'L\'événement est introuvable.', 'error');
         }
     } catch (error) {
         console.error('❌ Erreur suppression:', error);
-        alert('Erreur lors de la suppression');
+        showConfirmationModal('Erreur', 'Une erreur est survenue lors de la suppression.', 'error');
     }
 }
 
+
+/* ===========================================
+   CONFIRMATION MODAL
+   =========================================== */
+
+function showConfirmationModal(title, message, type = 'success') {
+    // Create modal dynamically
+    const modal = document.createElement('dialog');
+    modal.className = 'universal-modal confirmation-modal';
+    
+    const iconType = type === 'success' ? 'success' : 'error';
+    const iconHTML = type === 'success' 
+        ? '<i class="fas fa-check"></i>' 
+        : '<i class="fas fa-exclamation-circle"></i>';
+    
+    const buttonClass = type === 'success' ? 'btn-primary' : 'btn-secondary';
+    const buttonText = type === 'success' ? 'Fermer' : 'Ok';
+    
+    modal.innerHTML = `
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="modal-close-btn" aria-label="Fermer"><span>&times;</span></button>
+            </div>
+            <div class="modal-body">
+                <div class="confirmation-icon ${iconType}">
+                    ${iconHTML}
+                </div>
+                <p>${title}</p>
+                <p style="color: #666; margin-top: 0.5rem;">${message}</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn ${buttonClass}" data-close-confirmation>
+                    ${buttonText}
+                </button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    modal.showModal();
+    
+    // Close button handler
+    const closeBtn = modal.querySelector('.modal-close-btn');
+    const confirmBtn = modal.querySelector('[data-close-confirmation]');
+    
+    const closeHandler = () => {
+        modal.close();
+        setTimeout(() => modal.remove(), 300);
+    };
+    
+    closeBtn.addEventListener('click', closeHandler);
+    confirmBtn.addEventListener('click', closeHandler);
+    
+    // Auto-close after 3 seconds for success
+    if (type === 'success') {
+        setTimeout(closeHandler, 3000);
+    }
+}
 
 /* ===========================================
    HELPERS & UTILITIES

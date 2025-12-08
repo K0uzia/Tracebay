@@ -526,7 +526,94 @@ dialog::backdrop {
     }
 }
 
-@media (max-width: 480px) {
+/* ====================================
+   CONFIRMATION MODALS (SUCCESS/ERROR)
+   ==================================== */
+
+.confirmation-modal {
+    text-align: center;
+}
+
+.confirmation-modal .modal-header {
+    position: relative;
+    border-bottom: none;
+    padding: var(--unit-3) var(--unit-3) 0;
+}
+
+.confirmation-modal .modal-header h2 {
+    border-bottom: none;
+    display: none;
+}
+
+.confirmation-modal .modal-close-btn {
+    position: absolute;
+    top: var(--unit-2);
+    right: var(--unit-2);
+}
+
+.confirmation-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    margin: var(--unit-3) auto var(--unit-2);
+    font-size: 32px;
+    animation: scaleIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.confirmation-icon.success {
+    background-color: rgba(67, 196, 102, 0.15);
+    color: #43c466;
+}
+
+.confirmation-icon.error {
+    background-color: rgba(192, 57, 43, 0.15);
+    color: #c0392b;
+}
+
+.confirmation-modal .modal-body {
+    padding: 0 var(--unit-3) var(--unit-3);
+}
+
+.confirmation-modal .modal-body p {
+    margin: 0;
+    color: var(--text2);
+    font: var(--font-text);
+    line-height: 1.6;
+}
+
+.confirmation-modal .modal-body p:first-child {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--h2);
+    margin-bottom: var(--unit-1);
+}
+
+.confirmation-modal .modal-footer {
+    justify-content: center;
+    padding: var(--unit-2) var(--unit-3) var(--unit-3);
+    border-top: none;
+}
+
+.confirmation-modal .modal-footer .btn {
+    min-width: 140px;
+}
+
+/* Animation for confirmation icon */
+@keyframes scaleIn {
+    from {
+        transform: scale(0);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+@media (max-width: 768px) {
     dialog {
         max-height: calc(100vh - var(--unit-1));
     }

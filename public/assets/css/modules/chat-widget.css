@@ -451,13 +451,50 @@
     font-size: calc(1rem * 0.9);
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: var(--unit-1);
     flex: 1;
+    width: 100%;
 }
 
-#chat-widget-pseudo-display i {
+.chat-pseudo-confirmed {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: var(--unit-2);
+}
+
+.chat-pseudo-left {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
+    flex: 1;
+    min-width: 0;
+}
+
+.chat-pseudo-left i {
     color: var(--btn);
     font-size: calc(1rem * 1.1);
+    flex-shrink: 0;
+}
+
+.chat-pseudo-text {
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.chat-pseudo-right {
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.chat-user-count {
+    font-size: calc(1rem * 0.85);
+    color: var(--text2);
+    font-weight: 400;
 }
 
 #chat-widget-pseudo-change {

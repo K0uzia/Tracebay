@@ -7,40 +7,55 @@
   "author": "Sandersonn",
   "license": "MIT",
   "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "electron-squirrel-startup": "^1.0.1",
     "express": "^4.18.2",
     "sqlite3": "^5.1.7",
-    "dotenv": "^16.3.1",
-    "cors": "^2.8.5"
+    "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@electron-forge/publisher-github": "^7.10.2",
     "@fortawesome/fontawesome-svg-core": "^7.1.0",
     "@fortawesome/free-brands-svg-icons": "^7.1.0",
     "@fortawesome/free-regular-svg-icons": "^7.1.0",
     "@fortawesome/free-solid-svg-icons": "^7.1.0",
-    "@fortawesome/react-fontawesome": "^3.1.1",
     "electron": "^39.2.4",
     "electron-builder": "^26.0.12",
-    "react": "^18.3.1"
+    "electron-updater": "^6.6.2"
   },
   "scripts": {
     "start": "electron .",
-    "server": "node server.js",
     "dev": "node server.js --dev",
+    "server": "node server.js",
     "build": "electron-builder",
-    "build:win": "electron-builder --win",
-    "build:mac": "electron-builder --mac",
-    "build:linux": "electron-builder --linux"
+    "build:win": "electron-builder --win --publish never",
+    "build:mac": "electron-builder --mac --publish never",
+    "build:linux": "electron-builder --linux --publish never",
+    "build:publish": "electron-builder --publish always"
   },
   "build": {
     "appId": "com.example.app",
-    "productName": "Mon App",
+    "productName": "Workspace",
+    "publish": {
+      "provider": "github",
+      "owner": "SandersonnDev",
+      "repo": "Workspace",
+      "releaseType": "draft"
+    },
     "files": [
       "main.js",
       "preload.js",
       "index.html",
       "app.js",
+      "server.js",
+      "database.js",
+      "logger.js",
+      "chat-logger.js",
+      "routes/**/*",
+      "models/**/*",
       "public/**/*",
-      "style.css"
+      "data/**/*"
     ],
     "win": {
       "target": [
@@ -57,13 +72,13 @@
       "target": [
         "AppImage"
       ]
-    },
-    "repository": {
-      "type": "git",
-      "url": "git+https://github.com/SandersonnDev/workspace.git"
-    },
-    "bugs": {
-      "url": "https://github.com/SandersonnDev/workspace/issues"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SandersonnDev/workspace.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SandersonnDev/workspace/issues"
   }
 }

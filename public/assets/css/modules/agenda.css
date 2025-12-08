@@ -187,6 +187,8 @@
     padding-right: 0.25rem;
 }
 
+
+
 .calendar-events::-webkit-scrollbar {
     width: 6px;
 }
@@ -206,27 +208,45 @@
 
 .calendar-event-chip {
     display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    padding: 0.35rem 0.5rem;
-    border-radius: 8px;
+    flex-direction: column;
+    justify-content: start;
+    gap: 0.15rem;
+    padding: 0.75rem;
+    padding-left: 0.6rem;
+    border-radius: 4px;
     border: none;
+    border-left: 4px solid;
     cursor: pointer;
-    color: var(--ssa-blanc);
-    font-size: 0.9rem;
+    color: var(--h2);
+    font-size: 0.85rem;
     font-weight: 600;
     text-align: left;
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    transition: background-color 0.2s;
 }
 
 .calendar-event-chip:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
 .calendar-event-chip.is-selected {
-    outline: 2px solid var(--ssa-jaune);
-    color: var(--ssa-blanc);
+    outline: 2px solid var(--orange);
+    color: var(--h2);
+}
+
+.calendar-event-chip-title {
+    font-weight: 600;
+    color: var(--h2);
+}
+
+.calendar-event-chip-time {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.calendar-event-chip-description {
+    font-size: 0.7rem;
+    color: #888;
+    margin-top: 0.15rem;
 }
 
 .calendar-details-empty {

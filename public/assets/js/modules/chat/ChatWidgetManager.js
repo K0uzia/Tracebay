@@ -24,6 +24,7 @@ class ChatWidgetManager {
         // État
         this.isOpen = false;
         this.unreadCount = 0;
+        this.lastReadCount = 0;  // Nombre de messages lus la dernière fois qu'on a ouvert le panel
         
         // Initialiser ChatManager
         this.chatManager = new ChatManager({
@@ -144,7 +145,12 @@ class ChatWidgetManager {
         this.isOpen = true;
         this.panelElement.classList.add('open');
         
-        // Réinitialiser les notifications AVANT le focus
+        // Marquer tous les messages comme lus au moment de l'ouverture
+        if (this.chatManager.messages) {
+            this.lastReadCount = this.chatManager.messages.length;
+        }
+        
+        // Réinitialiser les notifications
         this.clearNotifications();
         
         // Mettre à jour les messages à l'affichage du panel
@@ -254,20 +260,22 @@ class ChatWidgetManager {
 
     /**
      * Mettre à jour le badge de notification
-     * Compte seulement les messages reçus (own: false)
+     * Compte les nouveaux messages reçus (own: false) depuis la dernière ouverture
      */
     updateNotificationBadge() {
         if (!this.chatManager.messages) return;
         
         if (this.isOpen) {
-            // Panel ouvert = pas de badge, et réinitialiser le badge
+            // Panel ouvert = pas de badge
             this.clearNotifications();
             return;
         }
         
-        // Panel fermé = compter les messages reçus uniquement
+        // Panel fermé = compter les nouveaux messages reçus non lus
         // Les messages reçus ont la propriété own: false
-        const unreadCount = this.chatManager.messages.filter(msg => msg.own === false).length;
+        // On compte seulement depuis la dernière fois qu'on a ouvert le panel
+        const newMessages = this.chatManager.messages.slice(this.lastReadCount);
+        const unreadCount = newMessages.filter(msg => msg.own === false).length;
         
         if (unreadCount > 0) {
             if (this.notificationBadgeElement) {

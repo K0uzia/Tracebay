@@ -2,16 +2,18 @@
  * ChatManager - Gestion des messages du chat
  * 
  * Responsabilités:
- * - Gérer le pseudo de l'utilisateur
- * - Persister les messages en localStorage
+ * - Gérer le pseudo de l'utilisateur (localStorage)
+ * - Communiquer via WebSocket en temps réel
  * - Valider les messages (sécurité)
  * - Intégrer avec ChatSecurityManager
  */
 
 import ChatSecurityManager from './ChatSecurityManager.js';
+import ChatWebSocket from './ChatWebSocket.js';
 
 class ChatManager {
     constructor(options = {}) {
+        console.log('🔧 ChatManager: Construction en cours...');
         // IDs des éléments
         this.pseudoWrapperId = options.pseudoWrapperId || 'chat-widget-pseudo-area';
         this.pseudoDisplayId = options.pseudoDisplayId || 'chat-widget-pseudo-display';
@@ -23,29 +25,112 @@ class ChatManager {
         this.sendButtonId = options.sendButtonId || 'chat-widget-send';
         this.clearChatBtnId = options.clearChatBtnId || 'chat-widget-clear';
         
+        // WebSocket
+        this.webSocket = new ChatWebSocket();
+        
         // État
         this.pseudo = this.loadPseudo();
-        this.messages = this.loadMessages();
+        this.messages = [];
+        this.userCount = 0;
+        this.connectedUsers = [];
         this.securityConfig = options.securityConfig || {};
         
         // Initialiser ChatSecurityManager
         this.securityManager = new ChatSecurityManager(this.securityConfig);
         
+        console.log('🔧 ChatManager: Construction finie, init()...');
         this.init();
     }
 
     /**
      * Initialiser le ChatManager
      */
-    init() {
+    async init() {
+        console.log('🚀 ChatManager: init() appelé');
+        
         // Afficher le pseudo
         this.displayPseudo();
         
         // Afficher les messages
+        console.log('📊 Avant renderMessages:', { container: !!document.getElementById(this.messagesContainerId), messages: this.messages.length });
         this.renderMessages();
         
         // Attacher les écouteurs d'événements
         this.attachEventListeners();
+        
+        // Attendre que le WebSocket soit connecté, puis envoyer le pseudo s'il existe
+        const connectAndRestoreSession = () => {
+            if (this.webSocket.isConnected()) {
+                if (this.pseudo) {
+                    console.log('✨ Reconnexion automatique avec pseudo:', this.pseudo);
+                    this.webSocket.setPseudo(this.pseudo).catch(err => {
+                        console.error('❌ Erreur reconnexion:', err);
+                    });
+                }
+            } else {
+                // Attendre un peu et réessayer
+                setTimeout(connectAndRestoreSession, 500);
+            }
+        };
+        
+        // Vérifier la connexion
+        connectAndRestoreSession();
+        
+        // Écouter les messages WebSocket
+        this.webSocket.onMessage((data) => {
+            console.log('📨 Message WebSocket reçu:', data.type, data);
+            if (data.type === 'history') {
+                console.log('📜 Historique reçu:', data.messages?.length || 0, 'messages');
+                this.messages = data.messages.map(msg => ({
+                    id: msg.id,
+                    pseudo: msg.pseudo,
+                    text: msg.message,
+                    timestamp: this.formatTime(msg.created_at),
+                    own: msg.pseudo === this.pseudo,
+                    created_at: msg.created_at
+                }));
+                this.renderMessages();
+                this.scrollToBottom();
+            } else if (data.type === 'newMessage') {
+                const msg = data.message;
+                console.log('💬 Nouveau message:', msg);
+                this.messages.push({
+                    id: msg.id,
+                    pseudo: msg.pseudo,
+                    text: msg.message,
+                    timestamp: this.formatTime(msg.created_at),
+                    own: msg.pseudo === this.pseudo,
+                    created_at: msg.created_at
+                });
+                console.log('📝 Messages après ajout:', this.messages.length);
+                this.renderMessages();
+                this.scrollToBottom();
+            } else if (data.type === 'userCount') {
+                console.log('👥 Mise à jour utilisateurs:', data.count, data.users);
+                this.userCount = data.count;
+                this.connectedUsers = data.users;
+                // Mettre à jour l'affichage du compteur d'utilisateurs
+                this.displayPseudo();
+            } else if (data.type === 'chatCleared') {
+                console.log('🗑️ Chat supprimé par:', data.clearedBy);
+                this.messages = [];
+                this.renderMessages();
+                // Afficher un message de notification
+                const notifElement = document.getElementById(this.messagesContainerId);
+                if (notifElement) {
+                    const notif = document.createElement('div');
+                    notif.className = 'chat-clear-notification';
+                    notif.textContent = `🗑️ Chat supprimé par ${data.clearedBy}`;
+                    notif.style.cssText = 'text-align: center; padding: 10px; background: #ffe6e6; color: #cc0000; border-radius: 4px; margin: 10px; font-weight: bold;';
+                    notifElement.appendChild(notif);
+                    setTimeout(() => notif.remove(), 3000);
+                }
+            }
+        });
+        
+        this.webSocket.onError((err) => {
+            console.error('❌ Erreur chat:', err);
+        });
     }
 
     /**
@@ -142,7 +227,7 @@ class ChatManager {
             return;
         }
         
-        // Valider : pas de caractères dangereux simples (XSS basique)
+        // Valider : pas de caractères dangereux
         if (!/^[a-zA-Z0-9_\-\.àâäéèêëïîôöùûüœæçñ\s]+$/.test(pseudo)) {
             if (errorDisplay) {
                 errorDisplay.textContent = 'Le pseudo contient des caractères non autorisés';
@@ -150,64 +235,101 @@ class ChatManager {
             return;
         }
         
-        // Effacer le message d'erreur
+        // Sauvegarder et fermer modal
+        this.savePseudo(pseudo);
+        
+        // Envoyer le pseudo au serveur pour notifier la connexion
+        if (this.webSocket.isConnected()) {
+            this.webSocket.setPseudo(pseudo).catch(err => {
+                console.error('❌ Erreur lors de l\'envoi du pseudo:', err);
+            });
+        } else {
+            console.warn('⚠️ WebSocket non connecté, le pseudo sera envoyé à la reconnexion');
+        }
+        
+        // Recalculer msg.own pour tous les messages avec l'ancien pseudo
+        this.messages.forEach(msg => {
+            msg.own = msg.pseudo === this.pseudo;
+        });
+        
+        this.displayPseudo();
+        this.renderMessages();
+        
+        // Nettoyer l'erreur
         if (errorDisplay) {
             errorDisplay.textContent = '';
         }
-        
-        // Sauvegarder le pseudo
-        this.savePseudo(pseudo);
-        
-        // Effacer l'input
-        input.value = '';
-        
-        // Afficher le pseudo
-        this.displayPseudo();
-        
-        // Dispacher un événement pour notifier ChatWidgetManager
-        window.dispatchEvent(new CustomEvent('pseudoChanged', { detail: { pseudo } }));
     }
 
     /**
-     * Afficher le pseudo actuel
+     * Afficher le pseudo avec compteur d'utilisateurs
      */
     displayPseudo() {
-        const display = document.getElementById(this.pseudoDisplayId);
-        if (display) {
-            if (this.pseudo) {
-                display.innerHTML = `<i class="fas fa-user-circle"></i> ${this.pseudo}`;
-            } else {
-                display.innerHTML = '';
+        const pseudoModal = document.getElementById('chat-widget-pseudo-modal');
+        const pseudoDisplay = document.getElementById(this.pseudoDisplayId);
+        const changeBtn = document.getElementById('chat-widget-pseudo-change');
+        
+        if (!pseudoDisplay) return;
+        
+        if (this.pseudo) {
+            // Utiliser le nombre d'utilisateurs connectés du serveur
+            const displayCount = this.userCount > 0 ? this.userCount : 0;
+            
+            // Pseudo confirmé avec icône et compteur aligné à droite
+            pseudoDisplay.innerHTML = `
+                <div class="chat-pseudo-confirmed">
+                    <div class="chat-pseudo-left">
+                        <i class="fas fa-user-circle"></i>
+                        <span class="chat-pseudo-text">${this.pseudo}</span>
+                    </div>
+                    <div class="chat-pseudo-right">
+                        <span class="chat-user-count">${displayCount} utilisateur(s)</span>
+                    </div>
+                </div>
+            `;
+            
+            // Fermer le modal
+            if (pseudoModal) {
+                pseudoModal.classList.remove('show');
+            }
+            
+            // Afficher et attacher l'écouteur au bouton de changement
+            if (changeBtn) {
+                changeBtn.classList.add('show');
+                changeBtn.removeEventListener('click', this.boundChangeHandler);
+                this.boundChangeHandler = () => this.showPseudoModal();
+                changeBtn.addEventListener('click', this.boundChangeHandler);
+            }
+        } else {
+            // Pseudo non confirmé - afficher le modal
+            if (changeBtn) {
+                changeBtn.classList.remove('show');
+            }
+            this.showPseudoModal();
+        }
+    }
+
+    /**
+     * Afficher le modal de pseudo
+     */
+    showPseudoModal() {
+        const pseudoModal = document.getElementById('chat-widget-pseudo-modal');
+        if (pseudoModal) {
+            pseudoModal.classList.add('show');
+            const input = document.getElementById(this.pseudoInputId);
+            if (input) {
+                input.focus();
             }
         }
     }
 
     /**
-     * Charger les messages depuis localStorage
+     * Charger les messages du serveur
      */
-    loadMessages() {
-        const stored = localStorage.getItem('chat_messages');
-        if (!stored) return [];
-        
-        try {
-            return JSON.parse(stored);
-        } catch (e) {
-            console.error('❌ Erreur lors du chargement des messages:', e);
-            return [];
-        }
-    }
-
     /**
-     * Sauvegarder les messages
+     * Envoyer un message via WebSocket
      */
-    saveMessages() {
-        localStorage.setItem('chat_messages', JSON.stringify(this.messages));
-    }
-
-    /**
-     * Envoyer un message
-     */
-    sendMessage() {
+    async sendMessage() {
         const input = document.getElementById(this.inputId);
         if (!input) return;
         
@@ -219,55 +341,53 @@ class ChatManager {
             return;
         }
         
-        // Simple validation : pas vide, longueur max
-        if (text.length > 500) {
+        if (text.length > 5000) {
             console.warn('⚠️ Message trop long');
             return;
         }
         
-        // Créer le message
-        const message = {
-            id: Date.now(),
-            pseudo: this.pseudo,
-            text: text,
-            timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-            own: true  // C'est un message que j'envoie
-        };
-        
-        // Ajouter le message
-        this.messages.push(message);
-        
-        // Sauvegarder
-        this.saveMessages();
-        
-        // Effacer l'input
-        input.value = '';
-        
-        // Afficher les messages
-        this.renderMessages();
-        
-        // Scroll vers le bas
-        this.scrollToBottom();
+        try {
+            if (!this.webSocket.isConnected()) {
+                console.error('❌ WebSocket non connecté');
+                return;
+            }
+            
+            await this.webSocket.sendMessage(this.pseudo, text);
+            input.value = '';
+        } catch (error) {
+            console.error('❌ Erreur envoi message:', error);
+        }
     }
 
+    /**
+     * Démarrer le polling des nouveaux messages
+     */
     /**
      * Afficher les messages
      */
     renderMessages() {
         const container = document.getElementById(this.messagesContainerId);
-        if (!container) return;
+        console.log('🎨 renderMessages appelé', { container: !!container, messagesCount: this.messages.length, containerId: this.messagesContainerId });
+        if (!container) {
+            console.error('❌ Container pas trouvé:', this.messagesContainerId);
+            return;
+        }
         
         if (this.messages.length === 0) {
             container.innerHTML = '<div class="chat-widget-empty">Aucun message pour le moment</div>';
+            container.className = 'chat-widget-empty';
             return;
         }
+        
+        // Retirer la classe empty si elle existe
+        container.classList.remove('chat-widget-empty');
         
         container.innerHTML = this.messages.map(msg => {
             const className = msg.own ? 'chat-message own' : 'chat-message other';
             const sanitized = this.sanitizeMessage(msg.text);
             return `
                 <div class="${className}">
-                    <div class="chat-message-pseudo">${msg.pseudo}</div>
+                    <div class="chat-message-pseudo">${this.sanitizeMessage(msg.pseudo)}</div>
                     <div class="chat-message-content">
                         <div class="chat-message-text">${sanitized}</div>
                     </div>
@@ -276,6 +396,7 @@ class ChatManager {
             `;
         }).join('');
         
+        console.log('✅ Messages rendus:', this.messages.length);
         // Scroll vers le bas
         this.scrollToBottom();
     }
@@ -303,11 +424,22 @@ class ChatManager {
     /**
      * Confirmer et exécuter le clear du chat
      */
-    confirmClearChat() {
-        this.messages = [];
-        this.saveMessages();
-        this.renderMessages();
-        this.hideClearModal();
+    async confirmClearChat() {
+        try {
+            const pseudo = this.chatWebSocket?.userPseudo || localStorage.getItem('userPseudo') || 'Unknown';
+            
+            // Envoyer le message WebSocket pour supprimer le chat
+            this.chatWebSocket?.ws?.send(JSON.stringify({
+                type: 'clearChat',
+                pseudo: pseudo
+            }));
+            
+            logger.info(`✅ Demande de suppression du chat envoyée`);
+            this.hideClearModal();
+        } catch (error) {
+            console.error('❌ Erreur suppression chat:', error);
+            logger.error(`❌ Erreur lors de la suppression: ${error.message}`);
+        }
     }
 
     /**
@@ -316,7 +448,9 @@ class ChatManager {
     scrollToBottom() {
         const container = document.getElementById(this.messagesContainerId);
         if (container) {
-            container.scrollTop = container.scrollHeight;
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 0);
         }
     }
 
@@ -330,51 +464,31 @@ class ChatManager {
     }
 
     /**
-     * Ajouter un message reçu (pour simulation ou intégration avec backend)
+     * Formater l'heure
      */
-    addReceivedMessage(pseudo, text) {
-        const message = {
-            id: Date.now(),
-            pseudo: pseudo,
-            text: text,
-            timestamp: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-            own: false  // C'est un message reçu
-        };
-        
-        this.messages.push(message);
-        this.saveMessages();
-        this.renderMessages();
+    formatTime(isoString) {
+        try {
+            const date = new Date(isoString);
+            return date.toLocaleTimeString('fr-FR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        } catch (e) {
+            return new Date().toLocaleTimeString('fr-FR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            });
+        }
     }
 
     /**
-     * Mettre à jour tous les messages du pseudo changé
-     * Si l'utilisateur change de pseudo, on met à jour les anciens messages
+     * Destructor - nettoyer quand le widget est fermé
      */
-    updateMessagesWithNewPseudo(newPseudo) {
-        // Chercher les anciens pseudos de l'utilisateur
-        // On identifie les messages avec own: true et pseudo différent du nouveau
-        const oldPseudos = new Set();
-        
-        this.messages.forEach(msg => {
-            if (msg.own === true && msg.pseudo !== newPseudo) {
-                oldPseudos.add(msg.pseudo);
-            }
-        });
-        
-        // Mettre à jour les messages avec les anciens pseudos
-        let updatedCount = 0;
-        oldPseudos.forEach(oldPseudo => {
-            this.messages.forEach(msg => {
-                if (msg.own === true && msg.pseudo === oldPseudo) {
-                    msg.pseudo = newPseudo;
-                    updatedCount++;
-                }
-            });
-        });
-        
-        // Sauvegarder et re-afficher
-        this.saveMessages();
-        this.renderMessages();
+    destroy() {
+        // WebSocket se ferme automatiquement
+        if (this.webSocket) {
+            this.webSocket.disconnect?.();
+        }
     }
 }
 
