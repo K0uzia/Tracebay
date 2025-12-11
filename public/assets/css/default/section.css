@@ -3,7 +3,6 @@
     padding: var(--unit-2) var(--unit-6);
     display: flex;
     flex-direction: column;
-    justify-content: center;
     overflow-y: auto;
     overflow-x: hidden;
     box-sizing: border-box;
@@ -103,6 +102,9 @@
 
 /* ========== RESPONSIVE MOBILE ========== */
 @media (max-width: 980px) {
+    .section {
+        padding: var(--unit-2) var(--unit-3);
+    }
     .section-contain {
         flex-direction: column;
         align-items: center;

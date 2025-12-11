@@ -33,27 +33,58 @@ help:
 	@echo "Info:"
 	@echo "  make info              # État du système"
 
-init: ; @./setup-local.sh init
-deps: ; @./setup-local.sh deps
-info: ; @./setup-local.sh info
-dev: ; @./setup-local.sh dev
-server: ; @./setup-local.sh server
-db.init: ; @./bin/db init
-db.reset: ; @./setup-local.sh reset
-db.shell: ; @./setup-local.sh db.shell
-db.backup: ; @./setup-local.sh db.backup
-build: ; @npm run build
+init:
+	@./setup-local.sh init
+
+deps:
+	@./setup-local.sh deps
+
+info:
+	@./setup-local.sh info
+
+dev:
+	@./setup-local.sh dev
+
+server:
+	@./setup-local.sh server
+
+db.init:
+	@./bin/db init
+
+db.reset:
+	@./setup-local.sh reset
+
+db.shell:
+	@./setup-local.sh db.shell
+
+db.backup:
+	@./setup-local.sh db.backup
+
+build:
+	@npm run build
+
 clean:
 	@echo "🧹 Nettoyage..."
 	@rm -rf dist/ out/ build/ *.log
 	@echo "✅ Nettoyé"
-check-updates: ; @./setup-local.sh check-updates
-update-deps: ; @./setup-local.sh update-deps
-update-electron: ; @./setup-local.sh update-electron
-audit: ; @./setup-local.sh audit
-setup-env: ; @bash scripts/setup-env.sh
 
-build-publish: ; @bash scripts/build-publish.sh
+check-updates:
+	@./setup-local.sh check-updates
+
+update-deps:
+	@./setup-local.sh update-deps
+
+update-electron:
+	@./setup-local.sh update-electron
+
+audit:
+	@./setup-local.sh audit
+
+setup-env:
+	@bash scripts/setup-env.sh
+
+build-publish:
+	@bash scripts/build-publish.sh
 
 publish-github:
 	@bash scripts/build-publish.sh --publish

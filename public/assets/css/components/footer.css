@@ -6,7 +6,7 @@
     padding: var(--unit-1) 0;
     background-color: var(--bleu1);
     color: var(--text);
-    gap: var(--unit-2);
+    gap: var(--unit-8);
 }
 
 .footer-copyright {
