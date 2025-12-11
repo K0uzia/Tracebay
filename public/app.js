@@ -9,12 +9,13 @@ class PageManager {
     constructor() {
         // Configuration
         this.contentContainer = 'content';
+        this.storageKey = 'workspace_current_page';
         
         // Pages et leur configuration de layout
         this.pagesConfig = {
             // Pages normales (avec header, footer et chat)
             'home': { showHeader: true, showFooter: true, showChat: true },
-            'agenda': { showHeader: true, showFooter: true, showChat: false },
+            'agenda': { showHeader: true, showFooter: false, showChat: false },
             'dossier': { showHeader: true, showFooter: true, showChat: true },
             'application': { showHeader: true, showFooter: true, showChat: true },
             'reception': { showHeader: true, showFooter: true, showChat: false },
@@ -38,8 +39,35 @@ class PageManager {
         this.loadHeader();
         this.loadFooter();
         
-        // Charger la page par défaut
-        this.loadPage('home');
+        // Récupérer la dernière page visitée depuis le localStorage
+        const lastPage = this.getLastPage();
+        const pageToLoad = lastPage && this.pagesConfig[lastPage] ? lastPage : 'home';
+        
+        // Charger la page
+        this.loadPage(pageToLoad);
+    }
+
+    /**
+     * Récupérer la dernière page visitée
+     */
+    getLastPage() {
+        try {
+            return localStorage.getItem(this.storageKey);
+        } catch (error) {
+            console.warn('⚠️ Impossible d\'accéder au localStorage:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Sauvegarder la page actuelle
+     */
+    saveCurrentPage(pageName) {
+        try {
+            localStorage.setItem(this.storageKey, pageName);
+        } catch (error) {
+            console.warn('⚠️ Impossible de sauvegarder la page:', error);
+        }
     }
 
     /**
@@ -95,6 +123,9 @@ class PageManager {
             
             // Insérer le HTML dans la page
             document.getElementById(this.contentContainer).innerHTML = html;
+            
+            // Sauvegarder la page actuelle dans localStorage
+            this.saveCurrentPage(pageName);
             
             // Mettre à jour l'affichage
             this.updateLayout(pageName);
@@ -251,8 +282,13 @@ class PageManager {
             // Trier par heure de début
             todayEvents.sort((a, b) => a.start.localeCompare(b.start));
 
-            // Remplir le conteneur
-            const calendarContent = document.querySelector('.calendar-content');
+            // Remplir le conteneur - chercher le 2e .block-content dans la section home
+            const homeSection = document.querySelector('.home.section');
+            if (!homeSection) return;
+            
+            const blockContents = homeSection.querySelectorAll('.block-content');
+            const calendarContent = blockContents[1]; // 2e bloc
+            
             if (calendarContent) {
                 if (todayEvents.length === 0) {
                     calendarContent.innerHTML = '<p class="home-event-item-empty">Aucun événement pour aujourd\'hui</p>';

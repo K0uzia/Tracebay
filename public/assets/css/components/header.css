@@ -6,7 +6,7 @@ menu {
     height: 45px;
     padding: var(--unit-1) var(--unit-2);
     background-color: var(--bleu1);
-    box-shadow: var(--shadow-medium);
+    box-shadow: var(--shadow-small);
     position: relative;
     z-index: 100;
 }
