@@ -368,20 +368,23 @@ dialog::backdrop {
 /* Cancel Button */
 .modal-cancel-btn,
 .btn-annuler,
-.btn-cancel {
+.btn-cancel,
+.btn-secondary {
     background-color: rgba(13, 13, 13, 0.1);
     color: var(--h2);
 }
 
 .modal-cancel-btn:hover,
 .btn-annuler:hover,
-.btn-cancel:hover {
+.btn-cancel:hover,
+.btn-secondary:hover {
     background-color: rgba(13, 13, 13, 0.15);
 }
 
 .modal-cancel-btn:active,
 .btn-annuler:active,
-.btn-cancel:active {
+.btn-cancel:active,
+.btn-secondary:active {
     background-color: rgba(13, 13, 13, 0.2);
 }
 

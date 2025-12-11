@@ -3,6 +3,7 @@
     padding: var(--unit-2) var(--unit-6);
     display: flex;
     flex-direction: column;
+    justify-content: center;
     overflow-y: auto;
     overflow-x: hidden;
     box-sizing: border-box;

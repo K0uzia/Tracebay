@@ -159,10 +159,14 @@ app.on('before-quit', async () => {
 /**
  * IPC : Ouvrir une URL externe
  */
-ipcMain.on('open-external', (event, url) => {
-    shell.openExternal(url).catch(error => {
+ipcMain.handle('open-external', async (event, url) => {
+    try {
+        await shell.openExternal(url);
+        return { success: true };
+    } catch (error) {
         logger.error('❌ Erreur ouverture URL:', error);
-    });
+        throw error;
+    }
 });
 
 /**
