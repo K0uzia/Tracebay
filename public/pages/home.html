@@ -1,48 +1,64 @@
 <section class="home section">
+
     <div class="section-title">
         <h2>Accueil</h2>
     </div>
+
     <div class="section-contain">
-        <div class="home-contain">
-            <div class="contain-1">
-                <div class="section-time">
-                    <span id="current-date"></span>
+
+        <div class="grid">
+
+            <div class="grid-item">
+
+                <div class="time-block">
                     <span id="current-time"></span>
+                    <span id="current-date"></span>
                 </div>
-                <div class="capsule-info">
-                    <div class="capsule-title">
-                        <h2>La Capsule</h2>
+
+                <div class="block">
+                    <div class="block-title">
+                        <h3>La Capsule</h3>
                     </div>
-                    <div class="capsule-content">
+                    <div class="block-content">
+                        <div class="block-subtitle">
+                            <h4>Documents internes</h4>
+                        </div>
                         <button id="rules-pdf-btn" class="pdf-link" aria-label="Ouvrir le réglement intérieur">
                             <i class="fa-regular fa-file-pdf"></i> Réglement intérieur</button>
                         <button id="fonte-pdf-btn" class="pdf-link" aria-label="Ouvrir la fonte pédagogique">
                             <i class="fa-regular fa-file-pdf"></i> Fonte pédagogique</button>
                         <button id="livret-pdf-btn" class="pdf-link" aria-label="Ouvrir le livret d'accueil">
                             <i class="fa-regular fa-file-pdf"></i> Livret d'accueil</button>
+
+                        <div class="block-subtitle">
+                            <h4>Liste des adhérents</h4>
+                        </div>
+                        <button id="members-list-btn" class="list-link" aria-label="Ouvrir la liste des adhérents">
+                            <i class="fa-solid fa-list"></i> Liste des adhérents</button>
                     </div>
                 </div>
-                <div class="feedback">
+                <div class="action-block">
                     <button role="button" aria-label="Faire un retour">Faire un retour <i
                             class="fa-regular fa-comment"></i></button>
                 </div>
             </div>
-            <div class="contain-2">
-                <div class="today-calendar">
-                    <div class="calendar-title">
-                        <h2>Agenda du jour</h2>
+
+            <div class="grid-item">
+                <div class="block">
+                    <div class="block-title">
+                        <h3>Agenda du jour</h3>
                     </div>
-                    <div class="calendar-content">
+                    <div class="block-content">
                         <!-- Ajout Dynamique des éléments d'agenda -->
                     </div>
                 </div>
             </div>
-            <div class="contain-3">
-                <div class="recent-info">
-                    <div class="recent-title">
-                        <h2>Récents</h2>
+            <div class="grid-item">
+                <div class="block">
+                    <div class="block-title">
+                        <h3>Récents</h3>
                     </div>
-                    <div class="recent-content">
+                    <div class="block-content">
                         <!-- Ajout Dynamique des éléments récéments utiliser -->
                     </div>
                 </div>

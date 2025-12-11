@@ -17,7 +17,7 @@
     border-radius: 16px;
     padding: 1rem 1.25rem;
     margin-bottom: 1rem;
-    box-shadow: inset 0 0 0 1px #e4e8f0;
+    box-shadow: var(--shadow-small);
 }
 
 .calendar-details h3 {
@@ -52,14 +52,15 @@
     align-items: center;
     gap: 1rem;
     flex-wrap: nowrap;
-    margin-bottom: 1.5rem;
+    margin: 1.5rem 0;
 }
 
 .calendar-view-switch {
     display: inline-flex;
     background: var(--ssa-blanc);
     border-radius: var(--radius-medium);
-    padding: 0.25rem;
+    box-shadow: var(--shadow-small);
+    padding: 0.55rem;
     gap: 0.25rem;
 }
 
@@ -75,14 +76,17 @@
 }
 
 .calendar-view-btn.is-active {
-    background: var(--ssa-vert);
-    color: var(--ssa-blanc);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    background: var(--jaune);
+    color: var(--noir);
+    box-shadow: var(--shadow-small);
 }
 
 .calendar-nav {
     display: inline-flex;
     align-items: center;
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-small);
+    padding: 0.55rem;
     gap: 0.75rem;
     font-weight: 600;
 }
@@ -98,8 +102,8 @@
 .calendar-nav-btn {
     border: none;
     color: var(--ssa-vert);
-    width: 40px;
-    height: 40px;
+    width: 35px;
+    height: 35px;
     cursor: pointer;
     transition: transform 0.2s ease;
     background: transparent;
@@ -141,8 +145,8 @@
 .calendar-day,
 .calendar-month {
     background: #fefefe;
-    border-radius: 12px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+    border-radius: var(--unit-1);
+    box-shadow: var(--shadow-small);
     padding: 0.85rem;
     display: flex;
     flex-direction: column;
@@ -152,6 +156,7 @@
 }
 
 .calendar-day.other-month {
+    background: rgb(209, 205, 205);
     opacity: 0.5;
 }
 
@@ -320,6 +325,26 @@
     fill: currentColor;
     opacity: 0.85;
     flex-shrink: 0;
+}
+
+/* ======= INDICATEUR DU JOUR ACTIF ======= */
+
+.calendar-day.today,
+.calendar-month.today {
+    background: linear-gradient(135deg, #fff9e6 0%, #fffbf0 100%);
+    border: 2px solid var(--jaune);
+    box-shadow: 0 0 0 3px rgba(253, 181, 68, 0.1), var(--shadow-small);
+    position: relative;
+}
+
+.calendar-day.today .calendar-day-header {
+    border-bottom-color: var(--jaune);
+}
+
+.calendar-day.today .calendar-day-number,
+.calendar-month.today .calendar-month-number {
+    color: var(--jaune);
+    font-weight: 700;
 }
 
 
