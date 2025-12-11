@@ -126,6 +126,7 @@
 .block-content {
     display: flex;
     flex-direction: column;
+    margin-bottom: var(--unit-2);
     gap: 0.5rem;
 }
 

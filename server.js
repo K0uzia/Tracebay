@@ -29,6 +29,91 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/api/agenda', agendaRoutes);
 
 /**
+ * API - Informations système
+ */
+app.get('/api/system', (req, res) => {
+    const os = require('os');
+    const dns = require('dns');
+    
+    try {
+        // Récupérer les informations RAM
+        const totalRAM = os.totalmem();
+        const freeRAM = os.freemem();
+        const usedRAM = totalRAM - freeRAM;
+        
+        // Convertir en Go
+        const totalRAMGB = (totalRAM / (1024 ** 3)).toFixed(2);
+        const usedRAMGB = (usedRAM / (1024 ** 3)).toFixed(2);
+        const freeRAMGB = (freeRAM / (1024 ** 3)).toFixed(2);
+        
+        // Récupérer les interfaces réseau
+        const networkInterfaces = os.networkInterfaces();
+        let ipAddress = 'Non disponible';
+        let hasConnection = false;
+        let connectionType = 'none'; // 'wifi', 'ethernet', 'none'
+        
+        // Trouver l'IP locale (non loopback, IPv4) et le type de connexion
+        for (const interfaceName in networkInterfaces) {
+            const interfaces = networkInterfaces[interfaceName];
+            const nameLower = interfaceName.toLowerCase();
+            
+            for (const iface of interfaces) {
+                if (iface.family === 'IPv4' && !iface.internal) {
+                    ipAddress = iface.address;
+                    hasConnection = true;
+                    
+                    // Détecter le type de connexion selon le nom de l'interface
+                    if (nameLower.includes('wi-fi') || nameLower.includes('wifi') || 
+                        nameLower.includes('wlan') || nameLower.includes('wireless')) {
+                        connectionType = 'wifi';
+                    } else if (nameLower.includes('ethernet') || nameLower.includes('eth') || 
+                               nameLower.includes('lan') || nameLower.includes('en0')) {
+                        connectionType = 'ethernet';
+                    } else {
+                        // Par défaut, considérer comme ethernet si connecté
+                        connectionType = 'ethernet';
+                    }
+                    break;
+                }
+            }
+            if (hasConnection) break;
+        }
+        
+        // Vérifier la connexion Internet
+        dns.lookup('google.com', (err) => {
+            const isOnline = !err;
+            
+            res.json({
+                success: true,
+                data: {
+                    ip: ipAddress,
+                    ram: {
+                        total: parseFloat(totalRAMGB),
+                        used: parseFloat(usedRAMGB),
+                        free: parseFloat(freeRAMGB),
+                        usedPercent: ((usedRAM / totalRAM) * 100).toFixed(1)
+                    },
+                    network: {
+                        hasConnection: hasConnection,
+                        isOnline: isOnline,
+                        connectionType: connectionType
+                    },
+                    uptime: Math.floor(os.uptime()),
+                    platform: os.platform(),
+                    hostname: os.hostname()
+                }
+            });
+        });
+    } catch (error) {
+        logger.error('❌ Erreur récupération infos système:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Erreur lors de la récupération des informations système'
+        });
+    }
+});
+
+/**
  * CHAT - WebSocket uniquement (voir la configuration WebSocket plus bas)
  */
 
