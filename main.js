@@ -90,10 +90,10 @@ function createWindow() {
         mainWindow = null;
     });
 
-/*     // Ouvrir les DevTools en développement
+    // Ouvrir les DevTools en développement
     if (process.env.NODE_ENV === 'development') {
         mainWindow.webContents.openDevTools();
-    } */
+    } 
 
     // Gérer la fermeture
     mainWindow.on('closed', () => {

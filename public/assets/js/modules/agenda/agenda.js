@@ -995,6 +995,9 @@ let selectedEvent = null;
 
 // Init
 if (calendarGrid) {
+    // Nettoyer les anciens listeners avant d'initialiser
+    cleanupAgenda();
+    
     renderCalendar().catch(err => console.error('❌ Erreur initialisation calendrier:', err));
     setupNavigation();
     setupViewSwitch();
