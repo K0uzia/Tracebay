@@ -55,8 +55,8 @@ contextBridge.exposeInMainWorld('electron', {
      * Ouvrir une URL dans le navigateur par défaut de la machine
      * @param {string} url - URL à ouvrir
      */
-    openExternal: (url) => {
-        ipcRenderer.send('open-external', url);
+    openExternal: async (url) => {
+        return ipcRenderer.invoke('open-external', url);
     },
 
     /**

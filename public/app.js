@@ -260,6 +260,16 @@ class PageManager {
                 .catch(error => {
                     console.error('❌ Erreur import AgendaInit:', error);
                 });
+        } else if (pageName === 'shortcut') {
+            // Initialiser le gestionnaire de raccourcis
+            import('/assets/js/modules/shortcut/ShortcutManager.js')
+                .then(module => {
+                    const ShortcutManager = module.default;
+                    window.shortcutManager = new ShortcutManager();
+                })
+                .catch(error => {
+                    console.error('❌ Erreur import ShortcutManager:', error);
+                });
         }
     }
 
