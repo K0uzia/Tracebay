@@ -96,9 +96,32 @@ class PageManager {
             if (!response.ok) throw new Error('Footer not found');
             const html = await response.text();
             document.getElementById('footer').innerHTML = html;
+            
+            // Initialiser le SystemInfoManager après le chargement du footer
+            this.initializeSystemInfo();
         } catch (error) {
             console.error('❌ Erreur chargement footer:', error);
         }
+    }
+
+    /**
+     * Initialiser le SystemInfoManager
+     */
+    initializeSystemInfo() {
+        import('/assets/js/modules/system/SystemInfoManager.js')
+            .then(module => {
+                const SystemInfoManager = module.default;
+                window.systemInfoManager = new SystemInfoManager({
+                    ipElementId: 'footer-ip-value',
+                    ramElementId: 'footer-ram-value',
+                    connectionElementId: 'footer-connection-value',
+                    connectionIconId: 'footer-connection-icon',
+                    updateInterval: 5000 // Mettre à jour toutes les 5 secondes
+                });
+            })
+            .catch(error => {
+                console.error('❌ Erreur import SystemInfoManager:', error);
+            });
     }
 
     /**
@@ -138,6 +161,9 @@ class PageManager {
 
             // Initialiser les éléments page-spécifiques
             this.initializePageElements(pageName);
+            
+            // Réattacher les listeners pour les boutons data-page dans le contenu chargé
+            this.attachListeners();
         } catch (error) {
             console.error(`❌ Erreur lors du chargement de ${pageName}:`, error);
             this.showError(pageName);
