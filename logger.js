@@ -4,68 +4,60 @@
  * Crée un nouveau fichier à chaque lancement
  */
 
-const fs = require('fs');
+const fs = require('fs').promises;
+const fsSync = require('fs');
 const path = require('path');
 
-// Déterminer le répertoire de logs
-// Utiliser le répertoire du projet (même répertoire que le script)
-let LOG_DIR = path.join(__dirname, 'logs');
-
-// Créer un nom de fichier unique avec timestamp de lancement
+const LOG_DIR = path.join(__dirname, 'logs');
 const LAUNCH_TIME = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] + '_' + Date.now();
 const LOG_FILE = path.join(LOG_DIR, `app-${LAUNCH_TIME}.log`);
+const MAX_LOG_SIZE = 10 * 1024 * 1024;
+const MAX_LOG_FILES = 3;
 
-// Créer le répertoire logs s'il n'existe pas
 try {
-    if (!fs.existsSync(LOG_DIR)) {
-        fs.mkdirSync(LOG_DIR, { recursive: true });
+    if (!fsSync.existsSync(LOG_DIR)) {
+        fsSync.mkdirSync(LOG_DIR, { recursive: true });
         console.log(`✅ Répertoire logs créé: ${LOG_DIR}`);
     }
     
-    // Nettoyer les anciens fichiers de log (garder seulement les 3 derniers)
-    // On exclut le fichier courant (qui vient d'être créé)
-    const files = fs.readdirSync(LOG_DIR)
+    const files = fsSync.readdirSync(LOG_DIR)
         .filter(f => f.startsWith('app-') && f.endsWith('.log') && f !== path.basename(LOG_FILE))
-        .sort();
+        .map(f => ({
+            name: f,
+            path: path.join(LOG_DIR, f),
+            time: fsSync.statSync(path.join(LOG_DIR, f)).mtime.getTime()
+        }))
+        .sort((a, b) => b.time - a.time);
     
-    // Garder seulement les 2 anciens (+ le nouveau qui va être créé = 3 total)
-    if (files.length > 2) {
-        files.slice(0, -2).forEach(f => {
+    if (files.length >= MAX_LOG_FILES) {
+        files.slice(MAX_LOG_FILES - 1).forEach(f => {
             try {
-                fs.unlinkSync(path.join(LOG_DIR, f));
-                console.log(`🗑️  Ancien log supprimé: ${f}`);
-            } catch (e) {
-                // Ignorer les erreurs de suppression
-            }
+                fsSync.unlinkSync(f.path);
+                console.log(`🗑️  Ancien log supprimé: ${f.name}`);
+            } catch (e) {}
         });
     }
 } catch (err) {
     console.error('⚠️  Impossible de gérer le répertoire logs:', err.message);
 }
 
-// Écrire un séparateur au démarrage du fichier log
 try {
-    fs.appendFileSync(LOG_FILE, '\n============================================================\n', { encoding: 'utf8' });
-    fs.appendFileSync(LOG_FILE, `🚀 DÉMARRAGE APPLICATION - ${new Date().toISOString()}\n`, { encoding: 'utf8' });
-    fs.appendFileSync(LOG_FILE, '============================================================\n', { encoding: 'utf8' });
+    const separator = '\n============================================================\n';
+    const startup = `🚀 DÉMARRAGE APPLICATION - ${new Date().toISOString()}\n`;
+    fsSync.appendFileSync(LOG_FILE, separator + startup + separator, { encoding: 'utf8' });
 } catch (err) {
     console.error('⚠️  Impossible d\'écrire le séparateur de démarrage:', err.message);
 }
 
-// Types de logs avec couleurs
 const LOG_LEVELS = {
-    DEBUG: { color: '\x1b[36m', level: 'DEBUG' },    // Cyan
-    INFO: { color: '\x1b[32m', level: 'INFO' },      // Green
-    WARN: { color: '\x1b[33m', level: 'WARN' },      // Yellow
-    ERROR: { color: '\x1b[31m', level: 'ERROR' },    // Red
-    FATAL: { color: '\x1b[35m', level: 'FATAL' }     // Magenta
+    DEBUG: { color: '\x1b[36m', level: 'DEBUG' },
+    INFO: { color: '\x1b[32m', level: 'INFO' },
+    WARN: { color: '\x1b[33m', level: 'WARN' },
+    ERROR: { color: '\x1b[31m', level: 'ERROR' },
+    FATAL: { color: '\x1b[35m', level: 'FATAL' }
 };
-
 const RESET = '\x1b[0m';
 
-/**
- * Formatter les logs avec timestamp
- */
 function formatLog(level, message, data = null) {
     const timestamp = new Date().toISOString();
     const levelStr = LOG_LEVELS[level].level;
@@ -78,20 +70,27 @@ function formatLog(level, message, data = null) {
     return logMessage;
 }
 
-/**
- * Écrire dans le fichier log
- */
-function writeToFile(logMessage) {
+function checkLogSize() {
     try {
-        fs.appendFileSync(LOG_FILE, logMessage + '\n', { encoding: 'utf8' });
-    } catch (err) {
-        console.error('❌ Erreur écriture log file:', err.message);
+        const stats = fsSync.statSync(LOG_FILE);
+        if (stats.size > MAX_LOG_SIZE) {
+            const warningMsg = `\n[${new Date().toISOString()}] ⚠️  Limite de taille atteinte (${(stats.size / 1024 / 1024).toFixed(2)}MB)\n`;
+            fsSync.appendFileSync(LOG_FILE, warningMsg, { encoding: 'utf8' });
+            return false;
+        }
+        return true;
+    } catch {
+        return true;
     }
 }
 
-/**
- * Logger avec couleur dans la console
- */
+function writeToFile(logMessage) {
+    if (!checkLogSize()) return;
+    
+    fs.appendFile(LOG_FILE, logMessage + '\n', { encoding: 'utf8' })
+        .catch(err => console.error('❌ Erreur écriture log file:', err.message));
+}
+
 function logConsole(level, message, data = null) {
     const { color } = LOG_LEVELS[level];
     const levelStr = LOG_LEVELS[level].level;
@@ -103,9 +102,6 @@ function logConsole(level, message, data = null) {
     }
 }
 
-/**
- * Logger principal
- */
 const logger = {
     debug: (message, data = null) => {
         const log = formatLog('DEBUG', message, data);
@@ -148,9 +144,6 @@ const logger = {
     }
 };
 
-/**
- * Capturer les erreurs non gérées
- */
 process.on('uncaughtException', (error) => {
     logger.fatal('💥 Uncaught Exception', error);
     process.exit(1);
@@ -163,9 +156,6 @@ process.on('unhandledRejection', (reason, promise) => {
     });
 });
 
-/**
- * Capturer les erreurs EPIPE et autres
- */
 process.on('error', (error) => {
     if (error.code === 'EPIPE') {
         logger.warn('⚠️  EPIPE Error (pipe fermée)', { code: error.code });

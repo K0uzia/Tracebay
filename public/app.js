@@ -1,19 +1,11 @@
-// ============================================
-// app.js - Logique de l'application
-// ============================================
-
-/**
- * Classe pour gérer les pages
- */
 class PageManager {
     constructor() {
-        // Configuration
         this.contentContainer = 'content';
         this.storageKey = 'workspace_current_page';
+        this.authManager = null;
         
         // Pages et leur configuration de layout
         this.pagesConfig = {
-            // Pages normales (avec header, footer et chat)
             'home': { showHeader: true, showFooter: true, showChat: true },
             'agenda': { showHeader: true, showFooter: false, showChat: false },
             'dossier': { showHeader: true, showFooter: true, showChat: true },
@@ -21,35 +13,233 @@ class PageManager {
             'reception': { showHeader: true, showFooter: true, showChat: false },
             'shortcut': { showHeader: true, showFooter: true, showChat: true },
             'option': { showHeader: true, showFooter: true, showChat: false },
-            
-            // Pages full-screen (sans header ni footer ni chat)
             'login': { showHeader: false, showFooter: false, showChat: false },
-            'signup': { showHeader: false, showFooter: false, showChat: false },
+            'signup': { showHeader: false, showFooter: false, showChat: false }
         };
         
-        // Initialiser au démarrage
         this.init();
     }
 
-    /**
-     * Initialisation
-     */
-    init() {
-        // Charger le header et footer
-        this.loadHeader();
-        this.loadFooter();
+    async init() {
+        this.loadComponent('header', '/components/header.html', () => this.initializeAuth());
+        this.loadComponent('footer', '/components/footer.html', () => this.initializeSystemInfo());
         
-        // Récupérer la dernière page visitée depuis le localStorage
         const lastPage = this.getLastPage();
         const pageToLoad = lastPage && this.pagesConfig[lastPage] ? lastPage : 'home';
-        
-        // Charger la page
         this.loadPage(pageToLoad);
     }
 
-    /**
-     * Récupérer la dernière page visitée
-     */
+    async initializeAuth() {
+        try {
+            const module = await import('/assets/js/modules/auth/AuthManager.js');
+            const AuthManager = module.default;
+            this.authManager = new AuthManager();
+            
+            this.authManager.on('auth-change', (user) => {
+                console.log('🔄 Auth change event:', user);
+                this.updateProfileUI(user);
+            });
+
+            await this.loadAuthModal();
+            
+            // Attendre que le DOM soit complètement chargé
+            setTimeout(() => {
+                const currentUser = this.authManager.getCurrentUser();
+                console.log('👤 Current user at init:', currentUser);
+                this.updateProfileUI(currentUser);
+            }, 100);
+            
+            this.attachListeners();
+            this.attachProfileListeners();
+        } catch (error) {
+            console.error('❌ Erreur import AuthManager:', error);
+        }
+    }
+
+    async loadAuthModal() {
+        try {
+            const response = await fetch('/components/auth-modal.html');
+            if (!response.ok) throw new Error('Auth modal not found');
+            const html = await response.text();
+            document.getElementById('authModalContainer').innerHTML = html;
+            this.attachAuthModalListeners();
+        } catch (error) {
+            console.error('❌ Erreur chargement auth modal:', error);
+        }
+    }
+
+    attachAuthModalListeners() {
+        const authModal = document.getElementById('authModal');
+        const authModalClose = document.getElementById('authModalClose');
+        const authModalOverlay = document.getElementById('authModalOverlay');
+        const authTabs = document.querySelectorAll('.auth-tab');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+
+        authModalClose.addEventListener('click', () => {
+            authModal.classList.add('hidden');
+        });
+
+        authModalOverlay.addEventListener('click', () => {
+            authModal.classList.add('hidden');
+        });
+
+        authTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const mode = tab.dataset.mode;
+                authTabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                if (mode === 'login') {
+                    loginForm.classList.remove('hidden');
+                    registerForm.classList.add('hidden');
+                } else {
+                    loginForm.classList.add('hidden');
+                    registerForm.classList.remove('hidden');
+                }
+            });
+        });
+
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            const errorEl = document.getElementById('loginError');
+
+            const result = await this.authManager.login(username, password);
+
+            if (result.success) {
+                authModal.classList.add('hidden');
+                loginForm.reset();
+                errorEl.classList.add('hidden');
+            } else {
+                errorEl.textContent = result.message;
+                errorEl.classList.remove('hidden');
+            }
+        });
+
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+            const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+            const errorEl = document.getElementById('registerError');
+
+            if (password !== passwordConfirm) {
+                errorEl.textContent = 'Les mots de passe ne correspondent pas';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+
+            const result = await this.authManager.register(username, password);
+
+            if (result.success) {
+                authModal.classList.add('hidden');
+                registerForm.reset();
+                errorEl.classList.add('hidden');
+            } else {
+                errorEl.textContent = result.message;
+                errorEl.classList.remove('hidden');
+            }
+        });
+    }
+
+    updateProfileUI(user) {
+        const profileAuth = document.getElementById('profileAuth');
+        const profileUser = document.getElementById('profileUser');
+        const profileUsername = document.getElementById('profileUsername');
+
+        console.log('🎨 updateProfileUI called:', { 
+            user, 
+            profileAuth: !!profileAuth, 
+            profileUser: !!profileUser,
+            profileAuthClasses: profileAuth?.className,
+            profileUserClasses: profileUser?.className
+        });
+
+        if (!profileAuth || !profileUser || !profileUsername) {
+            console.warn('⚠️ Profile elements not found');
+            return;
+        }
+
+        if (user) {
+            console.log('✅ Showing user profile for:', user.username);
+            profileAuth.style.display = 'none';
+            profileUser.style.display = 'flex';
+            profileUsername.textContent = user.username;
+            console.log('After update:', {
+                profileAuthDisplay: profileAuth.style.display,
+                profileUserDisplay: profileUser.style.display
+            });
+        } else {
+            console.log('❌ Showing login buttons');
+            profileAuth.style.display = 'flex';
+            profileUser.style.display = 'none';
+            profileUsername.textContent = '';
+        }
+    }
+
+    attachProfileListeners() {
+        const navProfile = document.getElementById('navProfile');
+        const profileDropdown = document.getElementById('profileDropdown');
+        const btnLogin = document.getElementById('btnLogin');
+        const btnRegister = document.getElementById('btnRegister');
+        const btnLogout = document.getElementById('btnLogout');
+
+        if (!navProfile || !profileDropdown || !btnLogin || !btnRegister || !btnLogout) return;
+
+        navProfile.addEventListener('click', (e) => {
+            e.stopPropagation();
+            profileDropdown.classList.toggle('hidden');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!navProfile.contains(e.target) && !profileDropdown.contains(e.target)) {
+                profileDropdown.classList.add('hidden');
+            }
+        });
+
+        btnLogin.addEventListener('click', () => {
+            this.showAuthModal('login');
+            profileDropdown.classList.add('hidden');
+        });
+
+        btnRegister.addEventListener('click', () => {
+            this.showAuthModal('register');
+            profileDropdown.classList.add('hidden');
+        });
+
+        btnLogout.addEventListener('click', () => {
+            this.authManager.logout();
+            profileDropdown.classList.add('hidden');
+        });
+    }
+
+    showAuthModal(mode) {
+        const authModal = document.getElementById('authModal');
+        const authTabs = document.querySelectorAll('.auth-tab');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+
+        authModal.classList.remove('hidden');
+
+        authTabs.forEach(tab => {
+            if (tab.dataset.mode === mode) {
+                tab.classList.add('active');
+            } else {
+                tab.classList.remove('active');
+            }
+        });
+
+        if (mode === 'login') {
+            loginForm.classList.remove('hidden');
+            registerForm.classList.add('hidden');
+        } else {
+            loginForm.classList.add('hidden');
+            registerForm.classList.remove('hidden');
+        }
+    }
+
     getLastPage() {
         try {
             return localStorage.getItem(this.storageKey);
@@ -59,9 +249,6 @@ class PageManager {
         }
     }
 
-    /**
-     * Sauvegarder la page actuelle
-     */
     saveCurrentPage(pageName) {
         try {
             localStorage.setItem(this.storageKey, pageName);
@@ -70,43 +257,18 @@ class PageManager {
         }
     }
 
-    /**
-     * Charger le header
-     */
-    async loadHeader() {
+    async loadComponent(elementId, url, onLoad) {
         try {
-            const response = await fetch('/components/header.html');
-            if (!response.ok) throw new Error('Header not found');
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Component ${elementId} not found`);
             const html = await response.text();
-            document.getElementById('header').innerHTML = html;
-            
-            // Réattacher les écouteurs après chargement du header
-            this.attachListeners();
+            document.getElementById(elementId).innerHTML = html;
+            if (onLoad) onLoad();
         } catch (error) {
-            console.error('❌ Erreur chargement header:', error);
+            console.error(`❌ Erreur chargement ${elementId}:`, error);
         }
     }
 
-    /**
-     * Charger le footer
-     */
-    async loadFooter() {
-        try {
-            const response = await fetch('/components/footer.html');
-            if (!response.ok) throw new Error('Footer not found');
-            const html = await response.text();
-            document.getElementById('footer').innerHTML = html;
-            
-            // Initialiser le SystemInfoManager après le chargement du footer
-            this.initializeSystemInfo();
-        } catch (error) {
-            console.error('❌ Erreur chargement footer:', error);
-        }
-    }
-
-    /**
-     * Initialiser le SystemInfoManager
-     */
     initializeSystemInfo() {
         import('/assets/js/modules/system/SystemInfoManager.js')
             .then(module => {
@@ -116,7 +278,7 @@ class PageManager {
                     ramElementId: 'footer-ram-value',
                     connectionElementId: 'footer-connection-value',
                     connectionIconId: 'footer-connection-icon',
-                    updateInterval: 5000 // Mettre à jour toutes les 5 secondes
+                    updateInterval: 5000
                 });
             })
             .catch(error => {
@@ -124,45 +286,19 @@ class PageManager {
             });
     }
 
-    /**
-     * Charger une page HTML
-     * @param {string} pageName - Nom de la page (sans .html)
-     */
     async loadPage(pageName) {
         try {
-            // Construire le chemin
-            const filePath = `/pages/${pageName}.html`;
+            const response = await fetch(`/pages/${pageName}.html`);
+            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             
-            // Récupérer le fichier
-            const response = await fetch(filePath);
-            
-            // Vérifier si la requête est réussie
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            // Récupérer le texte HTML
             const html = await response.text();
-            
-            // Insérer le HTML dans la page
             document.getElementById(this.contentContainer).innerHTML = html;
             
-            // Sauvegarder la page actuelle dans localStorage
             this.saveCurrentPage(pageName);
-            
-            // Mettre à jour l'affichage
             this.updateLayout(pageName);
-            
-            // Réinitialiser le ChatManager si les éléments chat existent
             this.initializeChatIfNeeded();
-            
-            // Réinitialiser TimeManager si les éléments time existent
             this.initializeTimeIfNeeded();
-
-            // Initialiser les éléments page-spécifiques
             this.initializePageElements(pageName);
-            
-            // Réattacher les listeners pour les boutons data-page dans le contenu chargé
             this.attachListeners();
         } catch (error) {
             console.error(`❌ Erreur lors du chargement de ${pageName}:`, error);
@@ -170,20 +306,15 @@ class PageManager {
         }
     }
 
-    /**
-     * Initialiser le TimeManager si les éléments existent
-     */
     initializeTimeIfNeeded() {
         const timeElement = document.getElementById('current-time');
         const dateElement = document.getElementById('current-date');
         
         if (timeElement && dateElement) {
-            // Arrêter l'ancien TimeManager s'il existe
             if (window.timeManager) {
                 window.timeManager.destroy();
             }
             
-            // Charger et créer une nouvelle instance
             import('/assets/js/modules/time/TimeManager.js')
                 .then(module => {
                     const TimeManager = module.default;
@@ -197,7 +328,6 @@ class PageManager {
                     console.error('❌ Erreur import TimeManager:', error);
                 });
         } else {
-            // Arrêter le TimeManager si on change vers une page sans éléments de temps
             if (window.timeManager) {
                 window.timeManager.destroy();
                 window.timeManager = null;
@@ -205,19 +335,10 @@ class PageManager {
         }
     }
 
-    /**
-     * Initialiser le ChatManager si les éléments existent
-     */
     initializeChatIfNeeded() {
         const chatMessagesContainer = document.getElementById('chat-messages');
         
         if (chatMessagesContainer) {
-            // Détruire l'ancien ChatManager s'il existe
-            if (window.chatManager) {
-                // Réinitialisation du ChatManager
-            }
-            
-            // Créer une nouvelle instance avec config de sécurité
             Promise.all([
                 import('/assets/js/modules/chat/ChatManager.js'),
                 import('/assets/js/config/ChatSecurityConfig.js')
@@ -235,7 +356,6 @@ class PageManager {
                     pseudoErrorId: 'chat-pseudo-error',
                     clearChatBtnId: 'chat-clear-btn',
                     pseudoWrapperId: 'chat-pseudo-input-wrapper',
-                    // Passer la configuration de sécurité
                     securityConfig: securityConfig
                 });
             }).catch(error => {
@@ -244,12 +364,8 @@ class PageManager {
         }
     }
 
-    /**
-     * Initialiser les éléments spécifiques à chaque page
-     */
     initializePageElements(pageName) {
         if (pageName === 'home') {
-            // Initialiser les boutons PDF
             Promise.all([
                 import('/assets/js/modules/pdf/PDFManager.js'),
                 import('/assets/js/config/PDFConfig.js')
@@ -263,7 +379,6 @@ class PageManager {
                 console.error('❌ Erreur import PDFManager:', error);
             });
 
-            // Charger les événements du jour
             import('/assets/js/modules/agenda/AgendaStore.js')
                 .then(module => {
                     const AgendaStore = module.default;
@@ -273,25 +388,25 @@ class PageManager {
                     console.error('❌ Erreur import AgendaStore:', error);
                 });
         } else if (pageName === 'agenda') {
-            // Initialiser l'agenda avec gestion de cleanup
             import('/assets/js/modules/agenda/AgendaInit.js')
                 .then(module => {
-                    // Détruire l'ancienne instance si elle existe
                     module.destroyAgenda();
-                    // Attendre un peu pour laisser le DOM se stabiliser
-                    setTimeout(() => {
-                        module.initAgenda();
-                    }, 100);
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => module.initAgenda());
+                    });
                 })
                 .catch(error => {
                     console.error('❌ Erreur import AgendaInit:', error);
                 });
         } else if (pageName === 'shortcut') {
-            // Initialiser le gestionnaire de raccourcis
             import('/assets/js/modules/shortcut/ShortcutManager.js')
-                .then(module => {
+                .then(async module => {
                     const ShortcutManager = module.default;
+                    if (window.shortcutManager) {
+                        window.shortcutManager.destroy();
+                    }
                     window.shortcutManager = new ShortcutManager();
+                    await window.shortcutManager.init();
                 })
                 .catch(error => {
                     console.error('❌ Erreur import ShortcutManager:', error);
@@ -299,15 +414,11 @@ class PageManager {
         }
     }
 
-    /**
-     * Charger et afficher les événements du jour
-     */
     async loadTodayEvents(AgendaStore) {
         try {
             const today = new Date();
             const todayStr = this.formatLocalISODate(today);
             
-            // Récupérer les événements du jour
             const allEvents = await AgendaStore.getAllEvents();
             const todayEvents = allEvents.filter(ev => {
                 const eventStart = ev.start.substring(0, 10);
@@ -315,15 +426,13 @@ class PageManager {
                 return todayStr >= eventStart && todayStr <= eventEnd;
             });
 
-            // Trier par heure de début
             todayEvents.sort((a, b) => a.start.localeCompare(b.start));
 
-            // Remplir le conteneur - chercher le 2e .block-content dans la section home
             const homeSection = document.querySelector('.home.section');
             if (!homeSection) return;
             
             const blockContents = homeSection.querySelectorAll('.block-content');
-            const calendarContent = blockContents[1]; // 2e bloc
+            const calendarContent = blockContents[1];
             
             if (calendarContent) {
                 if (todayEvents.length === 0) {
@@ -333,7 +442,7 @@ class PageManager {
                         const startTime = event.start.substring(11, 16);
                         const endTime = event.end.substring(11, 16);
                         const eventColor = event.color || '#3788d8';
-                        const backgroundColor = eventColor + '20'; // Ajouter la transparence
+                        const backgroundColor = eventColor + '20';
                         return `
                             <div class="home-event-item" data-color="${eventColor}" data-bg-color="${backgroundColor}">
                                 <div class="home-event-item-title">${event.title}</div>
@@ -345,7 +454,6 @@ class PageManager {
                         `;
                     }).join('');
                     
-                    // Appliquer les couleurs après l'insertion du HTML
                     document.querySelectorAll('.home-event-item').forEach(el => {
                         const color = el.getAttribute('data-color');
                         const bgColor = el.getAttribute('data-bg-color');
@@ -363,9 +471,6 @@ class PageManager {
         }
     }
 
-    /**
-     * Formater date comme YYYY-MM-DD
-     */
     formatLocalISODate(date) {
         const year = date.getFullYear();
         const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -373,15 +478,10 @@ class PageManager {
         return `${year}-${month}-${day}`;
     }
 
-    /**
-     * Afficher/masquer header et footer selon la page
-     * @param {string} pageName - Nom de la page
-     */
     updateLayout(pageName) {
         const header = document.getElementById('header');
         const footer = document.getElementById('footer');
         
-        // Récupérer la configuration de la page
         const config = this.pagesConfig[pageName];
         
         if (!config) {
@@ -389,19 +489,15 @@ class PageManager {
             return;
         }
         
-        // Fermer le menu burger si ouvert
         window.navManager?.closeMenu();
         
-        // Appliquer la configuration
         header.style.display = config.showHeader ? 'block' : 'none';
         footer.style.display = config.showFooter ? 'block' : 'none';
         
-        // Gérer l'affichage du chat widget
         const chatWidget = document.getElementById('chat-widget-wrapper');
         if (chatWidget) {
             chatWidget.style.display = config.showChat ? 'flex' : 'none';
             
-            // Fermer le panel si on cache le widget
             if (!config.showChat && window.chatWidgetManager) {
                 window.chatWidgetManager.closePanel();
             }
@@ -410,10 +506,6 @@ class PageManager {
         const layoutType = config.showHeader ? '📱 Normal' : '🔒 Full-screen';
     }
 
-    /**
-     * Afficher message d'erreur
-     * @param {string} pageName - Page qui n'a pas pu être chargée
-     */
     showError(pageName) {
         const errorHTML = `
             <div style="color: red; padding: 20px;">
@@ -425,35 +517,23 @@ class PageManager {
         document.getElementById(this.contentContainer).innerHTML = errorHTML;
     }
 
-    /**
-     * Attacher les écouteurs d'événements sur les boutons
-     */
     attachListeners() {
-        // Sélectionner tous les boutons avec data-page
         const buttons = document.querySelectorAll('[data-page]');
         
-        // Pour chaque bouton
         buttons.forEach(button => {
-            // Attacher un écouteur de clic
-            button.addEventListener('click', (event) => {
-                event.preventDefault();
+            if (!button.dataset.listenerAttached) {
+                button.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const pageName = button.dataset.page;
+                    this.loadPage(pageName);
+                });
                 
-                // Récupérer le nom de la page
-                const pageName = button.dataset.page;
-                
-                // Charger la page
-                this.loadPage(pageName);
-            });
+                button.dataset.listenerAttached = 'true';
+            }
         });
     }
 }
 
-// ============================================
-// Démarrage de l'application
-// ============================================
-
-// Attendre que le DOM soit chargé
 document.addEventListener('DOMContentLoaded', () => {
-    // Créer l'instance du gestionnaire
     window.pageManager = new PageManager();
 });

@@ -91,11 +91,12 @@ export default class SystemInfoManager {
             if (result.success && result.data) {
                 this.updateDisplay(result.data);
             } else {
-                console.error('❌ Erreur dans la réponse API:', result);
+                // Erreur silencieuse pour ne pas spammer la console
                 this.showError();
             }
         } catch (error) {
-            console.error('❌ Erreur récupération infos système:', error);
+            // Erreur silencieuse - le serveur système peut ne pas être disponible
+            // Ne pas logger l'erreur pour éviter de spammer la console
             this.showError();
         }
     }

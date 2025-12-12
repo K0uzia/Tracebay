@@ -56,9 +56,6 @@ class ChatWidgetManager {
         // Attacher les écouteurs d'événements
         this.attachEventListeners();
         
-        // Afficher le modal de pseudo si nécessaire
-        this.checkAndShowPseudoModal();
-        
         // Syncer les messages
         this.syncMessages();
     }
@@ -75,12 +72,6 @@ class ChatWidgetManager {
         // Bouton fermeture
         if (this.closeButtonElement) {
             this.closeButtonElement.addEventListener('click', () => this.closePanel());
-        }
-
-        // Bouton changement pseudo (quand pseudo est confirmé)
-        const pseudoChangeBtn = document.getElementById('chat-widget-pseudo-change');
-        if (pseudoChangeBtn) {
-            pseudoChangeBtn.addEventListener('click', () => this.showPseudoModal());
         }
 
         // Clavier - Entrée pour envoyer message
@@ -101,20 +92,9 @@ class ChatWidgetManager {
             }
         });
 
-        // Événement de changement de pseudo
-        window.addEventListener('pseudoChanged', (e) => {
-            const newPseudo = e.detail.pseudo;
-            this.hidePseudoModal();
-            this.showPseudoChangeButton();
-            
-            // Mettre à jour les messages avec le nouveau pseudo
-            this.chatManager.updateMessagesWithNewPseudo(newPseudo);
-        });
-
         // Clic en dehors du panel pour fermer
         document.addEventListener('click', (e) => {
             if (this.isOpen) {
-                // Vérifier si le clic est en dehors du panel et du bouton
                 const clickedInsidePanel = this.panelElement && this.panelElement.contains(e.target);
                 const clickedOnButton = this.buttonElement && this.buttonElement.contains(e.target);
                 
@@ -185,63 +165,9 @@ class ChatWidgetManager {
      * Vérifier et afficher le modal de pseudo si nécessaire
      */
     checkAndShowPseudoModal() {
+        // Plus besoin de modal, le username vient de la session
         if (!this.chatManager.pseudo) {
-            this.showPseudoModal();
             this.openPanel();
-        } else {
-            this.hidePseudoModal();
-            this.showPseudoChangeButton();
-        }
-    }
-
-    /**
-     * Afficher le modal de pseudo
-     */
-    showPseudoModal() {
-        // Masquer le bouton de changement de pseudo
-        this.hidePseudoChangeButton();
-        
-        if (this.pseudoModalElement) {
-            this.pseudoModalElement.classList.add('show');
-            
-            // Force le focus avec un délai court
-            setTimeout(() => {
-                const input = document.getElementById('chat-widget-pseudo-input');
-                if (input) {
-                    input.focus();
-                    input.click(); // Assurer le focus
-                    input.select(); // Sélectionner le texte s'il y en a
-                }
-            }, 100);
-        }
-    }
-
-    /**
-     * Masquer le modal de pseudo
-     */
-    hidePseudoModal() {
-        if (this.pseudoModalElement) {
-            this.pseudoModalElement.classList.remove('show');
-        }
-    }
-
-    /**
-     * Afficher le bouton de changement de pseudo
-     */
-    showPseudoChangeButton() {
-        const btn = document.getElementById('chat-widget-pseudo-change');
-        if (btn) {
-            btn.classList.add('show');
-        }
-    }
-
-    /**
-     * Masquer le bouton de changement de pseudo
-     */
-    hidePseudoChangeButton() {
-        const btn = document.getElementById('chat-widget-pseudo-change');
-        if (btn) {
-            btn.classList.remove('show');
         }
     }
 

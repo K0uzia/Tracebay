@@ -12,7 +12,18 @@
         <button class="nav-btn" data-page="application"><i class="fas fa-cube"></i> Application</button>
         <button class="nav-btn nav-reception" data-page="reception"><i class="fas fa-bell"></i> Réception</button>
         <div class="nav-action">
-            <button class="nav-btn nav-option" data-page="option"><i class="fa-solid fa-gear"></i></button>
+            <button class="nav-btn nav-profile" id="navProfile"><i class="fa-solid fa-user"></i></button>
+            <div class="profile-dropdown hidden" id="profileDropdown">
+                <div class="profile-auth" id="profileAuth">
+                    <button class="profile-btn" id="btnLogin">Se connecter</button>
+                    <button class="profile-btn" id="btnRegister">Créer un compte</button>
+                </div>
+                <div class="profile-user hidden" id="profileUser">
+                    <div class="profile-username" id="profileUsername"></div>
+                    <button class="profile-btn" id="btnSettings">Paramètres</button>
+                    <button class="profile-btn" id="btnLogout">Déconnexion</button>
+                </div>
+            </div>
         </div>
     </nav>
     <button class="nav-burger" id="navBurger" aria-label="Ouvrir menu">

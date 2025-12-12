@@ -1,469 +1,457 @@
-/**
- * ShortcutManager - Gestion des raccourcis hiérarchiques
- * Structure: Catégories (H3) > Sous-catégories (H4) > Raccourcis (boutons)
- */
-
-import IconSelector from './IconSelector.js';
-import ConfirmDialog from './ConfirmDialog.js';
-
-class ShortcutManager {
+export default class ShortcutManager {
     constructor() {
-        this.storageKey = 'workspace_shortcuts';
-        this.maxCategories = 3;
-        this.currentCategoryIndex = null;
-        this.currentSubcategoryIndex = null;
-        
-        this.iconSelector = new IconSelector();
-        this.confirmDialog = new ConfirmDialog();
-        
-        this.init();
+        this.categories = [];
+        this.searchQuery = '';
+        this.listeners = [];
     }
 
-    /**
-     * Initialiser le gestionnaire
-     */
-    init() {
-        console.log('🔧 ShortcutManager init() appelé');
-        console.log('window.electron disponible?', !!window.electron);
-        if (window.electron) {
-            console.log('window.electron.openExternal disponible?', !!window.electron.openExternal);
-        }
-        
-        this.loadShortcuts();
+    async init() {
+        this.checkAuthentication();
+        await this.loadShortcuts();
         this.render();
-        this.attachListeners();
+        this.attachEventListeners();
+        this.setupKeyboardShortcuts();
+        this.listenAuthChanges();
     }
 
-    /**
-     * Charger les raccourcis depuis localStorage
-     */
-    loadShortcuts() {
+    checkAuthentication() {
+        const authRequired = document.getElementById('shortcut-auth-required');
+        const content = document.getElementById('shortcut-content');
+        const isAuth = this.isAuthenticated();
+
+        if (authRequired && content) {
+            if (isAuth) {
+                authRequired.classList.add('hidden');
+                content.style.display = 'block';
+            } else {
+                authRequired.classList.remove('hidden');
+                content.style.display = 'none';
+            }
+        }
+    }
+
+    listenAuthChanges() {
+        window.addEventListener('auth-change', () => {
+            this.checkAuthentication();
+            this.loadShortcuts().then(() => this.render());
+        });
+
+        const loginBtn = document.getElementById('shortcut-login-btn');
+        if (loginBtn) {
+            loginBtn.addEventListener('click', () => {
+                // Déclencher l'ouverture de la modal de login
+                const btnLogin = document.getElementById('btnLogin');
+                if (btnLogin) btnLogin.click();
+            });
+        }
+    }
+
+    destroy() {
+        this.listeners.forEach(({ element, event, handler }) => {
+            element?.removeEventListener(event, handler);
+        });
+        this.listeners = [];
+        document.removeEventListener('keydown', this.globalKeyHandler);
+    }
+
+    addListener(element, event, handler) {
+        if (element) {
+            element.addEventListener(event, handler);
+            this.listeners.push({ element, event, handler });
+        }
+    }
+
+    async loadShortcuts() {
+        const userId = localStorage.getItem('workspace_user_id');
+        
+        if (!userId) {
+            this.categories = [];
+            return;
+        }
+
         try {
-            const data = localStorage.getItem(this.storageKey);
-            this.categories = data ? JSON.parse(data) : [];
+            const [categoriesRes, shortcutsRes] = await Promise.all([
+                fetch('/api/shortcuts/categories', {
+                    headers: { 'X-User-Id': userId }
+                }),
+                fetch('/api/shortcuts', {
+                    headers: { 'X-User-Id': userId }
+                })
+            ]);
+
+            const categoriesData = await categoriesRes.json();
+            const shortcutsData = await shortcutsRes.json();
+
+            if (categoriesData.success && shortcutsData.success) {
+                this.categories = categoriesData.categories.map(cat => ({
+                    id: cat.id,
+                    name: cat.name,
+                    shortcuts: shortcutsData.shortcuts
+                        .filter(s => s.category_id === cat.id)
+                        .map(s => ({ id: s.id, name: s.name, url: s.url }))
+                }));
+            } else {
+                this.categories = [];
+            }
         } catch (error) {
             console.error('❌ Erreur chargement raccourcis:', error);
             this.categories = [];
         }
     }
 
-    /**
-     * Sauvegarder les raccourcis
-     */
-    saveShortcuts() {
-        try {
-            localStorage.setItem(this.storageKey, JSON.stringify(this.categories));
-        } catch (error) {
-            console.error('❌ Erreur sauvegarde raccourcis:', error);
-        }
+    async saveShortcuts() {
+        // Plus besoin de sauvegarder localement, l'API gère la persistance
     }
 
-    /**
-     * Ajouter une catégorie principale
-     */
-    addCategory(name, color) {
-        if (this.categories.length >= this.maxCategories) {
-            alert(`❌ Maximum ${this.maxCategories} catégories autorisées`);
-            return false;
-        }
-
-        const category = {
-            id: Date.now(),
-            name,
-            color,
-            subcategories: []
-        };
-
-        this.categories.push(category);
-        this.saveShortcuts();
-        this.render();
-        return true;
+    getUserId() {
+        return localStorage.getItem('workspace_user_id');
     }
 
-    /**
-     * Supprimer une catégorie principale
-     */
-    deleteCategory(categoryIndex) {
-        const category = this.categories[categoryIndex];
-        this.confirmDialog.show({
-            message: `Supprimer la catégorie "${category.name}" ?`,
-            warning: 'Cette action supprimera aussi toutes les sous-catégories et raccourcis.',
-            onConfirm: () => {
-                this.categories.splice(categoryIndex, 1);
-                this.saveShortcuts();
-                this.render();
+    isAuthenticated() {
+        return !!this.getUserId();
+    }
+
+    setupKeyboardShortcuts() {
+        this.globalKeyHandler = (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                const searchInput = document.getElementById('shortcut-search-input');
+                searchInput?.focus();
             }
-        });
-    }
-
-    /**
-     * Ajouter une sous-catégorie
-     */
-    addSubcategory(categoryIndex, name) {
-        if (categoryIndex < 0 || categoryIndex >= this.categories.length) {
-            alert('❌ Catégorie invalide');
-            return false;
-        }
-
-        const subcategory = {
-            id: Date.now(),
-            name,
-            shortcuts: []
         };
-
-        this.categories[categoryIndex].subcategories.push(subcategory);
-        this.saveShortcuts();
-        this.render();
-        return true;
+        document.addEventListener('keydown', this.globalKeyHandler);
     }
 
-    /**
-     * Supprimer une sous-catégorie
-     */
-    deleteSubcategory(categoryIndex, subcategoryIndex) {
-        const subcat = this.categories[categoryIndex].subcategories[subcategoryIndex];
-        this.confirmDialog.show({
-            message: `Supprimer la sous-catégorie "${subcat.name}" ?`,
-            warning: 'Cela supprimera aussi tous les raccourcis de cette sous-catégorie.',
-            onConfirm: () => {
-                this.categories[categoryIndex].subcategories.splice(subcategoryIndex, 1);
-                this.saveShortcuts();
+    attachEventListeners() {
+        const searchInput = document.getElementById('shortcut-search-input');
+        if (searchInput) {
+            const handler = (e) => {
+                this.searchQuery = e.target.value.toLowerCase();
                 this.render();
-            }
-        });
-    }
-
-    /**
-     * Ajouter un raccourci
-     */
-    addShortcut(categoryIndex, subcategoryIndex, name, url, icon = null) {
-        if (categoryIndex < 0 || categoryIndex >= this.categories.length) {
-            alert('❌ Catégorie invalide');
-            return false;
+            };
+            this.addListener(searchInput, 'input', handler);
         }
 
-        if (subcategoryIndex < 0 || subcategoryIndex >= this.categories[categoryIndex].subcategories.length) {
-            alert('❌ Sous-catégorie invalide');
-            return false;
-        }
-
-        // Utiliser la favicon du site si pas d'icône
-        const finalIcon = icon && icon.trim() ? icon : null;
-
-        const shortcut = {
-            id: Date.now(),
-            name,
-            url,
-            icon: finalIcon
-        };
-
-        this.categories[categoryIndex].subcategories[subcategoryIndex].shortcuts.push(shortcut);
-        this.saveShortcuts();
-        this.render();
-        return true;
-    }
-
-    /**
-     * Supprimer un raccourci
-     */
-    deleteShortcut(categoryIndex, subcategoryIndex, shortcutIndex) {
-        const shortcut = this.categories[categoryIndex].subcategories[subcategoryIndex].shortcuts[shortcutIndex];
-        this.confirmDialog.show({
-            message: `Supprimer le raccourci "${shortcut.name}" ?`,
-            onConfirm: () => {
-                this.categories[categoryIndex].subcategories[subcategoryIndex].shortcuts.splice(shortcutIndex, 1);
-                this.saveShortcuts();
-                this.render();
-            }
-        });
-    }
-
-    /**
-     * Obtenir la favicon d'une URL
-     */
-    getFaviconUrl(url) {
-        try {
-            const domain = new URL(url).hostname;
-            return `https://www.google.com/s2/favicons?domain=${domain}&sz=32`;
-        } catch (error) {
-            return null;
+        const addCategoryBtn = document.getElementById('add-category-btn');
+        if (addCategoryBtn) {
+            const handler = () => this.openAddCategoryModal();
+            this.addListener(addCategoryBtn, 'click', handler);
         }
     }
 
-    /**
-     * Rendu de la structure
-     */
+    filterCategories() {
+        if (!this.searchQuery) return this.categories;
+
+        return this.categories.map(cat => ({
+            ...cat,
+            shortcuts: cat.shortcuts.filter(shortcut =>
+                shortcut.name.toLowerCase().includes(this.searchQuery) ||
+                shortcut.url.toLowerCase().includes(this.searchQuery)
+            )
+        })).filter(cat => cat.shortcuts.length > 0);
+    }
+
     render() {
-        const container = document.getElementById('shortcuts-container');
-        if (!container) return;
+        const grid = document.getElementById('shortcut-grid');
+        if (!grid) return;
 
-        if (this.categories.length === 0) {
-            container.innerHTML = '<p class="empty-container">Aucune catégorie créée. Cliquez sur "+ Nouvelle catégorie" pour commencer.</p>';
+        const filteredCategories = this.filterCategories();
+        
+        if (filteredCategories.length === 0) {
+            grid.innerHTML = '<p class="shortcut-empty-message">Aucun raccourci trouvé</p>';
             return;
         }
 
-        container.innerHTML = this.categories.map((category, catIndex) => `
-            <div class="category-block" data-category-color="${category.color}">
-                <div class="category-header">
-                    <h3 class="category-title" data-color="${category.color}">${category.name}</h3>
-                    <div class="category-actions">
-                        <button class="btn-icon" title="Ajouter une sous-catégorie" data-add-subcat="${catIndex}">
-                            <i class="fas fa-plus"></i>
-                        </button>
-                        <button class="btn-icon btn-danger" title="Supprimer la catégorie" data-delete-cat="${catIndex}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
+        grid.innerHTML = filteredCategories.map(category => this.renderCategory(category)).join('');
+        this.attachCategoryListeners();
+    }
+
+    renderCategory(category) {
+        return `
+            <div class="shortcut-container" data-category-id="${category.id}">
+                <div class="shortcut-title">
+                    <h3>${this.escapeHtml(category.name)}</h3>
+                    <button class="shortcut-manage-btn" data-category-id="${category.id}" title="Gérer les raccourcis">
+                        <i class="fas fa-cog"></i>
+                    </button>
                 </div>
-
-                <div class="subcategories-container">
-                    ${category.subcategories.length === 0 
-                        ? '<p class="empty-message">Aucune sous-catégorie. Cliquez sur + pour en ajouter une.</p>'
-                        : category.subcategories.map((subcat, subcatIndex) => `
-                            <div class="subcategory-block">
-                                <div class="subcategory-header">
-                                    <h4>${subcat.name}</h4>
-                                    <div class="subcategory-actions">
-                                        <button class="btn-icon" title="Ajouter un raccourci" data-add-shortcut="${catIndex},${subcatIndex}">
-                                            <i class="fas fa-plus"></i>
-                                        </button>
-                                        <button class="btn-icon btn-danger" title="Supprimer" data-delete-subcat="${catIndex},${subcatIndex}">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div class="shortcuts-list">
-                                    ${subcat.shortcuts.length === 0
-                                        ? '<p class="empty-message">Aucun raccourci</p>'
-                                        : subcat.shortcuts.map((shortcut, shortcutIndex) => {
-                                            const faviconUrl = this.getFaviconUrl(shortcut.url);
-                                            return `
-                                                <div class="shortcut-button-wrapper">
-                                                    <button class="shortcut-button" type="button" data-shortcut="${catIndex},${subcatIndex},${shortcutIndex}" title="${shortcut.name}">
-                                                        ${shortcut.icon 
-                                                            ? `<i class="${shortcut.icon}"></i>` 
-                                                            : `<img src="${faviconUrl}" alt="${shortcut.name}" class="shortcut-favicon">`
-                                                        }
-                                                        <span>${shortcut.name}</span>
-                                                    </button>
-                                                    <button class="btn-delete-shortcut" title="Supprimer" data-delete-shortcut="${catIndex},${subcatIndex},${shortcutIndex}">
-                                                        <i class="fas fa-times"></i>
-                                                    </button>
-                                                </div>
-                                            `;
-                                        }).join('')
-                                    }
-                                </div>
-                            </div>
-                        `).join('')
-                    }
+                <div class="shortcut-links">
+                    ${category.shortcuts.map(shortcut => this.renderShortcut(shortcut)).join('')}
                 </div>
             </div>
-        `).join('');
-
-        this.attachRenderListeners();
-        this.applyCategoryColors();
+        `;
     }
 
-    /**
-     * Appliquer les couleurs des catégories avec CSS
-     */
-    applyCategoryColors() {
-        document.querySelectorAll('.category-block').forEach(block => {
-            const color = block.getAttribute('data-category-color');
-            if (color) {
-                block.style.setProperty('--category-color', color);
-            }
-        });
+    renderShortcut(shortcut) {
+        return `
+            <button class="shortcut-link" data-url="${this.escapeHtml(shortcut.url)}" data-name="${this.escapeHtml(shortcut.name)}" aria-label="Ouvrir ${this.escapeHtml(shortcut.name)}">
+                <i class="fas fa-link"></i> ${this.escapeHtml(shortcut.name)}
+            </button>
+        `;
     }
 
-    /**
-     * Attacher les listeners aux éléments rendus
-     */
-    attachRenderListeners() {
-        // Ajouter sous-catégorie
-        document.querySelectorAll('[data-add-subcat]').forEach(btn => {
+    attachCategoryListeners() {
+        document.querySelectorAll('.shortcut-link').forEach(btn => {
             btn.addEventListener('click', () => {
-                const catIndex = parseInt(btn.getAttribute('data-add-subcat'));
-                this.currentCategoryIndex = catIndex;
-                this.showSubcategoryModal();
+                const url = btn.dataset.url;
+                if (url && window.electronAPI?.openExternal) {
+                    window.electronAPI.openExternal(url);
+                }
             });
         });
 
-        // Supprimer catégorie
-        document.querySelectorAll('[data-delete-cat]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const catIndex = parseInt(btn.getAttribute('data-delete-cat'));
-                this.deleteCategory(catIndex);
-            });
-        });
-
-        // Ajouter raccourci
-        document.querySelectorAll('[data-add-shortcut]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const [catIndex, subcatIndex] = btn.getAttribute('data-add-shortcut').split(',').map(Number);
-                this.currentCategoryIndex = catIndex;
-                this.currentSubcategoryIndex = subcatIndex;
-                this.showShortcutModal();
-            });
-        });
-
-        // Supprimer sous-catégorie
-        document.querySelectorAll('[data-delete-subcat]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const [catIndex, subcatIndex] = btn.getAttribute('data-delete-subcat').split(',').map(Number);
-                this.deleteSubcategory(catIndex, subcatIndex);
-            });
-        });
-
-        // Cliquer sur un raccourci
-        document.querySelectorAll('[data-shortcut]').forEach(btn => {
+        document.querySelectorAll('.shortcut-manage-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                const [catIndex, subcatIndex, shortcutIndex] = btn.getAttribute('data-shortcut').split(',').map(Number);
-                this.openShortcut(catIndex, subcatIndex, shortcutIndex);
-            });
-        });
-
-        // Supprimer raccourci
-        document.querySelectorAll('[data-delete-shortcut]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const [catIndex, subcatIndex, shortcutIndex] = btn.getAttribute('data-delete-shortcut').split(',').map(Number);
-                this.deleteShortcut(catIndex, subcatIndex, shortcutIndex);
+                e.stopPropagation();
+                const categoryId = parseInt(btn.dataset.categoryId);
+                this.openManageModal(categoryId);
             });
         });
     }
 
-    /**
-     * Ouvrir un raccourci dans le navigateur par défaut
-     */
-    openShortcut(categoryIndex, subcategoryIndex, shortcutIndex) {
-        const shortcut = this.categories[categoryIndex].subcategories[subcategoryIndex].shortcuts[shortcutIndex];
-        
-        console.log('🔗 Ouverture raccourci:', shortcut.name, shortcut.url);
-        
-        try {
-            // En Electron, utiliser window.electron.openExternal
-            if (typeof window.electron !== 'undefined' && typeof window.electron.openExternal === 'function') {
-                console.log('✅ Utilisation window.electron.openExternal');
-                Promise.resolve(window.electron.openExternal(shortcut.url))
-                    .then(() => {
-                        console.log('✅ Raccourci ouvert avec succès');
-                    })
-                    .catch(err => {
-                        console.error('❌ Erreur openExternal:', err);
-                        window.open(shortcut.url, '_blank');
-                    });
-            } else {
-                // En web, ouvrir dans le navigateur
-                console.log('📂 Utilisation window.open (web)');
-                window.open(shortcut.url, '_blank');
-            }
-        } catch (error) {
-            console.error('❌ Erreur ouverture raccourci:', error);
-            window.open(shortcut.url, '_blank');
+    openAddCategoryModal() {
+        if (!this.isAuthenticated()) {
+            alert('Vous devez être connecté pour créer une catégorie');
+            return;
         }
-    }
 
-    /**
-     * Afficher la modal pour ajouter une catégorie
-     */
-    showCategoryModal() {
-        const modal = document.getElementById('modal-add-category');
-        const form = document.getElementById('form-add-category');
-        
-        form.reset();
-        form.onsubmit = (e) => {
+        const modal = this.createModal('Ajouter une catégorie', `
+            <form id="add-category-form">
+                <div class="form-group">
+                    <label for="category-name">Nom de la catégorie</label>
+                    <input type="text" id="category-name" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" data-close>Annuler</button>
+                    <button type="submit" class="btn btn-primary">Créer</button>
+                </div>
+            </form>
+        `);
+
+        const form = modal.querySelector('#add-category-form');
+        form.addEventListener('submit', (e) => {
             e.preventDefault();
             const name = document.getElementById('category-name').value.trim();
-            const color = document.getElementById('category-color').value;
-
-            if (name && this.addCategory(name, color)) {
+            if (name) {
+                this.addCategory(name);
                 modal.close();
+                modal.remove();
             }
-        };
+        });
 
+        modal.querySelector('[data-close]').addEventListener('click', () => {
+            modal.close();
+            modal.remove();
+        });
+
+        document.body.appendChild(modal);
         modal.showModal();
+        document.getElementById('category-name').focus();
     }
 
-    /**
-     * Afficher la modal pour ajouter une sous-catégorie
-     */
-    showSubcategoryModal() {
-        const modal = document.getElementById('modal-add-subcategory');
-        const form = document.getElementById('form-add-subcategory');
-        
-        form.reset();
-        form.onsubmit = (e) => {
-            e.preventDefault();
-            const name = document.getElementById('subcategory-name').value.trim();
+    openManageModal(categoryId) {
+        const category = this.categories.find(c => c.id === categoryId);
+        if (!category) return;
 
-            if (name && this.addSubcategory(this.currentCategoryIndex, name)) {
-                modal.close();
-            }
-        };
+        const modal = this.createModal(`Gérer "${category.name}"`, `
+            <div class="manage-shortcuts">
+                <div class="shortcuts-list" id="shortcuts-list">
+                    ${category.shortcuts.length === 0 ? '<p class="shortcuts-empty">Aucun raccourci dans cette catégorie</p>' : category.shortcuts.map(s => `
+                        <div class="shortcut-item" data-shortcut-id="${s.id}">
+                            <div class="shortcut-info">
+                                <strong>${this.escapeHtml(s.name)}</strong>
+                                <small>${this.escapeHtml(s.url)}</small>
+                            </div>
+                            <button class="btn-icon btn-delete" data-delete-shortcut="${s.id}" title="Supprimer">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    `).join('')}
+                </div>
+                <form id="add-shortcut-form">
+                    <div class="form-row">
+                        <input type="text" id="shortcut-name" placeholder="Nom" required>
+                        <input type="url" id="shortcut-url" placeholder="URL" required>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Ajouter
+                        </button>
+                    </div>
+                </form>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-danger" data-delete-category>Supprimer la catégorie</button>
+                    <button type="button" class="btn btn-secondary" data-close>Fermer</button>
+                </div>
+            </div>
+        `);
 
-        modal.showModal();
-    }
-
-    /**
-     * Afficher la modal pour ajouter un raccourci
-     */
-    showShortcutModal() {
-        const modal = document.getElementById('modal-add-shortcut');
-        const form = document.getElementById('form-add-shortcut');
-        const iconInput = document.getElementById('shortcut-icon');
-        const iconPreview = document.getElementById('selected-icon-preview');
-        const iconSelectBtn = document.getElementById('btn-icon-select');
-        
-        form.reset();
-        iconInput.value = '';
-        
-        if (iconPreview) {
-            iconPreview.innerHTML = '<i class="fas fa-link"></i>';
-        }
-
-        if (iconSelectBtn) {
-            iconSelectBtn.onclick = (e) => {
-                e.preventDefault();
-                this.iconSelector.open();
-            };
-        }
-        
-        form.onsubmit = (e) => {
+        const addForm = modal.querySelector('#add-shortcut-form');
+        addForm.addEventListener('submit', (e) => {
             e.preventDefault();
             const name = document.getElementById('shortcut-name').value.trim();
             const url = document.getElementById('shortcut-url').value.trim();
-            const icon = document.getElementById('shortcut-icon').value.trim() || null;
-
-            if (name && url && this.addShortcut(this.currentCategoryIndex, this.currentSubcategoryIndex, name, url, icon)) {
+            if (name && url) {
+                this.addShortcut(categoryId, name, url);
                 modal.close();
+                modal.remove();
+                this.render();
             }
-        };
+        });
 
+        modal.querySelectorAll('[data-delete-shortcut]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const shortcutId = parseInt(btn.dataset.deleteShortcut);
+                this.deleteShortcut(categoryId, shortcutId);
+                modal.close();
+                modal.remove();
+                this.render();
+            });
+        });
+
+        modal.querySelector('[data-delete-category]').addEventListener('click', () => {
+            if (confirm(`Supprimer la catégorie "${category.name}" et tous ses raccourcis ?`)) {
+                this.deleteCategory(categoryId);
+                modal.close();
+                modal.remove();
+                this.render();
+            }
+        });
+
+        modal.querySelector('[data-close]').addEventListener('click', () => {
+            modal.close();
+            modal.remove();
+        });
+
+        document.body.appendChild(modal);
         modal.showModal();
     }
 
-    /**
-     * Attacher les listeners principaux
-     */
-    attachListeners() {
-        // Bouton ajouter catégorie
-        const addCategoryBtn = document.getElementById('add-main-category-btn');
-        if (addCategoryBtn) {
-            addCategoryBtn.addEventListener('click', () => this.showCategoryModal());
+    createModal(title, content) {
+        const modal = document.createElement('dialog');
+        modal.className = 'universal-modal';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>${this.escapeHtml(title)}</h3>
+                </div>
+                <div class="modal-body">
+                    ${content}
+                </div>
+            </div>
+        `;
+        return modal;
+    }
+
+    async addCategory(name) {
+        const userId = this.getUserId();
+        
+        if (!userId) {
+            alert('Vous devez être connecté pour créer une catégorie');
+            return;
         }
 
-        // Fermer les modals
-        document.querySelectorAll('[data-close]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const modalId = btn.getAttribute('data-close');
-                const modal = document.getElementById(modalId);
-                if (modal) modal.close();
+        try {
+            const response = await fetch('/api/shortcuts/categories', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-User-Id': userId
+                },
+                body: JSON.stringify({ name })
             });
-        });
+
+            const data = await response.json();
+
+            if (data.success) {
+                await this.loadShortcuts();
+                this.render();
+            } else {
+                alert(data.message);
+            }
+        } catch (error) {
+            console.error('❌ Erreur création catégorie:', error);
+            alert('Erreur lors de la création de la catégorie');
+        }
+    }
+
+    async deleteCategory(categoryId) {
+        const userId = this.getUserId();
+        
+        if (!userId) return;
+
+        try {
+            const response = await fetch(`/api/shortcuts/categories/${categoryId}`, {
+                method: 'DELETE',
+                headers: { 'X-User-Id': userId }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                await this.loadShortcuts();
+                this.render();
+            }
+        } catch (error) {
+            console.error('❌ Erreur suppression catégorie:', error);
+        }
+    }
+
+    async addShortcut(categoryId, name, url) {
+        const userId = this.getUserId();
+        
+        if (!userId) {
+            alert('Vous devez être connecté pour ajouter un raccourci');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/shortcuts', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-User-Id': userId
+                },
+                body: JSON.stringify({ category_id: categoryId, name, url })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                await this.loadShortcuts();
+                this.render();
+            } else {
+                alert(data.message);
+            }
+        } catch (error) {
+            console.error('❌ Erreur création raccourci:', error);
+            alert('Erreur lors de la création du raccourci');
+        }
+    }
+
+    async deleteShortcut(categoryId, shortcutId) {
+        const userId = this.getUserId();
+        
+        if (!userId) return;
+
+        try {
+            const response = await fetch(`/api/shortcuts/${shortcutId}`, {
+                method: 'DELETE',
+                headers: { 'X-User-Id': userId }
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                await this.loadShortcuts();
+                this.render();
+            }
+        } catch (error) {
+            console.error('❌ Erreur suppression raccourci:', error);
+        }
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
-
-export default ShortcutManager;

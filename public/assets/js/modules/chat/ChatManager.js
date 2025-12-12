@@ -48,6 +48,18 @@ class ChatManager {
     async init() {
         console.log('🚀 ChatManager: init() appelé');
         
+        // Écouter les changements d'authentification
+        window.addEventListener('auth-change', (e) => {
+            const user = e.detail?.user;
+            console.log('🔄 ChatManager: Auth changed:', user);
+            this.pseudo = user ? user.username : null;
+            this.displayPseudo();
+            
+            if (this.pseudo && this.webSocket.isConnected()) {
+                this.webSocket.setPseudo(this.pseudo);
+            }
+        });
+        
         // Afficher le pseudo
         this.displayPseudo();
         
@@ -137,23 +149,6 @@ class ChatManager {
      * Attacher les écouteurs d'événements
      */
     attachEventListeners() {
-        // Bouton de confirmation du pseudo
-        const confirmBtn = document.getElementById(this.pseudoConfirmId);
-        if (confirmBtn) {
-            confirmBtn.addEventListener('click', () => this.confirmPseudo());
-        }
-        
-        // Clavier - Entrée pour confirmer pseudo
-        const pseudoInput = document.getElementById(this.pseudoInputId);
-        if (pseudoInput) {
-            pseudoInput.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    this.confirmPseudo();
-                }
-            });
-        }
-        
         // Bouton d'envoi de message
         const sendBtn = document.getElementById(this.sendButtonId);
         if (sendBtn) {
@@ -180,152 +175,79 @@ class ChatManager {
     }
 
     /**
-     * Charger le pseudo depuis localStorage
+     * Charger le pseudo depuis la session utilisateur
      */
     loadPseudo() {
-        const stored = localStorage.getItem('chatPseudo');
-        return stored || null;
+        const username = localStorage.getItem('workspace_username');
+        return username || null;
     }
 
     /**
-     * Sauvegarder le pseudo
+     * Sauvegarder le pseudo (non utilisé, lecture seule depuis session)
      */
     savePseudo(pseudo) {
-        localStorage.setItem('chatPseudo', pseudo);
         this.pseudo = pseudo;
     }
 
     /**
-     * Confirmer le pseudo
+     * Confirmer le pseudo (non utilisé, username vient de la session)
      */
     confirmPseudo() {
-        const input = document.getElementById(this.pseudoInputId);
-        if (!input) return;
-        
-        const pseudo = input.value.trim();
-        const errorDisplay = document.getElementById(this.pseudoErrorId);
-        
-        // Valider le pseudo
-        if (!pseudo) {
-            if (errorDisplay) {
-                errorDisplay.textContent = 'Le pseudo ne peut pas être vide';
-            }
+        const username = localStorage.getItem('workspace_username');
+        if (!username) {
+            console.warn('⚠️ Aucun utilisateur connecté');
             return;
         }
         
-        if (pseudo.length < 2) {
-            if (errorDisplay) {
-                errorDisplay.textContent = 'Le pseudo doit faire au moins 2 caractères';
-            }
-            return;
-        }
+        this.savePseudo(username);
         
-        if (pseudo.length > 20) {
-            if (errorDisplay) {
-                errorDisplay.textContent = 'Le pseudo ne peut pas dépasser 20 caractères';
-            }
-            return;
-        }
-        
-        // Valider : pas de caractères dangereux
-        if (!/^[a-zA-Z0-9_\-\.àâäéèêëïîôöùûüœæçñ\s]+$/.test(pseudo)) {
-            if (errorDisplay) {
-                errorDisplay.textContent = 'Le pseudo contient des caractères non autorisés';
-            }
-            return;
-        }
-        
-        // Sauvegarder et fermer modal
-        this.savePseudo(pseudo);
-        
-        // Envoyer le pseudo au serveur pour notifier la connexion
         if (this.webSocket.isConnected()) {
-            this.webSocket.setPseudo(pseudo).catch(err => {
+            this.webSocket.setPseudo(username).catch(err => {
                 console.error('❌ Erreur lors de l\'envoi du pseudo:', err);
             });
-        } else {
-            console.warn('⚠️ WebSocket non connecté, le pseudo sera envoyé à la reconnexion');
         }
         
-        // Recalculer msg.own pour tous les messages avec l'ancien pseudo
         this.messages.forEach(msg => {
             msg.own = msg.pseudo === this.pseudo;
         });
         
         this.displayPseudo();
         this.renderMessages();
-        
-        // Nettoyer l'erreur
-        if (errorDisplay) {
-            errorDisplay.textContent = '';
-        }
     }
 
     /**
      * Afficher le pseudo avec compteur d'utilisateurs
      */
     displayPseudo() {
-        const pseudoModal = document.getElementById('chat-widget-pseudo-modal');
         const pseudoDisplay = document.getElementById(this.pseudoDisplayId);
-        const changeBtn = document.getElementById('chat-widget-pseudo-change');
         
         if (!pseudoDisplay) return;
         
         if (this.pseudo) {
-            // Utiliser le nombre d'utilisateurs connectés du serveur
             const displayCount = this.userCount > 0 ? this.userCount : 0;
             
-            // Pseudo confirmé avec icône et compteur aligné à droite
             pseudoDisplay.innerHTML = `
                 <div class="chat-pseudo-confirmed">
-                    <div class="chat-pseudo-left">
-                        <i class="fas fa-user-circle"></i>
-                        <span class="chat-pseudo-text">${this.pseudo}</span>
+                    <div class="chat-pseudo-info">
+                        <i class="fas fa-user"></i>
+                        <span>${this.escapeHtml(this.pseudo)}</span>
                     </div>
-                    <div class="chat-pseudo-right">
-                        <span class="chat-user-count">${displayCount} utilisateur(s)</span>
+                    <div class="chat-user-count">
+                        <i class="fas fa-users"></i>
+                        <span>${displayCount}</span>
                     </div>
                 </div>
             `;
-            
-            // Fermer le modal
-            if (pseudoModal) {
-                pseudoModal.classList.remove('show');
-            }
-            
-            // Afficher et attacher l'écouteur au bouton de changement
-            if (changeBtn) {
-                changeBtn.classList.add('show');
-                changeBtn.removeEventListener('click', this.boundChangeHandler);
-                this.boundChangeHandler = () => this.showPseudoModal();
-                changeBtn.addEventListener('click', this.boundChangeHandler);
-            }
         } else {
-            // Pseudo non confirmé - afficher le modal
-            if (changeBtn) {
-                changeBtn.classList.remove('show');
-            }
-            this.showPseudoModal();
+            pseudoDisplay.innerHTML = `
+                <div class="chat-pseudo-required">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>Connectez-vous pour utiliser le chat</span>
+                </div>
+            `;
         }
     }
 
-    /**
-     * Afficher le modal de pseudo
-     */
-    showPseudoModal() {
-        const pseudoModal = document.getElementById('chat-widget-pseudo-modal');
-        if (pseudoModal) {
-            pseudoModal.classList.add('show');
-            const input = document.getElementById(this.pseudoInputId);
-            if (input) {
-                input.focus();
-            }
-        }
-    }
-
-    /**
-     * Charger les messages du serveur
-     */
     /**
      * Envoyer un message via WebSocket
      */
@@ -337,7 +259,7 @@ class ChatManager {
         
         if (!text) return;
         if (!this.pseudo) {
-            console.warn('⚠️ Pseudo non défini');
+            alert('Vous devez être connecté pour envoyer des messages');
             return;
         }
         
@@ -489,6 +411,12 @@ class ChatManager {
         if (this.webSocket) {
             this.webSocket.disconnect?.();
         }
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     }
 }
 

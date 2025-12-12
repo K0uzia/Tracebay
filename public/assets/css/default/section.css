@@ -9,6 +9,7 @@
 
     & button {
         display: flex;
+        flex-direction: row;
         align-items: center;
         gap: var(--unit-1);
         padding: var(--unit-1) var(--unit-3);
