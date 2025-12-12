@@ -1,39 +1,69 @@
-/**
- * DATABASE.JS - Configuration SQLite3
- * Gestion centralisée de la base de données Workspace
- */
-
 const sqlite3 = require('sqlite3');
 const path = require('path');
+const fs = require('fs');
+const logger = require('./logger.js');
 require('dotenv').config();
 
-// Chemin de la base de données (utilise .env ou défaut)
-const dbPath = process.env.DB_PATH 
-    ? path.resolve(process.env.DB_PATH)
-    : path.join(__dirname, 'data', 'database.sqlite');
+function validateDBPath(dbPath) {
+    const dir = path.dirname(dbPath);
+    
+    if (!path.isAbsolute(dbPath)) {
+        throw new Error(`Le chemin DB doit être absolu: ${dbPath}`);
+    }
+    
+    if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        logger.info(`📁 Répertoire DB créé: ${dir}`);
+    }
+    
+    return dbPath;
+}
 
-// Configuration SQLite3
+const dbPath = validateDBPath(
+    process.env.DB_PATH 
+        ? path.resolve(process.env.DB_PATH)
+        : path.join(__dirname, 'data', 'database.sqlite')
+);
+
 const db = new sqlite3.Database(dbPath, (err) => {
     if (err) {
-        console.error('❌ Erreur connexion BDD:', err.message);
-    } else {
-        initializeTables();
+        logger.error('❌ Erreur connexion BDD:', err);
+        throw err;
     }
+    logger.info(`✅ Connexion BDD: ${dbPath}`);
+    initializeTables();
 });
 
-/**
- * Initialiser les tables de la base de données (synchrone avec exec)
- */
 function initializeTables() {
     const sql = `
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
-            email TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
-            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            password_hash TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+
+        CREATE TABLE IF NOT EXISTS shortcuts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            category_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            url TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS shortcut_categories (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            position INTEGER DEFAULT 0,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_shortcuts_user_id ON shortcuts(user_id);
+        CREATE INDEX IF NOT EXISTS idx_shortcut_categories_user_id ON shortcut_categories(user_id);
 
         CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,18 +119,14 @@ function initializeTables() {
 
     db.exec(sql, (err) => {
         if (err) {
-            console.error('❌ Erreur initialisation tables:', err.message);
+            logger.error('❌ Erreur initialisation tables:', err);
+            throw err;
         }
+        logger.info('✅ Tables BDD initialisées');
     });
 }
 
-/**
- * Wrapper Promise pour les requêtes DB
- */
 const dbPromise = {
-    /**
-     * Exécuter une requête (INSERT, UPDATE, DELETE)
-     */
     run(sql, params = []) {
         return new Promise((resolve, reject) => {
             db.run(sql, params, function(err) {
@@ -110,9 +136,6 @@ const dbPromise = {
         });
     },
 
-    /**
-     * Récupérer une ligne
-     */
     get(sql, params = []) {
         return new Promise((resolve, reject) => {
             db.get(sql, params, (err, row) => {
@@ -122,9 +145,6 @@ const dbPromise = {
         });
     },
 
-    /**
-     * Récupérer plusieurs lignes
-     */
     all(sql, params = []) {
         return new Promise((resolve, reject) => {
             db.all(sql, params, (err, rows) => {
@@ -134,9 +154,6 @@ const dbPromise = {
         });
     },
 
-    /**
-     * Exécuter une transaction
-     */
     transaction(fn) {
         return new Promise((resolve, reject) => {
             db.run('BEGIN TRANSACTION', (err) => {
@@ -155,14 +172,16 @@ const dbPromise = {
     }
 };
 
-/**
- * Fermer la connexion à la BDD
- */
 function closeDatabase() {
     return new Promise((resolve, reject) => {
         db.close((err) => {
-            if (err) reject(err);
-            else resolve();
+            if (err) {
+                logger.error('❌ Erreur fermeture BDD:', err);
+                reject(err);
+            } else {
+                logger.info('✅ BDD fermée');
+                resolve();
+            }
         });
     });
 }

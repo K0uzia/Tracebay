@@ -87,6 +87,65 @@ menu {
     animation: fa-spin 2s infinite linear;
 }
 
+.nav-action {
+    position: relative;
+}
+
+.nav-profile {
+    padding: var(--unit-1);
+}
+
+.profile-dropdown {
+    position: absolute;
+    top: calc(100% + var(--unit-1));
+    right: 0;
+    background-color: var(--blanc);
+    border: 1px solid var(--gris-light);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-medium);
+    min-width: 200px;
+    z-index: 200;
+    padding: var(--unit-1);
+}
+
+.profile-dropdown.hidden {
+    display: none;
+}
+
+.profile-auth,
+.profile-user {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+
+.profile-user.hidden {
+    display: none;
+}
+
+.profile-username {
+    padding: var(--unit-2);
+    font-weight: bold;
+    color: var(--bleu1);
+    text-align: center;
+    border-bottom: 1px solid var(--gris-light);
+}
+
+.profile-btn {
+    padding: var(--unit-2);
+    border: none;
+    background-color: var(--bleu1);
+    color: var(--blanc);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 1rem;
+}
+
+.profile-btn:hover {
+    background-color: var(--bleu2);
+}
+
 @keyframes fa-spin {
     0% {
         transform: rotate(0deg);

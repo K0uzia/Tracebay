@@ -1,130 +1,36 @@
 <section class="shortcut section">
+
     <div class="section-title">
-        <h2>Raccourcis</h2>
-        <button type="button" id="add-main-category-btn" class="btn-primary">+ Nouvelle catégorie</button>
+        <h2>Mes raccourcis</h2>
     </div>
-    <div class="section-contain">
-        <div id="shortcuts-container" class="shortcuts-container">
-            <!-- Les catégories principales seront générées ici -->
+
+    <div id="shortcut-auth-required" class="shortcut-auth-required hidden">
+        <i class="fas fa-lock"></i>
+        <h3>Authentification requise</h3>
+        <p>Vous devez être connecté pour gérer vos raccourcis.</p>
+        <button id="shortcut-login-btn" class="btn btn-primary">
+            <i class="fas fa-sign-in-alt"></i> Se connecter
+        </button>
+    </div>
+
+    <div id="shortcut-content" class="shortcut-content">
+        <div class="shortcut-toolbar">
+            <div class="search-container">
+                <i class="fas fa-search"></i>
+                <input 
+                    type="text" 
+                    id="shortcut-search-input" 
+                    placeholder="Rechercher un raccourci... (Ctrl+F)"
+                    autocomplete="off"
+                >
+            </div>
+            <button id="add-category-btn" class="btn btn-primary" title="Ajouter une catégorie">
+                <i class="fas fa-plus"></i> Nouvelle catégorie
+            </button>
+        </div>
+
+        <div class="section-contain">
+            <div id="shortcut-grid" class="shortcut-grid"></div>
         </div>
     </div>
 </section>
-
-<!-- Modal pour créer une catégorie principale -->
-<dialog id="modal-add-category" class="universal-modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Nouvelle catégorie</h2>
-            <button type="button" class="modal-close-btn" data-close="modal-add-category">×</button>
-        </div>
-        <div class="modal-body">
-            <form id="form-add-category">
-                <div class="form-group">
-                    <label for="category-name">Nom de la catégorie *</label>
-                    <input type="text" id="category-name" name="categoryName" placeholder="ex: Liens utiles" required maxlength="50">
-                </div>
-                <div class="form-group">
-                    <label for="category-color">Couleur</label>
-                    <input type="color" id="category-color" name="categoryColor" value="#3788d8">
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-close="modal-add-category">Annuler</button>
-                    <button type="submit" class="btn-primary">Créer</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</dialog>
-
-<!-- Modal pour créer une sous-catégorie -->
-<dialog id="modal-add-subcategory" class="universal-modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Nouvelle sous-catégorie</h2>
-            <button type="button" class="modal-close-btn" data-close="modal-add-subcategory">×</button>
-        </div>
-        <div class="modal-body">
-            <form id="form-add-subcategory">
-                <div class="form-group">
-                    <label for="subcategory-name">Nom de la sous-catégorie *</label>
-                    <input type="text" id="subcategory-name" name="subcategoryName" placeholder="ex: Plateformes de travail" required maxlength="50">
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-close="modal-add-subcategory">Annuler</button>
-                    <button type="submit" class="btn-primary">Créer</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</dialog>
-
-<!-- Modal pour créer un raccourci -->
-<dialog id="modal-add-shortcut" class="universal-modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Nouveau raccourci</h2>
-            <button type="button" class="modal-close-btn" data-close="modal-add-shortcut">×</button>
-        </div>
-        <div class="modal-body">
-            <form id="form-add-shortcut">
-                <div class="form-group">
-                    <label for="shortcut-name">Nom du raccourci *</label>
-                    <input type="text" id="shortcut-name" name="shortcutName" placeholder="ex: Google Drive" required maxlength="50">
-                </div>
-                <div class="form-group">
-                    <label for="shortcut-url">URL *</label>
-                    <input type="url" id="shortcut-url" name="shortcutUrl" placeholder="https://..." required>
-                </div>
-                <div class="form-group">
-                    <label for="shortcut-icon">Icône (optionnel)</label>
-                    <p class="form-hint">Par défaut, la favicon du site sera utilisée automatiquement</p>
-                    <div class="icon-selector-wrapper">
-                        <input type="text" id="shortcut-icon" name="shortcutIcon" placeholder="Sélectionnez une icône" readonly>
-                        <button type="button" class="btn-icon-select" id="btn-icon-select">Choisir</button>
-                    </div>
-                    <div id="selected-icon-preview" class="icon-preview">
-                        <i class="fas fa-link"></i>
-                    </div>
-                </div>
-                <div class="form-actions">
-                    <button type="button" class="btn-secondary" data-close="modal-add-shortcut">Annuler</button>
-                    <button type="submit" class="btn-primary">Créer</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</dialog>
-
-<!-- Modal de sélection d'icônes -->
-<dialog id="modal-icon-selector" class="universal-modal modal-icon-selector">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Sélectionner une icône</h2>
-            <button type="button" class="modal-close-btn" data-close="modal-icon-selector">×</button>
-        </div>
-        <div class="modal-body">
-            <input type="text" id="icon-search" class="icon-search" placeholder="Rechercher une icône...">
-            <div id="icons-grid" class="icons-grid">
-                <!-- Les icônes seront générées ici -->
-            </div>
-        </div>
-    </div>
-</dialog>
-
-<!-- Modal universel de confirmation de suppression -->
-<dialog id="modal-confirm-delete" class="universal-modal modal-confirm">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2>Confirmation</h2>
-            <button type="button" class="modal-close-btn" data-close="modal-confirm-delete">×</button>
-        </div>
-        <div class="modal-body">
-            <p id="confirm-message">Êtes-vous sûr de vouloir supprimer cet élément ?</p>
-            <p class="confirm-warning" id="confirm-warning"></p>
-        </div>
-        <div class="form-actions">
-            <button type="button" class="btn-secondary" data-close="modal-confirm-delete">Annuler</button>
-            <button type="button" id="btn-confirm-delete" class="btn-danger">Supprimer</button>
-        </div>
-    </div>
-</dialog>
