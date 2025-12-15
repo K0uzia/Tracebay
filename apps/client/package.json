@@ -1,0 +1,69 @@
+{
+  "name": "workspace-client",
+  "version": "1.0.0",
+  "main": "main.js",
+  "homepage": "https://github.com/SandersonnDev/workspace#readme",
+  "description": "Workspace Client - Interface utilisateur collaborative",
+  "author": "Sandersonn",
+  "license": "MIT",
+  "dependencies": {
+    "electron-squirrel-startup": "^1.0.1"
+  },
+  "devDependencies": {
+    "@electron-forge/cli": "^7.10.2",
+    "@electron-forge/maker-deb": "^7.10.2",
+    "@electron-forge/maker-squirrel": "^7.10.2",
+    "@electron-forge/maker-zip": "^7.10.2",
+    "@electron-forge/plugin-webpack": "^7.10.2",
+    "@electron-forge/publisher-github": "^7.10.2",
+    "@fortawesome/fontawesome-svg-core": "^7.1.0",
+    "@fortawesome/free-brands-svg-icons": "^7.1.0",
+    "@fortawesome/free-regular-svg-icons": "^7.1.0",
+    "@fortawesome/free-solid-svg-icons": "^7.1.0",
+    "electron": "^39.2.4",
+    "electron-builder": "^26.0.12",
+    "electron-updater": "^6.6.2"
+  },
+  "scripts": {
+    "start": "electron-forge start",
+    "dev": "electron-forge start --inspect",
+    "build": "electron-forge make",
+    "build:win": "electron-forge make --platform win32",
+    "build:mac": "electron-forge make --platform darwin",
+    "build:linux": "electron-forge make --platform linux",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint . --ext .js"
+  },
+  "build": {
+    "appId": "com.workspace.client",
+    "productName": "Workspace Client",
+    "publish": {
+      "provider": "github",
+      "owner": "SandersonnDev",
+      "repo": "Workspace",
+      "releaseType": "draft"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "public/**/*"
+    ],
+    "win": {
+      "target": ["portable", "nsis"]
+    },
+    "mac": {
+      "target": ["dmg"]
+    },
+    "linux": {
+      "target": ["AppImage"]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SandersonnDev/workspace.git"
+  },
+  "bugs": {
+    "url": "https://github.com/SandersonnDev/workspace/issues"
+  }
+}
