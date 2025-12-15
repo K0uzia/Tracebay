@@ -59,7 +59,6 @@ export const CHAT_SECURITY_CONFIG = {
 export function blockDomain(domain) {
     if (!CHAT_SECURITY_CONFIG.blockedDomains.includes(domain)) {
         CHAT_SECURITY_CONFIG.blockedDomains.push(domain);
-        console.log(`🚫 Domaine bloqué: ${domain}`);
     }
 }
 
@@ -70,7 +69,6 @@ export function blockKeyword(keyword) {
     const lowerKeyword = keyword.toLowerCase();
     if (!CHAT_SECURITY_CONFIG.blockedKeywords.includes(lowerKeyword)) {
         CHAT_SECURITY_CONFIG.blockedKeywords.push(lowerKeyword);
-        console.log(`🚫 Mot-clé bloqué: ${keyword}`);
     }
 }
 
@@ -80,7 +78,6 @@ export function blockKeyword(keyword) {
 export function allowDomain(domain) {
     if (!CHAT_SECURITY_CONFIG.allowedDomains.includes(domain)) {
         CHAT_SECURITY_CONFIG.allowedDomains.push(domain);
-        console.log(`✅ Domaine autorisé: ${domain}`);
     }
 }
 
@@ -89,14 +86,12 @@ export function allowDomain(domain) {
  */
 export function enableStrictMode(enabled = true) {
     CHAT_SECURITY_CONFIG.strictMode = enabled;
-    console.log(`🔐 Mode strict: ${enabled ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`);
 }
 
 /**
  * Afficher la configuration actuelle
  */
 export function showSecurityConfig() {
-    console.log('📋 Configuration de sécurité actuelle:', CHAT_SECURITY_CONFIG);
     return CHAT_SECURITY_CONFIG;
 }
 

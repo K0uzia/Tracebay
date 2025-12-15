@@ -6,7 +6,7 @@ menu {
     height: 45px;
     padding: var(--unit-1) var(--unit-2);
     background-color: var(--bleu1);
-    box-shadow: var(--shadow-medium);
+    box-shadow: var(--shadow-small);
     position: relative;
     z-index: 100;
 }
@@ -85,6 +85,65 @@ menu {
 
 .nav-option:hover i {
     animation: fa-spin 2s infinite linear;
+}
+
+.nav-action {
+    position: relative;
+}
+
+.nav-profile {
+    padding: var(--unit-1);
+}
+
+.profile-dropdown {
+    position: absolute;
+    top: calc(100% + var(--unit-1));
+    right: 0;
+    background-color: var(--bleu1);
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-medium);
+    min-width: 200px;
+    z-index: 200;
+    padding: var(--unit-1);
+}
+
+.profile-dropdown.hidden {
+    display: none;
+}
+
+.profile-auth,
+.profile-user {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+
+.profile-user.hidden {
+    display: none;
+}
+
+.profile-username {
+    padding: var(--unit-2);
+    font-weight: bold;
+    color: var(--blanc);
+    text-align: center;
+    border-bottom: 2px solid var(--jaune);
+}
+
+.profile-btn {
+    padding: var(--unit-2);
+    border: none;
+    background-color: var(--bleu2);
+    color: var(--blanc);
+    border-radius: var(--radius-medium);
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 1rem;
+}
+
+.profile-btn:hover {
+    background-color: var(--bleu2);
+    color: var(--jaune);
 }
 
 @keyframes fa-spin {
