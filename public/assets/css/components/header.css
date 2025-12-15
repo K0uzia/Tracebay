@@ -99,9 +99,8 @@ menu {
     position: absolute;
     top: calc(100% + var(--unit-1));
     right: 0;
-    background-color: var(--blanc);
-    border: 1px solid var(--gris-light);
-    border-radius: var(--radius);
+    background-color: var(--bleu1);
+    border-radius: var(--radius-medium);
     box-shadow: var(--shadow-medium);
     min-width: 200px;
     z-index: 200;
@@ -126,17 +125,17 @@ menu {
 .profile-username {
     padding: var(--unit-2);
     font-weight: bold;
-    color: var(--bleu1);
+    color: var(--blanc);
     text-align: center;
-    border-bottom: 1px solid var(--gris-light);
+    border-bottom: 2px solid var(--jaune);
 }
 
 .profile-btn {
     padding: var(--unit-2);
     border: none;
-    background-color: var(--bleu1);
+    background-color: var(--bleu2);
     color: var(--blanc);
-    border-radius: var(--radius);
+    border-radius: var(--radius-medium);
     cursor: pointer;
     transition: var(--transition);
     font-size: 1rem;
@@ -144,6 +143,7 @@ menu {
 
 .profile-btn:hover {
     background-color: var(--bleu2);
+    color: var(--jaune);
 }
 
 @keyframes fa-spin {
