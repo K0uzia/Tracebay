@@ -1,16 +1,15 @@
 .section {
+    height: 100%;
     padding: var(--unit-2) var(--unit-6);
-
-    & .split {
-        display: block;
-        background-color: var(--orange);
-        height: calc(var(--unit-1)/4);
-        width: auto;
-        border-radius: var(--unit-1);
-    }
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-sizing: border-box;
 
     & button {
         display: flex;
+        flex-direction: row;
         align-items: center;
         gap: var(--unit-1);
         padding: var(--unit-1) var(--unit-3);
@@ -22,7 +21,7 @@
         font-size: 0.95rem;
         transition: var(--transition);
         text-decoration: none;
-        box-shadow: var(--shadow-medium);
+        box-shadow: var(--shadow-small);
     }
 
     & button:hover {
@@ -35,33 +34,98 @@
     display: flex;
     flex-direction: row;
     align-items: center;
+    justify-content: space-between;
+    gap: var(--unit-2);
+}
 
-    & h2 {
-        margin-right: var(--unit-2);
-        font: var(--font-subtitle);
-        color: var(--h2);
-    }
+.section-title p {
+    font: var(--font-text);
+    color: var(--text2);
+}
 
-    & p {
-        font: var(--font-text);
-        color: var(--text2);
-    }
+.section-title h1 {
+    color: var(--h1);
+    margin: 0;
+}
+
+.section-title h2 {
+    display: block;
+    position: relative;
+    margin: 0;
+    padding-bottom: var(--unit-2);
+    font: var(--font-subtitle);
+    color: var(--h2);
+}
+
+.section-title h2::before,
+.section-title h2::after {
+    position: absolute;
+    left: 0;
+    top: 85%;
+    bottom: -55px;
+    height: 3px;
+    background-color: var(--orange);
+    content: '';
+}
+
+.section-title h2::before {
+    width: 40px;    
+}
+
+.section-title h2::after {
+    width: 25px;
+    margin-top: 6px;
 }
 
 .section-contain {
     display: flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    height: 100%;
     padding: var(--unit-2);
+    margin-top: var(--unit-2);
+}
+
+/* ========== SCROLLBAR STYLING ========== */
+
+.section::-webkit-scrollbar {
+    width: calc(var(--unit-1) * 0.75);
+}
+
+.section::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.section::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-color);
+}
+
+.section::-webkit-scrollbar-thumb:hover {
+    background: var(--orange);
 }
 
 /* ========== RESPONSIVE MOBILE ========== */
 @media (max-width: 980px) {
+    .section {
+        padding: var(--unit-2) var(--unit-3);
+    }
     .section-contain {
         flex-direction: column;
         align-items: center;
         padding: 0;
+    }
+
+    .section-title {
+        flex-direction: row;
+        margin: 15px 0;
+    }
+
+    .section-title h2 {
+        font: var(--font-subtitle);
+    }
+
+    .section-title h2::before {
+        width: 30px;
+    }
+
+    .section-title h2::after {
+        width: 20px;
     }
 }

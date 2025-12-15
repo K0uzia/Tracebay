@@ -1,104 +1,199 @@
 // Importer les modules Electron
 const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
+const http = require('http');
+const fs = require('fs');
+const logger = require('./logger.js');
 
 let mainWindow;
-let pdfWindows = new Map(); // Stocker les références des fenêtres PDF
+let pdfWindows = new Map();
+let server = null;
+let serverStopping = false;
 
-/**
- * Créer la fenêtre principale
- */
-function createWindow() {
-    console.log('🪟 Création de la fenêtre');
-    
-    // Créer une fenêtre
-    mainWindow = new BrowserWindow({
-        width: 1200,           // Largeur
-        height: 800,           // Hauteur
-        webPreferences: {
-            // Sécurité
-            nodeIntegration: false,      // N'expose pas Node.js
-            contextIsolation: true,      // Isoler le contexte
-            preload: path.join(__dirname, 'preload.js')  // Charger preload.js
+const PORT = process.env.PORT || 8060;
+const MAX_SERVER_CHECK_RETRIES = 10;
+const SERVER_CHECK_INTERVAL = 200;
+
+function checkServerReady(retries = 0) {
+    return new Promise((resolve, reject) => {
+        const req = http.get(`http://localhost:${PORT}/api/health`, (res) => {
+            if (res.statusCode === 200) {
+                logger.info(`✅ APPLICATION LANCÉE`);
+                logger.info(`📍 Serveur HTTP: http://localhost:${PORT}`);
+                logger.info(`🔌 WebSocket: ws://localhost:${PORT}`);
+                logger.info(`💻 Poste connecté au serveur`);
+                resolve(PORT);
+            } else if (retries < MAX_SERVER_CHECK_RETRIES) {
+                setTimeout(() => {
+                    checkServerReady(retries + 1).then(resolve).catch(reject);
+                }, SERVER_CHECK_INTERVAL);
+            } else {
+                reject(new Error('Serveur non disponible après vérification'));
+            }
+        });
+
+        req.on('error', () => {
+            if (retries < MAX_SERVER_CHECK_RETRIES) {
+                setTimeout(() => {
+                    checkServerReady(retries + 1).then(resolve).catch(reject);
+                }, SERVER_CHECK_INTERVAL);
+            } else {
+                reject(new Error('Serveur non disponible'));
+            }
+        });
+    });
+}
+
+function startServer() {
+    return new Promise((resolve, reject) => {
+        try {
+            server = require('./server.js');
+            checkServerReady().then(resolve).catch(reject);
+        } catch (err) {
+            logger.error('❌ Erreur démarrage serveur:', err);
+            reject(err);
         }
     });
-
-    // Charger la page HTML
-    mainWindow.loadFile('index.html');
-
-    // // Ouvrir les DevTools (à enlever en production)
-    // mainWindow.webContents.openDevTools();
-
-    // console.log('✅ Fenêtre créée');
-
-    // // Gérer la fermeture
-    // mainWindow.on('closed', () => {
-    //     mainWindow = null;
-    //     console.log('❌ Fenêtre fermée');
-    // });
 }
 
 /**
- * Événement : App prête
- * → Créer la fenêtre
+ * Arrêter le serveur proprement
  */
-app.on('ready', createWindow);
+function stopServer() {
+    return new Promise((resolve) => {
+        // Éviter les appels multiples
+        if (serverStopping) {
+            resolve();
+            return;
+        }
+        
+        serverStopping = true;
+        if (server && typeof server.shutdown === 'function') {
+            server.shutdown().then(() => {
+                resolve();
+            }).catch(() => {
+                resolve();
+            });
+        } else {
+            resolve();
+        }
+    });
+}
 
-/**
- * Événement : Toutes les fenêtres fermées
- * → Quitter l'app (Windows/Linux)
- */
-app.on('window-all-closed', () => {
-    if (process.platform !== 'darwin') {  // darwin = macOS
+function createWindow() {
+    mainWindow = new BrowserWindow({
+        width: 1200,
+        height: 800,
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            preload: path.join(__dirname, 'preload.js')
+        }
+    });
+
+    mainWindow.loadURL(`http://localhost:${PORT}`);
+
+    mainWindow.webContents.on('console-message', (level, message) => {
+        if (typeof message === 'string' && 
+            !message.includes('Autofill') && 
+            !message.includes('atom_cache') &&
+            !message.includes('privileged')) {
+            console.log(`[Electron] ${message}`);
+        }
+    });
+
+    mainWindow.webContents.on('destroyed', () => {
+        mainWindow = null;
+    });
+
+    if (process.env.NODE_ENV === 'development') {
+        mainWindow.webContents.openDevTools();
+    }
+
+    mainWindow.on('closed', () => {
+        mainWindow = null;
+    });
+}
+
+app.on('ready', async () => {
+    try {
+        await startServer();
+        createWindow();
+        logger.info(`💻 Interface graphique créée et lancée`);
+        logger.info(`✨ Application prête et fonctionnelle`);
+    } catch (error) {
+        logger.error('❌ Erreur initialisation:', error);
         app.quit();
     }
 });
 
-/**
- * Événement : App réactivée (macOS uniquement)
- * → Recréer la fenêtre
- */
+app.on('window-all-closed', async () => {
+    if (process.platform !== 'darwin') {
+        await stopServer();
+        app.quit();
+    }
+});
+
 app.on('activate', () => {
     if (mainWindow === null) {
         createWindow();
     }
 });
 
-/**
- * IPC : Ouvrir une URL externe dans le navigateur par défaut
- * Appelé par : window.electron.openExternal(url)
- */
-ipcMain.on('open-external', (event, url) => {
-    console.log(`🌐 Ouverture de l'URL externe: ${url}`);
-    shell.openExternal(url).catch(error => {
-        console.error('❌ Erreur ouverture URL:', error);
+app.on('before-quit', async () => {
+    logger.info('⏹️  ARRÊT DE L\'APPLICATION');
+    logger.info(`🚪 Poste déconnecté du serveur (http://localhost:${PORT})`);
+    logger.info(`🔌 Fermeture de WebSocket sur ws://localhost:${PORT}`);
+    
+    pdfWindows.forEach((win) => {
+        if (win && !win.isDestroyed()) {
+            win.close();
+        }
     });
+    pdfWindows.clear();
+    
+    await stopServer();
+    logger.info('✅ APPLICATION ARRÊTÉE - Fin de session');
+    logger.info('============================================================');
+    process.exit(0);
 });
 
-/**
- * IPC : Ouvrir un fichier PDF avec l'application par défaut
- * Appelé par : window.electron.openPDF('open-pdf')
- */
+ipcMain.handle('open-external', async (event, url) => {
+    try {
+        await shell.openExternal(url);
+        return { success: true };
+    } catch (error) {
+        logger.error('❌ Erreur ouverture URL:', error);
+        throw error;
+    }
+});
+
 ipcMain.on('open-pdf', (event) => {
     const pdfPath = path.join(__dirname, 'public', 'src', 'pdf', 'Règlement_intérieur_chantier_num.pdf');
-    console.log(`📄 Ouverture du PDF: ${pdfPath}`);
     shell.openPath(pdfPath).catch(error => {
-        console.error('❌ Erreur ouverture PDF:', error);
+        logger.error('❌ Erreur ouverture PDF:', error);
     });
 });
 
-/**
- * IPC : Ouvrir un PDF dans une nouvelle fenêtre
- * Appelé par : window.electron.invoke('open-pdf-window', {pdfFile, title})
- */
 ipcMain.handle('open-pdf-window', async (event, data) => {
     try {
         const { pdfFile, title } = data;
+        
+        if (!pdfFile || typeof pdfFile !== 'string') {
+            return { success: false, error: 'Nom de fichier invalide' };
+        }
+        
+        if (pdfFile.includes('..') || pdfFile.includes('/') || pdfFile.includes('\\')) {
+            return { success: false, error: 'Chemin de fichier non autorisé' };
+        }
+        
         const pdfPath = path.join(__dirname, 'public', 'src', 'pdf', pdfFile);
         
-        console.log(`📄 Création fenêtre PDF: ${title} (${pdfFile})`);
+        if (!fs.existsSync(pdfPath)) {
+            logger.warn(`⚠️  Fichier PDF introuvable: ${pdfFile}`);
+            return { success: false, error: 'Fichier introuvable' };
+        }
         
-        // Créer une nouvelle fenêtre
         const pdfWindow = new BrowserWindow({
             width: 900,
             height: 700,
@@ -109,30 +204,25 @@ ipcMain.handle('open-pdf-window', async (event, data) => {
             }
         });
         
-        // Charger le PDF dans la fenêtre
         pdfWindow.loadURL(`file://${pdfPath}`);
         pdfWindow.webContents.setWindowOpenHandler(({ url }) => {
             shell.openExternal(url);
             return { action: 'deny' };
         });
         
-        // Définir le titre de la fenêtre
-        pdfWindow.setTitle(title);
+        pdfWindow.setTitle(title || 'PDF');
         
-        // Stocker la référence
-        pdfWindow.id = Math.random();
-        pdfWindows.set(pdfWindow.id, pdfWindow);
+        const windowId = `pdf-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+        pdfWindow.id = windowId;
+        pdfWindows.set(windowId, pdfWindow);
         
-        // Nettoyer quand la fenêtre est fermée
         pdfWindow.on('closed', () => {
-            pdfWindows.delete(pdfWindow.id);
+            pdfWindows.delete(windowId);
         });
         
-        return { success: true };
+        return { success: true, windowId };
     } catch (error) {
-        console.error('❌ Erreur ouverture fenêtre PDF:', error);
+        logger.error('❌ Erreur ouverture PDF window:', error);
         return { success: false, error: error.message };
     }
 });
-
-console.log('🚀 Electron démarré');

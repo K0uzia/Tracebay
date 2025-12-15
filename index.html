@@ -4,16 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="./public/assets/css/global.css">
+    <link rel="stylesheet" href="/assets/css/global.css">
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.0/css/all.min.css">
     <title>Workspace By Sandersonn</title>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://cdnjs.cloudflare.com; font-src https://cdnjs.cloudflare.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://cdnjs.cloudflare.com; font-src https://cdnjs.cloudflare.com; img-src 'self' https:;">
 </head>
 
 <body>
     <!-- HEADER -->
     <header id="header"></header>
+
+    <!-- AUTH MODAL -->
+    <div id="authModalContainer"></div>
 
     <!-- CONTENU PRINCIPAL (où les pages se chargeront) -->
     <main id="content">
@@ -120,6 +123,6 @@
     </div>
 
     <!-- SCRIPT PRINCIPAL -->
-    <script type="module" src="./public/assets/js/global.js"></script>
-    <script src="./app.js"></script>
+    <script type="module" src="/assets/js/global.js"></script>
+    <script src="/app.js"></script>
 </body>

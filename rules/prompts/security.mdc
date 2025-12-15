@@ -10,4 +10,15 @@
   - Intégrer la gestion des erreurs pour ne jamais laisser fuiter des informations sensibles.
   - Respecter les normes et recommandations internationales (OWASP top 10, ISO/IEC 27001...).
   - Promouvoir la revue et les tests de sécurité automatisés (linting, analyse statique, tests unitaires).
-  - Ne pas générer de code obfusqué sauf si c’est explicitement demandé et justifié.
+  - Ne pas générer de code obfusqué sauf si c'est explicitement demandé et justifié.
+  
+  ## Content Security Policy (CSP)
+  
+  - **Jamais de styles inline** : Utiliser des classes CSS externes pour tous les styles.
+  - **Jamais de scripts inline** : Tout JavaScript doit être dans des fichiers externes.
+  - **Interdire `style="..."` dans le HTML** : Appliquer tous les styles via des classes CSS définies dans des fichiers `.css`.
+  - **Éviter `onclick="..."` et attributs événements inline** : Utiliser `addEventListener()` dans les fichiers JavaScript.
+  - **Pas de `eval()` ni `new Function()`** : Ces constructions violent la CSP et posent des risques de sécurité.
+  - **Hash ou nonce pour exceptions** : Si absolument nécessaire, utiliser des hash SHA-256 ou des nonces cryptographiques, mais privilégier toujours l'approche sans inline.
+  - **Validation CSP stricte** : Configurer les headers CSP pour bloquer `'unsafe-inline'` et `'unsafe-eval'`.
+  - **Classes CSS réutilisables** : Créer des classes utilitaires pour les cas courants (`.text-center`, `.color-primary`, etc.) plutôt que dupliquer des styles inline.
