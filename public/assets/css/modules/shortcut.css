@@ -3,7 +3,7 @@
     justify-content: space-between;
     align-items: center;
     padding: var(--unit-2);
-    margin-bottom: var(--unit-2);
+    margin: var(--unit-2) 0 var(--unit-2) 0;
     background: var(--blanc);
     border-radius: var(--radius-medium);
     box-shadow: var(--shadow-small);
@@ -29,6 +29,10 @@
 }
 
 .shortcut-auth-required i {
+    font-size: 1rem;
+    color: var(--blanc);
+}
+.shortcut-auth-required span i {
     font-size: 4rem;
     color: var(--bleu1);
     margin-bottom: var(--unit-3);

@@ -26,7 +26,7 @@
 .auth-modal-container {
     position: relative;
     background-color: var(--blanc);
-    border-radius: var(--radius);
+    border-radius: var(--radius-medium);
     box-shadow: var(--shadow-large);
     width: 90%;
     max-width: 450px;
@@ -148,7 +148,7 @@
     background-color: var(--bleu1);
     color: var(--blanc);
     border: none;
-    border-radius: var(--radius);
+    border-radius: var(--radius-medium);
     font-size: 1rem;
     font-weight: 500;
     cursor: pointer;
