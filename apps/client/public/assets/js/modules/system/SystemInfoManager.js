@@ -44,6 +44,15 @@ export default class SystemInfoManager {
      */
     async fetchLocalInfo() {
         try {
+            let systemInfo = null;
+            if (window.ipcRenderer) {
+                try {
+                    systemInfo = await window.ipcRenderer.invoke('get-system-info');
+                } catch (err) {
+                    console.warn('Impossible d\'obtenir les infos système locales:', err);
+                }
+            }
+
             // IP locale via IPC Electron
             if (window.ipcRenderer) {
                 try {
@@ -57,20 +66,22 @@ export default class SystemInfoManager {
                 }
             }
             
-            // RAM via performance.memory (Chrome/Electron)
-            if (performance.memory) {
-                const usedMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2);
-                const totalMB = (performance.memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2);
-                const usedPercent = ((performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit) * 100).toFixed(0);
-                
-                const ramElement = document.getElementById(this.ramElementId);
-                if (ramElement) {
+            const ramElement = document.getElementById(this.ramElementId);
+            if (ramElement) {
+                if (systemInfo && systemInfo.memory) {
+                    const { usedGb, totalGb, usedPercent } = systemInfo.memory;
+                    ramElement.textContent = `${usedGb} Go / ${totalGb} Go (${usedPercent}%)`;
+                    ramElement.style.color = usedPercent > 90 ? '#c62828' : (usedPercent > 70 ? '#F28241' : '');
+                } else if (performance.memory) {
+                    const usedMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2);
+                    const totalMB = (performance.memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2);
+                    const usedPercent = ((performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit) * 100).toFixed(0);
                     ramElement.textContent = `${usedMB} MB / ${totalMB} MB (${usedPercent}%)`;
                     ramElement.style.color = usedPercent > 90 ? '#c62828' : (usedPercent > 70 ? '#F28241' : '');
-                }
-            } else {
-                const ramElement = document.getElementById(this.ramElementId);
-                if (ramElement) {
+                } else if (navigator.deviceMemory) {
+                    ramElement.textContent = `${navigator.deviceMemory} Go`;
+                    ramElement.style.color = '';
+                } else {
                     ramElement.textContent = 'N/A';
                     ramElement.style.color = '#9ca3af';
                 }
@@ -82,25 +93,62 @@ export default class SystemInfoManager {
             
             if (connectionElement && connectionIcon) {
                 const isOnline = navigator.onLine;
-                
-                if (isOnline) {
-                    connectionElement.textContent = 'En ligne';
-                    connectionElement.style.color = '#4ade80';
-                    connectionIcon.className = 'fas fa-wifi';
-                    
-                    const parentItem = connectionElement.closest('.footer-info-item');
-                    if (parentItem) {
-                        parentItem.setAttribute('title', 'Connexion Internet active');
-                    }
+                const parentItem = connectionElement.closest('.footer-info-item');
+
+                let label = isOnline ? 'En ligne' : 'Hors ligne';
+                let color = isOnline ? '#4ade80' : '#ef4444';
+                let iconClass = 'fas fa-wifi';
+                let title = 'Connexion Internet active';
+
+                if (!isOnline) {
+                    iconClass = 'fas fa-wifi-slash';
+                    title = 'Pas de connexion Internet';
                 } else {
-                    connectionElement.textContent = 'Hors ligne';
-                    connectionElement.style.color = '#ef4444';
-                    connectionIcon.className = 'fas fa-wifi-slash';
+                    // Déterminer le type de connexion
+                    let connectionType = null;
                     
-                    const parentItem = connectionElement.closest('.footer-info-item');
-                    if (parentItem) {
-                        parentItem.setAttribute('title', 'Pas de connexion Internet');
+                    // Priorité 1: Info système locale (plus fiable)
+                    if (systemInfo && systemInfo.network && systemInfo.network.type) {
+                        connectionType = systemInfo.network.type;
+                    } else {
+                        // Priorité 2: API Navigator.connection (si disponible)
+                        const navConn = navigator.connection || navigator.webkitConnection || navigator.mozConnection;
+                        if (navConn && navConn.type) {
+                            connectionType = navConn.type;
+                        }
                     }
+                    
+                    // Appliquer l'icône selon le type
+                    switch (connectionType) {
+                        case 'wifi':
+                            iconClass = 'fas fa-wifi';
+                            title = 'Wi-Fi';
+                            break;
+                        case 'ethernet':
+                        case 'wired':
+                            iconClass = 'fas fa-ethernet'; 
+                            title = 'Ethernet';
+                            break;
+                        case 'cellular':
+                            iconClass = 'fas fa-signal';
+                            title = 'Cellulaire';
+                            break;
+                        case 'bluetooth':
+                            iconClass = 'fas fa-bluetooth-b';
+                            title = 'Bluetooth';
+                            break;
+                        default:
+                            iconClass = 'fas fa-wifi';
+                            title = 'Réseau actif';
+                            break;
+                    }
+                }
+
+                connectionElement.textContent = label;
+                connectionElement.style.color = color;
+                connectionIcon.className = iconClass;
+                if (parentItem) {
+                    parentItem.setAttribute('title', title);
                 }
             }
         } catch (error) {
@@ -201,10 +249,14 @@ export default class SystemInfoManager {
         // Afficher la RAM remontée par le serveur si plus précise
         const ramElement = document.getElementById(this.ramElementId);
         if (ramElement && data.ram) {
-            const ramText = `${data.ram.used} Go / ${data.ram.total} Go (${data.ram.usedPercent}%)`;
-            ramElement.textContent = ramText;
+            const used = data.ram.used || data.ram.usedGb || data.ram.usedBytes;
+            const total = data.ram.total || data.ram.totalGb || data.ram.totalBytes;
+            const usedPercent = parseFloat(data.ram.usedPercent || 0);
+            const displayUsed = data.ram.used || data.ram.usedGb || (used ? (used / 1024 / 1024 / 1024).toFixed(2) : null);
+            const displayTotal = data.ram.total || data.ram.totalGb || (total ? (total / 1024 / 1024 / 1024).toFixed(2) : null);
+
+            ramElement.textContent = `${displayUsed} Go / ${displayTotal} Go (${usedPercent}%)`;
             
-            const usedPercent = parseFloat(data.ram.usedPercent);
             if (usedPercent > 90) {
                 ramElement.style.color = '#c62828';
             } else if (usedPercent > 70) {

@@ -5,7 +5,8 @@
 
 class ChatWebSocket {
     constructor(options = {}) {
-        this.wsUrl = options.wsUrl || this.getWebSocketUrl();
+        // Utiliser l'URL WebSocket depuis APP_CONFIG si disponible
+        this.wsUrl = options.wsUrl || (window.APP_CONFIG && window.APP_CONFIG.serverWsUrl) || this.getWebSocketUrl();
         this.ws = null;
         this.messageHandlers = [];
         this.errorHandlers = [];
@@ -14,11 +15,12 @@ class ChatWebSocket {
         this.reconnectDelay = 3000;
         this.authToken = null;
         
+        console.log('🔌 ChatWebSocket initialisé avec:', this.wsUrl);
         this.connect();
     }
 
     /**
-     * Déterminer l'URL WebSocket à partir de l'URL actuelle
+     * Déterminer l'URL WebSocket à partir de l'URL actuelle (fallback)
      */
     getWebSocketUrl() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';

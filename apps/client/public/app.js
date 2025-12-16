@@ -28,22 +28,38 @@ class PageManager {
         try {
             if (window.ipcRenderer && window.ipcRenderer.invoke) {
                 config = await window.ipcRenderer.invoke('get-app-config');
+                const serverConfig = await window.ipcRenderer.invoke('get-server-config');
+                
                 this.serverUrl = config.serverUrl || 'http://localhost:8060';
+                this.serverWsUrl = config.serverWsUrl || 'ws://localhost:8060';
                 this.serverConnected = !!config.serverConnected;
+                this.serverMode = config.serverMode || 'local';
+                this.serverConfig = serverConfig;
+                
+                console.log(`📡 Mode serveur: ${this.serverMode}`);
+                console.log(`🔗 URL: ${this.serverUrl}`);
+                console.log(`🔌 WebSocket: ${this.serverWsUrl}`);
             } else {
                 this.serverUrl = 'http://localhost:8060';
+                this.serverWsUrl = 'ws://localhost:8060';
             }
         } catch (error) {
             console.error('❌ Erreur récupération config:', error);
             this.serverUrl = 'http://localhost:8060';
+            this.serverWsUrl = 'ws://localhost:8060';
             this.serverConnected = false;
         }
 
         // Exposer serverUrl et état serveur globalement pour les modules
         window.APP_CONFIG = {
             serverUrl: this.serverUrl,
-            serverConnected: this.serverConnected
+            serverWsUrl: this.serverWsUrl,
+            serverConnected: this.serverConnected,
+            serverMode: this.serverMode
         };
+
+        // Initialiser le gestionnaire de connexion serveur
+        await this.initializeServerConnection();
 
         // Charger les composants HTML
         await this.loadComponent('header', './components/header.html', () => this.initializeAuth());
@@ -53,6 +69,60 @@ class PageManager {
         const lastPage = this.getLastPage();
         const pageToLoad = lastPage && this.pagesConfig[lastPage] ? lastPage : 'home';
         this.loadPage(pageToLoad);
+    }
+
+    async initializeServerConnection() {
+        try {
+            if (!this.serverConfig) return;
+            
+            const module = await import('./assets/js/modules/system/ServerConnectionManager.js');
+            const ServerConnectionManager = module.default;
+            
+            this.serverConnectionManager = new ServerConnectionManager({
+                url: this.serverUrl,
+                ws: this.serverWsUrl,
+                healthCheckInterval: this.serverConfig.healthCheckInterval || 30000,
+                reconnectDelay: this.serverConfig.reconnectDelay || 3000,
+                maxReconnectAttempts: this.serverConfig.maxReconnectAttempts || 5
+            });
+
+            this.serverConnectionManager.onStatusChange((status, data) => {
+                console.log(`📡 Statut serveur: ${status}`, data);
+                this.serverConnected = (status === 'connected');
+                window.APP_CONFIG.serverConnected = this.serverConnected;
+                this.updateServerStatus(status, data);
+            });
+
+            this.serverConnectionManager.start();
+            console.log('✅ ServerConnectionManager initialisé');
+        } catch (error) {
+            console.error('❌ Erreur init ServerConnectionManager:', error);
+        }
+    }
+
+    updateServerStatus(status, data) {
+        // Mettre à jour l'indicateur visuel dans le footer si présent
+        const serverIndicator = document.getElementById('footer-server-value');
+        const serverIcon = document.getElementById('footer-server-icon');
+        
+        if (serverIndicator && serverIcon) {
+            if (status === 'connected') {
+                serverIndicator.textContent = 'En ligne';
+                serverIndicator.style.color = '#2ecc71';
+                serverIcon.className = 'fa-solid fa-circle-check';
+                serverIcon.style.color = '#2ecc71';
+            } else if (status === 'disconnected') {
+                serverIndicator.textContent = 'Déconnecté';
+                serverIndicator.style.color = '#e74c3c';
+                serverIcon.className = 'fa-solid fa-circle-xmark';
+                serverIcon.style.color = '#e74c3c';
+            } else if (status === 'failed') {
+                serverIndicator.textContent = 'Hors ligne';
+                serverIndicator.style.color = '#95a5a6';
+                serverIcon.className = 'fa-solid fa-circle-exclamation';
+                serverIcon.style.color = '#95a5a6';
+            }
+        }
     }
 
     async initializeAuth() {
