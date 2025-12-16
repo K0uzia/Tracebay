@@ -8,10 +8,30 @@ const http = require('http');
 const fs = require('fs');
 const os = require('os');
 
+// Charger la configuration serveur
+let serverConfig = {};
+try {
+    const configPath = path.join(__dirname, 'config', 'server-config.json');
+    const configData = fs.readFileSync(configPath, 'utf8');
+    serverConfig = JSON.parse(configData);
+    console.log('✅ Configuration serveur chargée:', serverConfig.mode);
+} catch (error) {
+    console.error('❌ Erreur chargement config serveur:', error.message);
+    // Fallback to default local config
+    serverConfig = {
+        mode: 'local',
+        local: {
+            url: 'http://localhost:8060',
+            ws: 'ws://localhost:8060'
+        }
+    };
+}
+
 // Configuration
-const SERVER_HOST = process.env.SERVER_HOST || 'localhost';
-const SERVER_PORT = process.env.SERVER_PORT || 8060;
-const SERVER_URL = `http://${SERVER_HOST}:${SERVER_PORT}`;
+const MODE = process.env.SERVER_MODE || serverConfig.mode || 'local';
+const currentConfig = serverConfig[MODE] || serverConfig.local;
+const SERVER_URL = currentConfig.url;
+const SERVER_WS_URL = currentConfig.ws;
 const SERVER_HEALTH_ENDPOINT = `${SERVER_URL}/api/health`;
 const MAX_RETRY_ATTEMPTS = 10;
 const RETRY_INTERVAL = 500;
@@ -247,11 +267,25 @@ ipcMain.handle('open-pdf-window', async (event, data) => {
 ipcMain.handle('get-app-config', async () => {
     return {
         serverUrl: SERVER_URL,
-        serverHost: SERVER_HOST,
-        serverPort: SERVER_PORT,
+        serverWsUrl: SERVER_WS_URL,
         serverConnected: serverConnected,
+        serverMode: MODE,
         nodeEnv: process.env.NODE_ENV || 'production',
         appVersion: app.getVersion()
+    };
+});
+
+/**
+ * Obtenir la configuration serveur complète
+ */
+ipcMain.handle('get-server-config', async () => {
+    return {
+        mode: MODE,
+        config: currentConfig,
+        allModes: Object.keys(serverConfig).filter(k => typeof serverConfig[k] === 'object' && serverConfig[k].url),
+        healthCheckInterval: serverConfig.healthCheckInterval,
+        reconnectDelay: serverConfig.reconnectDelay,
+        maxReconnectAttempts: serverConfig.maxReconnectAttempts
     };
 });
 
@@ -269,4 +303,59 @@ ipcMain.handle('get-local-ip', async () => {
         }
     }
     return '127.0.0.1'; // Fallback
+});
+
+/**
+ * Obtenir les infos système locales (RAM, réseau)
+ */
+ipcMain.handle('get-system-info', async () => {
+    const total = os.totalmem();
+    const free = os.freemem();
+    const used = total - free;
+    const usedPercent = Math.round((used / total) * 100);
+
+    // Déterminer une interface active et son type
+    const interfaces = os.networkInterfaces();
+    let ifaceName = null;
+    let address = null;
+    let connectionType = 'unknown';
+    
+    for (const [name, list] of Object.entries(interfaces)) {
+        if (!Array.isArray(list)) continue;
+        const found = list.find((i) => i.family === 'IPv4' && !i.internal);
+        if (found) {
+            ifaceName = name;
+            address = found.address;
+            
+            // Déterminer le type de connexion selon le nom de l'interface
+            const lowerName = name.toLowerCase();
+            if (lowerName.includes('wl') || lowerName.includes('wi-fi') || lowerName.includes('wifi') || lowerName.includes('wlan')) {
+                connectionType = 'wifi';
+            } else if (lowerName.includes('en') || lowerName.includes('eth') || lowerName.includes('eno') || lowerName.includes('enp')) {
+                connectionType = 'ethernet';
+            } else if (lowerName.includes('ppp') || lowerName.includes('wwan') || lowerName.includes('rmnet')) {
+                connectionType = 'cellular';
+            } else if (lowerName.includes('bt') || lowerName.includes('bluetooth')) {
+                connectionType = 'bluetooth';
+            }
+            break;
+        }
+    }
+
+    return {
+        memory: {
+            totalBytes: total,
+            freeBytes: free,
+            usedBytes: used,
+            totalGb: (total / (1024 ** 3)).toFixed(2),
+            usedGb: (used / (1024 ** 3)).toFixed(2),
+            freeGb: (free / (1024 ** 3)).toFixed(2),
+            usedPercent
+        },
+        network: {
+            interface: ifaceName,
+            address,
+            type: connectionType
+        }
+    };
 });
