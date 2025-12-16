@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Workspace Server - Dashboard</title>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="assets/css/global.css">
+</head>
+<body>
+    <div class="section">
+        <!-- Header de la section -->
+        <div class="section-title">
+            <h1><i class="fas fa-server"></i> Workspace Server Dashboard</h1>
+            <p>Monitoring temps réel - localhost:8060</p>
+        </div>
+
+        <!-- Navigation -->
+        <div class="section-nav">
+            <button class="nav-button nav-button-active" data-page="monitoring">
+                <i class="fas fa-chart-line"></i> Monitoring
+            </button>
+            <button class="nav-button" data-page="logs">
+                <i class="fas fa-file-lines"></i> Logs
+            </button>
+            <button class="nav-button" data-page="requests">
+                <i class="fas fa-network-wired"></i> Requêtes
+            </button>
+            <button class="nav-button" data-page="chat-connections">
+                <i class="fas fa-comments"></i> Chat & Connexions
+            </button>
+            <button class="nav-button" data-page="stats">
+                <i class="fas fa-bar-chart"></i> Statistiques
+            </button>
+        </div>
+
+        <!-- Contenu principal -->
+        <div class="section-contain">
+            <!-- PAGE: Monitoring (par défaut) -->
+            <div id="page-monitoring" class="page page-active">
+                <div class="grid">
+                    <!-- Bloc: Statut Serveur -->
+                    <div class="grid-item">
+                        <div class="block">
+                            <div class="block-title">
+                                <i class="fas fa-circle text-success"></i> Statut Serveur
+                            </div>
+                            <div class="block-content">
+                                <div class="item">
+                                    <span class="item-label">Statut:</span>
+                                    <span class="item-value text-success" id="server-status">EN LIGNE</span>
+                                </div>
+                                <div class="item">
+                                    <span class="item-label">Adresse:</span>
+                                    <span class="item-value" id="server-address">localhost:8060</span>
+                                </div>
+                                <div class="item">
+                                    <span class="item-label">Uptime:</span>
+                                    <span class="item-value" id="server-uptime">0s</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bloc: Clients Connectés -->
+                    <div class="grid-item">
+                        <div class="block">
+                            <div class="block-title">
+                                <i class="fas fa-users"></i> Clients Connectés
+                            </div>
+                            <div class="block-content">
+                                <div class="item">
+                                    <span class="item-label">Nombre:</span>
+                                    <span class="item-value" id="client-count">0</span>
+                                </div>
+                                <div id="client-list">
+                                    <p class="empty-message">Aucun client connecté</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bloc: Base de Données -->
+                    <div class="grid-item">
+                        <div class="block">
+                            <div class="block-title">
+                                <i class="fas fa-database"></i> Base de Données
+                            </div>
+                            <div class="block-content">
+                                <div class="item">
+                                    <span class="item-label">Utilisateurs:</span>
+                                    <span class="item-value" id="db-users">0</span>
+                                </div>
+                                <div class="item">
+                                    <span class="item-label">Messages:</span>
+                                    <span class="item-value" id="db-messages">0</span>
+                                </div>
+                                <div class="item">
+                                    <span class="item-label">Événements:</span>
+                                    <span class="item-value" id="db-events">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bloc: Système -->
+                    <div class="grid-item">
+                        <div class="block">
+                            <div class="block-title">
+                                <i class="fas fa-cog"></i> Système
+                            </div>
+                            <div class="block-content">
+                                <div class="item">
+                                    <span class="item-label">Mémoire:</span>
+                                    <span class="item-value" id="system-memory">--</span>
+                                </div>
+                                <div class="item">
+                                    <span class="item-label">CPU:</span>
+                                    <span class="item-value" id="system-cpu">--</span>
+                                </div>
+                                <div class="item">
+                                    <span class="item-label">Node.js:</span>
+                                    <span class="item-value" id="system-node">--</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: Logs -->
+            <div id="page-logs" class="page">
+                <div class="block">
+                    <div class="block-title">
+                        <i class="fas fa-file-lines"></i> Journal des Logs
+                    </div>
+                    <div class="block-content">
+                        <div class="action-block">
+                            <button id="logs-clear">
+                                <i class="fas fa-trash"></i> Effacer
+                            </button>
+                        </div>
+                    </div>
+                    <div class="block-content">
+                        <div id="logs-container">
+                            <p class="empty-message">Aucun log pour le moment</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: Chat Logs Terminal + Connexions Actives COMBINÉES -->
+            <div id="page-chat-connections" class="page">
+                <div class="grid">
+                    <!-- COLONNE 1: Logs du Chat -->
+                    <div class="grid-item">
+                        <div class="block">
+                            <div class="block-title">
+                                <i class="fas fa-comments"></i> Logs du Chat
+                            </div>
+                            <div class="block-content">
+                                <div class="action-block">
+                                    <button id="chat-logs-clear">
+                                        <i class="fas fa-trash"></i> Effacer
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="block-content">
+                                <div id="chat-logs-container" class="terminal-logs">
+                                    <div class="terminal-line">$ Démarrage du monitoring chat...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- COLONNE 2: Connexions Actives -->
+                    <div class="grid-item">
+                        <div class="block">
+                            <div class="block-title">
+                                <i class="fas fa-link"></i> Connexions Actives
+                            </div>
+                            <div class="block-content">
+                                <div class="block-table">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>ID Utilisateur</th>
+                                                <th>Username</th>
+                                                <th>IP</th>
+                                                <th>Connecté depuis</th>
+                                                <th>Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="connections-body">
+                                            <tr>
+                                                <td colspan="5" class="empty-message">Aucune connexion</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: HTTP Requests Terminal -->
+            <div id="page-requests" class="page">
+                <div class="block">
+                    <div class="block-title">
+                        <i class="fas fa-network-wired"></i> Requêtes HTTP
+                    </div>
+                    <div class="block-content">
+                        <div class="action-block">
+                            <button id="requests-clear">
+                                <i class="fas fa-trash"></i> Effacer
+                            </button>
+                        </div>
+                    </div>
+                    <div class="block-content">
+                        <div id="requests-container" class="terminal-logs">
+                            <div class="terminal-line">$ Démarrage du monitoring requêtes...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: Statistiques -->
+            <div id="page-stats" class="page">
+                <div class="grid">
+                    <!-- Bloc: Requêtes HTTP -->
+                    <div class="grid-item">
+                        <div class="block">
+                            <div class="block-title">
+                                <i class="fas fa-chart-bar"></i> Requêtes HTTP
+                            </div>
+                            <div class="block-content">
+                                <div class="item">
+                                    <span class="item-label">Total:</span>
+                                    <span class="item-value" id="stats-total-requests">0</span>
+                                </div>
+                                <div class="item">
+                                    <span class="item-label">Succès (200-299):</span>
+                                    <span class="item-value text-success" id="stats-success">0</span>
+                                </div>
+                                <div class="item">
+                                    <span class="item-label">Erreurs client (400-499):</span>
+                                    <span class="item-value text-warning" id="stats-client-errors">0</span>
+                                </div>
+                                <div class="item">
+                                    <span class="item-label">Erreurs serveur (500-599):</span>
+                                    <span class="item-value text-error" id="stats-server-errors">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Bloc: Messages Chat -->
+                    <div class="grid-item">
+                        <div class="block">
+                            <div class="block-title">
+                                <i class="fas fa-comments"></i> Messages Chat
+                            </div>
+                            <div class="block-content">
+                                <div class="item">
+                                    <span class="item-label">Total envoyés:</span>
+                                    <span class="item-value" id="stats-total-messages">0</span>
+                                </div>
+                                <div class="item">
+                                    <span class="item-label">Aujourd'hui:</span>
+                                    <span class="item-value" id="stats-today-messages">0</span>
+                                </div>
+                                <div class="item">
+                                    <span class="item-label">Cette heure:</span>
+                                    <span class="item-value" id="stats-hour-messages">0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="section-footer">
+            <p>Workspace Server v1.0 - Dashboard de monitoring</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="assets/js/global.js"></script>
+    <script src="assets/js/modules/TerminalLogger.js"></script>
+    <script src="assets/js/modules/ServerMonitor.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

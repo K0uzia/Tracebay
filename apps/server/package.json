@@ -13,6 +13,7 @@
     "electron-squirrel-startup": "^1.0.1",
     "express": "^4.18.2",
     "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.0",
     "sqlite3": "^5.1.7",
     "ws": "^8.18.3"
   },
@@ -33,8 +34,8 @@
     "jest": "^29.7.0"
   },
   "scripts": {
-    "start": "electron-forge start",
-    "dev": "electron-forge start --inspect",
+    "start": "electron .",
+    "dev": "electron . --inspect",
     "server": "node server.js",
     "server:dev": "node server.js --dev",
     "build": "electron-forge make",

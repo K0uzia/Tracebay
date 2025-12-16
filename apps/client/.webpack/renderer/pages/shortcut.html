@@ -1,0 +1,36 @@
+<section class="shortcut section">
+
+    <div class="section-title">
+        <h2>Mes raccourcis</h2>
+    </div>
+
+    <div id="shortcut-auth-required" class="shortcut-auth-required hidden">
+        <span><i class="fa-solid fa-lock"></i></span>
+        <h3>Authentification requise</h3>
+        <p>Vous devez être connecté pour gérer vos raccourcis.</p>
+        <button id="shortcut-login-btn" class="btn btn-primary">
+            <i class="fas fa-sign-in-alt"></i> Se connecter
+        </button>
+    </div>
+
+    <div id="shortcut-content" class="shortcut-content">
+        <div class="shortcut-toolbar">
+            <div class="search-container">
+                <i class="fas fa-search"></i>
+                <input 
+                    type="text" 
+                    id="shortcut-search-input" 
+                    placeholder="Rechercher un raccourci... (Ctrl+F)"
+                    autocomplete="off"
+                >
+            </div>
+            <button id="add-category-btn" class="btn btn-primary" title="Ajouter une catégorie">
+                <i class="fas fa-plus"></i> Nouvelle catégorie
+            </button>
+        </div>
+
+        <div class="section-contain">
+            <div id="shortcut-grid" class="shortcut-grid"></div>
+        </div>
+    </div>
+</section>

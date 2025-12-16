@@ -1,0 +1,52 @@
+/* Dashboard specific styles */
+
+.block-dashboard {
+    border-left: 4px solid #667eea;
+}
+
+.block-logs {
+    border-left: 4px solid #f39c12;
+}
+
+.block-connections {
+    border-left: 4px solid #3498db;
+}
+
+.block-stats {
+    border-left: 4px solid #9b59b6;
+}
+
+.block-header {
+    background: linear-gradient(135deg, #f5f7fa 0%, #ffffff 100%);
+}
+
+/* Styles spécifiques pour le statut */
+.stat-value-online {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Grid responsif */
+@media (max-width: 1200px) {
+    .grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 768px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .section-contain {
+        padding: 10px;
+    }
+}

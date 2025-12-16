@@ -19,6 +19,9 @@ const shortcutsRouter = require('./routes/shortcuts.js');
 const healthRouter = require('./routes/health.js');
 const monitoringRouter = require('./routes/monitoring.js');
 
+// Import middleware
+const httpRequestTracker = require('./middleware/httpRequestTracker.js');
+
 // Import database
 const db = require('./database.js');
 
@@ -46,6 +49,12 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+
+// Track HTTP requests (pour le dashboard)
+app.use(httpRequestTracker());
+
+// Servir les fichiers publics (dashboard UI)
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -251,5 +260,28 @@ process.on('SIGINT', async () => {
     }, 5000);
 });
 
-module.exports = server;
+/**
+ * Fonction pour arrêter le serveur proprement
+ */
+function shutdown() {
+    return new Promise((resolve, reject) => {
+        console.log('⏹️  SHUTDOWN SERVEUR');
+        server.close(() => {
+            console.log('✅ Serveur fermé');
+            resolve();
+        });
+
+        setTimeout(() => {
+            console.error('❌ Fermeture forcée');
+            reject(new Error('Shutdown timeout'));
+        }, 5000);
+    });
+}
+
+module.exports = {
+    shutdown,
+    server,
+    app
+};
+
 

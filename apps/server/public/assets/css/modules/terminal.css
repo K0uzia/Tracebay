@@ -1,0 +1,121 @@
+/* Terminal Styles - Using Variables Only */
+
+.block-terminal {
+    background: var(--blanc);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: var(--shadow-medium);
+    border-radius: var(--radius-medium);
+}
+
+.terminal-content {
+    background: var(--blanc);
+    font-family: 'Courier New', monospace;
+    padding: var(--unit-3) !important;
+}
+
+.terminal-logs {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    max-height: calc(var(--unit-2) * 37.5);
+    overflow-y: auto;
+    background: var(--blanc);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    padding: calc(var(--unit-1) * 1.875);
+    border-radius: var(--radius-small);
+}
+
+.terminal-logs::-webkit-scrollbar {
+    width: var(--unit-1);
+}
+
+.terminal-logs::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.02);
+    border-radius: var(--radius-small);
+}
+
+.terminal-logs::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-color);
+    border-radius: var(--radius-small);
+}
+
+.terminal-logs::-webkit-scrollbar-thumb:hover {
+    background: var(--orange);
+}
+
+.terminal-line {
+    color: var(--text2);
+    font: var(--font-text2);
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    padding: calc(var(--unit-1) * 0.25) 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.terminal-line:last-child {
+    border-bottom: none;
+}
+
+.terminal-line.error {
+    color: var(--error);
+}
+
+.terminal-line.warning {
+    color: var(--orange);
+}
+
+.terminal-line.success {
+    color: var(--valid);
+}
+
+.terminal-line.info {
+    color: var(--btn);
+}
+
+.terminal-line.request-get {
+    color: var(--valid);
+}
+
+.terminal-line.request-post {
+    color: var(--orange);
+}
+
+.terminal-line.request-put {
+    color: var(--jaune);
+}
+
+.terminal-line.request-delete {
+    color: var(--error);
+}
+
+.terminal-line.status-200 {
+    color: var(--valid);
+}
+
+.terminal-line.status-400 {
+    color: var(--orange);
+}
+
+.terminal-line.status-500 {
+    color: var(--error);
+}
+
+/* Terminal cursor blink */
+.terminal-cursor {
+    display: inline-block;
+    width: var(--unit-1);
+    height: 1em;
+    background: var(--text2);
+    margin-left: calc(var(--unit-1) * 0.5);
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 49% {
+        opacity: 1;
+    }
+    50%, 100% {
+        opacity: 0;
+    }
+}

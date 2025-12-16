@@ -22,7 +22,9 @@
     "@fortawesome/free-solid-svg-icons": "^7.1.0",
     "electron": "^39.2.4",
     "electron-builder": "^26.0.12",
-    "electron-updater": "^6.6.2"
+    "electron-updater": "^6.6.2",
+    "html-loader": "^5.1.0",
+    "raw-loader": "^4.0.2"
   },
   "scripts": {
     "start": "electron-forge start",
@@ -50,13 +52,20 @@
       "public/**/*"
     ],
     "win": {
-      "target": ["portable", "nsis"]
+      "target": [
+        "portable",
+        "nsis"
+      ]
     },
     "mac": {
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     },
     "linux": {
-      "target": ["AppImage"]
+      "target": [
+        "AppImage"
+      ]
     }
   },
   "repository": {

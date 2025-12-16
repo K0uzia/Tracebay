@@ -1,0 +1,4 @@
+/* Global entrypoint: variables + normalize + dashboard skin */
+@import url(./default/variables.css);
+@import url(./default/normalize.css);
+@import url(./server-dashboard.css);

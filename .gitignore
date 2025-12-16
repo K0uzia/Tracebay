@@ -1,19 +1,30 @@
+# ============================================================================
 # Dependencies
+# ============================================================================
 node_modules/
 npm-debug.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+package-lock.json
+yarn.lock
 
-# Production
+# ============================================================================
+# Production & Build Artifacts
+# ============================================================================
 dist/
 build/
 out/
-
-# Electron
+*.dmg
+*.exe
+*.deb
+*.rpm
+*.app
 electron-builder-effective-config.json
 
-# Environment variables
+# ============================================================================
+# Environment & Secrets
+# ============================================================================
 .env
 .env.local
 .env.development.local
@@ -21,33 +32,77 @@ electron-builder-effective-config.json
 .env.production.local
 *.key
 *.pem
+.env.*.local
 
-# OS files
+# ============================================================================
+# Database & Data
+# ============================================================================
+*.db
+*.sqlite
+*.sqlite3
+data/database.*
+data/backups/
+*.dump
+
+# ============================================================================
+# Logs
+# ============================================================================
+logs/
+*.log
+npm-debug.log
+lerna-debug.log
+
+# ============================================================================
+# Cache & Runtime
+# ============================================================================
+.cache/
+.parcel-cache/
+dist_electron/
+main.js.map
+
+# ============================================================================
+# OS Files
+# ============================================================================
 .DS_Store
 Thumbs.db
 .Thumbs.db
-
-# IDE
-.vscode/
-.idea/
 *.swp
 *.swo
 *~
+
+# ============================================================================
+# IDE & Editor
+# ============================================================================
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
 .project
 .classpath
 .c9/
 *.launch
 .settings/
+.emacs
+.python-version
+.eslintignore
+.eslintcache
 
-# Logs
-logs/
-*.log
+# ============================================================================
+# Testing & Coverage
+# ============================================================================
+coverage/
+.nyc_output/
+junit.xml
+test-results/
 
-# Runtime
-.cache/
-.parcel-cache/
-
-# Misc
+# ============================================================================
+# Temporary Files
+# ============================================================================
+tmp/
+temp/
+*.tmp
+.swp
+.swo
 .cache
 .eslintcache
 .stylelintcache

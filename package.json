@@ -3,22 +3,6 @@
   "version": "1.0.0",
   "private": true,
   "homepage": "https://github.com/SandersonnDev/workspace#readme",
-  "description": "Workspace 1.0 - Application de gestion collaborative",
-<<<<<<< Updated upstream
-  "description": "",
-  "author": "Sandersonn",
-  "license": "MIT",
-  "dependencies": {
-    "bcrypt": "^6.0.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "electron-squirrel-startup": "^1.0.1",
-    "express": "^4.18.2",
-    "sqlite3": "^5.1.7",
-    "ws": "^8.18.3"
-  },
-  "devDependencies": {
-=======
   "description": "Workspace - Application collaborative client-serveur (v2.0)",
   "author": "Sandersonn",
   "license": "MIT",
@@ -26,11 +10,9 @@
     "apps/client",
     "apps/server"
   ],
-  "workspaces": [
-    "apps/client",
-    "apps/server"
-  ],
-  "dependencies": {}
+  "dependencies": {
+    "jsonwebtoken": "^9.0.3"
+  },
   "devDependencies": {
     "@electron-forge/cli": "^7.10.2",
     "@electron-forge/maker-deb": "^7.10.2",
@@ -38,78 +20,22 @@
     "@electron-forge/maker-zip": "^7.10.2",
     "@electron-forge/plugin-webpack": "^7.10.2",
     "@electron-forge/publisher-github": "^7.10.2",
->>>>>>> Stashed changes
     "@fortawesome/fontawesome-svg-core": "^7.1.0",
     "@fortawesome/free-brands-svg-icons": "^7.1.0",
     "@fortawesome/free-regular-svg-icons": "^7.1.0",
     "@fortawesome/free-solid-svg-icons": "^7.1.0",
+    "copy-webpack-plugin": "^13.0.1",
+    "css-loader": "^7.1.2",
     "electron": "^39.2.4",
     "electron-builder": "^26.0.12",
-<<<<<<< Updated upstream
-    "react": "^18.3.1"
-  },
-  "scripts": {
-    "start": "electron .",
-    "dev": "node server.js --dev",
-    "server": "node server.js",
-    "build": "electron-builder",
-    "build:win": "electron-builder --win --publish never",
-    "build:mac": "electron-builder --mac --publish never",
-    "build:linux": "electron-builder --linux --publish never",
-    "build:publish": "electron-builder --publish always"
-  },
-  "build": {
-    "appId": "com.example.app",
-    "productName": "Workspace",
-    "publish": {
-      "provider": "github",
-      "owner": "SandersonnDev",
-      "repo": "Workspace",
-      "releaseType": "draft"
-    },
-    "files": [
-      "main.js",
-      "preload.js",
-      "index.html",
-      "app.js",
-      "server.js",
-      "database.js",
-      "logger.js",
-      "chat-logger.js",
-      "routes/**/*",
-      "models/**/*",
-      "public/**/*",
-      "data/**/*"
-    ],
-    "win": {
-      "target": [
-        "portable",
-        "nsis"
-      ]
-    },
-    "mac": {
-      "target": [
-        "dmg"
-      ]
-    },
-    "linux": {
-      "target": [
-        "AppImage"
-      ]
-    },
-    "repository": {
-      "type": "git",
-      "url": "git+https://github.com/SandersonnDev/workspace.git"
-    },
-    "bugs": {
-      "url": "https://github.com/SandersonnDev/workspace/issues"
-=======
     "electron-updater": "^6.6.2",
     "eslint": "^8.54.0",
-    "jest": "^29.7.0"
+    "html-loader": "^5.1.0",
+    "jest": "^29.7.0",
+    "raw-loader": "^4.0.2",
+    "style-loader": "^4.0.0"
   },
   "scripts": {
-    "install": "npm install --workspaces",
     "client": "npm start --workspace=apps/client",
     "server": "npm run server --workspace=apps/server",
     "server:dev": "npm run server:dev --workspace=apps/server",
@@ -131,7 +57,6 @@
       "owner": "SandersonnDev",
       "repo": "Workspace",
       "releaseType": "draft"
->>>>>>> Stashed changes
     }
   }
 }

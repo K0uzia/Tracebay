@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test Navigation Buttons</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #0f0; }
+        .console { background: #111; border: 1px solid #0f0; padding: 20px; max-height: 400px; overflow-y: auto; }
+        .log-line { margin: 5px 0; padding: 5px; background: #222; }
+        .error { color: #ff6b6b; }
+        .success { color: #00ff00; }
+        .info { color: #00ffff; }
+        h1 { color: #0ff; }
+        button { padding: 10px 20px; margin: 5px; background: #00ff00; color: #000; border: none; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0f0; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Test Boutons Navigation</h1>
+    <p>Cliquez sur les boutons ci-dessous pour tester la navigation</p>
+    
+    <div>
+        <button onclick="testNavButton('monitoring')">Monitoring</button>
+        <button onclick="testNavButton('logs')">Logs</button>
+        <button onclick="testNavButton('connections')">Connexions</button>
+        <button onclick="testNavButton('stats')">Statistiques</button>
+    </div>
+    
+    <h2>Console JavaScript</h2>
+    <div class="console" id="console"></div>
+
+    <script>
+        const consoleEl = document.getElementById('console');
+
+        // Override console.log
+        const origLog = console.log;
+        console.log = function(...args) {
+            const line = document.createElement('div');
+            line.className = 'log-line info';
+            line.textContent = '> ' + args.join(' ');
+            consoleEl.appendChild(line);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+            origLog.apply(console, args);
+        };
+
+        // Override console.error
+        const origError = console.error;
+        console.error = function(...args) {
+            const line = document.createElement('div');
+            line.className = 'log-line error';
+            line.textContent = '❌ ' + args.join(' ');
+            consoleEl.appendChild(line);
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+            origError.apply(console, args);
+        };
+
+        console.log('🧪 Page de test chargée');
+        console.log('Attente du chargement des scripts...');
+
+        // Attendre un peu pour que les scripts se chargent
+        setTimeout(() => {
+            // Vérifier ce qui est disponible
+            console.log('');
+            console.log('=== DIAGNOSTIC ===');
+            console.log('window.PageManager?', typeof window.PageManager);
+            console.log('window.ServerMonitor?', typeof window.ServerMonitor);
+            
+            if (window.PageManager) {
+                console.log('✅ PageManager trouvé');
+                console.log('  - switchPage:', typeof window.PageManager.switchPage);
+            }
+        }, 500);
+
+        function testNavButton(pageName) {
+            console.log('');
+            console.log(`🖱️ TEST CLIC: ${pageName}`);
+            
+            if (window.PageManager && window.PageManager.switchPage) {
+                try {
+                    window.PageManager.switchPage(pageName);
+                    console.log(`✅ Appel switchPage('${pageName}') réussi`);
+                } catch (err) {
+                    console.error(`❌ Erreur: ${err.message}`);
+                }
+            } else {
+                console.error('❌ PageManager.switchPage non disponible!');
+                console.log('PageManager:', window.PageManager);
+            }
+        }
+    </script>
+
+    <!-- Load the same scripts as dashboard -->
+    <script src="assets/js/global.js"></script>
+    <script src="assets/js/modules/ServerMonitor.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

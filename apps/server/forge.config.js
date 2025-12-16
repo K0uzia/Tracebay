@@ -1,7 +1,6 @@
 module.exports = {
     packagerConfig: {
-        asar: true,
-        icon: './assets/icon',
+        asar: true
     },
     makers: [
         {
@@ -32,22 +31,8 @@ module.exports = {
                 authToken: process.env.GITHUB_TOKEN
             }
         }
-    ],
-    plugins: [
-        {
-            name: '@electron-forge/plugin-webpack',
-            config: {
-                mainConfig: './webpack.main.config.js',
-                renderer: {
-                    config: './webpack.renderer.config.js',
-                    entryPoints: [
-                        {
-                            html: './public/index.html',
-                            js: './public/app.js',
-                            name: 'main_window',
-                            preload: {
-                                js: './preload.js'
-                            }
+    ]
+};
                         }
                     ]
                 }
