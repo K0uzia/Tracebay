@@ -35,13 +35,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialiser ChatWidgetManager (widget flottant)
     try {
+        const serverUrl = window.APP_CONFIG?.serverUrl || 'http://localhost:8060';
         window.chatWidgetManager = new ChatWidgetManager({
             wrapperId: 'chat-widget-wrapper',
             buttonId: 'chat-widget-btn',
             panelId: 'chat-widget-panel',
             closeButtonId: 'chat-widget-close',
             pseudoModalId: 'chat-widget-pseudo-modal',
-            notificationBadgeId: 'chat-notification-badge'
+            notificationBadgeId: 'chat-notification-badge',
+            serverUrl: serverUrl
         });
     } catch (error) {
         console.error('❌ Erreur initialisation ChatWidgetManager:', error);

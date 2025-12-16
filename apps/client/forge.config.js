@@ -12,10 +12,11 @@ module.exports = {
         },
         {
             name: '@electron-forge/maker-zip',
-            platforms: ['darwin']
+            platforms: ['darwin', 'linux']
         },
         {
             name: '@electron-forge/maker-deb',
+            platforms: ['linux'],
             config: {}
         }
     ],
@@ -33,25 +34,5 @@ module.exports = {
             }
         }
     ],
-    plugins: [
-        {
-            name: '@electron-forge/plugin-webpack',
-            config: {
-                mainConfig: './webpack.main.config.js',
-                renderer: {
-                    config: './webpack.renderer.config.js',
-                    entryPoints: [
-                        {
-                            html: './public/index.html',
-                            js: './public/app.js',
-                            name: 'main_window',
-                            preload: {
-                                js: './preload.js'
-                            }
-                        }
-                    ]
-                }
-            }
-        }
-    ]
+    // No webpack plugin: pure Electron (requested)
 }

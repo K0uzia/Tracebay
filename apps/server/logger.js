@@ -8,7 +8,19 @@ const fs = require('fs').promises;
 const fsSync = require('fs');
 const path = require('path');
 
-const LOG_DIR = path.join(__dirname, 'logs');
+function resolveLogDir() {
+    try {
+        const { app } = require('electron');
+        if (app && typeof app.getPath === 'function') {
+            return path.join(app.getPath('userData'), 'logs');
+        }
+    } catch (_) {}
+    const home = process.env.HOME || process.env.USERPROFILE;
+    if (home) return path.join(home, '.workspace-server', 'logs');
+    return path.join(process.cwd(), 'logs');
+}
+
+const LOG_DIR = resolveLogDir();
 const LAUNCH_TIME = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0] + '_' + Date.now();
 const LOG_FILE = path.join(LOG_DIR, `app-${LAUNCH_TIME}.log`);
 const MAX_LOG_SIZE = 10 * 1024 * 1024;

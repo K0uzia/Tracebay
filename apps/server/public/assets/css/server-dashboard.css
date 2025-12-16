@@ -210,6 +210,37 @@ button {
     overflow-y: auto;
 }
 
+/* Clients connectés */
+#client-list {
+    margin-top: var(--unit-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+
+.client-item {
+    padding: var(--unit-1) var(--unit-2);
+    background: var(--gris1);
+    border-radius: var(--radius-small);
+    color: var(--text2);
+    font-weight: 600;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.client-ip {
+    color: var(--text3);
+    font-weight: 500;
+    font-family: monospace;
+}
+
+.empty-message {
+    color: var(--text3);
+    font-style: italic;
+    margin: 0;
+}
+
 .block-content::-webkit-scrollbar {
     width: 6px;
 }
@@ -301,7 +332,6 @@ button {
     flex-direction: column;
     min-height: 340px;
     max-height: 520px;
-    background: #0e0f17;
     color: #e6e6e6;
     border: 1px solid rgba(62, 59, 140, 0.2);
     border-radius: var(--radius-medium);
@@ -694,84 +724,7 @@ table tbody tr:last-child td {
     }
 }
 
-/* ===== DARK MODE ===== */
-@media (prefers-color-scheme: dark) {
-    body {
-        background: #0f1117;
-    }
 
-    .section-title {
-        background: var(--bleu1);
-        color: var(--blanc);
-    }
-
-    .section-nav {
-        background: linear-gradient(to right, var(--bleu1), var(--bleu2));
-    }
-
-    .nav-button {
-        background: rgba(255,255,255,0.1);
-        color: var(--blanc);
-        border-color: rgba(255,255,255,0.3);
-    }
-
-    .nav-button:hover {
-        background: rgba(255,255,255,0.15);
-    }
-
-    .nav-button-active {
-        background: var(--blanc);
-        color: var(--bleu1);
-    }
-
-    .section-contain {
-        background: #0f1117;
-    }
-
-    .block {
-        background: #1a1e2f;
-        border-color: rgba(242, 188, 27, 0.15);
-    }
-
-    .block-title {
-        background: var(--bleu1);
-        color: var(--blanc);
-    }
-
-    .block-content {
-        color: #e0e0e0;
-    }
-
-    table {
-        background: #1a1e2f;
-    }
-
-    table th {
-        background: var(--bleu1);
-    }
-
-    table td {
-        border-color: rgba(242, 188, 27, 0.1);
-    }
-
-    .item {
-        border-color: rgba(242, 188, 27, 0.1);
-    }
-
-    .action-block {
-        background: rgba(242, 188, 27, 0.08);
-        border-color: rgba(242, 188, 27, 0.15);
-    }
-
-    .section-footer {
-        background: var(--bleu1);
-        color: var(--blanc);
-    }
-
-    .empty-message {
-        color: rgba(224, 224, 224, 0.5);
-    }
-}
 
 /* ===== PRINT ===== */
 @media print {
@@ -785,12 +738,6 @@ table tbody tr:last-child td {
         box-shadow: none;
         border: 1px solid #000;
         page-break-inside: avoid;
-    }
-
-    body {
-        background: #fff;
-    }
-}
     }
 
     body {

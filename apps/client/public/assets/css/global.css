@@ -1,14 +1,13 @@
-/* ---------- BASE ---------- */
 @import url(./default/variables.css);
 @import url(./default/normalize.css);
 @import url(./default/section.css);
 
-/* ---------- COMPOSANTS ---------- */
+/* ----------CSS COMPONENTS----------- */
 @import url(./components/header.css);
 @import url(./components/footer.css);
 @import url(./components/auth-modal.css);
 
-/* ---------- PAGES ---------- */
+/* ----------CSS PAGES----------- */
 @import url(./modules/agenda.css);
 @import url(./modules/appli.css);
 @import url(./modules/dossier.css);
@@ -17,6 +16,6 @@
 @import url(./modules/reception.css);
 @import url(./modules/shortcut.css);
 
-/* ---------- MODULES ---------- */
+/* ----------CSS MODULES----------- */
 @import url(./modules/modal.css);
 @import url(./modules/chat-widget.css);

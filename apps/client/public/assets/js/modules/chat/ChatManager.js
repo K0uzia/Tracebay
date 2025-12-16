@@ -25,11 +25,10 @@ class ChatManager {
         this.sendButtonId = options.sendButtonId || 'chat-widget-send';
         this.clearChatBtnId = options.clearChatBtnId || 'chat-widget-clear';
         
-        // Server URL for remote communication
-        this.serverUrl = options.serverUrl || 'http://localhost:8060';
-        
-        // WebSocket
-        this.webSocket = new ChatWebSocket({ serverUrl: this.serverUrl });
+        // WebSocket avec serverUrl
+        const serverUrl = options.serverUrl || 'http://localhost:8060';
+        const wsUrl = serverUrl.replace('http://', 'ws://').replace('https://', 'wss://');
+        this.webSocket = new ChatWebSocket({ wsUrl });
         
         // État
         this.pseudo = this.loadPseudo();
@@ -54,9 +53,13 @@ class ChatManager {
         // Écouter les changements d'authentification
         window.addEventListener('auth-change', (e) => {
             const user = e.detail?.user;
+            const token = e.detail?.token;
             console.log('🔄 ChatManager: Auth changed:', user);
             this.pseudo = user ? user.username : null;
             this.displayPseudo();
+            if (token) {
+                this.webSocket.authenticate(token);
+            }
             
             if (this.pseudo && this.webSocket.isConnected()) {
                 this.webSocket.setPseudo(this.pseudo);
@@ -76,6 +79,10 @@ class ChatManager {
         // Attendre que le WebSocket soit connecté, puis envoyer le pseudo s'il existe
         const connectAndRestoreSession = () => {
             if (this.webSocket.isConnected()) {
+                const token = this.getStoredToken();
+                if (token) {
+                    this.webSocket.authenticate(token);
+                }
                 if (this.pseudo) {
                     console.log('✨ Reconnexion automatique avec pseudo:', this.pseudo);
                     this.webSocket.setPseudo(this.pseudo).catch(err => {
@@ -108,16 +115,23 @@ class ChatManager {
                 this.scrollToBottom();
             } else if (data.type === 'newMessage') {
                 const msg = data.message;
-                console.log('💬 Nouveau message:', msg);
+                console.log('💬 Nouveau message complet data:', JSON.stringify(data, null, 2));
+                console.log('💬 msg.message:', msg.message, 'Type:', typeof msg.message);
+                console.log('💬 msg.pseudo:', msg.pseudo);
+                console.log('💬 msg.created_at:', msg.created_at);
+                
+                // Extraire le texte correctement
+                const messageText = typeof msg.message === 'string' ? msg.message : (msg.text || '');
+                
                 this.messages.push({
-                    id: msg.id,
-                    pseudo: msg.pseudo,
-                    text: msg.message,
+                    id: msg.id || Date.now(),
+                    pseudo: msg.pseudo || 'Anonyme',
+                    text: messageText,
                     timestamp: this.formatTime(msg.created_at),
                     own: msg.pseudo === this.pseudo,
                     created_at: msg.created_at
                 });
-                console.log('📝 Messages après ajout:', this.messages.length);
+                console.log('📝 Message ajouté:', this.messages[this.messages.length - 1]);
                 this.renderMessages();
                 this.scrollToBottom();
             } else if (data.type === 'userCount') {
@@ -146,6 +160,10 @@ class ChatManager {
         this.webSocket.onError((err) => {
             console.error('❌ Erreur chat:', err);
         });
+    }
+
+    getStoredToken() {
+        return localStorage.getItem('workspace_jwt');
     }
 
     /**
@@ -383,6 +401,9 @@ class ChatManager {
      * Nettoyer les messages XSS
      */
     sanitizeMessage(text) {
+        if (typeof text !== 'string') {
+            text = String(text);
+        }
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
@@ -392,18 +413,13 @@ class ChatManager {
      * Formater l'heure
      */
     formatTime(isoString) {
-        try {
-            const date = new Date(isoString);
-            return date.toLocaleTimeString('fr-FR', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-        } catch (e) {
-            return new Date().toLocaleTimeString('fr-FR', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
-            });
-        }
+        if (!isoString) return '00:00';
+        const date = new Date(isoString);
+        if (isNaN(date.getTime())) return '00:00';
+        return date.toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     }
 
     /**

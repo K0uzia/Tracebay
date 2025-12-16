@@ -5,32 +5,25 @@
 
 class ChatWebSocket {
     constructor(options = {}) {
-        this.serverUrl = options.serverUrl || 'http://localhost:8060';
-        this.wsUrl = this.buildWebSocketUrl(this.serverUrl);
+        this.wsUrl = options.wsUrl || this.getWebSocketUrl();
         this.ws = null;
         this.messageHandlers = [];
         this.errorHandlers = [];
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 3000;
+        this.authToken = null;
         
         this.connect();
     }
 
     /**
-     * Convertir une URL HTTP/HTTPS en WebSocket URL
+     * Déterminer l'URL WebSocket à partir de l'URL actuelle
      */
-    buildWebSocketUrl(serverUrl) {
-        try {
-            const url = new URL(serverUrl);
-            const protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-            return `${protocol}//${url.host}`;
-        } catch (err) {
-            console.error('❌ Erreur parsing serverUrl:', err);
-            // Fallback
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            return `${protocol}//localhost:8060`;
-        }
+    getWebSocketUrl() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        return `${protocol}//${host}`;
     }
 
     /**
@@ -43,6 +36,10 @@ class ChatWebSocket {
             this.ws.addEventListener('open', () => {
                 console.log('✅ WebSocket connecté');
                 this.reconnectAttempts = 0;
+                // Si on a déjà un token, l'envoyer pour authentifier
+                if (this.authToken) {
+                    this.authenticate(this.authToken).catch(() => {});
+                }
             });
             
             this.ws.addEventListener('message', (event) => {
@@ -87,14 +84,29 @@ class ChatWebSocket {
     }
 
     /**
+     * Authentifier la connexion WebSocket avec un token JWT
+     */
+    async authenticate(token) {
+        if (!token) return;
+        this.authToken = token;
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+        try {
+            this.ws.send(JSON.stringify({ type: 'auth', token }));
+        } catch (err) {
+            console.error('❌ Erreur envoi auth WS:', err);
+        }
+    }
+
+    /**
      * Gérer les messages reçus
      */
     handleMessage(data) {
         if (data.type === 'message') {
-            // Message de chat
+            // Message de chat (compat) -> normaliser en newMessage avec payload direct
+            const payload = data.message || data;
             this.messageHandlers.forEach(handler => handler({
                 type: 'newMessage',
-                message: data
+                message: payload
             }));
         } else if (data.type === 'history') {
             // Historique au démarrage
@@ -104,9 +116,10 @@ class ChatWebSocket {
             }));
         } else if (data.type === 'newMessage') {
             // Nouveau message (depuis le serveur via broadcast)
+            const payload = data.message || data;
             this.messageHandlers.forEach(handler => handler({
                 type: 'newMessage',
-                message: data
+                message: payload
             }));
         } else if (data.type === 'userCount') {
             // Mise à jour du nombre d'utilisateurs
@@ -124,10 +137,11 @@ class ChatWebSocket {
             }));
         } else if (data.type === 'error') {
             // Erreur du serveur
-            this.errorHandlers.forEach(handler => handler(data.text));
+            const msg = data.message || data.text || 'Erreur inconnue';
+            this.errorHandlers.forEach(handler => handler(msg));
         } else if (data.type === 'success') {
             // Message de succès du serveur
-            console.log('✅ Succès serveur:', data.text);
+            console.log('✅ Succès serveur:', data.message || data.text);
         }
     }
 
@@ -143,9 +157,8 @@ class ChatWebSocket {
         return new Promise((resolve, reject) => {
             try {
                 this.ws.send(JSON.stringify({
-                    type: 'chat',
-                    pseudo,
-                    message
+                    type: 'message',
+                    text: message
                 }));
                 resolve();
             } catch (err) {

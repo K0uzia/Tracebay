@@ -1,7 +1,7 @@
 const sqlite3 = require('sqlite3');
 const path = require('path');
 const fs = require('fs');
-require('dotenv').config();
+try { require('dotenv').config(); } catch (_) {}
 
 // Simple logger if logger.js not available
 const logger = {

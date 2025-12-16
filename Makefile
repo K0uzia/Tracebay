@@ -42,7 +42,7 @@ help:
 # Development
 client:
 	@echo "$(YELLOW)Starting Client (Electron)...$(NC)"
-	cd apps/client && npm start
+	cd apps/client && npm start || true
 
 server:
 	@echo "$(YELLOW)Starting Server (Electron)...$(NC)"
@@ -62,11 +62,11 @@ build: build-client build-server
 
 build-client:
 	@echo "$(YELLOW)Building Client...$(NC)"
-	cd apps/client && npm run make
+	cd apps/client && npm run build
 
 build-server:
 	@echo "$(YELLOW)Building Server...$(NC)"
-	cd apps/server && npm run make
+	cd apps/server && npm run build
 
 # Testing
 test:

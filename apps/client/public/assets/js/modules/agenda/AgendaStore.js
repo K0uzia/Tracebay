@@ -5,11 +5,10 @@
  */
 
 class AgendaStore {
-    constructor(options = {}) {
+    constructor() {
         this.storageKey = 'workspace_events';
-        this.serverUrl = options.serverUrl || 'http://localhost:8060';
-        this.apiUrl = `${this.serverUrl}/api/agenda`;
-        this.useApi = true; // Utiliser l'API serveur
+        this.apiUrl = '/api/agenda';
+        this.useApi = false; // Basculer à true quand serveur prêt
         this.initializeStore();
     }
 

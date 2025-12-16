@@ -8,8 +8,12 @@ export default class SystemInfoManager {
         this.ramElementId = config.ramElementId || 'footer-ram-value';
         this.connectionElementId = config.connectionElementId || 'footer-connection-value';
         this.connectionIconId = config.connectionIconId || 'footer-connection-icon';
+        this.serverElementId = config.serverElementId || 'footer-server-value';
+        this.serverIconId = config.serverIconId || 'footer-server-icon';
         this.updateInterval = config.updateInterval || 5000; // 5 secondes par défaut
-        this.serverUrl = config.serverUrl || 'http://localhost:8060';
+        this.serverUrl = config.serverUrl || window.APP_CONFIG?.serverUrl || 'http://localhost:8060';
+        this.serverErrorCount = 0;
+        this.healthEndpoint = `${this.serverUrl}/api/health`;
         
         this.intervalId = null;
         this.init();
@@ -19,18 +23,90 @@ export default class SystemInfoManager {
      * Initialiser le manager
      */
     init() {
-        // Charger immédiatement
+        // Charger les infos locales immédiatement
+        this.fetchLocalInfo();
+        
+        // Charger les infos serveur
         this.fetchSystemInfo();
         
         // Mettre à jour périodiquement
         this.intervalId = setInterval(() => {
+            this.fetchLocalInfo();
             this.fetchSystemInfo();
         }, this.updateInterval);
-        
-        // Ajouter l'écouteur de clic sur l'IP
+
+        // Écouteur de clic pour copier l'IP
         this.attachIPClickListener();
     }
-    
+
+    /**
+     * Récupérer les informations locales (sans serveur)
+     */
+    async fetchLocalInfo() {
+        try {
+            // IP locale via IPC Electron
+            if (window.ipcRenderer) {
+                try {
+                    const localIp = await window.ipcRenderer.invoke('get-local-ip');
+                    const ipElement = document.getElementById(this.ipElementId);
+                    if (ipElement && localIp) {
+                        ipElement.textContent = localIp;
+                    }
+                } catch (err) {
+                    console.warn('Impossible d\'obtenir l\'IP locale:', err);
+                }
+            }
+            
+            // RAM via performance.memory (Chrome/Electron)
+            if (performance.memory) {
+                const usedMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2);
+                const totalMB = (performance.memory.jsHeapSizeLimit / 1024 / 1024).toFixed(2);
+                const usedPercent = ((performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit) * 100).toFixed(0);
+                
+                const ramElement = document.getElementById(this.ramElementId);
+                if (ramElement) {
+                    ramElement.textContent = `${usedMB} MB / ${totalMB} MB (${usedPercent}%)`;
+                    ramElement.style.color = usedPercent > 90 ? '#c62828' : (usedPercent > 70 ? '#F28241' : '');
+                }
+            } else {
+                const ramElement = document.getElementById(this.ramElementId);
+                if (ramElement) {
+                    ramElement.textContent = 'N/A';
+                    ramElement.style.color = '#9ca3af';
+                }
+            }
+            
+            // État de la connexion réseau
+            const connectionElement = document.getElementById(this.connectionElementId);
+            const connectionIcon = document.getElementById(this.connectionIconId);
+            
+            if (connectionElement && connectionIcon) {
+                const isOnline = navigator.onLine;
+                
+                if (isOnline) {
+                    connectionElement.textContent = 'En ligne';
+                    connectionElement.style.color = '#4ade80';
+                    connectionIcon.className = 'fas fa-wifi';
+                    
+                    const parentItem = connectionElement.closest('.footer-info-item');
+                    if (parentItem) {
+                        parentItem.setAttribute('title', 'Connexion Internet active');
+                    }
+                } else {
+                    connectionElement.textContent = 'Hors ligne';
+                    connectionElement.style.color = '#ef4444';
+                    connectionIcon.className = 'fas fa-wifi-slash';
+                    
+                    const parentItem = connectionElement.closest('.footer-info-item');
+                    if (parentItem) {
+                        parentItem.setAttribute('title', 'Pas de connexion Internet');
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('❌ Erreur récupération infos locales:', error);
+        }
+    }
     /**
      * Attacher l'écouteur de clic sur l'IP pour la copier
      */
@@ -81,24 +157,32 @@ export default class SystemInfoManager {
      */
     async fetchSystemInfo() {
         try {
-            const response = await fetch(`${this.serverUrl}/api/system`);
+            const response = await fetch(this.healthEndpoint);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const result = await response.json();
-            
-            if (result.success && result.data) {
+            const hasData = !!(result && result.data);
+            if (hasData) {
                 this.updateDisplay(result.data);
-            } else {
-                // Erreur silencieuse pour ne pas spammer la console
-                this.showError();
             }
+            this.updateServerStatus(true);
+            this.serverErrorCount = 0;
         } catch (error) {
-            // Erreur silencieuse - le serveur système peut ne pas être disponible
-            // Ne pas logger l'erreur pour éviter de spammer la console
-            this.showError();
+            // Serveur non disponible - mode offline
+            this.serverErrorCount += 1;
+            this.showOffline();
+            if (this.serverErrorCount === 1 || this.serverErrorCount % 5 === 0) {
+                console.warn(`⚠️  Impossible de joindre /api/health (${this.serverErrorCount} tentative${this.serverErrorCount > 1 ? 's' : ''})`);
+            }
+            // Après plusieurs échecs, arrêter le polling pour éviter le spam
+            if (this.serverErrorCount >= 10 && this.intervalId) {
+                clearInterval(this.intervalId);
+                this.intervalId = null;
+                console.warn('⏸️ Arrêt du polling /api/health après 10 échecs');
+            }
         }
     }
 
@@ -107,75 +191,66 @@ export default class SystemInfoManager {
      * @param {Object} data - Données système
      */
     updateDisplay(data) {
-        // Afficher l'IP
+        // Afficher l'IP serveur si dispo, sinon garder locale
         const ipElement = document.getElementById(this.ipElementId);
-        if (ipElement) {
-            ipElement.textContent = data.ip || 'N/A';
+        if (ipElement && data.ip) {
+            ipElement.textContent = data.ip;
+            ipElement.style.color = '';
         }
 
-        // Afficher la RAM
+        // Afficher la RAM remontée par le serveur si plus précise
         const ramElement = document.getElementById(this.ramElementId);
-        if (ramElement) {
+        if (ramElement && data.ram) {
             const ramText = `${data.ram.used} Go / ${data.ram.total} Go (${data.ram.usedPercent}%)`;
             ramElement.textContent = ramText;
             
-            // Ajouter une couleur selon l'utilisation
             const usedPercent = parseFloat(data.ram.usedPercent);
             if (usedPercent > 90) {
-                ramElement.style.color = '#c62828'; // Rouge
+                ramElement.style.color = '#c62828';
             } else if (usedPercent > 70) {
-                ramElement.style.color = '#F28241'; // Orange
+                ramElement.style.color = '#F28241';
             } else {
-                ramElement.style.color = ''; // Défaut
+                ramElement.style.color = '';
             }
         }
 
-        // Afficher l'état de la connexion
-        const connectionElement = document.getElementById(this.connectionElementId);
-        const connectionIcon = document.getElementById(this.connectionIconId);
+        // Mettre à jour le statut serveur
+        this.updateServerStatus(true);
+    }
+
+    /**
+     * Afficher l'état offline
+     */
+    showOffline() {
+        this.updateServerStatus(false);
+    }
+
+    /**
+     * Mettre à jour le statut du serveur
+     */
+    updateServerStatus(isOnline) {
+        const serverElement = document.getElementById(this.serverElementId);
+        const serverIcon = document.getElementById(this.serverIconId);
         
-        if (connectionElement && connectionIcon) {
-            const connectionType = data.network.connectionType || 'none';
-            const isOnline = data.network.isOnline;
-            const hasConnection = data.network.hasConnection;
-            
-            // Déterminer l'icône selon le type de connexion
-            let iconClass = '';
-            let titleText = '';
-            const typeText = connectionType === 'wifi' ? 'WiFi' : (connectionType === 'ethernet' ? 'Ethernet' : 'Aucune');
-            
-            if (connectionType === 'wifi') {
-                iconClass = isOnline ? 'fas fa-wifi' : (hasConnection ? 'fas fa-wifi' : 'fas fa-wifi-slash');
-            } else if (connectionType === 'ethernet') {
-                iconClass = 'fas fa-ethernet';
-            } else {
-                iconClass = 'fas fa-wifi-slash';
-            }
-            
-            // Déterminer la couleur, le texte et le title selon l'état
+        if (serverElement && serverIcon) {
             if (isOnline) {
-                // Vert clair = Internet disponible
-                connectionElement.textContent = 'En ligne';
-                connectionElement.style.color = '#4ade80';
-                titleText = `Connexion ${typeText} active - Internet disponible`;
-            } else if (hasConnection) {
-                // Orange = Connecté mais pas d'Internet
-                connectionElement.textContent = 'Pas d\'Internet';
-                connectionElement.style.color = '#F28241';
-                titleText = `Connexion ${typeText} active - Pas d'accès Internet`;
+                serverElement.textContent = 'Serveur en ligne';
+                serverElement.style.color = '#4ade80';
+                serverIcon.className = 'fas fa-check-circle';
+                
+                const parentItem = serverElement.closest('.footer-info-item');
+                if (parentItem) {
+                    parentItem.setAttribute('title', 'Serveur connecté');
+                }
             } else {
-                // Rouge = Aucune connexion
-                connectionElement.textContent = 'Hors ligne';
-                connectionElement.style.color = '#c62828';
-                titleText = 'Aucune connexion réseau';
-            }
-            
-            connectionIcon.className = iconClass;
-            
-            // Ajouter le title au conteneur parent
-            const parentItem = connectionElement.closest('.footer-info-item');
-            if (parentItem) {
-                parentItem.setAttribute('title', titleText);
+                serverElement.textContent = 'Serveur hors ligne';
+                serverElement.style.color = '#ef4444';
+                serverIcon.className = 'fas fa-times-circle';
+                
+                const parentItem = serverElement.closest('.footer-info-item');
+                if (parentItem) {
+                    parentItem.setAttribute('title', 'Serveur non disponible - Mode hors ligne');
+                }
             }
         }
     }
@@ -184,13 +259,7 @@ export default class SystemInfoManager {
      * Afficher un message d'erreur
      */
     showError() {
-        const ipElement = document.getElementById(this.ipElementId);
-        const ramElement = document.getElementById(this.ramElementId);
-        const connectionElement = document.getElementById(this.connectionElementId);
-        
-        if (ipElement) ipElement.textContent = 'Erreur';
-        if (ramElement) ramElement.textContent = 'Erreur';
-        if (connectionElement) connectionElement.textContent = 'Erreur';
+        this.showOffline();
     }
 
     /**

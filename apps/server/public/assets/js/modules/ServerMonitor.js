@@ -75,7 +75,9 @@ class ServerMonitor {
             
             switch(data.type) {
                 case 'userCount':
-                    this.updateClientCount(data.count || 0);
+                    // data.users: [{username, ip}]
+                    this.stats.clients = data.users || [];
+                    this.updateClientCount(data.count || this.stats.clients.length || 0);
                     break;
                 case 'message':
                     this.addLog(`💬 Message: ${data.user || 'unknown'}`);
@@ -143,6 +145,10 @@ class ServerMonitor {
             const response = await fetch('/api/monitoring/internal/stats');
             if (response.ok) {
                 const data = await response.json();
+                // Si l'API retourne aussi les clients, conserver pour affichage
+                if (data.clients) {
+                    this.stats.clients = data.clients;
+                }
                 this.updateAllStats(data);
             } else {
                 console.error('❌ Erreur fetch stats:', response.status);
@@ -263,13 +269,15 @@ class ServerMonitor {
             el.textContent = count;
         }
         
-        // Mettre à jour la liste (simulée pour l'instant)
+        // Mettre à jour la liste détaillée des clients (username + IP)
         const list = document.getElementById('client-list');
         if (list) {
-            if (count === 0) {
+            if (!this.stats.clients || this.stats.clients.length === 0) {
                 list.innerHTML = '<p class="empty-message">Aucun client connecté</p>';
             } else {
-                list.innerHTML = `<div class="client-item">👤 ${count} client${count > 1 ? 's' : ''} connecté${count > 1 ? 's' : ''}</div>`;
+                list.innerHTML = this.stats.clients
+                    .map((c) => `<div class="client-item">👤 ${Utils.escapeHtml(c.username || 'inconnu')} <span class="client-ip">(${Utils.escapeHtml(c.ip || 'N/A')})</span></div>`)
+                    .join('');
             }
         }
     }

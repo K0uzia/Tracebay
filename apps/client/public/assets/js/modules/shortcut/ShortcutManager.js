@@ -1,9 +1,9 @@
 export default class ShortcutManager {
-    constructor(options = {}) {
+    constructor() {
         this.categories = [];
         this.searchQuery = '';
         this.listeners = [];
-        this.serverUrl = options.serverUrl || 'http://localhost:8060';
+        this.serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
     }
 
     async init() {
@@ -63,23 +63,20 @@ export default class ShortcutManager {
     }
 
     async loadShortcuts() {
-        const userId = localStorage.getItem('workspace_user_id');
+        const token = localStorage.getItem('workspace_jwt');
         
-        if (!userId) {
+        if (!token) {
             this.categories = [];
             return;
         }
 
         try {
-            const token = this.getAuthToken();
-            const headers = token ? { 'Authorization': `Bearer ${token}` } : { 'X-User-Id': userId };
-            
             const [categoriesRes, shortcutsRes] = await Promise.all([
                 fetch(`${this.serverUrl}/api/shortcuts/categories`, {
-                    headers: headers
+                    headers: { 'Authorization': `Bearer ${token}` }
                 }),
                 fetch(`${this.serverUrl}/api/shortcuts`, {
-                    headers: headers
+                    headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);
 
@@ -110,9 +107,13 @@ export default class ShortcutManager {
     getUserId() {
         return localStorage.getItem('workspace_user_id');
     }
+    
+    getToken() {
+        return localStorage.getItem('workspace_jwt');
+    }
 
     isAuthenticated() {
-        return !!this.getUserId();
+        return !!this.getToken();
     }
 
     setupKeyboardShortcuts() {
@@ -345,32 +346,21 @@ export default class ShortcutManager {
         return modal;
     }
 
-    getAuthToken() {
-        return localStorage.getItem('workspace_token');
-    }
-
     async addCategory(name) {
-        const userId = this.getUserId();
+        const token = this.getToken();
         
-        if (!userId) {
+        if (!token) {
             alert('Vous devez être connecté pour créer une catégorie');
             return;
         }
 
         try {
-            const token = this.getAuthToken();
-            const headers = {
-                'Content-Type': 'application/json'
-            };
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            } else {
-                headers['X-User-Id'] = userId;
-            }
-
             const response = await fetch(`${this.serverUrl}/api/shortcuts/categories`, {
                 method: 'POST',
-                headers: headers,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ name })
             });
 
@@ -389,22 +379,14 @@ export default class ShortcutManager {
     }
 
     async deleteCategory(categoryId) {
-        const userId = this.getUserId();
+        const token = this.getToken();
         
-        if (!userId) return;
+        if (!token) return;
 
         try {
-            const token = this.getAuthToken();
-            const headers = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            } else {
-                headers['X-User-Id'] = userId;
-            }
-
             const response = await fetch(`${this.serverUrl}/api/shortcuts/categories/${categoryId}`, {
                 method: 'DELETE',
-                headers: headers
+                headers: { 'Authorization': `Bearer ${token}` }
             });
 
             const data = await response.json();
@@ -419,27 +401,20 @@ export default class ShortcutManager {
     }
 
     async addShortcut(categoryId, name, url) {
-        const userId = this.getUserId();
+        const token = this.getToken();
         
-        if (!userId) {
+        if (!token) {
             alert('Vous devez être connecté pour ajouter un raccourci');
             return;
         }
 
         try {
-            const token = this.getAuthToken();
-            const headers = {
-                'Content-Type': 'application/json'
-            };
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            } else {
-                headers['X-User-Id'] = userId;
-            }
-
             const response = await fetch(`${this.serverUrl}/api/shortcuts`, {
                 method: 'POST',
-                headers: headers,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ category_id: categoryId, name, url })
             });
 
@@ -457,23 +432,15 @@ export default class ShortcutManager {
         }
     }
 
-    async deleteShortcut(categoryId, shortcutId) {
-        const userId = this.getUserId();
+    async deleteShortcut(shortcutId) {
+        const token = this.getToken();
         
-        if (!userId) return;
+        if (!token) return;
 
         try {
-            const token = this.getAuthToken();
-            const headers = {};
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            } else {
-                headers['X-User-Id'] = userId;
-            }
-
             const response = await fetch(`${this.serverUrl}/api/shortcuts/${shortcutId}`, {
                 method: 'DELETE',
-                headers: headers
+                headers: { 'Authorization': `Bearer ${token}` }
             });
 
             const data = await response.json();
