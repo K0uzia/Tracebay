@@ -118,6 +118,12 @@ function createWindow() {
 
 app.on('ready', async () => {
     try {
+        // Ensure database path is writable in packaged apps
+        if (!process.env.DATABASE_PATH) {
+            const userDataDir = app.getPath('userData');
+            const dbPath = path.join(userDataDir, 'workspace.db');
+            process.env.DATABASE_PATH = dbPath;
+        }
         await startServer();
         createWindow();
         logger.info(`💻 Interface graphique créée et lancée`);

@@ -14,25 +14,18 @@
     "@electron-forge/maker-deb": "^7.10.2",
     "@electron-forge/maker-squirrel": "^7.10.2",
     "@electron-forge/maker-zip": "^7.10.2",
-    "@electron-forge/plugin-webpack": "^7.10.2",
     "@electron-forge/publisher-github": "^7.10.2",
-    "@fortawesome/fontawesome-svg-core": "^7.1.0",
-    "@fortawesome/free-brands-svg-icons": "^7.1.0",
-    "@fortawesome/free-regular-svg-icons": "^7.1.0",
-    "@fortawesome/free-solid-svg-icons": "^7.1.0",
     "electron": "^39.2.4",
     "electron-builder": "^26.0.12",
-    "electron-updater": "^6.6.2",
-    "html-loader": "^5.1.0",
-    "raw-loader": "^4.0.2"
+    "electron-updater": "^6.6.2"
   },
   "scripts": {
-    "start": "electron-forge start",
+    "start": "electron .",
     "dev": "electron-forge start --inspect",
     "build": "electron-forge make",
     "build:win": "electron-forge make --platform win32",
     "build:mac": "electron-forge make --platform darwin",
-    "build:linux": "electron-forge make --platform linux",
+    "build:linux": "electron-builder --linux",
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint . --ext .js"

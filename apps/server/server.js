@@ -3,7 +3,7 @@
  * Configuration main du serveur API
  */
 
-require('dotenv').config();
+try { require('dotenv').config(); } catch (_) {}
 
 const express = require('express');
 const cors = require('cors');
@@ -107,7 +107,11 @@ console.log('📡 WebSocket server initialized');
 const connectedClients = new Map();
 
 wss.on('connection', (ws, req) => {
-    console.log(`✅ WebSocket client connected: ${req.socket.remoteAddress}`);
+    const clientIp = (req.socket.remoteAddress || '').replace('::ffff:', '');
+    console.log(`✅ WebSocket client connected: ${clientIp}`);
+    
+    // Marquer le type de client (par défaut: client normal)
+    ws.clientType = 'client';
     
     // Send welcome message
     ws.send(JSON.stringify({
@@ -119,6 +123,22 @@ wss.on('connection', (ws, req) => {
         try {
             const message = JSON.parse(data);
             console.log(`📨 WebSocket message:`, message.type);
+            
+            if (message.type === 'monitor' && message.action === 'subscribe') {
+                // Dashboard se connecte
+                ws.clientType = 'monitor';
+                console.log('📊 Dashboard monitor connected');
+                
+                // Envoyer immédiatement les stats au dashboard
+                const users = Array.from(connectedClients.values());
+                const userList = users.map(u => ({ username: u.username, ip: u.ip }));
+                ws.send(JSON.stringify({
+                    type: 'userCount',
+                    count: users.length,
+                    users: userList
+                }));
+                return;
+            }
             
             if (message.type === 'auth') {
                 // Authenticate client with JWT
@@ -138,6 +158,7 @@ wss.on('connection', (ws, req) => {
                     connectedClients.set(ws, {
                         userId: decoded.id,
                         username: decoded.username,
+                        ip: clientIp,
                         connectedAt: new Date()
                     });
                     
@@ -223,7 +244,7 @@ wss.on('connection', (ws, req) => {
  */
 function broadcastUserCount() {
     const users = Array.from(connectedClients.values());
-    const userList = users.map(u => u.username);
+    const userList = users.map(u => ({ username: u.username, ip: u.ip }));
 
     const message = JSON.stringify({
         type: 'userCount',
@@ -236,6 +257,8 @@ function broadcastUserCount() {
             client.send(message);
         }
     });
+    
+    console.log(`📊 Broadcast userCount: ${users.length} utilisateur(s) connecté(s)`);
 }
 
 // Start server

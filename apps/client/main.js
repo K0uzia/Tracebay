@@ -6,11 +6,13 @@ const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
 
 // Configuration
 const SERVER_HOST = process.env.SERVER_HOST || 'localhost';
 const SERVER_PORT = process.env.SERVER_PORT || 8060;
 const SERVER_URL = `http://${SERVER_HOST}:${SERVER_PORT}`;
+const SERVER_HEALTH_ENDPOINT = `${SERVER_URL}/api/health`;
 const MAX_RETRY_ATTEMPTS = 10;
 const RETRY_INTERVAL = 500;
 
@@ -19,31 +21,35 @@ let pdfWindows = new Map();
 let serverConnected = false;
 
 /**
- * Vérifier la connexion au serveur distant
+ * Vérifier la connexion au serveur distant (non-bloquant)
  */
 function checkServerConnection(retries = 0) {
-    return new Promise((resolve, reject) => {
-        const req = http.get(`${SERVER_URL}/api/health`, { timeout: 3000 }, (res) => {
+    return new Promise((resolve) => {
+        const req = http.get(SERVER_HEALTH_ENDPOINT, { timeout: 3000 }, (res) => {
             if (res.statusCode === 200) {
                 console.log(`✅ Connecté au serveur: ${SERVER_URL}`);
                 serverConnected = true;
                 resolve(true);
             } else if (retries < MAX_RETRY_ATTEMPTS) {
                 setTimeout(() => {
-                    checkServerConnection(retries + 1).then(resolve).catch(reject);
+                    checkServerConnection(retries + 1).then(resolve);
                 }, RETRY_INTERVAL);
             } else {
-                reject(new Error(`Serveur indisponible après ${MAX_RETRY_ATTEMPTS} tentatives`));
+                console.warn(`⚠️  Serveur indisponible après ${MAX_RETRY_ATTEMPTS} tentatives`);
+                serverConnected = false;
+                resolve(false);
             }
         });
 
         req.on('error', () => {
             if (retries < MAX_RETRY_ATTEMPTS) {
                 setTimeout(() => {
-                    checkServerConnection(retries + 1).then(resolve).catch(reject);
+                    checkServerConnection(retries + 1).then(resolve);
                 }, RETRY_INTERVAL);
             } else {
-                reject(new Error(`Impossible de se connecter au serveur: ${SERVER_URL}`));
+                console.warn(`⚠️  Impossible de se connecter au serveur: ${SERVER_URL}`);
+                serverConnected = false;
+                resolve(false);
             }
         });
 
@@ -51,10 +57,12 @@ function checkServerConnection(retries = 0) {
             req.destroy();
             if (retries < MAX_RETRY_ATTEMPTS) {
                 setTimeout(() => {
-                    checkServerConnection(retries + 1).then(resolve).catch(reject);
+                    checkServerConnection(retries + 1).then(resolve);
                 }, RETRY_INTERVAL);
             } else {
-                reject(new Error('Timeout lors de la connexion au serveur'));
+                console.warn('⚠️  Timeout lors de la connexion au serveur');
+                serverConnected = false;
+                resolve(false);
             }
         });
     });
@@ -76,6 +84,7 @@ function createWindow() {
         }
     });
 
+    // Charger l'index.html directement
     mainWindow.loadURL(`file://${path.join(__dirname, 'public', 'index.html')}`);
     mainWindow.show();
 
@@ -107,20 +116,19 @@ function createWindow() {
  * Événement de démarrage Electron
  */
 app.on('ready', async () => {
-    try {
-        console.log('🚀 Démarrage Workspace Client...');
-        console.log(`📍 Serveur attendu: ${SERVER_URL}`);
-        
-        // Attendre la connexion au serveur
-        await checkServerConnection();
-        
-        createWindow();
-        console.log('✅ Interface graphique lancée');
-        console.log('✨ Application prête');
-    } catch (error) {
-        console.error('❌ Erreur initialisation:', error.message);
-        app.quit();
+    console.log('🚀 Démarrage Workspace Client...');
+    console.log(`📍 Serveur attendu: ${SERVER_URL}`);
+    
+    // Tenter la connexion au serveur (non-bloquant)
+    await checkServerConnection();
+    
+    if (!serverConnected) {
+        console.log('🔌 Mode hors-ligne: Le client démarre sans connexion serveur');
     }
+    
+    createWindow();
+    console.log('✅ Interface graphique lancée');
+    console.log('✨ Application prête');
 });
 
 /**
@@ -241,7 +249,24 @@ ipcMain.handle('get-app-config', async () => {
         serverUrl: SERVER_URL,
         serverHost: SERVER_HOST,
         serverPort: SERVER_PORT,
+        serverConnected: serverConnected,
         nodeEnv: process.env.NODE_ENV || 'production',
         appVersion: app.getVersion()
     };
+});
+
+/**
+ * Obtenir l'IP locale de la machine
+ */
+ipcMain.handle('get-local-ip', async () => {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+        for (const iface of interfaces[name]) {
+            // Ignorer les adresses internes (127.0.0.1) et IPv6
+            if (iface.family === 'IPv4' && !iface.internal) {
+                return iface.address;
+            }
+        }
+    }
+    return '127.0.0.1'; // Fallback
 });

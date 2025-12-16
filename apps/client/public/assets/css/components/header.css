@@ -91,8 +91,8 @@ menu {
     position: relative;
 }
 
-.nav-profile {
-    padding: var(--unit-1);
+.profile-text {
+    display: none;
 }
 
 .profile-dropdown {
@@ -248,4 +248,28 @@ menu {
     .nav-burger {
         display: flex;
     }
+
+    .profile-text {
+        display: inline;
+        margin-left: var(--unit-1);
+    }
+
+    .nav-action:hover .profile-dropdown,
+    .profile-dropdown:hover {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .profile-dropdown {
+        position: absolute;
+        top: -90px;
+        right: 85px;
+        background-color: var(--bleu1);
+        border-radius: 0;
+        box-shadow: none;
+        min-width: 200px;
+        z-index: 200;
+        padding: var(--unit-1);
+    }
+
 }

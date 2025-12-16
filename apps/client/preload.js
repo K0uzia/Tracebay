@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const ALLOWED_CHANNELS = {
     send: ['open-pdf'],
-    invoke: ['open-external', 'open-pdf-window'],
+    invoke: ['open-external', 'open-pdf-window', 'get-app-config', 'get-local-ip'],
     on: ['update:available', 'update:not-available', 'update:downloaded', 'update:progress', 'update:error']
 };
 
@@ -48,5 +48,15 @@ contextBridge.exposeInMainWorld('electron', {
 
     openPDF: () => {
         ipcRenderer.send('open-pdf');
+    }
+});
+
+// Exposer ipcRenderer pour la compatibilité
+contextBridge.exposeInMainWorld('ipcRenderer', {
+    invoke: (channel, args) => {
+        if (!ALLOWED_CHANNELS.invoke.includes(channel)) {
+            throw new Error(`Canal IPC non autorisé: ${channel}`);
+        }
+        return ipcRenderer.invoke(channel, args);
     }
 });

@@ -1,12 +1,10 @@
-// Import global styles
-import './assets/css/global.css';
-
 class PageManager {
     constructor() {
         this.contentContainer = 'content';
         this.storageKey = 'workspace_current_page';
         this.authManager = null;
-        this.serverUrl = null; // Will be set from main process config
+        this.serverUrl = null;
+        this.serverConnected = false;
         
         // Pages et leur configuration de layout
         this.pagesConfig = {
@@ -25,19 +23,33 @@ class PageManager {
     }
 
     async init() {
-        // Get server configuration from main process
+        let config = null;
+        // Récupérer la config du serveur depuis le processus principal
         try {
-            const config = await window.ipcRenderer.invoke('get-app-config');
-            this.serverUrl = config.serverUrl;
-            console.log(`✅ Server URL configured: ${this.serverUrl}`);
+            if (window.ipcRenderer && window.ipcRenderer.invoke) {
+                config = await window.ipcRenderer.invoke('get-app-config');
+                this.serverUrl = config.serverUrl || 'http://localhost:8060';
+                this.serverConnected = !!config.serverConnected;
+            } else {
+                this.serverUrl = 'http://localhost:8060';
+            }
         } catch (error) {
-            console.error('❌ Erreur récupération config serveur:', error);
-            this.serverUrl = 'http://localhost:8060'; // Fallback
+            console.error('❌ Erreur récupération config:', error);
+            this.serverUrl = 'http://localhost:8060';
+            this.serverConnected = false;
         }
+
+        // Exposer serverUrl et état serveur globalement pour les modules
+        window.APP_CONFIG = {
+            serverUrl: this.serverUrl,
+            serverConnected: this.serverConnected
+        };
+
+        // Charger les composants HTML
+        await this.loadComponent('header', './components/header.html', () => this.initializeAuth());
+        await this.loadComponent('footer', './components/footer.html', () => this.initializeSystemInfo());
         
-        this.loadComponent('header', '/components/header.html', () => this.initializeAuth());
-        this.loadComponent('footer', '/components/footer.html', () => this.initializeSystemInfo());
-        
+        // Charger la page sauvegardée ou home
         const lastPage = this.getLastPage();
         const pageToLoad = lastPage && this.pagesConfig[lastPage] ? lastPage : 'home';
         this.loadPage(pageToLoad);
@@ -45,11 +57,9 @@ class PageManager {
 
     async initializeAuth() {
         try {
-            const module = await import('/assets/js/modules/auth/AuthManager.js');
+            const module = await import('./assets/js/modules/auth/AuthManager.js');
             const AuthManager = module.default;
-            this.authManager = new AuthManager({
-                serverUrl: this.serverUrl
-            });
+            this.authManager = new AuthManager();
             
             this.authManager.on('auth-change', (user) => {
                 console.log('🔄 Auth change event:', user);
@@ -74,7 +84,7 @@ class PageManager {
 
     async loadAuthModal() {
         try {
-            const response = await fetch('/components/auth-modal.html');
+            const response = await fetch('./components/auth-modal.html');
             if (!response.ok) throw new Error('Auth modal not found');
             const html = await response.text();
             document.getElementById('authModalContainer').innerHTML = html;
@@ -273,6 +283,20 @@ class PageManager {
         }
     }
 
+    loadComponentDirect(elementId, html, onLoad) {
+        try {
+            const element = document.getElementById(elementId);
+            if (!element) {
+                console.error(`❌ Element ${elementId} not found`);
+                return;
+            }
+            element.innerHTML = html;
+            if (onLoad) onLoad();
+        } catch (error) {
+            console.error(`❌ Erreur chargement ${elementId}:`, error);
+        }
+    }
+
     async loadComponent(elementId, url, onLoad) {
         try {
             const response = await fetch(url);
@@ -286,7 +310,7 @@ class PageManager {
     }
 
     initializeSystemInfo() {
-        import('/assets/js/modules/system/SystemInfoManager.js')
+        import('./assets/js/modules/system/SystemInfoManager.js')
             .then(module => {
                 const SystemInfoManager = module.default;
                 window.systemInfoManager = new SystemInfoManager({
@@ -294,8 +318,9 @@ class PageManager {
                     ramElementId: 'footer-ram-value',
                     connectionElementId: 'footer-connection-value',
                     connectionIconId: 'footer-connection-icon',
-                    updateInterval: 5000,
-                    serverUrl: this.serverUrl
+                    serverElementId: 'footer-server-value',
+                    serverIconId: 'footer-server-icon',
+                    updateInterval: 5000
                 });
             })
             .catch(error => {
@@ -305,7 +330,7 @@ class PageManager {
 
     async loadPage(pageName) {
         try {
-            const response = await fetch(`/pages/${pageName}.html`);
+            const response = await fetch(`./pages/${pageName}.html`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             
             const html = await response.text();
@@ -332,7 +357,7 @@ class PageManager {
                 window.timeManager.destroy();
             }
             
-            import('/assets/js/modules/time/TimeManager.js')
+            import('./assets/js/modules/time/TimeManager.js')
                 .then(module => {
                     const TimeManager = module.default;
                     window.timeManager = new TimeManager({
@@ -357,8 +382,8 @@ class PageManager {
         
         if (chatMessagesContainer) {
             Promise.all([
-                import('/assets/js/modules/chat/ChatManager.js'),
-                import('/assets/js/config/ChatSecurityConfig.js')
+                import('./assets/js/modules/chat/ChatManager.js'),
+                import('./assets/js/config/ChatSecurityConfig.js')
             ]).then(([chatModule, configModule]) => {
                 const ChatManager = chatModule.default;
                 const securityConfig = configModule.default;
@@ -373,8 +398,7 @@ class PageManager {
                     pseudoErrorId: 'chat-pseudo-error',
                     clearChatBtnId: 'chat-clear-btn',
                     pseudoWrapperId: 'chat-pseudo-input-wrapper',
-                    securityConfig: securityConfig,
-                    serverUrl: this.serverUrl
+                    securityConfig: securityConfig
                 });
             }).catch(error => {
                 console.error('❌ Erreur import ChatManager:', error);
@@ -385,8 +409,8 @@ class PageManager {
     initializePageElements(pageName) {
         if (pageName === 'home') {
             Promise.all([
-                import('/assets/js/modules/pdf/PDFManager.js'),
-                import('/assets/js/config/PDFConfig.js')
+                import('./assets/js/modules/pdf/PDFManager.js'),
+                import('./assets/js/config/PDFConfig.js')
             ]).then(([pdfModule, configModule]) => {
                 const PDFManager = pdfModule.default;
                 const pdfConfig = configModule.pdfConfig;
@@ -397,16 +421,16 @@ class PageManager {
                 console.error('❌ Erreur import PDFManager:', error);
             });
 
-            import('/assets/js/modules/agenda/AgendaStore.js')
+            import('./assets/js/modules/agenda/AgendaStore.js')
                 .then(module => {
                     const AgendaStore = module.default;
-                    this.loadTodayEvents(new AgendaStore({ serverUrl: this.serverUrl }));
+                    this.loadTodayEvents(AgendaStore);
                 })
                 .catch(error => {
                     console.error('❌ Erreur import AgendaStore:', error);
                 });
         } else if (pageName === 'agenda') {
-            import('/assets/js/modules/agenda/AgendaInit.js')
+            import('./assets/js/modules/agenda/AgendaInit.js')
                 .then(module => {
                     module.destroyAgenda();
                     requestAnimationFrame(() => {
@@ -417,13 +441,13 @@ class PageManager {
                     console.error('❌ Erreur import AgendaInit:', error);
                 });
         } else if (pageName === 'shortcut') {
-            import('/assets/js/modules/shortcut/ShortcutManager.js')
+            import('./assets/js/modules/shortcut/ShortcutManager.js')
                 .then(async module => {
                     const ShortcutManager = module.default;
                     if (window.shortcutManager) {
                         window.shortcutManager.destroy();
                     }
-                    window.shortcutManager = new ShortcutManager({ serverUrl: this.serverUrl });
+                    window.shortcutManager = new ShortcutManager();
                     await window.shortcutManager.init();
                 })
                 .catch(error => {
