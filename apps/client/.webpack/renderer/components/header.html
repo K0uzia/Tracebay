@@ -1,0 +1,34 @@
+<menu>
+    <div class="nav-logo">
+        <img class="logo" src="/src/icons/logo.svg" alt="" class="logo">
+        <h1>Workspace 1.0</h1>
+    </div>
+    <nav class="nav-links" id="navLinks">
+        <!-- Boutons de navigation avec data-page -->
+        <button class="nav-btn" data-page="home"><i class="fas fa-home"></i> Accueil</button>
+        <button class="nav-btn" data-page="agenda"><i class="fas fa-calendar-alt"></i> Agenda</button>
+        <button class="nav-btn" data-page="shortcut"><i class="fa-solid fa-arrow-up-right-from-square"></i> Mes raccourcis</button>
+        <button class="nav-btn" data-page="dossier"><i class="fas fa-folder"></i> Dossier</button>
+        <button class="nav-btn" data-page="application"><i class="fas fa-cube"></i> Application</button>
+        <button class="nav-btn nav-reception" data-page="reception"><i class="fas fa-bell"></i> Réception</button>
+        <div class="nav-action">
+            <button class="nav-btn nav-profile" id="navProfile"><i class="fa-solid fa-user"></i></button>
+            <div class="profile-dropdown hidden" id="profileDropdown">
+                <div class="profile-auth" id="profileAuth">
+                    <button class="profile-btn" id="btnLogin">Se connecter</button>
+                    <button class="profile-btn" id="btnRegister">Créer un compte</button>
+                </div>
+                <div class="profile-user hidden" id="profileUser">
+                    <div class="profile-username" id="profileUsername"></div>
+                    <button class="profile-btn" id="btnSettings">Paramètres</button>
+                    <button class="profile-btn" id="btnLogout">Déconnexion</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <button class="nav-burger" id="navBurger" aria-label="Ouvrir menu">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+</menu>

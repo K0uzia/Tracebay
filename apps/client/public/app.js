@@ -1,3 +1,6 @@
+// Import global styles
+import './assets/css/global.css';
+
 class PageManager {
     constructor() {
         this.contentContainer = 'content';

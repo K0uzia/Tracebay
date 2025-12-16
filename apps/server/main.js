@@ -47,7 +47,8 @@ function checkServerReady(retries = 0) {
 function startServer() {
     return new Promise((resolve, reject) => {
         try {
-            server = require('./server.js');
+            const serverModule = require('./server.js');
+            server = serverModule;
             checkServerReady().then(resolve).catch(reject);
         } catch (err) {
             logger.error('❌ Erreur démarrage serveur:', err);
