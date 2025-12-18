@@ -1,0 +1,480 @@
+# 🎯 INSTRUCTIONS - Workspace v2.0
+
+> **Principe**: Ce fichier **OVERRIDE** `.ai-core/`. Si non mentionné ici → applique `.ai-core/` standards.
+
+---
+
+## 📦 TECH STACK
+
+```yaml
+Backend:
+  Language: TypeScript 5.3+ (strict mode - MANDATORY)
+  Framework: Fastify 4.24+
+  Database: SQLite3 5.1+ + Connection Pool (Phase 1) → PostgreSQL 15+ (Phase 2)
+  
+Frontend:
+  Language: Vanilla JS ES6+ (ou TypeScript optionnel)
+  Framework: Web Components (standard)
+  UI: HTML5 + CSS3
+  
+Runtime:
+  Node.js 18+ LTS
+  Electron 39+
+  
+Additional:
+  Real-time: WebSocket (ws 8.18+)
+  Auth: JWT 9.1+, BCRYPTJS 2.4.3+
+  Security: Helmet 7.1+, CORS
+  Build: tsx 4.7+ (dev), tsc (prod)
+  Tests: Jest 29+, Supertest 6.3+
+
+Interdit:
+  - Express (remplacé par Fastify)
+  - React/Vue/Angular
+  - better-sqlite3 (utiliser sqlite3 + pool)
+  - CommonJS backend (utiliser ES6 modules)
+  - GraphQL
+  - Dark mode
+```
+
+---
+
+## 🎨 DESIGN SYSTEM
+
+idée design dashboard app serveur : Jarvis/src temp/dashboard.webp
+
+```css
+/* Couleurs principales */
+--color-primary: #3E3B8C      /* Bleu principal */
+--color-secondary: #2D3073    /* Bleu secondaire */
+--color-accent-1: #F2BC1B     /* Jaune */
+--color-accent-2: #F28241     /* Orange */
+--color-bg: #f2f2f2           /* Blanc cassé */
+--color-text: #0D0D0D         /* Noir */
+--color-error: #c62828        /* Erreur */
+--color-valid: #008000        /* Succès */
+
+/* Spacing (système d'unités - base 8px) */
+--unit: 8px
+--unit-1: 8px
+--unit-2: 16px
+--unit-3: 24px
+--unit-4: 32px
+--unit-5: 40px
+
+/* Typography */
+font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif
+
+/* Autres */
+--radius-small: 4px
+--radius-medium: 8px
+--shadow-small: rgba(0,0,0,0.24) 0px 3px 8px
+--transition: all 0.3s ease
+```
+
+---
+
+## 🏗️ ARCHITECTURE
+
+```yaml
+Type: Monorepo (npm workspaces)
+
+Structure:
+  Backend: apps/server/src/{api,models,lib,ws,db,config,middleware,utils,types}
+  Frontend: apps/client/public/{pages,components,assets}
+  Tests: **/*.test.ts ou **/*.spec.ts
+
+API Style:
+  REST (Fastify) - endpoints /api/{resource}
+  WebSocket (ws) - monitoring temps réel + chat
+
+Database:
+  Phase 1: SQLite3 + Connection Pool (5 connections max)
+  Phase 2: PostgreSQL 15+ (migration prévue)
+  Abstraction: models/ layer pour faciliter migration
+  
+Module System:
+  Backend: ES6 modules (import/export) + TypeScript
+  Frontend: ES6 modules (import/export)
+```
+
+---
+
+## 📝 NAMING CONVENTIONS
+
+```yaml
+Backend TypeScript:
+  Classes/Types: PascalCase (User, ChatManager, ApiResponse)
+  Interfaces: PascalCase sans préfixe I (User, Message)
+  Functions: camelCase (getUser, processMessage)
+  Constants: UPPER_SNAKE_CASE (MAX_LENGTH, JWT_SECRET)
+  Files: PascalCase.ts (User.ts, ChatManager.ts)
+  
+Frontend JavaScript:
+  Classes: PascalCase (ChatWidget)
+  Functions: camelCase (handleMessage, setupChat)
+  Files: camelCase.js (chatWidget.js, setupChat.js)
+  
+CSS:
+  Classes: kebab-case (.chat-widget, .message-item)
+  Variables: kebab-case (--primary-color, --unit-2)
+  Files: kebab-case.css (chat-widget.css)
+
+Database:
+  Tables: snake_case (users, chat_messages)
+  Columns: snake_case (user_id, created_at)
+```
+
+---
+
+## 🔐 SÉCURITÉ
+
+```yaml
+Authentication:
+  JWT (expiry: 7 jours, configurable via JWT_EXPIRY)
+  Storage: localStorage (frontend), memory (backend)
+
+Password Hashing:
+  BCRYPT rounds ≥ 12 (configurable via BCRYPT_ROUNDS)
+
+Input Validation:
+  Whitelist approach (validator.ts)
+  Sanitization (sanitizers.ts)
+  No SQL injection (prepared statements)
+  No XSS (HTML escaping)
+
+Headers:
+  CORS: Whitelist uniquement
+  CSP: Strict Content Security Policy
+  Helmet: Toutes protections activées
+  TLS 1.3+ en production
+
+Database:
+  Connection pooling (évite locks)
+  Timeout: 10 secondes max
+  Prepared statements uniquement
+
+Secrets:
+  .env uniquement (JAMAIS dans le code)
+  .gitignore: .env, *.key, *.pem
+```
+
+---
+
+## 📁 FOLDER STRUCTURE
+
+```
+workspace/
+├── apps/
+│   ├── server/
+│   │   ├── src/
+│   │   │   ├── api/              # Routes REST par module
+│   │   │   │   ├── auth/
+│   │   │   │   │   ├── routes.ts
+│   │   │   │   │   ├── controller.ts
+│   │   │   │   │   ├── validator.ts
+│   │   │   │   │   └── types.ts
+│   │   │   │   ├── agenda/
+│   │   │   │   ├── chat/
+│   │   │   │   └── index.ts      # Export toutes les routes
+│   │   │   ├── models/           # CRUD + logique métier
+│   │   │   │   ├── User.ts
+│   │   │   │   ├── Event.ts
+│   │   │   │   └── Message.ts
+│   │   │   ├── lib/              # Utilitaires backend
+│   │   │   │   ├── jwt.ts
+│   │   │   │   ├── password.ts
+│   │   │   │   ├── logger.ts
+│   │   │   │   └── errors.ts
+│   │   │   ├── ws/               # WebSocket handlers
+│   │   │   │   ├── handlers/
+│   │   │   │   │   ├── authHandler.ts
+│   │   │   │   │   ├── chatHandler.ts
+│   │   │   │   │   └── monitorHandler.ts
+│   │   │   │   └── server.ts
+│   │   │   ├── db/               # Database layer
+│   │   │   │   ├── schema.sql
+│   │   │   │   ├── migrations/
+│   │   │   │   ├── connection.ts
+│   │   │   │   ├── pool.ts       # Connection pooling
+│   │   │   │   └── types.ts
+│   │   │   ├── config/
+│   │   │   │   ├── env.ts        # Variables d'environnement
+│   │   │   │   └── logger.ts
+│   │   │   ├── middleware/
+│   │   │   │   ├── auth.ts
+│   │   │   │   ├── errorHandler.ts
+│   │   │   │   └── logger.ts
+│   │   │   ├── utils/
+│   │   │   │   ├── validators.ts
+│   │   │   │   ├── sanitizers.ts
+│   │   │   │   └── formatters.ts
+│   │   │   ├── types/            # Types TypeScript centralisés
+│   │   │   │   ├── index.ts
+│   │   │   │   ├── api.ts
+│   │   │   │   ├── database.ts
+│   │   │   │   └── websocket.ts
+│   │   │   └── main.ts           # Entry point
+│   │   ├── tsconfig.json
+│   │   └── package.json
+│   └── client/
+│       ├── public/
+│       │   ├── index.html
+│       │   ├── pages/            # Pages HTML
+│       │   │   ├── home.html
+│       │   │   ├── agenda.html
+│       │   │   └── chat.html
+│       │   ├── components/       # Composants réutilisables
+│       │   │   ├── header.html
+│       │   │   ├── footer.html
+│       │   │   └── ChatWidget.html
+│       │   └── assets/
+│       │       ├── css/
+│       │       │   ├── global.css
+│       │       │   ├── components/
+│       │       │   └── modules/
+│       │       ├── js/
+│       │       │   ├── global.js
+│       │       │   ├── config/
+│       │       │   └── modules/
+│       │       └── src/          # Images, icons, etc.
+│       └── main.js               # Electron entry point
+├── Jarvis/                       # Standards AI
+│   ├── .ai-core/
+│   └── Instructions.mdc          # Ce fichier
+├── .env.example
+├── package.json
+└── tsconfig.json
+```
+
+---
+
+## ⚙️ CONFIGURATION
+
+```bash
+# .env
+NODE_ENV=development
+PORT=8060
+
+# Database
+DATABASE_PATH=./data/database.sqlite
+DB_POOL_SIZE=5
+DB_POOL_TIMEOUT=10000
+
+# Security
+JWT_SECRET=your-secret-key-change-in-production
+JWT_EXPIRY=7d
+BCRYPT_ROUNDS=12
+
+# Features
+ENABLE_CHAT=true
+ENABLE_MONITORING=true
+ENABLE_DEBUG=false
+LOG_LEVEL=info
+
+# Future: PostgreSQL (Phase 2)
+# DB_HOST=localhost
+# DB_PORT=5432
+# DB_NAME=workspace
+# DB_USER=postgres
+# DB_PASSWORD=secret
+```
+
+**Configuration TypeScript** (`apps/server/src/config/env.ts`):
+```typescript
+import dotenv from 'dotenv';
+dotenv.config();
+
+interface Config {
+  env: string;
+  port: number;
+  database: {
+    path: string;
+    poolSize: number;
+    poolTimeout: number;
+  };
+  jwt: {
+    secret: string;
+    expiry: string;
+  };
+  bcrypt: {
+    rounds: number;
+  };
+}
+
+const config: Config = {
+  env: process.env.NODE_ENV || 'development',
+  port: parseInt(process.env.PORT || '8060', 10),
+  database: {
+    path: process.env.DATABASE_PATH || './data/database.sqlite',
+    poolSize: parseInt(process.env.DB_POOL_SIZE || '5', 10),
+    poolTimeout: parseInt(process.env.DB_POOL_TIMEOUT || '10000', 10),
+  },
+  jwt: {
+    secret: process.env.JWT_SECRET || (
+      process.env.NODE_ENV === 'production'
+        ? (() => { throw new Error('JWT_SECRET required in production'); })()
+        : 'dev-secret'
+    ),
+    expiry: process.env.JWT_EXPIRY || '7d',
+  },
+  bcrypt: {
+    rounds: parseInt(process.env.BCRYPT_ROUNDS || '12', 10),
+  },
+};
+
+export default config;
+```
+
+---
+
+## 🧪 QUALITÉ
+
+```yaml
+Tests:
+  Coverage: 80%+ (global), 100% (auth + validation)
+  Framework: Jest 29+
+  API Testing: Supertest 6.3+
+  Files: *.test.ts ou *.spec.ts
+  
+Linting:
+  ESLint 8+ (enforced)
+  Prettier 3+ (auto-format)
+  
+Type Safety:
+  TypeScript strict mode (backend)
+  No 'any' type (sauf cas justifiés avec commentaire)
+  Tous les paramètres et retours typés
+  
+Pre-commit checks:
+  - npm run lint          # ESLint
+  - npm run type-check    # TypeScript compilation
+  - npm run test          # Jest tests
+  - Coverage > 80%
+```
+
+**Scripts package.json**:
+```json
+{
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "tsx watch apps/server/src/main.ts",
+    "dev:client": "electron apps/client/main.js",
+    "build": "tsc --project apps/server/tsconfig.json",
+    "start": "node apps/server/dist/main.js",
+    "test": "jest --coverage",
+    "lint": "eslint \"apps/**/*.ts\" --fix",
+    "format": "prettier --write \"apps/**/*.{ts,js,css,json}\"",
+    "type-check": "tsc --noEmit"
+  }
+}
+```
+
+---
+
+## 🎯 DECISION TREES
+
+### Création de fichier/dossier
+
+```
+Question: Où créer le nouveau fichier ?
+
+├─ Backend logic ?
+│  ├─ Route API ?           → apps/server/src/api/{module}/routes.ts
+│  ├─ Business logic ?      → apps/server/src/models/{Entity}.ts
+│  ├─ Utility ?             → apps/server/src/lib/{utility}.ts
+│  ├─ WebSocket handler ?   → apps/server/src/ws/handlers/{handler}.ts
+│  ├─ Database ?            → apps/server/src/db/{connection|pool}.ts
+│  └─ Middleware ?          → apps/server/src/middleware/{name}.ts
+│
+├─ Frontend UI ?
+│  ├─ Page complète ?       → apps/client/public/pages/{page}.html
+│  ├─ Composant ?           → apps/client/public/components/{component}.html
+│  ├─ Style ?               → apps/client/public/assets/css/{module}.css
+│  └─ Script ?              → apps/client/public/assets/js/{module}.js
+│
+├─ Configuration ?
+│  ├─ Env variables ?       → apps/server/src/config/env.ts
+│  └─ Shared config ?       → Root .env
+│
+└─ Types TypeScript ?       → apps/server/src/types/{category}.ts
+```
+
+### Checklist avant commit
+
+```
+Avant chaque commit:
+- [ ] Pas de console.log() (utiliser logger)
+- [ ] Pas de valeurs hardcodées (utiliser config)
+- [ ] Pas de 'any' type (backend TypeScript)
+- [ ] Tous les paramètres typés (backend)
+- [ ] Pas de secrets dans le code (.env only)
+- [ ] ESLint passe: npm run lint
+- [ ] TypeScript compile: npm run type-check
+- [ ] Tests passent: npm run test
+- [ ] Coverage > 80%
+- [ ] TSDoc sur fonctions publiques (backend)
+- [ ] Pas de code mort
+- [ ] Queries DB utilisent le pool
+```
+
+### Git Workflow
+
+```
+Branches:
+  feature/{description}   # Nouvelle fonctionnalité
+  bugfix/{description}    # Correction de bug
+  refactor/{description}  # Refactoring code
+  docs/{description}      # Documentation
+
+Commits:
+  feat: Ajouter nouvelle feature
+  fix: Corriger bug
+  refactor: Améliorer code
+  docs: Mettre à jour docs
+  test: Ajouter tests
+  chore: Maintenance
+```
+
+---
+
+## 🔧 TypeScript Configuration
+
+**tsconfig.json (Backend)**:
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "lib": ["ES2020"],
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "sourceMap": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"]
+}
+```
+
+---
+
+## 📚 RÉFÉRENCES
+
+> **Tout ce qui n'est pas spécifié ci-dessus** → Voir `.ai-core/` pour les standards généraux:
+> - `.ai-core/standards.json` - Standards techniques
+> - `.ai-core/rules.json` - Règles de validation
+> - `.ai-core/patterns.json` - Design patterns
+> - `.ai-core/workflow.json` - Workflows de développement
+
+**Documentation projet**:
+- `README.md` - Vue d'ensemble
+- `docs/` - Documentation détaillée
+- `CHANGELOG.md` - Historique des versions

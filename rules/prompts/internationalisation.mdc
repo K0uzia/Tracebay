@@ -1,9 +1,0 @@
-# Internationalisation – Préparer le logiciel pour un usage global
-
-- Séparer strictement les textes et ressources de la logique métier.
-- Utiliser des formats Unicode pour gérer tous les caractères multilingues.
-- Prévoir des formats de date, heure, monnaie et nombres adaptables aux régions.
-- Gérer les langues de droite à gauche (RTL) et leurs particularités.
-- Automatiser la gestion des traductions avec un outil compatible (TMS).
-- Tester l’interface avec des textes de longueurs variables et multilingues.
-- Assurer la conformité aux réglementations locales (par ex. RGPD).

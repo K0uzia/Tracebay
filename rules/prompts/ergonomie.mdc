@@ -1,9 +1,0 @@
-# Ergonomie et UX – Recommandations pour interfaces utilisateur
-
-- Concevoir des interfaces claires, accessibles et intuitives.
-- Gérer les états (chargement, erreurs, succès) de manière explicite et visible.
-- Utiliser des labels explicites, aides contextuelles et feedbacks utilisateurs.
-- Assurer la compatibilité avec les lecteurs d’écran et les normes d’accessibilité.
-- Proposer une localisation automatique basée sur la langue système.
-- Structurer les formulaires avec validation en temps réel.
-- Maintenir une cohérence visuelle et fonctionnelle dans toute l’application.

@@ -1,0 +1,143 @@
+{
+  "meta": {
+    "v": "2.3.0",
+    "lu": "2024-12-13",
+    "p": "RULE_PATTERN_MAPPING_AI",
+    "l": "en",
+    "f": "json"
+  },
+  "ref": {
+    "rules": "rules.json.r",
+    "patterns": "patterns.json",
+    "languages": "standards.json.lang.allowed"
+  },
+  "map": {
+    "FORBID_NODEJS": {
+      "r": "rules.r.lang_constraints.FORBID_NODEJS",
+      "p": [],
+      "action": "REJECT"
+    },
+    "FORBID_DOCKER": {
+      "r": "rules.r.lang_constraints.FORBID_DOCKER",
+      "p": [],
+      "action": "REJECT"
+    },
+    "FORBID_FRAMEWORKS": {
+      "r": "rules.r.lang_constraints.FORBID_FRAMEWORKS",
+      "p": [],
+      "action": "REJECT"
+    },
+    "FORBID_EXTERNAL_LIBS": {
+      "r": "rules.r.lang_constraints.FORBID_EXTERNAL_LIBS",
+      "p": [],
+      "action": "REJECT"
+    },
+    "REQUIRE_LOW_LEVEL": {
+      "r": "rules.r.lang_constraints.REQUIRE_LOW_LEVEL",
+      "p": ["patterns.lang.C", "patterns.lang.RUST", "patterns.lang.ASM", "patterns.lang.ZIG", "patterns.lang.GO"],
+      "action": "ENFORCE"
+    },
+    "REQUIRE_PURE_LANG": {
+      "r": "rules.r.lang_constraints.REQUIRE_PURE_LANG",
+      "p": ["patterns.lang.C", "patterns.lang.RUST", "patterns.lang.ASM", "patterns.lang.ZIG"],
+      "action": "ENFORCE"
+    },
+    "REQUIRE_STATIC_BINARY": {
+      "r": "rules.r.lang_constraints.REQUIRE_STATIC_BINARY",
+      "p": [],
+      "action": "ENFORCE"
+    },
+    "VAL_ALL_INPUTS": {
+      "r": "rules.r.sec.VAL_ALL_INPUTS",
+      "p": ["patterns.sec.input_val"],
+      "lang": "standards.json.lang.allowed"
+    },
+    "MANDATORY_AUDIT": {
+      "r": "rules.r.audit.MANDATORY_AUDIT",
+      "p": [],
+      "action": "ENFORCE",
+      "frequency": "before_every_action"
+    },
+    "MANDATORY_UNIT_TESTS": {
+      "r": "rules.r.testing.MANDATORY_UNIT_TESTS",
+      "p": ["patterns.testing.unit_test"],
+      "action": "ENFORCE",
+      "lang": "standards.json.lang.allowed"
+    },
+    "PREVENT_OVERFLOW": {
+      "r": "rules.r.memory.PREVENT_OVERFLOW",
+      "p": ["patterns.memory.overflow_prevent"],
+      "lang": "standards.json.lang.allowed"
+    },
+    "PREVENT_LEAKS": {
+      "r": "rules.r.memory.PREVENT_LEAKS",
+      "p": ["patterns.memory.leak_prevent"],
+      "lang": "standards.json.lang.allowed"
+    },
+    "BOUNDS_CHECKING": {
+      "r": "rules.r.memory.BOUNDS_CHECKING",
+      "p": ["patterns.memory.bounds_check"],
+      "lang": "standards.json.lang.allowed"
+    },
+    "NO_UNNECESSARY_FILES": {
+      "r": "rules.r.files.NO_UNNECESSARY_FILES",
+      "p": [],
+      "action": "ENFORCE"
+    },
+    "NO_SUMMARY_FILES": {
+      "r": "rules.r.files.NO_SUMMARY_FILES",
+      "p": [],
+      "action": "ENFORCE"
+    },
+    "MANDATORY_BUG_FIX": {
+      "r": "rules.r.bug_resolution.MANDATORY_BUG_FIX",
+      "p": [],
+      "action": "ENFORCE"
+    },
+    "FIX_CONFLICTS": {
+      "r": "rules.r.bug_resolution.FIX_CONFLICTS",
+      "p": [],
+      "action": "ENFORCE"
+    },
+    "FIX_VERSIONING": {
+      "r": "rules.r.bug_resolution.FIX_VERSIONING",
+      "p": [],
+      "action": "ENFORCE"
+    },
+    "FIX_MEMORY_ISSUES": {
+      "r": "rules.r.bug_resolution.FIX_MEMORY_ISSUES",
+      "p": ["patterns.memory.leak_prevent", "patterns.memory.overflow_prevent", "patterns.memory.bounds_check"],
+      "action": "ENFORCE"
+    },
+    "FIX_SECURITY_VULNS": {
+      "r": "rules.r.bug_resolution.FIX_SECURITY_VULNS",
+      "p": ["patterns.sec.input_val", "patterns.sec.sanitize"],
+      "action": "ENFORCE"
+    },
+    "PREVENT_INJECTION": {
+      "r": "rules.r.sec.PREVENT_INJECTION",
+      "p": ["patterns.sec.input_val", "patterns.sec.sanitize"],
+      "lang": "standards.json.lang.allowed"
+    },
+    "PREVENT_XSS": {
+      "r": "rules.r.sec.PREVENT_XSS",
+      "p": ["patterns.sec.sanitize"],
+      "lang": "standards.json.lang.allowed"
+    },
+    "DARK_THEME": {
+      "r": "rules.r.ui.DARK_THEME",
+      "p": ["patterns.ui.dark_theme"],
+      "lang": "standards.json.lang.allowed"
+    },
+    "KEYBOARD_NAV": {
+      "r": "rules.r.ui.KEYBOARD_NAV",
+      "p": ["patterns.ui.keyboard_nav"],
+      "lang": "standards.json.lang.allowed"
+    },
+    "ARCHAIC_APPROACH": {
+      "r": "rules.r.arch.ARCHAIC_APPROACH",
+      "p": ["patterns.arch.factory", "patterns.arch.repository"],
+      "lang": "standards.json.lang.allowed"
+    }
+  }
+}

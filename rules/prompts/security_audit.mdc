@@ -1,8 +1,0 @@
-# Audit de sécurité – Vérifications clés et bonnes pratiques
-
-- Rechercher les vulnérabilités classiques (XSS, injections SQL, CSRF).
-- Vérifier la gestion correcte des sessions et des tokens d’authentification.
-- Analyser automatiquement le code avec des outils spécialisés.
-- Tester les contrôles d’accès et permissions pour chaque point critique.
-- Valider la sécurisation des données sensibles et leur chiffrement.
-- Générer un rapport des risques et planifier les correctifs prioritaires.

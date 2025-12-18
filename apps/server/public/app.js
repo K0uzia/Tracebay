@@ -87,6 +87,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
         });
     });
-
+    
     console.log('✅ Application pleinement initialisée');
 });

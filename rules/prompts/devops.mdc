@@ -1,9 +1,0 @@
-# DevOps – Automatisation et surveillance
-
-- Mettre en place CI/CD pour automatiser tests, builds et déploiements.
-- Surveiller en production performance, erreurs et comportements anormaux.
-- Centraliser la journalisation pour accélérer le diagnostic des incidents.
-- Prévoir des alertes en cas de dépassement de seuils critiques.
-- Gérer les versions logiciel avec rigueur et documenter les releases.
-- Le développement s'effectue toujours en local.
-- Le déploiement en production s'effectue toujours sur les serveurs d'Hostinger.

@@ -71,11 +71,17 @@ function stopServer() {
         serverStopping = true;
         if (server && typeof server.shutdown === 'function') {
             server.shutdown().then(() => {
+                server = null;
+                serverStopping = false;
                 resolve();
             }).catch(() => {
+                server = null;
+                serverStopping = false;
                 resolve();
             });
         } else {
+            server = null;
+            serverStopping = false;
             resolve();
         }
     });
@@ -92,7 +98,7 @@ function createWindow() {
         }
     });
 
-    mainWindow.loadURL(`http://localhost:${PORT}`);
+    mainWindow.loadFile(path.join(__dirname, 'public', 'index.html'));
 
     mainWindow.webContents.on('console-message', (level, message) => {
         if (typeof message === 'string' && 
@@ -118,16 +124,13 @@ function createWindow() {
 
 app.on('ready', async () => {
     try {
-        // Ensure database path is writable in packaged apps
         if (!process.env.DATABASE_PATH) {
             const userDataDir = app.getPath('userData');
             const dbPath = path.join(userDataDir, 'workspace.db');
             process.env.DATABASE_PATH = dbPath;
         }
-        await startServer();
         createWindow();
-        logger.info(`💻 Interface graphique créée et lancée`);
-        logger.info(`✨ Application prête et fonctionnelle`);
+        logger.info(`💻 Interface graphique chargée (serveur backend en attente de démarrage)`);
     } catch (error) {
         logger.error('❌ Erreur initialisation:', error);
         app.quit();
@@ -172,6 +175,31 @@ ipcMain.handle('open-external', async (event, url) => {
     } catch (error) {
         logger.error('❌ Erreur ouverture URL:', error);
         throw error;
+    }
+});
+
+ipcMain.handle('game-server:command', async (_event, payload) => {
+    const action = typeof payload === 'object' ? payload.action : payload;
+    try {
+        if (action === 'start') {
+            if (server) {
+                return { ok: true, status: 'already-running' };
+            }
+            await startServer();
+            return { ok: true, status: 'running' };
+        }
+        if (action === 'stop') {
+            await stopServer();
+            return { ok: true, status: 'stopped' };
+        }
+        if (action === 'kill') {
+            await stopServer();
+            return { ok: true, status: 'stopped' };
+        }
+        return { ok: false, error: 'action_invalide' };
+    } catch (error) {
+        logger.error('❌ game-server:command error', error);
+        return { ok: false, error: error.message || 'unknown_error' };
     }
 });
 
