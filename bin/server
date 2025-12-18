@@ -1,6 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-PORT="${PORT:-3000}"
-NODE_ENV="${NODE_ENV:-development}"
-echo "🔌 Serveur Node → http://localhost:$PORT"
-NODE_ENV="$NODE_ENV" PORT="$PORT" node server.js

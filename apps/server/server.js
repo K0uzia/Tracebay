@@ -18,6 +18,7 @@ const agendaRouter = require('./routes/agenda.js');
 const shortcutsRouter = require('./routes/shortcuts.js');
 const healthRouter = require('./routes/health.js');
 const monitoringRouter = require('./routes/monitoring.js');
+const serverLogger = require('./lib/ServerLogger.js');
 
 // Import middleware
 const httpRequestTracker = require('./middleware/httpRequestTracker.js');
@@ -77,6 +78,27 @@ app.use('/api/agenda', agendaRouter);
 app.use('/api/shortcuts', shortcutsRouter);
 app.use('/api/health', healthRouter);
 app.use('/api/monitoring', monitoringRouter);
+
+// Simplified log feed for the game terminal
+app.get('/api/logs', (req, res) => {
+    const limit = parseInt(req.query.limit) || 200;
+    const logs = serverLogger.getRequestLogs(limit).map((log) => {
+        const ts = log.timestamp ? new Date(log.timestamp) : new Date();
+        let level = 'INFO';
+        if (log.status >= 500) level = 'ERROR';
+        else if (log.status >= 400) level = 'WARN';
+
+        const duration = typeof log.duration === 'number' ? `${log.duration}ms` : '0ms';
+        const statusText = log.statusText ? ` ${log.statusText}` : '';
+        return {
+            time: ts.toLocaleTimeString('fr-FR'),
+            level,
+            msg: `[${log.method}] ${log.path} → ${log.status}${statusText} (${duration})`
+        };
+    });
+
+    res.json(logs);
+});
 
 // Dashboard UI (optional, for monitoring)
 app.use(express.static(path.join(__dirname, 'public')));

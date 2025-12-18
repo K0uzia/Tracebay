@@ -21,7 +21,8 @@
   },
   "scripts": {
     "start": "electron .",
-    "dev": "electron-forge start --inspect",
+    "dev": "electron-forge start",
+    "dev:debug": "ELECTRON_ENABLE_LOGGING=1 electron-forge start",
     "build": "electron-forge make",
     "build:win": "electron-forge make --platform win32",
     "build:mac": "electron-forge make --platform darwin",

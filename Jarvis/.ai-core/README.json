@@ -1,0 +1,21 @@
+{
+  "dir": ".ai-core",
+  "p": "MANDATORY_AI_REFERENCE",
+  "l": "en",
+  "f": "json_only",
+  "v": "2.1.0",
+  "files": {
+    "MANDATORY.json": {"p": "MANDATORY_INSTRUCTIONS", "prio": 1},
+    "standards.json": {"p": "STANDARD_VALUES", "prio": 2, "ref": "source_of_truth"},
+    "rules.json": {"p": "VALIDATION_RULES", "prio": 3, "ref": "standards.json"},
+    "patterns.json": {"p": "CODE_PATTERNS", "prio": 4, "ref": "standards.json.lang.allowed"},
+    "workflow.json": {"p": "EXECUTION_WORKFLOWS", "prio": 5, "ref": "standards.json"},
+    "rule_pattern_mapping.json": {"p": "RULE_PATTERN_MAP", "prio": 6, "ref": "rules.json + patterns.json"}
+  },
+  "usage": ["R_MANDATORY", "R_STANDARDS", "R_RULES", "R_PATTERNS", "R_WORKFLOW", "USE_MAPPING"],
+  "ref": {
+    "constraints": "standards.json.lang + standards.json.infra",
+    "languages": "standards.json.lang.allowed",
+    "workflow_codes": "workflow.json.codes"
+  }
+}

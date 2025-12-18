@@ -1,8 +1,0 @@
-# Tests – Bonnes pratiques pour assurer la qualité
-
-- Toujours accompagner chaque nouvelle fonctionnalité de tests unitaires ciblés.
-- Utiliser des tests d’intégration pour vérifier la cohérence entre modules.
-- Automatiser l’exécution des tests dans le pipeline CI/CD.
-- Prioriser les tests sur les cas critiques, les entrées limites et les scénarios d’erreur.
-- Documenter clairement la couverture de tests et les scénarios non couverts.
-- Relancer les tests à chaque modification pour éviter les régressions.

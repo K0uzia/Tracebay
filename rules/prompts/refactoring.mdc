@@ -1,8 +1,0 @@
-# Refactoring – Maintenir un code propre et évolutif
-
-- Refactoriser régulièrement pour réduire la dette technique.
-- Améliorer la lisibilité via des noms explicites et une structure claire.
-- Séparer les responsabilités dans des modules distincts.
-- Simplifier les fonctions trop longues ou complexes.
-- Optimiser les parties critiques en termes de performance.
-- Ajouter ou adapter les tests lors d’un refactoring.
