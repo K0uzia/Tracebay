@@ -1,0 +1,362 @@
+{
+  "meta": {
+    "v": "2.3.0",
+    "lu": "2024-12-13",
+    "p": "VALIDATION_RULES_AI",
+    "l": "en",
+    "f": "json"
+  },
+  "ref": {
+    "languages": "standards.json.lang.allowed",
+    "forbidden_infra": "standards.json.infra.forbidden",
+    "ui_colors": "standards.json.ui.colors"
+  },
+  "r": {
+    "lang_constraints": [
+      {
+        "n": "FORBID_NODEJS",
+        "d": "Node.js is forbidden",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "no_nodejs_detected",
+        "ref": "lang.forbidden"
+      },
+      {
+        "n": "FORBID_DOCKER",
+        "d": "Docker and containers are forbidden",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "no_docker_detected",
+        "ref": "infra.forbidden"
+      },
+      {
+        "n": "FORBID_FRAMEWORKS",
+        "d": "Frameworks are forbidden",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "no_frameworks_detected",
+        "ref": "arch.no_frameworks"
+      },
+      {
+        "n": "FORBID_EXTERNAL_LIBS",
+        "d": "External libraries are forbidden",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "no_external_libs_detected",
+        "ref": "arch.no_external_libs"
+      },
+      {
+        "n": "REQUIRE_LOW_LEVEL",
+        "d": "Must use low-level languages",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "low_level_language_used",
+        "ref": "lang.allowed"
+      },
+      {
+        "n": "REQUIRE_PURE_LANG",
+        "d": "Must use pure language without runtime",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "pure_language_used"
+      },
+      {
+        "n": "REQUIRE_STATIC_BINARY",
+        "d": "Must produce static binary",
+        "p": "HIGH",
+        "a": ["build"],
+        "c": "static_binary_produced",
+        "ref": "infra.allowed"
+      }
+    ],
+    "audit": [
+      {
+        "n": "MANDATORY_AUDIT",
+        "d": "Systematic audit required for every project",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "audit_executed",
+        "frequency": "before_every_action",
+        "ref": "audit.mandatory"
+      },
+      {
+        "n": "AUDIT_SECURITY",
+        "d": "Security audit mandatory",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "security_audit_passed",
+        "ref": "audit.security"
+      },
+      {
+        "n": "AUDIT_MEMORY",
+        "d": "Memory leak and overflow audit mandatory",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "memory_audit_passed",
+        "ref": "audit.memory"
+      },
+      {
+        "n": "AUDIT_FILES",
+        "d": "Audit for unnecessary files mandatory",
+        "p": "HIGH",
+        "a": ["all"],
+        "c": "no_unnecessary_files",
+        "ref": "audit.files"
+      },
+      {
+        "n": "AUDIT_VERSIONING",
+        "d": "Versioning conflicts audit mandatory",
+        "p": "HIGH",
+        "a": ["all"],
+        "c": "no_versioning_conflicts",
+        "ref": "audit.versioning"
+      }
+    ],
+    "testing": [
+      {
+        "n": "MANDATORY_UNIT_TESTS",
+        "d": "Unit tests required for all code",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "unit_tests_exist_and_pass",
+        "coverage_min": 80,
+        "ref": "testing.mandatory"
+      },
+      {
+        "n": "TESTS_BEFORE_COMMIT",
+        "d": "Tests must pass before commit",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "all_tests_pass",
+        "ref": "testing.before_commit"
+      },
+      {
+        "n": "TESTS_CONTINUOUS",
+        "d": "Continuous testing required",
+        "p": "HIGH",
+        "a": ["all"],
+        "c": "tests_run_continuously",
+        "ref": "testing.continuous"
+      }
+    ],
+    "bug_resolution": {
+      "MANDATORY_BUG_FIX": {
+        "n": "MANDATORY_BUG_FIX",
+        "d": "All bugs must be fixed before proceeding",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "no_bugs_present",
+        "ref": "bug_resolution.mandatory"
+      },
+      "FIX_CONFLICTS": {
+        "n": "FIX_CONFLICTS",
+        "d": "All conflicts must be resolved",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "no_conflicts_present",
+        "ref": "bug_resolution.conflicts"
+      },
+      "FIX_VERSIONING": {
+        "n": "FIX_VERSIONING",
+        "d": "Versioning issues must be resolved",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "versioning_clean",
+        "ref": "bug_resolution.versioning"
+      },
+      "FIX_MEMORY_ISSUES": {
+        "n": "FIX_MEMORY_ISSUES",
+        "d": "Memory leaks and overflows must be fixed",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "no_memory_issues",
+        "ref": "bug_resolution.memory"
+      },
+      "FIX_SECURITY_VULNS": {
+        "n": "FIX_SECURITY_VULNS",
+        "d": "Security vulnerabilities must be fixed",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "no_security_vulns",
+        "ref": "bug_resolution.security"
+      }
+    },
+    "memory": [
+      {
+        "n": "PREVENT_OVERFLOW",
+        "d": "Buffer overflow prevention mandatory",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "overflow_checks_present",
+        "ref": "memory.overflow_prevention"
+      },
+      {
+        "n": "PREVENT_LEAKS",
+        "d": "Memory leak prevention mandatory",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "memory_management_correct",
+        "ref": "memory.leak_prevention"
+      },
+      {
+        "n": "BOUNDS_CHECKING",
+        "d": "Bounds checking mandatory",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "bounds_checked",
+        "ref": "memory.bounds_checking"
+      }
+    ],
+    "files": [
+      {
+        "n": "NO_UNNECESSARY_FILES",
+        "d": "No unnecessary files allowed",
+        "p": "HIGH",
+        "a": ["all"],
+        "c": "no_unnecessary_files_detected",
+        "ref": "files.no_unnecessary"
+      },
+      {
+        "n": "NO_SUMMARY_FILES",
+        "d": "No summary or analysis files allowed",
+        "p": "HIGH",
+        "a": ["all"],
+        "c": "no_summary_files",
+        "ref": "files.no_summary"
+      },
+      {
+        "n": "CLEAN_TEMP_FILES",
+        "d": "Temporary files must be cleaned",
+        "p": "HIGH",
+        "a": ["all"],
+        "c": "no_temp_files",
+        "ref": "files.no_temp"
+      }
+    ],
+    "sec": [
+      {
+        "n": "VAL_ALL_INPUTS",
+        "d": "All user inputs must be validated",
+        "p": "CRITICAL",
+        "a": ["api", "forms", "file_uploads"],
+        "c": "input_validation_exists",
+        "ref": "sec.val.all_inputs"
+      },
+      {
+        "n": "NO_SECRETS",
+        "d": "No secrets in source code",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "no_hardcoded_secrets"
+      },
+      {
+        "n": "TLS_MIN_1_3",
+        "d": "TLS 1.3 minimum",
+        "p": "HIGH",
+        "a": ["network"],
+        "c": "tls_version >= 1.3",
+        "ref": "sec.enc.tls_min"
+      },
+      {
+        "n": "PREVENT_INJECTION",
+        "d": "Prevent SQL/command injection",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "injection_prevention_present"
+      },
+      {
+        "n": "PREVENT_XSS",
+        "d": "Prevent XSS attacks",
+        "p": "CRITICAL",
+        "a": ["all"],
+        "c": "xss_prevention_present"
+      }
+    ],
+    "ui": [
+      {
+        "n": "DARK_THEME",
+        "d": "Dark theme required",
+        "p": "HIGH",
+        "a": ["ui", "interface"],
+        "c": "dark_theme_applied",
+        "ref": "ui.theme"
+      },
+      {
+        "n": "INTUITIVE_UI",
+        "d": "Intuitive and ergonomic interface",
+        "p": "HIGH",
+        "a": ["ui"],
+        "c": "intuitive_ui_design",
+        "ref": "ui.ergo"
+      },
+      {
+        "n": "KEYBOARD_NAV",
+        "d": "Complete keyboard navigation",
+        "p": "HIGH",
+        "a": ["ui"],
+        "c": "keyboard_navigable",
+        "ref": "ui.ergo.keyboard_nav"
+      },
+      {
+        "n": "CONTRAST_RATIO",
+        "d": "Contrast >= 4.5:1",
+        "p": "HIGH",
+        "a": ["ui", "styles"],
+        "c": "contrast_ratio >= 4.5",
+        "ref": "ui.contrast.normal"
+      }
+    ],
+    "arch": [
+      {
+        "n": "ARCHAIC_APPROACH",
+        "d": "Archaic approach required",
+        "p": "HIGH",
+        "a": ["architecture"],
+        "c": "archaic_patterns_used",
+        "ref": "arch.approach"
+      },
+      {
+        "n": "SOLID_PRINCIPLES",
+        "d": "SOLID principles",
+        "p": "HIGH",
+        "a": ["classes", "modules"],
+        "c": "solid_compliant",
+        "ref": "arch.solid"
+      },
+      {
+        "n": "LAYER_SEP",
+        "d": "Layer separation",
+        "p": "HIGH",
+        "a": ["architecture"],
+        "c": "layers_separated",
+        "ref": "arch.layers"
+      }
+    ],
+    "qual": [
+      {
+        "n": "COMPLEXITY_LIMIT",
+        "d": "Cyclomatic complexity < 10",
+        "p": "MEDIUM",
+        "a": ["functions"],
+        "c": "cyclomatic_complexity < 10",
+        "ref": "qual.complexity_max"
+      },
+      {
+        "n": "FUNC_LENGTH",
+        "d": "Functions < 50 lines",
+        "p": "MEDIUM",
+        "a": ["functions"],
+        "c": "function_lines < 50",
+        "ref": "qual.func_lines_max"
+      },
+      {
+        "n": "TEST_COV",
+        "d": "Test coverage > 80%",
+        "p": "HIGH",
+        "a": ["all"],
+        "c": "test_coverage >= 80",
+        "ref": "qual.coverage_min"
+      }
+    ]
+  }
+}

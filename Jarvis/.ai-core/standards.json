@@ -1,0 +1,126 @@
+{
+  "meta": {
+    "v": "2.2.0",
+    "lu": "2024-12-13",
+    "p": "STANDARD_VALUES_AI",
+    "l": "en",
+    "f": "json"
+  },
+  "lang": {
+    "allowed": ["C", "RUST", "ASM", "ZIG", "GO"],
+    "priority": ["C", "RUST", "ASM"],
+    "forbidden": ["NODEJS", "PYTHON", "JAVASCRIPT", "TYPESCRIPT", "JAVA", "PHP", "RUBY"],
+    "level": "LOW_LEVEL",
+    "binary_proximity": "MAXIMUM"
+  },
+  "arch": {
+    "approach": "ARCHAIC",
+    "patterns": ["FACTORY", "BUILDER", "SINGLETON", "ADAPTER", "OBSERVER", "STRATEGY"],
+    "layers": ["PRES", "BIZ", "DATA"],
+    "solid": true,
+    "no_frameworks": true,
+    "no_external_libs": true
+  },
+  "infra": {
+    "forbidden": ["DOCKER", "CONTAINERS", "KUBERNETES", "WEB_SERVERS", "NGINX", "APACHE"],
+    "allowed": ["STATIC_BINARY", "SYSTEMD", "RAW_SOCKETS"],
+    "deployment": "BARE_METAL"
+  },
+  "ui": {
+    "theme": "DARK",
+    "colors": {
+      "bg": "#1a1a1a",
+      "fg": "#e0e0e0",
+      "accent": "#4a9eff",
+      "error": "#ff4444",
+      "success": "#44ff44"
+    },
+    "ergo": {
+      "intuitive": true,
+      "keyboard_nav": true,
+      "minimal_ui": true,
+      "fast_feedback": true
+    },
+    "contrast": {
+      "normal": 4.5,
+      "large": 3.0
+    }
+  },
+  "sec": {
+    "std": ["OWASP", "CWE", "CVE", "ISO27001", "NIST"],
+    "auth": {
+      "hash": ["BCRYPT", "ARGON2"],
+      "cost_min": 12,
+      "mfa": true
+    },
+    "enc": {
+      "tls_min": "1.3",
+      "at_rest": true,
+      "in_transit": true,
+      "alg": ["AES256", "CHACHA20"]
+    },
+    "val": {
+      "all_inputs": true,
+      "whitelist": true,
+      "sanitize": true,
+      "type_check": true
+    }
+  },
+  "perf": {
+    "targets": {
+      "lcp": 2.5,
+      "fid": 100,
+      "cls": 0.1
+    },
+    "opt": {
+      "static_linking": true,
+      "no_runtime": true,
+      "direct_memory": true
+    }
+  },
+  "qual": {
+    "complexity_max": 10,
+    "func_lines_max": 50,
+    "params_max": 5,
+    "coverage_min": 80
+  },
+  "testing": {
+    "mandatory": true,
+    "unit_tests_required": true,
+    "before_commit": true,
+    "continuous": true,
+    "coverage_min": 80,
+    "coverage_critical": 95,
+    "all_must_pass": true
+  },
+  "audit": {
+    "mandatory": true,
+    "frequency": "before_every_action",
+    "security": true,
+    "memory": true,
+    "versioning": true,
+    "files": true,
+    "before_commit": true
+  },
+  "bug_resolution": {
+    "mandatory": true,
+    "priority": "CRITICAL_FIRST",
+    "before_proceed": true,
+    "conflicts": true,
+    "versioning": true,
+    "memory": true,
+    "security": true
+  },
+  "memory": {
+    "overflow_prevention": true,
+    "leak_prevention": true,
+    "bounds_checking": true,
+    "safe_arithmetic": true
+  },
+  "files": {
+    "no_unnecessary": true,
+    "no_summary": true,
+    "no_temp": true,
+    "clean_after_use": true
+  }
+}

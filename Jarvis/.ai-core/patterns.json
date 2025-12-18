@@ -1,0 +1,119 @@
+{
+  "meta": {
+    "v": "2.3.0",
+    "lu": "2024-12-13",
+    "p": "CODE_PATTERNS_AI",
+    "l": "en",
+    "f": "json"
+  },
+  "ref": {
+    "allowed_languages": "standards.json.lang.allowed",
+    "priority_languages": "standards.json.lang.priority"
+  },
+  "lang": {
+    "C": {
+      "main": "int main(int argc, char *argv[]) {\n    return 0;\n}",
+      "struct": "typedef struct {\n    int id;\n    char *name;\n} Entity;",
+      "func": "int validate_input(const char *input, size_t len) {\n    if (!input || len == 0) return 0;\n    return 1;\n}"
+    },
+    "RUST": {
+      "main": "fn main() {\n    println!(\"Hello\");\n}",
+      "struct": "struct Entity {\n    id: u32,\n    name: String,\n}",
+      "func": "fn validate_input(input: &str) -> bool {\n    !input.is_empty()\n}"
+    },
+    "ASM": {
+      "x86_64": "section .text\nglobal _start\n_start:\n    mov rax, 60\n    mov rdi, 0\n    syscall",
+      "main": "section .text\nglobal _start\n_start:\n    mov rax, 60\n    mov rdi, 0\n    syscall"
+    },
+    "ZIG": {
+      "main": "const std = @import(\"std\");\npub fn main() !void {\n    std.debug.print(\"Hello\\n\", .{});\n}",
+      "struct": "const Entity = struct {\n    id: u32,\n    name: []const u8,\n};",
+      "func": "fn validateInput(input: []const u8) bool {\n    return input.len > 0;\n}"
+    },
+    "GO": {
+      "main": "package main\nimport \"fmt\"\nfunc main() {\n    fmt.Println(\"Hello\")\n}",
+      "struct": "type Entity struct {\n    ID   int\n    Name string\n}",
+      "func": "func validateInput(input string) bool {\n    return len(input) > 0\n}"
+    }
+  },
+  "sec": {
+    "input_val": {
+      "C": "int validate(const char *data, size_t len) {\n    if (!data || len > MAX_LEN) return 0;\n    for (size_t i = 0; i < len; i++) {\n        if (!isalnum(data[i])) return 0;\n    }\n    return 1;\n}",
+      "RUST": "fn validate(data: &str) -> bool {\n    data.len() <= MAX_LEN && data.chars().all(|c| c.is_alphanumeric())\n}",
+      "ASM": "validate:\n    cmp rsi, MAX_LEN\n    ja invalid\n    test rdi, rdi\n    jz invalid\n    mov rcx, 0\nloop:\n    cmp rcx, rsi\n    jge valid\n    mov al, [rdi + rcx]\n    call isalnum\n    test al, al\n    jz invalid\n    inc rcx\n    jmp loop\nvalid:\n    mov rax, 1\n    ret\ninvalid:\n    mov rax, 0\n    ret",
+      "ZIG": "fn validate(data: []const u8) bool {\n    if (data.len > MAX_LEN) return false;\n    for (data) |c| {\n        if (!std.ascii.isAlphanumeric(c)) return false;\n    }\n    return true;\n}",
+      "GO": "func validate(data string) bool {\n    if len(data) > MAX_LEN { return false }\n    for _, c := range data {\n        if !unicode.IsLetter(c) && !unicode.IsDigit(c) { return false }\n    }\n    return true\n}"
+    },
+    "sanitize": {
+      "C": "void sanitize(char *data, size_t len) {\n    for (size_t i = 0; i < len; i++) {\n        if (data[i] < 32 || data[i] > 126) data[i] = '_';\n    }\n}",
+      "RUST": "fn sanitize(data: &mut String) {\n    data.retain(|c| c.is_ascii() && !c.is_control());\n}",
+      "ASM": "sanitize:\n    mov rcx, 0\nloop:\n    cmp rcx, rsi\n    jge done\n    mov al, [rdi + rcx]\n    cmp al, 32\n    jb replace\n    cmp al, 126\n    ja replace\n    jmp next\nreplace:\n    mov byte [rdi + rcx], '_'\nnext:\n    inc rcx\n    jmp loop\ndone:\n    ret",
+      "ZIG": "fn sanitize(data: []u8) void {\n    for (data) |*c| {\n        if (c.* < 32 or c.* > 126) c.* = '_';\n    }\n}",
+      "GO": "func sanitize(data []byte) {\n    for i, c := range data {\n        if c < 32 || c > 126 { data[i] = '_' }\n    }\n}"
+    }
+  },
+  "memory": {
+    "bounds_check": {
+      "C": "if (index >= 0 && index < array_size) {\n    array[index] = value;\n} else {\n    return ERROR_OUT_OF_BOUNDS;\n}",
+      "RUST": "if let Some(elem) = array.get(index) {\n    *elem = value;\n} else {\n    return Err(Error::OutOfBounds);\n}",
+      "ASM": "cmp rdi, 0\n    jl out_of_bounds\n    cmp rdi, array_size\n    jge out_of_bounds\n    mov [array + rdi * 8], rsi\n    ret\nout_of_bounds:\n    mov rax, ERROR_OUT_OF_BOUNDS\n    ret",
+      "ZIG": "if (index >= 0 and index < array.len) {\n    array[index] = value;\n} else {\n    return Error.OutOfBounds;\n}",
+      "GO": "if index >= 0 && index < len(array) {\n    array[index] = value\n} else {\n    return errors.New(\"out of bounds\")\n}"
+    },
+    "overflow_prevent": {
+      "C": "if (a > SIZE_MAX - b) return ERROR_OVERFLOW;\n    size_t result = a + b;",
+      "RUST": "match a.checked_add(b) {\n    Some(result) => result,\n    None => return Err(Error::Overflow)\n}",
+      "ASM": "mov rax, a\n    add rax, b\n    jc overflow\n    mov result, rax\n    ret\noverflow:\n    mov rax, ERROR_OVERFLOW\n    ret",
+      "ZIG": "if (@addWithOverflow(u32, a, b, &result)) |_| {\n    return Error.Overflow;\n}",
+      "GO": "if a > math.MaxUint32 - b {\n    return 0, errors.New(\"overflow\")\n}\n    result := a + b"
+    },
+    "leak_prevent": {
+      "C": "void *ptr = malloc(size);\n    if (!ptr) return NULL;\n    // ... use ptr ...\n    free(ptr);\n    ptr = NULL;",
+      "RUST": "{\n    let ptr = Box::new(value);\n    // ... use ptr ...\n    // automatically freed\n}",
+      "ASM": "mov rdi, size\n    call malloc\n    test rax, rax\n    jz error\n    push rax\n    ; ... use ptr ...\n    pop rdi\n    call free",
+      "ZIG": "var ptr = try allocator.alloc(u8, size);\n    defer allocator.free(ptr);\n    // ... use ptr ...",
+      "GO": "// Go GC handles memory automatically"
+    }
+  },
+  "testing": {
+    "unit_test": {
+      "C": "#include <assert.h>\nvoid test_validate() {\n    assert(validate(\"test\", 4) == 1);\n    assert(validate(NULL, 0) == 0);\n}",
+      "RUST": "#[cfg(test)]\nmod tests {\n    #[test]\n    fn test_validate() {\n        assert!(validate(\"test\"));\n        assert!(!validate(\"\"));\n    }\n}",
+      "ASM": "test_validate:\n    mov rdi, test_str\n    mov rsi, 4\n    call validate\n    cmp rax, 1\n    jne fail\n    mov rdi, 0\n    mov rsi, 0\n    call validate\n    cmp rax, 0\n    jne fail\n    mov rax, 1\n    ret\nfail:\n    mov rax, 0\n    ret",
+      "ZIG": "test \"validate\" {\n    try std.testing.expect(validate(\"test\"));\n    try std.testing.expect(!validate(\"\"));\n}",
+      "GO": "func TestValidate(t *testing.T) {\n    if !validate(\"test\") { t.Error(\"expected true\") }\n    if validate(\"\" ) { t.Error(\"expected false\") }\n}"
+    }
+  },
+  "ui": {
+    "dark_theme": {
+      "C": "#define BG_COLOR 0x1a1a1a\n#define FG_COLOR 0xe0e0e0\n#define ACCENT_COLOR 0x4a9eff",
+      "RUST": "const BG_COLOR: u32 = 0x1a1a1a;\nconst FG_COLOR: u32 = 0xe0e0e0;\nconst ACCENT_COLOR: u32 = 0x4a9eff;",
+      "ASM": "BG_COLOR equ 0x1a1a1a\nFG_COLOR equ 0xe0e0e0\nACCENT_COLOR equ 0x4a9eff",
+      "ZIG": "const BG_COLOR: u32 = 0x1a1a1a;\nconst FG_COLOR: u32 = 0xe0e0e0;\nconst ACCENT_COLOR: u32 = 0x4a9eff;",
+      "GO": "const bgColor = 0x1a1a1a\nconst fgColor = 0xe0e0e0\nconst accentColor = 0x4a9eff"
+    },
+    "keyboard_nav": {
+      "C": "switch(key) {\n    case KEY_UP: move_up(); break;\n    case KEY_DOWN: move_down(); break;\n    case KEY_ENTER: select(); break;\n}",
+      "RUST": "match key {\n    Key::Up => move_up(),\n    Key::Down => move_down(),\n    Key::Enter => select(),\n    _ => {}\n}",
+      "ASM": "cmp key, KEY_UP\n    je move_up\n    cmp key, KEY_DOWN\n    je move_down\n    cmp key, KEY_ENTER\n    je select\n    jmp done\nmove_up:\n    call move_up_func\n    jmp done\nmove_down:\n    call move_down_func\n    jmp done\nselect:\n    call select_func\ndone:",
+      "ZIG": "switch (key) {\n    .Up => moveUp(),\n    .Down => moveDown(),\n    .Enter => select(),\n    else => {}\n}",
+      "GO": "switch key {\ncase KeyUp: moveUp()\ncase KeyDown: moveDown()\ncase KeyEnter: select()\n}"
+    }
+  },
+  "arch": {
+    "factory": {
+      "C": "typedef struct Entity* (*EntityFactory)(void);\nstruct Entity* create_entity(EntityFactory factory) {\n    return factory();\n}",
+      "RUST": "trait EntityFactory {\n    fn create() -> Box<dyn Entity>;\n}",
+      "ASM": "EntityFactory:\n    dq create_entity_impl\ncreate_entity:\n    mov rax, [EntityFactory]\n    call rax\n    ret",
+      "ZIG": "const EntityFactory = struct {\n    create: fn() *Entity,\n};",
+      "GO": "type EntityFactory interface {\n    Create() Entity\n}"
+    },
+    "repository": {
+      "C": "typedef struct {\n    Entity* (*find_by_id)(int id);\n    void (*save)(Entity *e);\n} Repository;",
+      "RUST": "trait Repository {\n    fn find_by_id(&self, id: u32) -> Option<Entity>;\n    fn save(&mut self, entity: Entity);\n}",
+      "ASM": "Repository:\n    dq find_by_id_impl\n    dq save_impl",
+      "ZIG": "const Repository = struct {\n    findById: fn(u32) ?*Entity,\n    save: fn(*Entity) void,\n};",
+      "GO": "type Repository interface {\n    FindByID(id int) (*Entity, error)\n    Save(e *Entity) error\n}"
+    }
+  }
+}

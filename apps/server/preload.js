@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const ALLOWED_CHANNELS = {
     send: ['open-pdf'],
-    invoke: ['open-external', 'open-pdf-window'],
+    invoke: ['open-external', 'open-pdf-window', 'game-server:command'],
     on: ['update:available', 'update:not-available', 'update:downloaded', 'update:progress', 'update:error']
 };
 

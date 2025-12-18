@@ -4,11 +4,13 @@
  */
 
 class ServerMonitor {
-    constructor() {
+    constructor(baseUrl = 'http://localhost:8060') {
         this.ws = null;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 10;
         this.reconnectInterval = 3000;
+        this.active = false;
+        this.baseUrl = baseUrl.replace(/\/$/, '');
         this.stats = {
             totalRequests: 0,
             successCount: 0,
@@ -20,27 +22,42 @@ class ServerMonitor {
             clients: [],
             logs: []
         };
-        
-        this.init();
     }
 
     /**
      * Initialiser la connexion WebSocket
      */
-    init() {
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const wsUrl = `${protocol}//localhost:8060`;
-        
+    start() {
+        if (this.active) return;
+        this.active = true;
+        this.connectWs();
+    }
+
+    stop() {
+        this.active = false;
+        if (this.statsInterval) clearInterval(this.statsInterval);
+        if (this.ws) {
+            this.ws.onclose = null;
+            this.ws.onerror = null;
+            this.ws.close();
+            this.ws = null;
+        }
+    }
+
+    connectWs() {
+        if (!this.active) return;
+        const protocol = this.baseUrl.startsWith('https') ? 'wss:' : 'ws:';
+        const hostPort = this.baseUrl.replace(/^https?:\/\//, '');
+        const wsUrl = `${protocol}//${hostPort}`;
         try {
             this.ws = new WebSocket(wsUrl);
-            
             this.ws.addEventListener('open', () => this.onOpen());
             this.ws.addEventListener('message', (e) => this.onMessage(e));
             this.ws.addEventListener('error', (e) => this.onError(e));
             this.ws.addEventListener('close', () => this.onClose());
         } catch (err) {
             console.error('❌ Erreur WebSocket:', err);
-            this.schedulereconnect();
+            this.scheduleReconnect();
         }
     }
 
@@ -111,7 +128,7 @@ class ServerMonitor {
         console.log('⚠️  WebSocket fermé');
         this.updateStatus('DÉCONNECTÉ');
         this.addLog('⚠️  Connexion WebSocket fermée', 'warning');
-        this.schedulereconnect();
+        this.scheduleReconnect();
     }
 
     /**
@@ -126,11 +143,12 @@ class ServerMonitor {
     /**
      * Programmer une reconnexion
      */
-    schedulereconnect() {
+    scheduleReconnect() {
+        if (!this.active) return;
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
             console.log(`🔄 Reconnexion dans ${this.reconnectInterval}ms (tentative ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-            setTimeout(() => this.init(), this.reconnectInterval);
+            setTimeout(() => this.connectWs(), this.reconnectInterval);
         } else {
             console.error('❌ Impossible de se reconnecter au serveur');
             this.addLog('❌ Impossible de se reconnecter au serveur', 'error');
@@ -142,7 +160,7 @@ class ServerMonitor {
      */
     async fetchStats() {
         try {
-            const response = await fetch('/api/monitoring/internal/stats');
+            const response = await fetch(`${this.baseUrl}/api/monitoring/internal/stats`);
             if (response.ok) {
                 const data = await response.json();
                 // Si l'API retourne aussi les clients, conserver pour affichage
@@ -173,11 +191,21 @@ class ServerMonitor {
         if (stats.memoryUsage !== undefined) {
             const el = document.getElementById('system-memory');
             if (el) el.textContent = stats.memoryUsage;
+            const bar = document.getElementById('memory-progress');
+            const val = this.toNumber(stats.memoryUsage);
+            if (bar && !Number.isNaN(val)) {
+                bar.style.width = `${Math.min(100, Math.max(0, val))}%`;
+            }
         }
         
         if (stats.cpuUsage !== undefined) {
             const el = document.getElementById('system-cpu');
             if (el) el.textContent = stats.cpuUsage;
+            const bar = document.getElementById('cpu-progress');
+            const val = this.toNumber(stats.cpuUsage);
+            if (bar && !Number.isNaN(val)) {
+                bar.style.width = `${Math.min(100, Math.max(0, val))}%`;
+            }
         }
         
         if (stats.nodeVersion !== undefined) {
@@ -249,13 +277,31 @@ class ServerMonitor {
      * Mettre à jour le statut serveur
      */
     updateStatus(status) {
-        const el = document.getElementById('server-status');
-        if (el) {
-            el.textContent = status;
+        const headerEl = document.getElementById('server-status');
+        const detailEl = document.getElementById('server-status-detail');
+
+        const apply = (node) => {
+            if (!node) return;
+            node.textContent = status;
             if (status === 'EN LIGNE') {
-                el.className = 'stat-value stat-value-online';
+                node.className = 'status-pill status-online';
+            } else if (status.includes('ERREUR')) {
+                node.className = 'status-pill status-error';
             } else {
-                el.className = 'stat-value stat-value-error';
+                node.className = 'status-pill status-offline';
+            }
+        };
+
+        apply(headerEl);
+        // For the detail value, keep simple text class if present
+        if (detailEl) {
+            detailEl.textContent = status;
+            if (status === 'EN LIGNE') {
+                detailEl.classList.remove('text-error');
+                detailEl.classList.add('text-success');
+            } else {
+                detailEl.classList.remove('text-success');
+                detailEl.classList.add('text-error');
             }
         }
     }
@@ -300,6 +346,18 @@ class ServerMonitor {
         if (el) {
             el.textContent = Utils.formatBytes(bytes);
         }
+    }
+
+    /**
+     * Convertir en nombre (pourcentage attendu)
+     */
+    toNumber(value) {
+        if (typeof value === 'number') return value;
+        if (typeof value === 'string') {
+            const parsed = parseFloat(value.replace('%', ''));
+            return parsed;
+        }
+        return Number.NaN;
     }
 
     /**
@@ -352,7 +410,8 @@ class ServerMonitor {
      */
     async syncChatLogs() {
         try {
-            const response = await fetch('/api/monitoring/chat-logs?limit=100');
+            if (!this.active) return;
+            const response = await fetch(`${this.baseUrl}/api/monitoring/chat-logs?limit=100`);
             if (response.ok) {
                 const data = await response.json();
                 if (data.logs && window.terminalLogger) {
@@ -377,7 +436,8 @@ class ServerMonitor {
      */
     async syncRequestLogs() {
         try {
-            const response = await fetch('/api/monitoring/request-logs?limit=100');
+            if (!this.active) return;
+            const response = await fetch(`${this.baseUrl}/api/monitoring/request-logs?limit=100`);
             if (response.ok) {
                 const data = await response.json();
                 if (data.logs && window.terminalLogger) {
@@ -399,28 +459,41 @@ class ServerMonitor {
     }
 }
 
-// Démarrer le monitoring
-let monitor = null;
-document.addEventListener('DOMContentLoaded', () => {
-    monitor = new ServerMonitor();
-    
-    // Bouton pour effacer les logs
-    const clearBtn = document.getElementById('logs-clear');
-    if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-            const container = document.getElementById('logs-container');
-            if (container) {
-                container.innerHTML = '<p class="empty-message">Logs effacés</p>';
-                monitor.stats.logs = [];
-            }
-        });
-    }
+// Expose a starter/stopper so we only connect when backend is running
+window.ServerMonitorInstance = {
+    monitor: null,
+    start(baseUrl = 'http://localhost:8060') {
+        if (this.monitor) return this.monitor;
+        this.monitor = new ServerMonitor(baseUrl);
+        this.monitor.start();
 
-    // Synchroniser les logs tous les 2 secondes aussi
-    if (window.terminalLogger) {
-        setInterval(() => {
-            monitor.syncChatLogs();
-            monitor.syncRequestLogs();
-        }, 2000);
+        const clearBtn = document.getElementById('logs-clear');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                const container = document.getElementById('logs-container');
+                if (container) {
+                    container.innerHTML = '<p class="empty-message">Logs effacés</p>';
+                    this.monitor.stats.logs = [];
+                }
+            });
+        }
+
+        if (window.terminalLogger) {
+            this.syncInterval = setInterval(() => {
+                this.monitor.syncChatLogs();
+                this.monitor.syncRequestLogs();
+            }, 2000);
+        }
+        return this.monitor;
+    },
+    stop() {
+        if (this.monitor) {
+            this.monitor.stop();
+            this.monitor = null;
+        }
+        if (this.syncInterval) {
+            clearInterval(this.syncInterval);
+            this.syncInterval = null;
+        }
     }
-});
+};
