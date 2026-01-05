@@ -7,6 +7,7 @@ const path = require('path');
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
+const { exec } = require('child_process');
 
 // Charger la configuration serveur
 let serverConfig = {};
@@ -39,6 +40,8 @@ const RETRY_INTERVAL = 500;
 let mainWindow;
 let pdfWindows = new Map();
 let serverConnected = false;
+let lastOpenTime = 0;
+const MIN_OPEN_INTERVAL = 1500; // 1.5s minimum entre chaque ouverture
 
 function isBlacklisted(name, blacklist = [], ignoreSuffixes = [], ignoreExtensions = []) {
     if (!name) return true;
@@ -110,6 +113,7 @@ function createWindow() {
         width: 1200,
         height: 800,
         show: false,
+        autoHideMenuBar: true,  // Masquer la barre de menu
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -187,15 +191,228 @@ ipcMain.handle('list-folders', async (_event, payload) => {
 ipcMain.handle('open-path', async (_event, payload) => {
     const targetPath = typeof payload === 'string' ? payload : payload?.path;
     if (!targetPath) throw new Error('path is required');
+    
     try {
         const resolved = path.resolve(targetPath);
-        const res = await shell.openPath(resolved);
-        if (res) {
-            throw new Error(res);
+        
+        // Vérifier si le chemin existe
+        if (!fs.existsSync(resolved)) {
+            return { success: false, error: 'Path does not exist' };
         }
+        
+        // Throttle: attendre avant d'ouvrir si nécessaire
+        const now = Date.now();
+        const elapsed = now - lastOpenTime;
+        if (elapsed < MIN_OPEN_INTERVAL) {
+            const waitTime = MIN_OPEN_INTERVAL - elapsed;
+            await new Promise(resolve => setTimeout(resolve, waitTime));
+        }
+        lastOpenTime = Date.now();
+        
+        // Ouvrir avec le gestionnaire de fichiers natif
+        const platform = process.platform;
+        let cmd;
+        
+        if (platform === 'win32') {
+            cmd = `explorer "${resolved}"`;
+        } else if (platform === 'darwin') {
+            cmd = `open "${resolved}"`;
+        } else {
+            // Linux - utiliser xdg-open ou nautilus
+            cmd = `xdg-open "${resolved}" || nautilus "${resolved}" || dolphin "${resolved}"`;
+        }
+        
+        exec(cmd, (error) => {
+            if (error) {
+                console.error('❌ Erreur ouverture explorateur:', error.message);
+            }
+        });
+        
         return { success: true, path: resolved };
     } catch (error) {
         console.error('❌ Erreur open-path:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// IPC: récupérer l'icône d'une application
+ipcMain.handle('get-app-icon', async (_event, payload) => {
+    const { command, appName } = payload || {};
+    if (!command) return { success: false, icon: null };
+    
+    try {
+        // Extraire la commande de base (avant les flags)
+        const baseCommand = command.split(' ')[0];
+        
+        // D'abord chercher dans /usr/share/applications avec la commande
+        let desktopFiles = [
+            `/usr/share/applications/${command}.desktop`,
+            `/usr/share/applications/${baseCommand}.desktop`,
+            `/usr/local/share/applications/${command}.desktop`,
+            `/usr/local/share/applications/${baseCommand}.desktop`,
+            `${os.homedir()}/.local/share/applications/${command}.desktop`,
+            `${os.homedir()}/.local/share/applications/${baseCommand}.desktop`
+        ];
+        
+        // Pour LibreOffice, détecter le type spécifique depuis la commande
+        if (baseCommand === 'libreoffice' && command.includes('--')) {
+            const flag = command.match(/--(\w+)/)?.[1];
+            if (flag) {
+                desktopFiles.unshift(`/usr/share/applications/libreoffice-${flag}.desktop`);
+            }
+        }
+        
+        // Ajouter des variantes courantes basées sur le nom de l'app
+        if (appName) {
+            const nameLower = appName.toLowerCase().replace(/\s+/g, '');
+            desktopFiles.push(
+                `/usr/share/applications/${nameLower}.desktop`,
+                `/usr/share/applications/${baseCommand}-${nameLower}.desktop`,
+                `/usr/share/applications/org.${nameLower}.${appName}.desktop`,
+                `/usr/share/applications/org.gnome.${appName}.desktop`,  // GNOME apps (majuscule)
+                `/usr/share/applications/org.gnome.${nameLower}.desktop`  // GNOME apps (minuscule)
+            );
+            // Ajouter aussi la variante complète (org.gnome.GNOME)
+            desktopFiles.push(
+                `/usr/share/applications/org.${nameLower}.${nameLower}.desktop`
+            );
+        }
+        
+        // Chercher aussi les .desktop contenant la commande (grep)
+        try {
+            const result = execSync(`grep -l "Exec=.*${baseCommand}" /usr/share/applications/*.desktop 2>/dev/null | head -5`, {
+                encoding: 'utf8',
+                stdio: ['pipe', 'pipe', 'ignore']
+            }).trim().split('\n').filter(Boolean);
+            if (result[0]) desktopFiles.push(...result);
+        } catch (e) {
+            // Pas d'erreur si rien trouvé
+        }
+        
+        // Pour les apps Flatpak, extraire l'ID
+        let flatpakId = null;
+        if (command.startsWith('flatpak') || command.includes('com.') || command.includes('io.')) {
+            const parts = command.split(' ');
+            flatpakId = parts[parts.length - 1];
+            desktopFiles.push(
+                `/var/lib/flatpak/app/${flatpakId}/current/active/files/share/applications/${flatpakId}.desktop`,
+                `${os.homedir()}/.local/share/flatpak/app/${flatpakId}/current/active/files/share/applications/${flatpakId}.desktop`
+            );
+        }
+        
+        // Déduplicatif et filtre
+        desktopFiles = [...new Set(desktopFiles)].filter(f => f && f.includes('.desktop'));
+        
+        for (const desktopFile of desktopFiles) {
+            if (fs.existsSync(desktopFile)) {
+                try {
+                    const content = fs.readFileSync(desktopFile, 'utf8');
+                    const iconMatch = content.match(/Icon=(.+)/);
+                    
+                    if (iconMatch) {
+                        const iconName = iconMatch[1].trim();
+                        
+                        // Chercher l'icône - augmenter la couverture de recherche
+                        const iconPaths = [
+                            // Hicolor (standard)
+                            `/usr/share/icons/hicolor/256x256/apps/${iconName}.png`,
+                            `/usr/share/icons/hicolor/256x256/apps/${iconName}.svg`,
+                            `/usr/share/icons/hicolor/128x128/apps/${iconName}.png`,
+                            `/usr/share/icons/hicolor/128x128/apps/${iconName}.svg`,
+                            `/usr/share/icons/hicolor/48x48/apps/${iconName}.png`,
+                            `/usr/share/icons/hicolor/48x48/apps/${iconName}.svg`,
+                            `/usr/share/icons/hicolor/scalable/apps/${iconName}.svg`,
+                            // Pixmaps
+                            `/usr/share/pixmaps/${iconName}.png`,
+                            `/usr/share/pixmaps/${iconName}.svg`,
+                            `/usr/share/pixmaps/${iconName}`,
+                            // Adwaita (GNOME)
+                            `/usr/share/icons/Adwaita/256x256/apps/${iconName}.png`,
+                            `/usr/share/icons/Adwaita/256x256/apps/${iconName}.svg`,
+                            `/usr/share/icons/Adwaita/scalable/apps/${iconName}.svg`,
+                            // HighContrast
+                            `/usr/share/icons/HighContrast/256x256/apps/${iconName}.png`,
+                            `/usr/share/icons/HighContrast/256x256/apps/${iconName}.svg`,
+                            // Mint-Y (popular Linux theme)
+                            `/usr/share/icons/Mint-Y/apps/256/${iconName}.png`,
+                            `/usr/share/icons/Mint-Y/apps/48/${iconName}.png`,
+                            `/usr/share/icons/Mint-L/apps/256/${iconName}.png`,
+                            `/usr/share/icons/Mint-L/apps/48/${iconName}.png`,
+                            // Papirus (SVG icons)
+                            `/usr/share/icons/Papirus/64x64/apps/${iconName}.svg`,
+                            `/usr/share/icons/Papirus/48x48/apps/${iconName}.svg`,
+                            `/usr/share/icons/Papirus/32x32/apps/${iconName}.svg`,
+                            // Humanity
+                            `/usr/share/icons/Humanity/apps/128/${iconName}.svg`,
+                            `/usr/share/icons/Humanity/apps/64/${iconName}.svg`,
+                            // Yaru
+                            `/usr/share/icons/Yaru/256x256/apps/${iconName}.png`,
+                            `/usr/share/icons/Yaru/48x48/apps/${iconName}.png`,
+                            // GNOME
+                            `/usr/share/icons/gnome/256x256/apps/${iconName}.png`,
+                            `/usr/share/icons/gnome/48x48/apps/${iconName}.png`,
+                            // Variantes avec traits d'union/underscore
+                            `/usr/share/icons/hicolor/256x256/apps/${iconName.replace(/_/g, '-')}.png`,
+                            `/usr/share/icons/hicolor/256x256/apps/${iconName.replace(/_/g, '-')}.svg`,
+                            `/usr/share/icons/Adwaita/256x256/apps/${iconName.replace(/_/g, '-')}.png`,
+                            `/usr/share/icons/Adwaita/256x256/apps/${iconName.replace(/_/g, '-')}.svg`,
+                            `/usr/share/icons/Mint-Y/apps/256/${iconName.replace(/_/g, '-')}.png`
+                        ];
+                        
+                        // Pour Flatpak
+                        if (flatpakId) {
+                            iconPaths.push(
+                                `/var/lib/flatpak/app/${flatpakId}/current/active/files/share/icons/hicolor/256x256/apps/${iconName}.png`,
+                                `/var/lib/flatpak/app/${flatpakId}/current/active/files/share/pixmaps/${iconName}.png`,
+                                `${os.homedir()}/.local/share/flatpak/app/${flatpakId}/current/active/files/share/icons/hicolor/256x256/apps/${iconName}.png`
+                            );
+                        }
+                        
+                        for (const iconPath of iconPaths) {
+                            if (fs.existsSync(iconPath)) {
+                                console.log('✅ Icône trouvée:', iconPath);
+                                return { success: true, icon: iconPath };
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn('⚠️ Erreur lecture .desktop:', desktopFile, err.message);
+                }
+            }
+        }
+        
+        console.warn('⚠️ Icône non trouvée pour:', command, 'avec appName:', appName);
+        return { success: false, icon: null };
+    } catch (error) {
+        console.error('❌ Erreur get-app-icon:', error);
+        return { success: false, icon: null };
+    }
+});
+
+// IPC: lancer une application
+ipcMain.handle('launch-app', async (_event, payload) => {
+    const { command, args = [] } = payload || {};
+    if (!command) throw new Error('command is required');
+    
+    try {
+        // Construire la commande avec les arguments
+        const cmdArgs = args.map(arg => `"${arg}"`).join(' ');
+        const fullCmd = cmdArgs ? `${command} ${cmdArgs}` : command;
+        
+        exec(fullCmd, (error, stdout, stderr) => {
+            if (error) {
+                console.error('❌ Erreur lancement app:', error.message);
+                return;
+            }
+            if (stderr) {
+                console.warn('⚠️ App stderr:', stderr);
+            }
+            console.log('✅ Application lancée:', command);
+        });
+        
+        return { success: true, command };
+    } catch (error) {
+        console.error('❌ Erreur launch-app:', error);
         return { success: false, error: error.message };
     }
 });
