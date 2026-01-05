@@ -1,0 +1,39 @@
+aside {
+    display: flex;
+    flex-direction: column;
+    width: 13vw;
+    height: 100vh;
+    padding: var(--unit-1) var(--unit-2);
+    text-align: center;
+    background-color: var(--bleu2);
+}
+
+aside h2 {
+    color: var(--blanc);
+    font: var(--font-title);
+}
+
+.reception-nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+
+.reception-nav button {
+    width: 100%;
+    padding: var(--unit-1) var(--unit-2);
+    border: none;
+    border-radius: var(--radius-small);
+    background-color: white;
+    box-shadow: var(--shadow-medium);
+}
+
+.reception-nav button:hover {
+    background-color: var(--jaune);
+    color: var(--noir);
+    cursor: pointer;
+}
+
+.reception-nav button i {
+    margin-right: var(--unit-1);
+}
