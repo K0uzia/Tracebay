@@ -36,6 +36,9 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--unit-2);
+    padding: var(--unit-3);
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-medium);
 }
 
 .section-title p {
@@ -69,7 +72,7 @@
 }
 
 .section-title h2::before {
-    width: 40px;    
+    width: 40px;
 }
 
 .section-title h2::after {
@@ -79,7 +82,6 @@
 
 .section-contain {
     display: flex;
-    padding: var(--unit-2);
     margin-top: var(--unit-2);
 }
 
@@ -106,6 +108,7 @@
     .section {
         padding: var(--unit-2) var(--unit-3);
     }
+
     .section-contain {
         flex-direction: column;
         align-items: center;
