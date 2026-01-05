@@ -1,6 +1,6 @@
 <section class="dossier section">
     <div class="section-title">
-        <h2>Dossier</h2>
+        <h2>Dossier interne</h2>
     </div>
     <div class="section-contain">
         <div class="grid">
@@ -8,11 +8,46 @@
                 <div class="block">
                     <div class="block-content">
                         <div class="block-subtitle">
-                            <h4>Dossiers TEAMS</h4>
+                            <h4>La Capsule</h4>
                         </div>
-                         {{filemanagerteam}}
+                        {{filemanagercapsule}}
+                        <!-- Contenu ignoré/placeholder -->
+                        {{/filemanagercapsule}}
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-item">
+                <div class="block">
+                    <div class="block-content">
+                        <div class="block-subtitle">
+                            <h4>Team</h4>
+                        </div>
+                        {{filemanagerteam}}
                         <!-- Contenu ignoré/placeholder -->
                         {{/filemanagerteam}}
+                    </div>
+                    <div class="block-content">
+                        <div class="block-subtitle">
+                            <h4>Invité</h4>
+                        </div>
+                        {{filemanagerguest}}
+                        <!-- Contenu ignoré/placeholder -->
+                        {{/filemanagerguest}}
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid-item">
+                <div class="block">
+                    <div class="block-content">
+                        <div class="block-subtitle">
+                            <h4>Développement</h4>
+                        </div>
+                        {{filemanagerdevelopment}}
+                        <!-- Contenu ignoré/placeholder -->
+                        {{/filemanagerdevelopment}}
+                    </div>
                 </div>
             </div>
         </div>

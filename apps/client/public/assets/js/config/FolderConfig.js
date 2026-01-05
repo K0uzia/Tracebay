@@ -7,14 +7,25 @@ export const folderConfig = {
     // Exemple: {{filemanagerteam}} ... {{/filemanagerteam}} => preset "team"
     fileManagers: {
         team: {
-            basePath: '/mnt/team/#TEAM/'
+            basePath: '/mnt/team/#TEAM/',
+            // Blacklist spécifique à ce preset (vide = utilise la globale)
+            blacklist: ['#TRAÇABALITÉ', '#INTERNE', '#INVITES']
+        },
+        guest: {
+            basePath: '/mnt/team/#TEAM/#INVITES',
+        },
+        development: {
+            basePath: '/home/goupil/Développement',
+            blacklist: []
+        },
+        capsule: {
+            basePath: '/mnt/team/#TEAM/#INTERNE',
+            blacklist: ['#WEB']
         }
     },
 
-    // Fichiers et dossiers à exclure
-    blacklist: [
-        '#TRAÇABALITÉ','#INTERNE','#INVITES'
-    ],
+    // Fichiers et dossiers à exclure (global, fallback si pas défini dans preset)
+    blacklist: [],
 
     ignoreSuffixes: ['.tmp', '.bak', '.swp', '.swo', '~'],
     ignoreExtensions: ['.tmp', '.bak', '.log', '.lock'],
@@ -44,7 +55,7 @@ export const folderConfig = {
         return {
             ...this,
             ...preset,
-            blacklist: preset.blacklist || this.blacklist,
+            blacklist: preset.blacklist !== undefined ? preset.blacklist : this.blacklist,
             ignoreSuffixes: preset.ignoreSuffixes || this.ignoreSuffixes,
             ignoreExtensions: preset.ignoreExtensions || this.ignoreExtensions
         };

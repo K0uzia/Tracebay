@@ -17,7 +17,6 @@ export const CHAT_SECURITY_CONFIG = {
         'stackoverflow.com',
         'mdn.org',
         'w3schools.com',
-        'example.com'
     ],
     
     // Domaines bloqués (blacklist)
