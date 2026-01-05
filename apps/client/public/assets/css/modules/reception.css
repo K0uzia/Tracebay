@@ -5,12 +5,14 @@ aside {
     height: 100vh;
     padding: var(--unit-1) var(--unit-2);
     text-align: center;
-    background-color: var(--bleu2);
+    background-color: var(--blanc);
+    box-shadow: var(--shadow-medium);
 }
 
 aside h2 {
-    color: var(--blanc);
+    color: var(--noir);
     font: var(--font-title);
+    text-decoration: underline var(--orange);
 }
 
 .reception-nav {
@@ -24,13 +26,13 @@ aside h2 {
     padding: var(--unit-1) var(--unit-2);
     border: none;
     border-radius: var(--radius-small);
-    background-color: white;
-    box-shadow: var(--shadow-medium);
+    color: var(--blanc);
+    background-color: var(--bleu2);
+    box-shadow: var(--shadow-small);
 }
 
 .reception-nav button:hover {
-    background-color: var(--jaune);
-    color: var(--noir);
+    color: var(--jaune);
     cursor: pointer;
 }
 
