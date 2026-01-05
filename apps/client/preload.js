@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const ALLOWED_CHANNELS = {
     send: ['open-pdf'],
-    invoke: ['open-external', 'open-pdf-window', 'get-app-config', 'get-local-ip', 'get-system-info', 'list-folders', 'open-path'],
+    invoke: ['open-external', 'open-pdf-window', 'get-app-config', 'get-local-ip', 'get-system-info', 'list-folders', 'open-path', 'launch-app', 'get-app-icon'],
     on: ['update:available', 'update:not-available', 'update:downloaded', 'update:progress', 'update:error']
 };
 

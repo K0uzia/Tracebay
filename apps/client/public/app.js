@@ -12,7 +12,7 @@ class PageManager {
             'agenda': { showHeader: true, showFooter: false, showChat: false },
             'dossier': { showHeader: true, showFooter: true, showChat: true },
             'application': { showHeader: true, showFooter: true, showChat: true },
-            'reception': { showHeader: true, showFooter: true, showChat: false },
+            'reception': { showHeader: true, showFooter: false, showChat: false },
             'shortcut': { showHeader: true, showFooter: true, showChat: true },
             'option': { showHeader: true, showFooter: true, showChat: false },
             'login': { showHeader: false, showFooter: false, showChat: false },
@@ -405,6 +405,7 @@ class PageManager {
             
             let html = await response.text();
             html = this.transformFileManagers(html);
+            html = this.transformAppManagers(html);
             document.getElementById(this.contentContainer).innerHTML = html;
             
             this.saveCurrentPage(pageName);
@@ -414,6 +415,7 @@ class PageManager {
             this.initializePageElements(pageName);
             this.attachListeners();
             this.initializeFileManagers();
+            this.initializeAppManagers();
         } catch (error) {
             console.error(`❌ Erreur lors du chargement de ${pageName}:`, error);
             this.showError(pageName);
@@ -426,6 +428,15 @@ class PageManager {
         return html.replace(re, (_match, name) => {
             const key = name.toLowerCase();
             return `<div class="filemanager" data-fm="${key}"></div>`;
+        });
+    }
+
+    transformAppManagers(html) {
+        // Remplace {{appmanagerX}} ... {{/appmanagerX}} par un conteneur dédié
+        const re = /\{\{\s*appmanager(\w+)\s*\}\}[\s\S]*?\{\{\s*\/appmanager\1\s*\}\}/gi;
+        return html.replace(re, (_match, name) => {
+            const key = name.toLowerCase();
+            return `<div class="app-manager" data-app="${key}"></div>`;
         });
     }
 
@@ -572,6 +583,36 @@ class PageManager {
             });
         } catch (error) {
             console.error('❌ Erreur initialisation FileManagers:', error);
+        }
+    }
+
+    async initializeAppManagers() {
+        const appContainers = document.querySelectorAll('.app-manager[data-app]');
+        if (!appContainers.length) return;
+
+        try {
+            const [managerModule, configModule] = await Promise.all([
+                import('./assets/js/modules/app/AppManager.js'),
+                import('./assets/js/config/AppConfig.js')
+            ]);
+            const AppManager = managerModule.default;
+
+            if (window.appManagers) {
+                window.appManagers.forEach(m => m.destroy());
+            }
+            window.appManagers = [];
+
+            appContainers.forEach(container => {
+                const preset = container.dataset.app?.toLowerCase();
+                console.log('🔧 Initialisation AppManager:', preset, container);
+                const manager = new AppManager({
+                    scope: container,
+                    preset: preset
+                });
+                window.appManagers.push(manager);
+            });
+        } catch (error) {
+            console.error('❌ Erreur initialisation AppManagers:', error);
         }
     }
 
