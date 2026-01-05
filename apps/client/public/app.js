@@ -403,7 +403,8 @@ class PageManager {
             const response = await fetch(`./pages/${pageName}.html`);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             
-            const html = await response.text();
+            let html = await response.text();
+            html = this.transformFileManagers(html);
             document.getElementById(this.contentContainer).innerHTML = html;
             
             this.saveCurrentPage(pageName);
@@ -412,10 +413,20 @@ class PageManager {
             this.initializeTimeIfNeeded();
             this.initializePageElements(pageName);
             this.attachListeners();
+            this.initializeFileManagers();
         } catch (error) {
             console.error(`❌ Erreur lors du chargement de ${pageName}:`, error);
             this.showError(pageName);
         }
+    }
+
+    transformFileManagers(html) {
+        // Remplace {{filemanagerX}} ... {{/filemanagerX}} (avec espaces tolérés) par un conteneur dédié
+        const re = /\{\{\s*filemanager(\w+)\s*\}\}[\s\S]*?\{\{\s*\/filemanager\1\s*\}\}/gi;
+        return html.replace(re, (_match, name) => {
+            const key = name.toLowerCase();
+            return `<div class="filemanager" data-fm="${key}"></div>`;
+        });
     }
 
     initializeTimeIfNeeded() {
@@ -523,6 +534,44 @@ class PageManager {
                 .catch(error => {
                     console.error('❌ Erreur import ShortcutManager:', error);
                 });
+        }
+    }
+
+    async initializeFileManagers() {
+        const fmContainers = document.querySelectorAll('.filemanager[data-fm]');
+        if (!fmContainers.length) return;
+
+        try {
+            const [managerModule, configModule] = await Promise.all([
+                import('./assets/js/modules/folder/FolderManager.js'),
+                import('./assets/js/config/FolderConfig.js')
+            ]);
+            const FolderManager = managerModule.default;
+            const folderConfig = configModule.folderConfig || configModule.default;
+
+            // Nettoyer une instance globale éventuelle
+            if (window.folderManagers) {
+                window.folderManagers.forEach(m => m.destroy());
+            }
+            window.folderManagers = [];
+
+            fmContainers.forEach(container => {
+                const key = container.dataset.fm?.toLowerCase();
+                const cfg = folderConfig.resolvePreset(key);
+
+                // Construire le markup interne
+                container.innerHTML = `<div class="folders-list"></div>`;
+
+                const manager = new FolderManager({
+                    scope: container,
+                    buttonSelector: '.folder-open-btn',
+                    listSelector: '.folders-list',
+                    config: cfg
+                });
+                window.folderManagers.push(manager);
+            });
+        } catch (error) {
+            console.error('❌ Erreur initialisation FileManagers:', error);
         }
     }
 

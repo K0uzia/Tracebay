@@ -40,6 +40,20 @@ let mainWindow;
 let pdfWindows = new Map();
 let serverConnected = false;
 
+function isBlacklisted(name, blacklist = [], ignoreSuffixes = [], ignoreExtensions = []) {
+    if (!name) return true;
+    if (blacklist.includes(name)) return true;
+    if (name.startsWith('~$')) return true;
+    if (name.startsWith('.') && name !== '.' && name !== '..') return true;
+    for (const suffix of ignoreSuffixes) {
+        if (name.endsWith(suffix)) return true;
+    }
+    for (const ext of ignoreExtensions) {
+        if (name.endsWith(ext)) return true;
+    }
+    return false;
+}
+
 /**
  * Vérifier la connexion au serveur distant (non-bloquant)
  */
@@ -149,6 +163,41 @@ app.on('ready', async () => {
     createWindow();
     console.log('✅ Interface graphique lancée');
     console.log('✨ Application prête');
+});
+
+// IPC: lister les dossiers d'un chemin
+ipcMain.handle('list-folders', async (_event, payload) => {
+    const { path: basePath, blacklist = [], ignoreSuffixes = [], ignoreExtensions = [] } = payload || {};
+    if (!basePath) throw new Error('path is required');
+
+    const resolvedPath = path.resolve(basePath);
+    try {
+        const entries = await fs.promises.readdir(resolvedPath, { withFileTypes: true });
+        const folders = entries
+            .filter((ent) => ent.isDirectory() && !isBlacklisted(ent.name, blacklist, ignoreSuffixes, ignoreExtensions))
+            .map((ent) => ent.name);
+        return { folders, path: resolvedPath };
+    } catch (error) {
+        console.error('❌ Erreur list-folders:', error);
+        throw error;
+    }
+});
+
+// IPC: ouvrir un chemin local (dossier/fichier) via shell.openPath
+ipcMain.handle('open-path', async (_event, payload) => {
+    const targetPath = typeof payload === 'string' ? payload : payload?.path;
+    if (!targetPath) throw new Error('path is required');
+    try {
+        const resolved = path.resolve(targetPath);
+        const res = await shell.openPath(resolved);
+        if (res) {
+            throw new Error(res);
+        }
+        return { success: true, path: resolved };
+    } catch (error) {
+        console.error('❌ Erreur open-path:', error);
+        return { success: false, error: error.message };
+    }
 });
 
 /**
