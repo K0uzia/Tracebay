@@ -1,27 +1,32 @@
-<aside>
-    <div class="reception-title">
-        <h2>Réception</h2>
+<section class="recep-main">
+    <aside>
+        <div class="reception-title">
+            <h2>Réception</h2>
+        </div>
+        <div class="reception-nav">
+            <!-- Entrée du matériel -->
+            <button data-page="entrer" data-reception-page="true">
+                <i class="fa-solid fa-arrow-right"></i> Entrée
+            </button>
+            <!-- Sortie du matériel -->
+            <button data-page="sortie" data-reception-page="true">
+                <i class="fa-solid fa-arrow-left"></i> Sortie
+            </button>
+            <!-- Inventaire / État des stocks -->
+            <button data-page="inventaire" data-reception-page="true">
+                <i class="fa-solid fa-boxes-stacked"></i> Inventaire
+            </button>
+            <!-- Historique des mouvements -->
+            <button data-page="historique" data-reception-page="true">
+                <i class="fa-solid fa-history"></i> Historique
+            </button>
+            <!-- Traçabilité -->
+            <button data-page="tracabiliter" data-reception-page="true">
+                <i class="fa-solid fa-link"></i> Traçabilité
+            </button>
+        </div>
+    </aside>
+    <div class="recep-section">
+        <!-- Ajout Dynamique des éléments de réception -->
     </div>
-    <div class="reception-nav">
-        <!-- Entrée du matériel -->
-        <button>
-            <i class="fa-solid fa-arrow-right"></i> Entrée
-        </button>
-        <!-- Sortie du matériel -->
-        <button>
-            <i class="fa-solid fa-arrow-left"></i> Sortie
-        </button>
-        <!-- Inventaire / État des stocks -->
-        <button>
-            <i class="fa-solid fa-boxes-stacked"></i> Inventaire
-        </button>
-        <!-- Historique des mouvements -->
-        <button>
-            <i class="fa-solid fa-history"></i> Historique
-        </button>
-        <!-- Traçabilité -->
-        <button>
-            <i class="fa-solid fa-link"></i> Traçabilité
-        </button>
-    </div>
-</aside>
+</section>

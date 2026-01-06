@@ -16,6 +16,14 @@
 @import url(./modules/reception.css);
 @import url(./modules/shortcut.css);
 
+/* ----------CSS RECEPTION----------- */
+@import url(./modules/receptions/entrer.css);
+@import url(./modules/receptions/sortie.css);
+@import url(./modules/receptions/historique.css);
+@import url(./modules/receptions/inventaire.css);
+@import url(./modules/receptions/tracabiliter.css);
+@import url(./modules/receptions/recep-section.css);
+
 /* ----------CSS MODULES----------- */
 @import url(./modules/modal.css);
 @import url(./modules/chat-widget.css);
