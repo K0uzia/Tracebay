@@ -400,13 +400,33 @@ class PageManager {
 
     async loadPage(pageName) {
         try {
-            const response = await fetch(`./pages/${pageName}.html`);
+            // Déterminer le chemin de la page (gestion des pages de réception)
+            let pagePath = `./pages/${pageName}.html`;
+            const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabiliter'].includes(pageName);
+            
+            if (isReceptionSubPage) {
+                pagePath = `./pages/reception-pages/${pageName}.html`;
+            }
+            
+            const response = await fetch(pagePath);
             if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
             
             let html = await response.text();
             html = this.transformFileManagers(html);
             html = this.transformAppManagers(html);
-            document.getElementById(this.contentContainer).innerHTML = html;
+            
+            // Si c'est une sous-page de réception, charger dans le recep-section
+            if (isReceptionSubPage) {
+                const recepSection = document.querySelector('.recep-section');
+                if (recepSection) {
+                    recepSection.innerHTML = html;
+                } else {
+                    // Si pas de block-content, charger normalement
+                    document.getElementById(this.contentContainer).innerHTML = html;
+                }
+            } else {
+                document.getElementById(this.contentContainer).innerHTML = html;
+            }
             
             this.saveCurrentPage(pageName);
             this.updateLayout(pageName);
@@ -414,6 +434,7 @@ class PageManager {
             this.initializeTimeIfNeeded();
             this.initializePageElements(pageName);
             this.attachListeners();
+            this.attachReceptionPageListeners();
             this.initializeFileManagers();
             this.initializeAppManagers();
         } catch (error) {
@@ -731,6 +752,22 @@ class PageManager {
                 });
                 
                 button.dataset.listenerAttached = 'true';
+            }
+        });
+    }
+
+    attachReceptionPageListeners() {
+        const receptionButtons = document.querySelectorAll('[data-reception-page="true"]');
+        
+        receptionButtons.forEach(button => {
+            if (!button.dataset.receptionListenerAttached) {
+                button.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    const pageName = button.dataset.page;
+                    this.loadPage(pageName);
+                });
+                
+                button.dataset.receptionListenerAttached = 'true';
             }
         });
     }
