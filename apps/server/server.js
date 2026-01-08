@@ -18,6 +18,7 @@ const agendaRouter = require('./routes/agenda.js');
 const shortcutsRouter = require('./routes/shortcuts.js');
 const healthRouter = require('./routes/health.js');
 const monitoringRouter = require('./routes/monitoring.js');
+const lotsRouter = require('./routes/lots.js');
 const serverLogger = require('./lib/ServerLogger.js');
 
 // Import middleware
@@ -56,6 +57,8 @@ app.use(httpRequestTracker());
 
 // Servir les fichiers publics (dashboard UI)
 app.use(express.static(path.join(__dirname, 'public')));
+// Exposer explicitement les PDFs si présents
+app.use('/pdfs', express.static(path.join(__dirname, 'public', 'pdfs')));
 
 // Logging middleware
 app.use((req, res, next) => {
@@ -78,6 +81,7 @@ app.use('/api/agenda', agendaRouter);
 app.use('/api/shortcuts', shortcutsRouter);
 app.use('/api/health', healthRouter);
 app.use('/api/monitoring', monitoringRouter);
+app.use('/api/lots', lotsRouter);
 
 // Simplified log feed for the game terminal
 app.get('/api/logs', (req, res) => {

@@ -566,6 +566,38 @@ class PageManager {
                 .catch(error => {
                     console.error('❌ Erreur import ShortcutManager:', error);
                 });
+        } else if (pageName === 'entrer') {
+            // Empêcher la double initialisation
+            if (window.gestionLotsManagerInitializing) {
+                console.log('⏳ GestionLotsManager déjà en cours d\'initialisation, skip');
+                return;
+            }
+            
+            // Détruire l'ancien manager s'il existe (changement de page)
+            if (window.gestionLotsManager) {
+                window.gestionLotsManager.destroy();
+                window.gestionLotsManager = null;
+                console.log('ℹ️ Ancien GestionLotsManager détruit');
+            }
+            
+            // Marquer comme en cours d'initialisation
+            window.gestionLotsManagerInitializing = true;
+            
+            // Initialiser un nouveau gestionnaire de lots
+            import('./assets/js/modules/reception/gestion-lots.js')
+                .then(module => {
+                    const GestionLotsManager = module.default;
+                    window.gestionLotsManager = new GestionLotsManager(window.modalManager);
+                    console.log('✅ GestionLotsManager initialisé depuis app.js');
+                    // Libérer le flag après un court délai
+                    setTimeout(() => {
+                        window.gestionLotsManagerInitializing = false;
+                    }, 500);
+                })
+                .catch(error => {
+                    console.error('❌ Erreur import GestionLotsManager:', error);
+                    window.gestionLotsManagerInitializing = false;
+                });
         }
     }
 
