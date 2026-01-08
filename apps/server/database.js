@@ -130,6 +130,34 @@ function initializeTables() {
 
         CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at);
         CREATE INDEX IF NOT EXISTS idx_chat_messages_user_id ON chat_messages(user_id);
+
+        -- Lots (batches) table
+        CREATE TABLE IF NOT EXISTS lots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            finished_at DATETIME DEFAULT NULL,
+            pdf_path TEXT DEFAULT NULL
+        );
+
+        -- Items (PCs) within a lot
+        CREATE TABLE IF NOT EXISTS lot_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lot_id INTEGER NOT NULL,
+            serial_number TEXT,
+            type TEXT,
+            marque_id INTEGER,
+            modele_id INTEGER,
+            entry_type TEXT,
+            date TEXT,
+            time TEXT,
+            state TEXT DEFAULT 'À faire',
+            technician TEXT DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(lot_id) REFERENCES lots(id) ON DELETE CASCADE
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_lot_items_lot_id ON lot_items(lot_id);
+        CREATE INDEX IF NOT EXISTS idx_lot_items_state ON lot_items(state);
     `;
 
     db.exec(sql, (err) => {

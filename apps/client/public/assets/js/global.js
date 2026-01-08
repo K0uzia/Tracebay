@@ -6,9 +6,17 @@
 import NavManager from './modules/nav/NavManager.js';
 import TimeManager from './modules/time/TimeManager.js';
 import ChatWidgetManager from './modules/chat/ChatWidgetManager.js';
+import { modalManager, initModals } from './modules/modal/universalModal.js';
+
+// Exposer modalManager globalement
+window.modalManager = modalManager;
 
 // Initialiser après le chargement complet du DOM
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialiser le système de modales universel
+    initModals();
+    console.log('✅ Système de modales universel initialisé');
+
     // Ajouter un délai pour laisser le temps à app.js de charger le header
     setTimeout(() => {
         const navBurger = document.getElementById('navBurger');

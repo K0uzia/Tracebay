@@ -342,22 +342,34 @@ dialog::backdrop {
     min-height: var(--unit-5);
 }
 
-/* Primary Button (Submit) */
+/* Primary Button (Submit) - Vert (Valid) */
 .modal-submit-btn,
 .btn-primary {
-    background-color: var(--btn);
-    color: var(--btn-text);
+    background-color: var(--valid);
+    color: var(--blanc);
+    box-shadow: var(--shadow-small);
+    font-weight: 500;
+    border: none;
+    padding: var(--unit-2) var(--unit-3);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
 }
 
 .modal-submit-btn:hover:not(:disabled),
 .btn-primary:hover {
-    background-color: var(--btn-hover);
+    background-color: #006600;
     box-shadow: var(--shadow-medium);
+    transform: translateY(-2px);
 }
 
 .modal-submit-btn:active:not(:disabled),
 .btn-primary:active {
-    opacity: 0.9;
+    transform: translateY(0);
+    opacity: 0.95;
 }
 
 .modal-submit-btn:disabled {
@@ -365,27 +377,40 @@ dialog::backdrop {
     cursor: not-allowed;
 }
 
-/* Cancel Button */
+/* Cancel Button - Rouge (Error) */
 .modal-cancel-btn,
 .btn-annuler,
 .btn-cancel,
 .btn-secondary {
-    background-color: rgba(13, 13, 13, 0.1);
-    color: var(--h2);
+    background-color: var(--error);
+    color: var(--blanc);
+    box-shadow: var(--shadow-small);
+    font-weight: 500;
+    border: none;
+    padding: var(--unit-2) var(--unit-3);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    transition: var(--transition);
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
 }
 
 .modal-cancel-btn:hover,
 .btn-annuler:hover,
 .btn-cancel:hover,
 .btn-secondary:hover {
-    background-color: rgba(13, 13, 13, 0.15);
+    background-color: #b71c1c;
+    box-shadow: var(--shadow-medium);
+    transform: translateY(-2px);
 }
 
 .modal-cancel-btn:active,
 .btn-annuler:active,
 .btn-cancel:active,
 .btn-secondary:active {
-    background-color: rgba(13, 13, 13, 0.2);
+    transform: translateY(0);
+    background-color: #a01010;
 }
 
 /* Danger Button */
