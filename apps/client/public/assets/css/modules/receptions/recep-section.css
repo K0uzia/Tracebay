@@ -1,4 +1,3 @@
 .recep-section {
-    width: 100%;
-    padding:var(--unit-1) var(--unit-2);
+    padding:var(--unit-1);
 }
