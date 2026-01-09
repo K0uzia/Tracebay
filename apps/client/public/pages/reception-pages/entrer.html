@@ -1,5 +1,5 @@
 <!-- GESTION DES LOTS - MATÉRIEL RECONDITIONNÉ -->
-<section class="entrer recep-section" id="gestion-lots-container">
+<section class="gestion-lots-container">
     
     <!-- En-tête -->
     <div class="gestion-lots-header">
@@ -20,19 +20,19 @@
                 <i class="fa-solid fa-plus"></i>
                 Ajouter un modèle
             </button>
+            <button type="button" id="btn-apply-mass">
+                <i class="fa-solid fa-layer-group"></i>
+                Application en masse
+            </button>
+        </div>
+        <div class="actions-right">
             <button type="button" id="btn-add-manual">
                 <i class="fa-solid fa-keyboard"></i>
                 Ajout manuel
             </button>
-        </div>
-        <div class="actions-right">
             <button type="button" id="btn-cancel-lot">
                 <i class="fa-solid fa-times"></i>
                 Nouveau lot
-            </button>
-            <button type="button" id="btn-apply-mass">
-                <i class="fa-solid fa-layer-group"></i>
-                Application en masse
             </button>
             <button type="button" id="btn-save-lot">
                 <i class="fa-solid fa-save"></i>
@@ -48,18 +48,18 @@
         <table class="lot-table">
             <thead>
                 <tr>
-                    <th style="width: 40px;">
+                    <th style="min-width: 15px;">
                         <input type="checkbox" id="select-all" title="Tout sélectionner">
                     </th>
-                    <th style="width: 50px;">N°</th>
-                    <th style="width: 200px;">S/N</th>
-                    <th style="width: 120px;">Type</th>
-                    <th style="width: 150px;">Marque</th>
-                    <th style="width: 150px;">Modèle</th>
-                    <th style="width: 120px;">Entrée</th>
-                    <th style="width: 120px;">Date</th>
-                    <th style="width: 100px;">Heure</th>
-                    <th style="width: 60px;">Action</th>
+                    <th style="min-width: 15px;">N°</th>
+                    <th style="min-width: 150px;">S/N</th>
+                    <th style="min-width: 100px;">Type</th>
+                    <th style="min-width: 100px;">Marque</th>
+                    <th style="min-width: 100px;">Modèle</th>
+                    <th style="min-width: 70px;">Entrée</th>
+                    <th style="min-width: 90px;">Date</th>
+                    <th style="min-width: 60px;">Heure</th>
+                    <th style="min-width: 60px;">Action</th>
                 </tr>
             </thead>
             <tbody id="lot-table-body">

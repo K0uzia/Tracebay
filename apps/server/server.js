@@ -19,6 +19,7 @@ const shortcutsRouter = require('./routes/shortcuts.js');
 const healthRouter = require('./routes/health.js');
 const monitoringRouter = require('./routes/monitoring.js');
 const lotsRouter = require('./routes/lots.js');
+const marquesModelesRouter = require('./routes/marques-modeles.js');
 const serverLogger = require('./lib/ServerLogger.js');
 
 // Import middleware
@@ -82,6 +83,7 @@ app.use('/api/shortcuts', shortcutsRouter);
 app.use('/api/health', healthRouter);
 app.use('/api/monitoring', monitoringRouter);
 app.use('/api/lots', lotsRouter);
+app.use('/api/marques', marquesModelesRouter);
 
 // Simplified log feed for the game terminal
 app.get('/api/logs', (req, res) => {

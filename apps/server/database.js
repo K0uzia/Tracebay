@@ -131,6 +131,25 @@ function initializeTables() {
         CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at);
         CREATE INDEX IF NOT EXISTS idx_chat_messages_user_id ON chat_messages(user_id);
 
+        -- Marques (Brands)
+        CREATE TABLE IF NOT EXISTS marques (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT UNIQUE NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        -- Modeles (Models) 
+        CREATE TABLE IF NOT EXISTS modeles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            marque_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(marque_id) REFERENCES marques(id) ON DELETE CASCADE,
+            UNIQUE(marque_id, name)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_modeles_marque_id ON modeles(marque_id);
+
         -- Lots (batches) table
         CREATE TABLE IF NOT EXISTS lots (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -153,7 +172,9 @@ function initializeTables() {
             state TEXT DEFAULT 'À faire',
             technician TEXT DEFAULT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY(lot_id) REFERENCES lots(id) ON DELETE CASCADE
+            FOREIGN KEY(lot_id) REFERENCES lots(id) ON DELETE CASCADE,
+            FOREIGN KEY(marque_id) REFERENCES marques(id) ON DELETE SET NULL,
+            FOREIGN KEY(modele_id) REFERENCES modeles(id) ON DELETE SET NULL
         );
 
         CREATE INDEX IF NOT EXISTS idx_lot_items_lot_id ON lot_items(lot_id);
