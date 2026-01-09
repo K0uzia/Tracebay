@@ -42,31 +42,96 @@ export default class TracabiliteManager {
     }
 
     /**
-     * Afficher le tableau des lots
+     * Afficher les lots groupés par année et mois
      */
     renderTable() {
-        const tbody = document.getElementById('tracabilite-table-body');
-        if (!tbody) return;
+        const container = document.getElementById('tracabilite-grouped');
+        if (!container) return;
 
-        if (this.lots.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="8" style="text-align: center; padding: 20px;">
-                        <i class="fa-solid fa-inbox"></i> Aucun lot
-                    </td>
-                </tr>
+        // Filtrer pour les lots terminés uniquement
+        const finishedLots = this.lots.filter(lot => {
+            const total = lot.total || 0;
+            const pending = lot.pending || 0;
+            return pending === 0 && total > 0;
+        });
+
+        if (finishedLots.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fa-solid fa-inbox"></i>
+                    <p>Aucun lot terminé</p>
+                    <small>Les lots terminés apparaîtront ici</small>
+                </div>
             `;
             return;
         }
 
-        tbody.innerHTML = this.lots.map(lot => this.createTableRow(lot)).join('');
+        // Grouper les lots par année, puis par mois
+        const grouped = this.groupByYearMonth(finishedLots);
+        
+        // Générer le HTML
+        let html = '';
+        for (const [year, months] of Object.entries(grouped)) {
+            html += `<div class="year-section" data-year="${year}">
+                <div class="year-header">
+                    <h2><i class="fa-solid fa-calendar"></i> ${year}</h2>
+                </div>`;
+            
+            for (const [month, lots] of Object.entries(months)) {
+                html += `<div class="month-section" data-month="${month}">
+                    <div class="month-header">
+                        <h3><i class="fa-solid fa-calendar-days"></i> ${this.getMonthName(parseInt(month))} (${lots.length} lot${lots.length > 1 ? 's' : ''})</h3>
+                    </div>
+                    <div class="lots-list">`;
+                
+                for (const lot of lots) {
+                    html += this.createLotCard(lot);
+                }
+                
+                html += `</div></div>`;
+            }
+            
+            html += `</div>`;
+        }
+
+        container.innerHTML = html;
         this.attachRowEventListeners();
     }
 
     /**
-     * Créer une ligne du tableau
+     * Grouper les lots par année et mois
      */
-    createTableRow(lot) {
+    groupByYearMonth(lots) {
+        const grouped = {};
+        
+        lots.forEach(lot => {
+            const date = new Date(lot.finished_at || lot.created_at);
+            const year = date.getFullYear().toString();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            
+            if (!grouped[year]) grouped[year] = {};
+            if (!grouped[year][month]) grouped[year][month] = [];
+            grouped[year][month].push(lot);
+        });
+        
+        return grouped;
+    }
+
+    /**
+     * Obtenir le nom du mois
+     */
+    getMonthName(monthNum) {
+        const months = [
+            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        ];
+        return months[monthNum - 1] || '';
+    }
+
+    /**
+     * Créer une carte de lot
+     */
+    createLotCard(lot) {
         const total = lot.total || 0;
         const recond = lot.recond || 0;
         const hs = lot.hs || 0;
@@ -74,39 +139,60 @@ export default class TracabiliteManager {
         const isFinished = pending === 0 && total > 0;
 
         return `
-            <tr class="lot-row lot-${isFinished ? 'finished' : 'active'}" data-lot-id="${lot.id}">
-                <td><strong>#${lot.id}</strong></td>
-                <td>${this.formatDate(lot.created_at)}</td>
-                <td>${lot.finished_at ? this.formatDate(lot.finished_at) : '-'}</td>
-                <td>${total}</td>
-                <td>${recond}</td>
-                <td>${hs}</td>
-                <td>
-                    ${isFinished ? 
-                        '<span class="badge badge-finished"><i class="fa-solid fa-check"></i> Terminé</span>' :
-                        '<span class="badge badge-active"><i class="fa-solid fa-clock"></i> En cours</span>'
-                    }
-                </td>
-                <td>
-                    <div class="row-actions">
-                        ${lot.pdf_path ? `
-                            <a href="${(window.APP_CONFIG?.serverUrl || 'http://localhost:8060')}${lot.pdf_path}" target="_blank" title="Télécharger le PDF" class="btn-action btn-download">
-                                <i class="fa-solid fa-download"></i> PDF
-                            </a>
-                        ` : `
-                            <button type="button" class="btn-action btn-generate-pdf" data-lot-id="${lot.id}" title="Générer le PDF">
-                                <i class="fa-solid fa-file-pdf"></i> Générer
-                            </button>
-                        `}
-                        ${lot.pdf_path ? `
-                            <button type="button" class="btn-action btn-send-email" data-lot-id="${lot.id}" title="Envoyer par email">
-                                <i class="fa-solid fa-envelope"></i> Email
-                            </button>
-                        ` : ''}
+            <div class="lot-card" data-lot-id="${lot.id}">
+                <div class="lot-card-header">
+                    <div class="lot-card-title">
+                        <h4>Lot #${lot.id}</h4>
+                        ${lot.lot_name ? `<span class="lot-name">${lot.lot_name}</span>` : ''}
                     </div>
-                </td>
-            </tr>
+                    <div class="lot-card-date">
+                        <span class="date-label">Terminé le</span>
+                        <span class="date-value">${this.formatDateTime(lot.finished_at)}</span>
+                    </div>
+                </div>
+                
+                ${lot.lot_details ? `<div class="lot-card-details">
+                    <p>${lot.lot_details}</p>
+                </div>` : ''}
+                
+                <div class="lot-card-stats">
+                    <div class="stat">
+                        <span class="stat-label">Total</span>
+                        <span class="stat-value">${total}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Prêt pour remise</span>
+                        <span class="stat-value">${recond}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Pour pièces</span>
+                        <span class="stat-value">${hs}</span>
+                    </div>
+                </div>
+
+                <div class="lot-card-actions">
+                    ${lot.pdf_path ? `
+                        <a href="${(window.APP_CONFIG?.serverUrl || 'http://localhost:8060')}${lot.pdf_path}" target="_blank" class="btn-action btn-download">
+                            <i class="fa-solid fa-download"></i> Télécharger PDF
+                        </a>
+                        <button type="button" class="btn-action btn-send-email" data-lot-id="${lot.id}">
+                            <i class="fa-solid fa-envelope"></i> Envoyer par email
+                        </button>
+                    ` : `
+                        <button type="button" class="btn-action btn-generate-pdf" data-lot-id="${lot.id}">
+                            <i class="fa-solid fa-file-pdf"></i> Générer PDF
+                        </button>
+                    `}
+                </div>
+            </div>
         `;
+    }
+
+    /**
+     * Créer une ligne du tableau (obsolète, conservé pour compatibilité)
+     */
+    createTableRow(lot) {
+        return this.createLotCard(lot);
     }
 
     /**
@@ -196,17 +282,23 @@ export default class TracabiliteManager {
     applyStatusFilter() {
         const status = document.getElementById('filter-tracabilite-status').value;
         
-        document.querySelectorAll('.lot-row').forEach(row => {
-            if (status === '') {
-                row.style.display = '';
-            } else if (status === 'active' && row.classList.contains('lot-active')) {
-                row.style.display = '';
-            } else if (status === 'finished' && row.classList.contains('lot-finished')) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
+        if (status === '' || status === 'finished') {
+            // Afficher tous les lots terminés ou garder l'affichage actuel
+            const container = document.getElementById('tracabilite-grouped');
+            if (container) container.style.display = '';
+        } else if (status === 'active') {
+            // Pas de lots en cours dans la traçabilité (seulement les terminés)
+            const container = document.getElementById('tracabilite-grouped');
+            if (container) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fa-solid fa-inbox"></i>
+                        <p>Aucun lot en cours</p>
+                        <small>Consultez l'inventaire pour les lots en cours</small>
+                    </div>
+                `;
             }
-        });
+        }
     }
 
     /**
@@ -275,6 +367,21 @@ export default class TracabiliteManager {
             year: 'numeric', 
             month: 'short', 
             day: 'numeric'
+        });
+    }
+
+    /**
+     * Formater une date et heure
+     */
+    formatDateTime(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('fr-FR', { 
+            year: 'numeric', 
+            month: 'numeric', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
         });
     }
 
