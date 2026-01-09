@@ -310,16 +310,13 @@ export default class GestionLotsManager {
                 <span class="entry-badge ${entryType}">${entryType === 'scan' ? 'SCAN' : 'MANUEL'}</span>
             </td>
             <td>
-                <input type="date" name="date" value="${now.toISOString().split('T')[0]}" readonly>
-            </td>
-            <td>
-                <input type="time" name="time" value="${now.toTimeString().slice(0, 5)}" readonly>
-            </td>
-            <td>
                 <button type="button" class="btn-delete-row" title="Supprimer cette ligne">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </td>
+            <!-- Champs cachés pour date et heure (traçabilité interne) -->
+            <input type="hidden" name="date" value="${now.toISOString().split('T')[0]}">
+            <input type="hidden" name="time" value="${now.toTimeString().slice(0, 5)}">
         `;
         
         // Attacher les événements
@@ -397,13 +394,17 @@ export default class GestionLotsManager {
             return;
         }
 
+        // Récupérer les informations optionnelles du lot
+        const lotName = document.getElementById('input-lot-name')?.value?.trim() || null;
+        const lotDetails = document.getElementById('textarea-lot-details')?.value?.trim() || null;
+
         try {
-            console.log('📤 Envoi des données:', lotData);
+            console.log('📤 Envoi des données:', { items: lotData, lotName, lotDetails });
             const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
             const response = await fetch(`${serverUrl}/api/lots`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: lotData })
+                body: JSON.stringify({ items: lotData, lotName, lotDetails })
             });
 
             if (!response.ok) {
@@ -461,6 +462,12 @@ export default class GestionLotsManager {
     confirmCancelLot() {
         const tbody = document.getElementById('lot-table-body');
         if (tbody) tbody.innerHTML = '';
+        
+        // Réinitialiser les champs d'information du lot
+        const lotNameInput = document.getElementById('input-lot-name');
+        const lotDetailsInput = document.getElementById('textarea-lot-details');
+        if (lotNameInput) lotNameInput.value = '';
+        if (lotDetailsInput) lotDetailsInput.value = '';
         
         this.currentRowNumber = 1;
         

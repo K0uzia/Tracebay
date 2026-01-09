@@ -111,6 +111,7 @@ export default class InventaireManager {
                                     <th style="width: 100px;">Marque</th>
                                     <th style="width: 120px;">Modèle</th>
                                     <th style="width: 100px;">État</th>
+                                    <th style="width: 140px;">Date</th>
                                     <th style="width: 120px;">Technicien</th>
                                     <th style="width: 60px;">Action</th>
                                 </tr>
@@ -128,6 +129,7 @@ export default class InventaireManager {
                                                 ${item.state || 'À faire'}
                                             </span>
                                         </td>
+                                        <td>${this.formatDateTime(item.state_changed_at) || '-'}</td>
                                         <td>${item.technician || '-'}</td>
                                         <td>
                                             <button type="button" class="btn-edit-pc" data-item-id="${item.id}">
@@ -201,6 +203,7 @@ export default class InventaireManager {
         document.getElementById('modal-pc-model').textContent = item.modele_name || '-';
         document.getElementById('modal-pc-type').textContent = item.type || '-';
         document.getElementById('modal-pc-entry').textContent = item.entry_type || '-';
+        document.getElementById('modal-pc-date-changed').textContent = this.formatDateTime(item.state_changed_at) || '-';
         document.getElementById('modal-pc-state').value = item.state || 'À faire';
         document.getElementById('modal-pc-technician').value = item.technician || '';
 
@@ -302,6 +305,21 @@ export default class InventaireManager {
         if (!dateStr) return '-';
         const date = new Date(dateStr);
         return date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    /**
+     * Formater une date et heure
+     */
+    formatDateTime(dateStr) {
+        if (!dateStr) return '-';
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('fr-FR', { 
+            year: 'numeric', 
+            month: 'numeric', 
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
     }
 
     /**
