@@ -155,7 +155,9 @@ function initializeTables() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             finished_at DATETIME DEFAULT NULL,
-            pdf_path TEXT DEFAULT NULL
+            pdf_path TEXT DEFAULT NULL,
+            lot_name TEXT DEFAULT NULL,
+            lot_details TEXT DEFAULT NULL
         );
 
         -- Items (PCs) within a lot
@@ -171,6 +173,7 @@ function initializeTables() {
             time TEXT,
             state TEXT DEFAULT 'À faire',
             technician TEXT DEFAULT NULL,
+            state_changed_at DATETIME DEFAULT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(lot_id) REFERENCES lots(id) ON DELETE CASCADE,
             FOREIGN KEY(marque_id) REFERENCES marques(id) ON DELETE SET NULL,
