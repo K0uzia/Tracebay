@@ -39,27 +39,86 @@ export default class GestionLotsManager {
     }
 
     /**
-     * Charger les données de référence (marques, modèles)
+     * Charger les données de référence (marques, modèles) depuis l'API
      */
     async loadReferenceData() {
         try {
-            // Données temporaires - à remplacer par appel API
-            this.marques = [
-                { id: 1, label: 'Dell', value: 'dell' },
-                { id: 2, label: 'HP', value: 'hp' },
-                { id: 3, label: 'Lenovo', value: 'lenovo' }
-            ];
-
-            this.modeles = [
-                { id: 1, label: 'Latitude 5410', value: 'latitude-5410', marqueId: 1 },
-                { id: 2, label: 'ProBook 450', value: 'probook-450', marqueId: 2 },
-                { id: 3, label: 'ThinkPad T14', value: 'thinkpad-t14', marqueId: 3 }
-            ];
-
+            const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
+            
+            // Charger les marques
+            const marquesRes = await fetch(`${serverUrl}/api/marques`);
+            if (!marquesRes.ok) throw new Error('Erreur chargement marques');
+            const marquesData = await marquesRes.json();
+            this.marques = marquesData.items || [];
+            
+            // Charger tous les modèles
+            const modelesRes = await fetch(`${serverUrl}/api/marques/all`);
+            if (!modelesRes.ok) {
+                // Endpoint alternatif si /all n'existe pas
+                throw new Error('Endpoint modèles non trouvé');
+            }
+            const modelesData = await modelesRes.json();
+            this.modeles = modelesData.items || [];
+            
             console.log('📦 Données chargées:', this.marques.length, 'marques', this.modeles.length, 'modèles');
+            
+            // Remplir les selects de marques
+            this.updateMarqueSelects();
         } catch (error) {
             console.error('❌ Erreur chargement données:', error);
+            // Charger données par défaut en cas d'erreur
+            this.loadDefaultData();
         }
+    }
+
+    /**
+     * Charger données par défaut (fallback)
+     */
+    loadDefaultData() {
+        this.marques = [
+            { id: 1, name: 'Dell' },
+            { id: 2, name: 'HP' },
+            { id: 3, name: 'Lenovo' }
+        ];
+        this.modeles = [
+            { id: 1, name: 'Latitude 5410', marque_id: 1 },
+            { id: 2, name: 'ProBook 450', marque_id: 2 },
+            { id: 3, name: 'ThinkPad T14', marque_id: 3 }
+        ];
+        console.log('ℹ️ Données par défaut chargées');
+        this.updateMarqueSelects();
+    }
+
+    /**
+     * Mettre à jour tous les selects de marques
+     */
+    updateMarqueSelects() {
+        const selects = document.querySelectorAll('select[name="marque"], #select-marque-for-modele');
+        selects.forEach(select => {
+            const currentValue = select.value;
+            select.innerHTML = '<option value="">-- Sélectionner une marque --</option>';
+            this.marques.forEach(marque => {
+                const option = document.createElement('option');
+                option.value = marque.id;
+                option.textContent = marque.name;
+                select.appendChild(option);
+            });
+            select.value = currentValue;
+        });
+    }
+
+    /**
+     * Mettre à jour les modèles basé sur la marque sélectionnée
+     */
+    updateModeleSelect(marqueId, selectElement) {
+        const filteredModeles = this.modeles.filter(m => m.marque_id == marqueId);
+        selectElement.innerHTML = '<option value="">-- Sélectionner un modèle --</option>';
+        filteredModeles.forEach(modele => {
+            const option = document.createElement('option');
+            option.value = modele.id;
+            option.textContent = modele.name;
+            selectElement.appendChild(option);
+        });
     }
 
     /**
@@ -99,6 +158,29 @@ export default class GestionLotsManager {
             attachButton('btn-cancel-lot', () => this.cancelLot());
             attachButton('btn-submit-marque', () => this.submitNewMarque());
             attachButton('btn-submit-modele', () => this.submitNewModele());
+            
+            // Gérer le changement de marque dans le formulaire d'ajout de modèle
+            const selectMarque = document.getElementById('select-marque-for-modele');
+            if (selectMarque) {
+                selectMarque.addEventListener('change', (e) => {
+                    console.log('📦 Marque sélectionnée pour modèle:', e.target.value);
+                });
+            }
+            
+            // Gérer les changements de marques dans les lignes du tableau
+            document.addEventListener('change', (e) => {
+                if (e.target.name === 'marque') {
+                    const row = e.target.closest('tr');
+                    if (row) {
+                        const modeleSelect = row.querySelector('select[name="modele"]');
+                        if (modeleSelect && e.target.value) {
+                            this.updateModeleSelect(e.target.value, modeleSelect);
+                        }
+                    }
+                }
+            });
+            
+            // Autres boutons
             attachButton('btn-confirm-clear-lot', () => this.confirmCancelLot());
             attachButton('btn-apply-mass', () => this.applyMassValues());
             
@@ -195,10 +277,10 @@ export default class GestionLotsManager {
         const rowNum = this.currentRowNumber++;
 
         row.innerHTML = `
-            <td style="width: 40px;">
+            <td>
                 <input type="checkbox" class="row-checkbox" title="Sélectionner cette ligne">
             </td>
-            <td style="width: 50px;">
+            <td>
                 <span>${rowNum}</span>
             </td>
             <td>
@@ -215,13 +297,13 @@ export default class GestionLotsManager {
             <td>
                 <select name="marque" required>
                     <option value="">Marque...</option>
-                    ${this.marques.map(m => `<option value="${m.id}">${m.label}</option>`).join('')}
+                    ${this.marques.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
                 </select>
             </td>
             <td>
                 <select name="modele" required>
                     <option value="">Modèle...</option>
-                    ${this.modeles.map(m => `<option value="${m.id}">${m.label}</option>`).join('')}
+                    ${this.modeles.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
                 </select>
             </td>
             <td>
@@ -233,15 +315,30 @@ export default class GestionLotsManager {
             <td>
                 <input type="time" name="time" value="${now.toTimeString().slice(0, 5)}" readonly>
             </td>
-            <td style="width: 60px;">
+            <td>
                 <button type="button" class="btn-delete-row" title="Supprimer cette ligne">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </td>
         `;
         
-        // Attacher l'événement de suppression
+        // Attacher les événements
         const deleteBtn = row.querySelector('.btn-delete-row');
+        const marqueSelect = row.querySelector('select[name="marque"]');
+        const modeleSelect = row.querySelector('select[name="modele"]');
+        
+        // Événement changement de marque - FILTRE LES MODÈLES
+        if (marqueSelect) {
+            marqueSelect.addEventListener('change', (e) => {
+                if (e.target.value) {
+                    this.updateModeleSelect(e.target.value, modeleSelect);
+                } else {
+                    modeleSelect.innerHTML = '<option value="">Modèle...</option>';
+                }
+            });
+        }
+        
+        // Événement suppression
         if (deleteBtn) {
             deleteBtn.addEventListener('click', () => this.deleteRow(row));
         }
@@ -317,7 +414,31 @@ export default class GestionLotsManager {
             const data = await response.json();
             const lotId = data?.id;
             this.showNotification(`Lot #${lotId || ''} enregistré (${lotData.length} articles)`, 'success');
-            this.cancelLot();
+            
+            // Générer le PDF du lot
+            setTimeout(async () => {
+                try {
+                    const pdfResponse = await fetch(`${serverUrl}/api/lots/${lotId}/pdf`, { method: 'POST' });
+                    if (pdfResponse.ok) {
+                        console.log('✅ PDF généré');
+                    }
+                } catch (pdfError) {
+                    console.warn('⚠️ Erreur génération PDF:', pdfError);
+                }
+                
+                // Rediriger vers l'inventaire
+                setTimeout(() => {
+                    // Utiliser le système de navigation interne
+                    const receptionNav = document.querySelector('[data-page="inventaire"][data-reception-page="true"]');
+                    if (receptionNav) {
+                        receptionNav.click();
+                        console.log('✅ Navigation vers Inventaire');
+                    } else {
+                        console.log('⚠️ Bouton inventaire non trouvé, redirection URL');
+                        window.location.href = '/pages/reception.html?section=inventaire';
+                    }
+                }, 500);
+            }, 500);
         } catch (error) {
             console.error('❌ Erreur sauvegarde:', error);
             this.showNotification('Erreur lors de l\'enregistrement', 'error');
@@ -372,7 +493,7 @@ export default class GestionLotsManager {
             const response = await fetch(`${window.APP_CONFIG?.serverUrl || 'http://localhost:8060'}/api/marques`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nom: newMarque })
+                body: JSON.stringify({ name: newMarque })
             });
             
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -382,14 +503,13 @@ export default class GestionLotsManager {
             // Ajouter à la liste locale
             this.marques.push({
                 id: data.id || this.marques.length + 1,
-                label: newMarque,
-                value: newMarque.toLowerCase().replace(/\s+/g, '-')
+                name: newMarque
             });
             
             this.showNotification(`Marque "${newMarque}" ajoutée`, 'success');
             this.modalManager.close('modal-add-marque');
             input.value = '';
-            this.populateMassSelects();
+            this.updateMarqueSelects();
         } catch (error) {
             console.error('❌ Erreur ajout marque:', error);
             this.showNotification('Erreur lors de l\'ajout de la marque', 'error');
@@ -415,10 +535,10 @@ export default class GestionLotsManager {
 
         try {
             // Appel API réel
-            const response = await fetch(`${window.APP_CONFIG?.serverUrl || 'http://localhost:8060'}/api/modeles`, {
+            const response = await fetch(`${window.APP_CONFIG?.serverUrl || 'http://localhost:8060'}/api/marques/${marqueId}/modeles`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ marqueId, nom: newModele })
+                body: JSON.stringify({ name: newModele })
             });
             
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -428,9 +548,8 @@ export default class GestionLotsManager {
             // Ajouter à la liste locale
             this.modeles.push({
                 id: data.id || this.modeles.length + 1,
-                label: newModele,
-                value: newModele.toLowerCase().replace(/\s+/g, '-'),
-                marqueId: marqueId
+                name: newModele,
+                marque_id: marqueId
             });
             
             this.showNotification(`Modèle "${newModele}" ajouté`, 'success');
@@ -454,7 +573,7 @@ export default class GestionLotsManager {
 
         select.innerHTML = `
             <option value="">-- Sélectionner une marque --</option>
-            ${this.marques.map(m => `<option value="${m.id}">${m.label}</option>`).join('')}
+            ${this.marques.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
         `;
     }
     
@@ -468,14 +587,14 @@ export default class GestionLotsManager {
         if (modalMassMarque) {
             modalMassMarque.innerHTML = `
                 <option value="">-- Non modifier --</option>
-                ${this.marques.map(m => `<option value="${m.id}">${m.label}</option>`).join('')}
+                ${this.marques.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
             `;
         }
         
         if (modalMassModele) {
             modalMassModele.innerHTML = `
                 <option value="">-- Non modifier --</option>
-                ${this.modeles.map(m => `<option value="${m.id}">${m.label}</option>`).join('')}
+                ${this.modeles.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
             `;
         }
     }
@@ -584,6 +703,8 @@ export default class GestionLotsManager {
         document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
         document.getElementById('select-all').checked = false;
     }
+
+
 
     /**
      * Afficher une notification
