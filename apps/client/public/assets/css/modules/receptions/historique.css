@@ -1,0 +1,414 @@
+/* HISTORIQUE - STYLES */
+
+.historique-container {
+    padding: var(--unit-2);
+    background-color: var(--blanc);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 100%;
+    gap: var(--unit-3);
+}
+
+.historique-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+
+.historique-header h1 {
+    font: var(--font-title);
+    color: var(--h2);
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+}
+
+.historique-header h1 i {
+    color: var(--bleu1);
+}
+
+.historique-header .subtitle {
+    font-size: 0.95rem;
+    color: var(--text22);
+    margin: 0;
+}
+
+/* Filtres */
+.historique-filters {
+    display: flex;
+    gap: var(--unit-2);
+    align-items: flex-end;
+    padding: var(--unit-2);
+    background-color: #f9f9f9;
+    border-radius: var(--radius-medium);
+    flex-wrap: wrap;
+}
+
+.filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+
+.filter-group label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text2);
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
+}
+
+.filter-group input[type="date"] {
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid #d0d0d0;
+    border-radius: var(--radius-small);
+    font-size: 0.9rem;
+    background-color: var(--blanc);
+    color: var(--text2);
+    min-width: 150px;
+}
+
+.filter-group input[type="date"]:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 2px rgba(62, 59, 140, 0.1);
+}
+
+.filter-group button {
+    padding: var(--unit-1) var(--unit-3);
+    background-color: var(--btn);
+    color: var(--btn-text);
+    border: none;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
+    transition: var(--transition);
+    box-shadow: var(--shadow-small);
+}
+
+.filter-group button:hover {
+    background-color: var(--btn-hover);
+    transform: translateY(-2px);
+}
+
+/* Liste des lots */
+#historique-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-2);
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Lot Card */
+.lot-card {
+    background-color: var(--blanc);
+    border: 1px solid #e0e0e0;
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-small);
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.lot-card:hover {
+    box-shadow: var(--shadow-medium);
+}
+
+.lot-header {
+    padding: var(--unit-3);
+    background-color: #f5f5f5;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--unit-2);
+    flex-wrap: wrap;
+}
+
+.lot-title {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+}
+
+.lot-title h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--h2);
+}
+
+.badge-finished {
+    display: inline-block;
+    padding: var(--unit-1) var(--unit-2);
+    background-color: #b8e0c8;
+    color: #1b5938;
+    border-radius: var(--radius-small);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge-created {
+    display: inline-block;
+    padding: var(--unit-1) var(--unit-2);
+    background-color: #e3f2fd;
+    color: var(--bleu1);
+    border-radius: var(--radius-small);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.lot-stats {
+    display: flex;
+    gap: var(--unit-3);
+    flex-wrap: wrap;
+}
+
+.stat {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
+    font-size: 0.95rem;
+    color: var(--text2);
+}
+
+.stat strong {
+    color: var(--h2);
+}
+
+.stat i {
+    font-size: 1rem;
+}
+
+.lot-actions {
+    display: flex;
+    gap: var(--unit-1);
+}
+
+.btn-view-details,
+.btn-download-pdf {
+    padding: var(--unit-1) var(--unit-2);
+    border: none;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
+    transition: var(--transition);
+    font-size: 0.9rem;
+    text-decoration: none;
+    box-shadow: var(--shadow-small);
+}
+
+.btn-view-details {
+    background-color: var(--bleu1);
+    color: var(--blanc);
+}
+
+.btn-view-details:hover {
+    background-color: var(--bleu2);
+    transform: translateY(-2px);
+}
+
+.btn-download-pdf {
+    background-color: #f44336;
+    color: var(--blanc);
+}
+
+.btn-download-pdf:hover {
+    background-color: #d32f2f;
+    transform: translateY(-2px);
+}
+
+/* État vide */
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--unit-6);
+    color: var(--text22);
+    text-align: center;
+}
+
+.empty-state i {
+    font-size: 2.5rem;
+    color: #d0d0d0;
+    margin-bottom: var(--unit-2);
+}
+
+.empty-state p {
+    font-size: 1.1rem;
+    margin: 0 0 var(--unit-1) 0;
+}
+
+.empty-state small {
+    font-size: 0.9rem;
+    color: #bbb;
+}
+
+/* Loading */
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--unit-6);
+    color: var(--text22);
+    font-size: 1rem;
+    gap: var(--unit-2);
+}
+
+.loading i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Tableau détails lot */
+.lot-details-info {
+    background-color: #f5f5f5;
+    padding: var(--unit-2);
+    border-radius: var(--radius-small);
+    margin-bottom: var(--unit-2);
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--unit-2);
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+
+.info-label {
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--text22);
+    text-transform: uppercase;
+}
+
+.info-value {
+    font-size: 1rem;
+    color: var(--h2);
+    font-weight: 600;
+}
+
+.lot-details-table {
+    overflow-x: auto;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.details-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.details-table thead {
+    background-color: var(--bleu2);
+    color: var(--blanc);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.details-table th {
+    padding: var(--unit-1) var(--unit-2);
+    text-align: left;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.details-table td {
+    padding: var(--unit-1) var(--unit-2);
+    border-bottom: 1px solid #e0e0e0;
+    color: var(--text2);
+}
+
+.details-table tbody tr:hover {
+    background-color: #f9f9f9;
+}
+
+.state-badge {
+    display: inline-block;
+    padding: var(--unit-1) var(--unit-2);
+    border-radius: var(--radius-small);
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+}
+
+.state-badge.state-À-faire {
+    background-color: #ffe9b3;
+    color: #8a6e04;
+}
+
+.state-badge.state-Reconditionné {
+    background-color: #b8e0c8;
+    color: #1b5938;
+}
+
+.state-badge.state-HS {
+    background-color: #f6c1c1;
+    color: #7f1d1d;
+}
+
+/* Modal large */
+.modal-lg {
+    max-width: 900px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .lot-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .lot-title {
+        flex-wrap: wrap;
+    }
+
+    .lot-stats {
+        flex-direction: column;
+        gap: var(--unit-1);
+    }
+
+    .lot-actions {
+        width: 100%;
+    }
+
+    .btn-view-details,
+    .btn-download-pdf {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .details-table {
+        font-size: 0.8rem;
+    }
+
+    .details-table th,
+    .details-table td {
+        padding: var(--unit-1) var(--unit-1);
+    }
+}

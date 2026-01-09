@@ -3,14 +3,12 @@
     grid-template-columns: repeat(1,15vw auto);
 }
 aside {
+    padding: var(--unit-2) var(--unit-2) 100vh var(--unit-2);
+    background-color: var(--blanc);
     display: flex;
     flex-direction: column;
-    width: 13vw;
-    height: 100vh;
-    padding: var(--unit-1) var(--unit-2);
-    text-align: center;
-    background-color: var(--blanc);
     box-shadow: var(--shadow-medium);
+    border-radius: var(--radius-medium);
 }
 
 aside h2 {

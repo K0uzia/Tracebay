@@ -598,6 +598,57 @@ class PageManager {
                     console.error('❌ Erreur import GestionLotsManager:', error);
                     window.gestionLotsManagerInitializing = false;
                 });
+        } else if (pageName === 'inventaire') {
+            // Détruire l'ancien manager s'il existe
+            if (window.inventaireManager) {
+                window.inventaireManager.destroy();
+                window.inventaireManager = null;
+            }
+            
+            // Initialiser le gestionnaire d'inventaire
+            import('./assets/js/modules/reception/inventaire.js')
+                .then(module => {
+                    const InventaireManager = module.default;
+                    window.inventaireManager = new InventaireManager(window.modalManager);
+                    console.log('✅ InventaireManager initialisé depuis app.js');
+                })
+                .catch(error => {
+                    console.error('❌ Erreur import InventaireManager:', error);
+                });
+        } else if (pageName === 'historique') {
+            // Détruire l'ancien manager s'il existe
+            if (window.historiqueManager) {
+                window.historiqueManager.destroy();
+                window.historiqueManager = null;
+            }
+            
+            // Initialiser le gestionnaire d'historique
+            import('./assets/js/modules/reception/historique.js')
+                .then(module => {
+                    const HistoriqueManager = module.default;
+                    window.historiqueManager = new HistoriqueManager(window.modalManager);
+                    console.log('✅ HistoriqueManager initialisé depuis app.js');
+                })
+                .catch(error => {
+                    console.error('❌ Erreur import HistoriqueManager:', error);
+                });
+        } else if (pageName === 'tracabiliter') {
+            // Détruire l'ancien manager s'il existe
+            if (window.tracabiliteManager) {
+                window.tracabiliteManager.destroy();
+                window.tracabiliteManager = null;
+            }
+            
+            // Initialiser le gestionnaire de traçabilité
+            import('./assets/js/modules/reception/tracabilite.js')
+                .then(module => {
+                    const TracabiliteManager = module.default;
+                    window.tracabiliteManager = new TracabiliteManager(window.modalManager);
+                    console.log('✅ TracabiliteManager initialisé depuis app.js');
+                })
+                .catch(error => {
+                    console.error('❌ Erreur import TracabiliteManager:', error);
+                });
         }
     }
 

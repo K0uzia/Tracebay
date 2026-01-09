@@ -1,10 +1,13 @@
 
 /* Container principal */
-.gestion-lots-container {
-    padding: var(--unit-4);
-    background-color: var(--blanc);
-    min-height: 85vh;
-}
+    /* .gestion-lots-container {
+        padding: var(--unit-2);
+        background-color: var(--blanc);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 100%;
+    } */
 
 .gestion-lots-header h1 {
     font: var(--font-title);
@@ -24,12 +27,11 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: var(--unit-2);
     margin-bottom: var(--unit-4);
     padding: var(--unit-2);
-    background-color: var(--bleu2);
+    background-color: var(--blanc);
     border-radius: var(--radius-medium);
-    box-shadow: var(--shadow-small);
+    box-shadow: var(--shadow-medium);
     flex-wrap: wrap;
 }
 
@@ -42,7 +44,7 @@
 
 /* Boutons */
 .actions-bar button {
-    padding: var(--unit-2) var(--unit-3);
+    padding: var(--unit-1) var(--unit-2);
     border: none;
     border-radius: var(--radius-small);
     font: var(--font-btn);
@@ -70,27 +72,25 @@
 }
 
 #btn-save-lot:hover {
-    background-color: #006600;
+    background-color:var(--valid);
 }
-
 #btn-cancel-lot {
-    background-color: var(--gris);
+    background-color: var(--jaune);
+    color: var(--noir);
 }
 
-#btn-cancel-lot:hover {
-    background-color: #7f8c8d;
-}
 
 /* Tableau */
 .lot-table-wrapper {
     overflow-x: auto;
+    overflow-y: auto;
     background-color: var(--blanc);
     border-radius: var(--radius-medium);
     box-shadow: var(--shadow-small);
+    min-height: 0;
 }
 
 .lot-table {
-    width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
 }
@@ -119,7 +119,7 @@
 }
 
 .lot-table tbody td {
-    padding: var(--unit-2);
+    padding: var(--unit-1) var(--unit-2);
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
@@ -176,8 +176,6 @@
     align-items: center;
     justify-content: center;
     transition: var(--transition);
-    width: 38px;
-    height: 38px;
     font-size: 1rem;
     box-shadow: 0 2px 4px rgba(198, 40, 40, 0.1);
 }

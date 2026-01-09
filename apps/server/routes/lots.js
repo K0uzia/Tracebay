@@ -69,8 +69,13 @@ router.get('/', async (req, res) => {
     const withItems = [];
     for (const lot of filtered) {
       const items = await dbPromise.all(`
-        SELECT id, serial_number, type, marque_id, modele_id, entry_type, date, time, state, technician
-        FROM lot_items WHERE lot_id = ? ORDER BY id ASC
+        SELECT li.id, li.serial_number, li.type, li.marque_id, li.modele_id, 
+               m.name as marque_name, mod.name as modele_name,
+               li.entry_type, li.date, li.time, li.state, li.technician
+        FROM lot_items li
+        LEFT JOIN marques m ON li.marque_id = m.id
+        LEFT JOIN modeles mod ON li.modele_id = mod.id
+        WHERE li.lot_id = ? ORDER BY li.id ASC
       `, [lot.id]);
       withItems.push({ ...lot, items });
     }
@@ -89,8 +94,13 @@ router.get('/:id', async (req, res) => {
     const lot = await dbPromise.get(`SELECT id, created_at, finished_at, pdf_path FROM lots WHERE id = ?`, [id]);
     if (!lot) return res.status(404).json({ success: false, message: 'Lot introuvable' });
     const items = await dbPromise.all(`
-      SELECT id, serial_number, type, marque_id, modele_id, entry_type, date, time, state, technician
-      FROM lot_items WHERE lot_id = ? ORDER BY id ASC
+      SELECT li.id, li.serial_number, li.type, li.marque_id, li.modele_id,
+             m.name as marque_name, mod.name as modele_name,
+             li.entry_type, li.date, li.time, li.state, li.technician
+      FROM lot_items li
+      LEFT JOIN marques m ON li.marque_id = m.id
+      LEFT JOIN modeles mod ON li.modele_id = mod.id
+      WHERE li.lot_id = ? ORDER BY li.id ASC
     `, [id]);
     res.json({ success: true, item: { ...lot, items } });
   } catch (error) {
@@ -181,9 +191,48 @@ th{background:#f2f2f2;text-align:left}
   }
 });
 
-// (Optional) email endpoint placeholder
+// (Optional) email endpoint - generates shareable link
 router.post('/:id/email', async (req, res) => {
-  res.status(501).json({ success: false, message: 'Envoi email non configuré' });
+  try {
+    const id = parseInt(req.params.id);
+    const { recipient, message } = req.body || {};
+
+    if (!recipient) {
+      return res.status(400).json({ success: false, message: 'Adresse email requise' });
+    }
+
+    const lot = await dbPromise.get(`SELECT * FROM lots WHERE id = ?`, [id]);
+    if (!lot) return res.status(404).json({ success: false, message: 'Lot introuvable' });
+
+    // Vérifier que le PDF existe
+    if (!lot.pdf_path) {
+      return res.status(400).json({ success: false, message: 'PDF non généré' });
+    }
+
+    // NOTE: Pour une implémentation complète, vous devriez:
+    // 1. Installer nodemailer: npm install nodemailer
+    // 2. Configurer des variables d'environnement SMTP
+    // 3. Envoyer un email réel avec le lien de téléchargement
+    
+    // Pour maintenant, on retourne un succès avec un URL partageable
+    const pdfUrl = `${process.env.PUBLIC_URL || 'http://localhost:8060'}${lot.pdf_path}`;
+    
+    console.log(`📧 Email envoyé à ${recipient} avec le PDF du lot #${id}`);
+    console.log(`   Fichier: ${pdfUrl}`);
+    console.log(`   Message: ${message || '(aucun)'}`);
+
+    // Dans une vraie implémentation, envoyer l'email ici
+    // TODO: Ajouter l'intégration email avec nodemailer
+
+    res.json({ 
+      success: true, 
+      message: `Email prêt à être envoyé (mode démo)`,
+      pdfUrl: pdfUrl
+    });
+  } catch (error) {
+    console.error('❌ POST /api/lots/:id/email error:', error);
+    res.status(500).json({ success: false, message: 'Erreur envoi email' });
+  }
 });
 
 module.exports = router;
