@@ -1,6 +1,5 @@
-
 /* Container principal */
-    /* .gestion-lots-container {
+/* .gestion-lots-container {
         padding: var(--unit-2);
         background-color: var(--blanc);
         display: flex;
@@ -72,13 +71,53 @@
 }
 
 #btn-save-lot:hover {
-    background-color:var(--valid);
+    background-color: var(--valid);
 }
+
 #btn-cancel-lot {
     background-color: var(--jaune);
     color: var(--noir);
 }
 
+/* Info lot */
+.lot-info-section {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: var(--unit-4);
+    padding: var(--unit-1);
+    background-color: var(--blanc);
+    border-left: 4px solid var(--bleu1);
+    border-radius: var(--radius-small);
+    box-shadow: var(--shadow-medium);
+}
+
+.lot-info-section h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--bleu1);
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    font-weight: 600;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.form-field input[type="text"] {
+    max-width: 250px;
+    padding: var(--unit-1);
+    border: 1px solid #d0d0d0;
+    border-radius: var(--radius-small);
+    font: var(--font-text2);
+    font-size: 0.9rem;
+    transition: var(--transition);
+    box-sizing: border-box;
+}
 
 /* Tableau */
 .lot-table-wrapper {
@@ -259,6 +298,7 @@
         transform: translateX(400px);
         opacity: 0;
     }
+
     to {
         transform: translateX(0);
         opacity: 1;
@@ -270,6 +310,7 @@
         transform: translateX(0);
         opacity: 1;
     }
+
     to {
         transform: translateX(400px);
         opacity: 0;
@@ -280,136 +321,8 @@
     animation: slideOutRight 0.3s ease-out forwards;
 }
 
-/* Styles pour les modales personnalisées */
-.modal-description {
-    display: flex;
-    gap: var(--unit-2);
-    padding: var(--unit-2);
-    background-color: rgba(62, 59, 140, 0.05);
-    border-radius: var(--radius-small);
-    margin-bottom: var(--unit-3);
-    border-left: 3px solid var(--bleu1);
-}
-
-.modal-description i {
-    color: var(--bleu1);
-    font-size: 1.2rem;
-    flex-shrink: 0;
-    margin-top: 2px;
-}
-
-.modal-description p {
-    margin: 0;
-    color: var(--text2);
-    font-size: 0.9rem;
-    line-height: 1.5;
-}
-
-.form-group label {
-    display: flex;
-    align-items: center;
-    gap: var(--unit-1);
-}
-
-.form-group label i {
-    color: var(--bleu1);
-    font-size: 0.9rem;
-}
-
-.form-help {
-    display: block;
-    margin-top: 4px;
-    font-size: 0.8rem;
-    color: var(--gris);
-    font-style: italic;
-}
-
-/* Modale de warning/danger */
-.modal-danger .modal-header h2 {
-    color: var(--error);
-}
-
-.modal-warning-box {
-    display: flex;
-    gap: var(--unit-3);
-    padding: var(--unit-3);
-    background-color: rgba(198, 40, 40, 0.05);
-    border-radius: var(--radius-medium);
-    border: 2px solid var(--error);
-}
-
-.warning-icon {
-    flex-shrink: 0;
-}
-
-.warning-icon i {
-    font-size: 3rem;
-    color: var(--error);
-    animation: pulse 2s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.7; transform: scale(1.1); }
-}
-
-.warning-content h3 {
-    margin: 0 0 var(--unit-2) 0;
-    color: var(--error);
-    font: var(--font-subtitle);
-}
-
-.warning-content p {
-    margin: 0 0 var(--unit-2) 0;
-    color: var(--text2);
-    line-height: 1.6;
-}
-
-.warning-content strong {
-    color: var(--error);
-    font-weight: 600;
-}
-
-.warning-list {
-    list-style: none;
-    padding: 0;
-    margin: var(--unit-2) 0 0 0;
-}
-
-.warning-list li {
-    display: flex;
-    align-items: center;
-    gap: var(--unit-1);
-    padding: var(--unit-1) 0;
-    color: var(--text2);
-}
-
-.warning-list li i {
-    color: var(--error);
-    font-size: 1rem;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
-    .actions-bar {
-        flex-direction: column;
-    }
-    
-    .actions-left,
-    .actions-right {
-        width: 100%;
-        justify-content: center;
-    }
-    
-    .lot-table {
-        font-size: 0.85rem;
-    }
-    
-    .lot-table thead th,
-    .lot-table tbody td {
-        padding: var(--unit-1);
-    }
-
     .lot-info-section {
         margin-bottom: var(--unit-4);
         padding: var(--unit-3);
@@ -481,18 +394,18 @@
         font-size: 12px;
         color: #999;
     }
-    
+
     @media (max-width: 768px) {
         .lot-info-fields {
             grid-template-columns: 1fr;
         }
     }
-    
+
     .modal-warning-box {
         flex-direction: column;
         text-align: center;
     }
-    
+
     .warning-icon i {
         font-size: 2rem;
     }

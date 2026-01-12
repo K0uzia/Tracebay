@@ -57,7 +57,7 @@ class UniversalModal {
    */
   open() {
     if (!this.modal) return;
-    this.modal.showModal?.() || (this.modal.style.display = 'flex');
+    this.modal.showModal?.() || (this.modal.style.display = 'block');
     this.modal.setAttribute('open', '');
     document.body.style.overflow = 'hidden';
   }

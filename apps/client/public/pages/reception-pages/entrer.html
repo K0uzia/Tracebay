@@ -5,7 +5,7 @@
     <div class="gestion-lots-header">
         <h1>
             <i class="fa-solid fa-boxes-stacked"></i>
-            Nouveau Lot - Matériel Reconditionné
+            Réception Nouveau Lot
         </h1>
     </div>
 
@@ -43,22 +43,10 @@
 
     <!-- Informations du Lot -->
     <div class="lot-info-section">
-        <h3><i class="fa-solid fa-circle-info"></i> Informations du lot (optionnel)</h3>
-        <div class="lot-info-fields">
-            <div class="form-field">
-                <label for="input-lot-name">
-                    <i class="fa-solid fa-tag"></i> Nom du lot
-                </label>
-                <input type="text" id="input-lot-name" name="lot_name" placeholder="Ex: Lot de reconditionnement - Janvier 2026" maxlength="255">
-                <small>Donnez un nom à ce lot (optionnel)</small>
-            </div>
-            <div class="form-field">
-                <label for="textarea-lot-details">
-                    <i class="fa-solid fa-file-lines"></i> Détails / Commentaires
-                </label>
-                <textarea id="textarea-lot-details" name="lot_details" placeholder="Décrivez le contenu ou les détails de ce lot..." maxlength="1000" rows="3"></textarea>
-                <small>Ajoutez des notes ou des détails sur ce lot (optionnel)</small>
-            </div>
+        <h3><i class="fa-solid fa-circle-info"></i> Nom du lot</h3>
+        <div class="form-field">
+            <input type="text" id="input-lot-name" name="lot_name" placeholder="Ex: Nom Entreprise" maxlength="255">
+            <small>Donnez un nom à ce lot (optionnel)</small>
         </div>
     </div>
         </div>
@@ -75,12 +63,12 @@
                         <input type="checkbox" id="select-all" title="Tout sélectionner">
                     </th>
                     <th style="min-width: 15px;">N°</th>
-                    <th style="min-width: 150px;">S/N</th>
-                    <th style="min-width: 100px;">Type</th>
-                    <th style="min-width: 100px;">Marque</th>
-                    <th style="min-width: 100px;">Modèle</th>
-                    <th style="min-width: 70px;">Entrée</th>
-                    <th style="min-width: 60px;">Action</th>
+                    <th style="min-width: 250px;">S/N</th>
+                    <th style="min-width: 130px;">Type</th>
+                    <th style="min-width: 130px;">Marque</th>
+                    <th style="min-width: 130px;">Modèle</th>
+                    <th style="min-width: 130px;">Entrée</th>
+                    <th style="min-width: 120px;">Action</th>
                 </tr>
             </thead>
             <tbody id="lot-table-body">

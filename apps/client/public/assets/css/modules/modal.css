@@ -9,13 +9,12 @@
    ==================================== */
 
 dialog {
+    width: auto;
+    max-width: max-content;
     padding: 0;
     border: none;
     border-radius: var(--radius-large);
     box-shadow: var(--shadow-strong);
-    max-width: calc(var(--unit-2) * 37.5);
-    /* 600px */
-    width: calc(100% - var(--unit-2));
     animation: slideUp 0.3s ease-out;
     overflow-x: hidden;
 }
@@ -54,8 +53,6 @@ dialog::backdrop {
 .modal-content {
     display: flex;
     flex-direction: column;
-    max-height: calc(100vh - var(--unit-2));
-    overflow: hidden;
     border-radius: var(--radius-large);
 }
 
@@ -71,7 +68,6 @@ dialog::backdrop {
 
 .modal-header h2 {
     margin: 0;
-    font: var(--font-title);
     color: var(--h2);
     flex: 1;
 }
@@ -417,16 +413,28 @@ dialog::backdrop {
 .btn-danger {
     background-color: var(--error);
     color: var(--blanc);
+    font-weight: 600;
+    padding: var(--unit-2) var(--unit-4);
+    min-height: var(--unit-5);
+    font-size: 0.95rem;
+    box-shadow: var(--shadow-medium);
+}
+
+.btn-danger:hover {
+    background-color: #b71c1c;
+    box-shadow: var(--shadow-strong);
+    transform: translateY(-2px);
+}
+
+.btn-danger:active {
+    transform: translateY(0);
+    background-color: #a01010;
 }
 
 .btn-danger-outline {
     background-color: var(--error);
     color: var(--blanc);
     border: 2px solid var(--blanc);
-}
-
-.btn-danger:hover {
-    box-shadow: var(--shadow-medium);
 }
 
 /* Warning Button */
@@ -667,5 +675,330 @@ dialog::backdrop {
     .form-group textarea,
     .form-group select {
         font-size: 16px;
+    }
+}
+
+/* ====================================
+   MODAL DESCRIPTION BOX
+   ==================================== */
+
+.modal-description {
+    display: flex;
+    gap: var(--unit-2);
+    padding: var(--unit-2);
+    background-color: rgba(62, 59, 140, 0.05);
+    border-radius: var(--radius-small);
+    margin-bottom: var(--unit-3);
+    border-left: 3px solid var(--bleu1);
+}
+
+.modal-description i {
+    color: var(--bleu1);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+
+.modal-description p {
+    margin: 0;
+    color: var(--text2);
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+/* ====================================
+   MODAL FORM HELP TEXT
+   ==================================== */
+
+.form-group label {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
+}
+
+.form-group label i {
+    color: var(--bleu1);
+    font-size: 0.9rem;
+}
+
+.form-help {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.8rem;
+    color: var(--gris);
+    font-style: italic;
+}
+
+/* ====================================
+   MODAL DANGER / WARNING BOX
+   ==================================== */
+
+.modal-danger .modal-header {
+    background-color: rgba(198, 40, 40, 0.08);
+    border-bottom: 2px solid var(--error);
+}
+
+.modal-danger .modal-header h2 {
+    color: var(--error);
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.modal-warning-box {
+    display: flex;
+    gap: var(--unit-4);
+    padding: var(--unit-4);
+    background-color: rgba(198, 40, 40, 0.08);
+    border-radius: var(--radius-medium);
+    border-left: 5px solid var(--error);
+}
+
+.warning-icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    width: var(--unit-6);
+    height: var(--unit-6);
+}
+
+.warning-icon i {
+    font-size: 2.5rem;
+    color: var(--error);
+    animation: pulse 2s ease-in-out infinite;
+    line-height: 1;
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    50% {
+        opacity: 0.7;
+        transform: scale(1.08);
+    }
+}
+
+.warning-content {
+    flex: 1;
+}
+
+.warning-content h3 {
+    margin: 0 0 var(--unit-2) 0;
+    color: var(--error);
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.warning-content p {
+    margin: 0 0 var(--unit-2) 0;
+    color: var(--text2);
+    line-height: 1.7;
+    font-size: 0.95rem;
+}
+
+.warning-content strong {
+    color: var(--error);
+    font-weight: 700;
+}
+
+.warning-list {
+    list-style: none;
+    padding: 0;
+    margin: var(--unit-3) 0 0 0;
+}
+
+.warning-list li {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    padding: var(--unit-1) 0;
+    color: var(--text2);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.warning-list li i {
+    color: var(--error);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+    width: var(--unit-2);
+    text-align: center;
+}
+
+/* ====================================
+   MODAL RESPONSIVE
+   ==================================== */
+
+@media (max-width: 768px) {
+    .modal-warning-box {
+        flex-direction: column;
+        gap: var(--unit-3);
+        padding: var(--unit-3);
+    }
+
+    .warning-icon {
+        width: 100%;
+        height: auto;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .warning-icon i {
+        font-size: 2rem;
+    }
+
+    .warning-content h3 {
+        font-size: 1rem;
+    }
+
+    .warning-content p {
+        font-size: 0.9rem;
+    }
+
+    .warning-list li {
+        font-size: 0.9rem;
+    }
+
+    .btn-danger {
+        width: 100%;
+        justify-content: center;
+        padding: var(--unit-2) var(--unit-3);
+        font-size: 0.9rem;
+    }
+}
+
+/* ====================================
+   PC INFO BOX (INVENTAIRE MODAL)
+   ==================================== */
+
+#modal-pc-serial,
+#modal-pc-model,
+#modal-pc-type,
+#modal-pc-entry {
+    font-weight: 600;
+    color: var(--bleu1);
+}
+
+.pc-info-box {
+    background-color: #f5f5f5;
+    padding: var(--unit-2);
+    border-radius: var(--radius-small);
+    margin-bottom: var(--unit-3);
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    padding: var(--unit-1) 0;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-label {
+    font-weight: 600;
+    color: var(--text2);
+}
+
+
+/* ====================================
+   MODAL ACTIONS
+   ==================================== */
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--unit-1);
+    margin-top: var(--unit-2);
+}
+
+/* ====================================
+   EDIT ITEMS TABLE
+   ==================================== */
+
+.edit-items-table-wrapper {
+    overflow-x: auto;
+    margin-bottom: var(--unit-2);
+}
+
+.edit-items-table {
+    font-size: var(--small-text);
+}
+
+.edit-items-table thead {
+    background-color: rgba(13, 13, 13, 0.05);
+    border-bottom: 2px solid rgba(13, 13, 13, 0.1);
+}
+
+.edit-items-table th {
+    padding: var(--unit-2);
+    text-align: left;
+    font-weight: 600;
+    color: var(--text2);
+}
+
+.edit-items-table tbody tr {
+    border-bottom: 1px solid rgba(13, 13, 13, 0.05);
+}
+
+.edit-items-table tbody tr:hover {
+    background-color: rgba(13, 13, 13, 0.02);
+}
+
+.edit-items-table td {
+    padding: var(--unit-2);
+}
+
+.edit-items-table .item-number {
+    font-weight: 600;
+    color: var(--text2);
+}
+
+.edit-items-table .item-text {
+    color: var(--text1);
+}
+
+.edit-items-table .item-text-small {
+    font-size: 0.85em;
+    color: var(--text2);
+}
+
+.edit-items-table select,
+.edit-items-table input[type="text"] {
+    width: 100%;
+    padding: var(--unit-1);
+    border: 1px solid rgba(13, 13, 13, 0.1);
+    border-radius: var(--radius-small);
+    font-size: var(--small-text);
+    font-family: inherit;
+    background-color: var(--blanc);
+    color: var(--text1);
+    transition: var(--transition);
+}
+
+.edit-items-table select:focus,
+.edit-items-table input[type="text"]:focus {
+    outline: none;
+    border-color: var(--orange);
+    box-shadow: 0 0 0 2px rgba(255, 102, 0, 0.1);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .edit-items-table-wrapper {
+        font-size: 0.9em;
+    }
+    
+    .edit-items-table th,
+    .edit-items-table td {
+        padding: var(--unit-1);
     }
 }

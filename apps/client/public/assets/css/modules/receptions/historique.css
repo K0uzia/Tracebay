@@ -107,7 +107,7 @@
 }
 
 /* Lot Card */
-.lot-card {
+.historique-lot-card {
     background-color: var(--blanc);
     border: 1px solid #e0e0e0;
     border-radius: var(--radius-medium);
@@ -116,11 +116,11 @@
     transition: all 0.3s ease;
 }
 
-.lot-card:hover {
+.historique-lot-card:hover {
     box-shadow: var(--shadow-medium);
 }
 
-.lot-header {
+.historique-lot-header {
     padding: var(--unit-3);
     background-color: #f5f5f5;
     display: flex;
@@ -130,19 +130,41 @@
     flex-wrap: wrap;
 }
 
-.lot-title {
+.historique-lot-title {
     display: flex;
     align-items: center;
     gap: var(--unit-2);
 }
 
-.lot-title h3 {
+.historique-lot-title h3 {
+    min-width: 200px;
+    max-width: 200px;
     margin: 0;
     font-size: 1.2rem;
     color: var(--h2);
 }
 
 .badge-finished {
+    display: inline-block;
+    padding: var(--unit-1) var(--unit-2);
+    background-color: #b8e0c8;
+    color: #1b5938;
+    border-radius: var(--radius-small);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge-to-recover {
+    display: inline-block;
+    padding: var(--unit-1) var(--unit-2);
+    background-color: #fff3cd;
+    color: #856404;
+    border-radius: var(--radius-small);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge-recovered {
     display: inline-block;
     padding: var(--unit-1) var(--unit-2);
     background-color: #b8e0c8;
@@ -162,13 +184,30 @@
     font-weight: 500;
 }
 
-.lot-stats {
+.badge-recovered-date {
+    display: inline-block;
+    padding: var(--unit-1) var(--unit-2);
+    background-color: #d4edda;
+    color: #155724;
+    border-radius: var(--radius-small);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.lot-dates {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+    margin-top: var(--unit-1);
+}
+
+.historique-lot-stats {
     display: flex;
     gap: var(--unit-3);
     flex-wrap: wrap;
 }
 
-.stat {
+.historique-stat {
     display: flex;
     align-items: center;
     gap: var(--unit-1);
@@ -176,21 +215,25 @@
     color: var(--text2);
 }
 
-.stat strong {
+.historique-stat strong {
     color: var(--h2);
 }
 
-.stat i {
+.historique-stat i {
     font-size: 1rem;
 }
 
-.lot-actions {
+.historique-lot-actions {
     display: flex;
     gap: var(--unit-1);
 }
 
 .btn-view-details,
-.btn-download-pdf {
+.btn-download-pdf,
+.btn-edit-lot,
+.btn-edit-items,
+.btn-to-recover,
+.btn-recovered {
     padding: var(--unit-1) var(--unit-2);
     border: none;
     border-radius: var(--radius-small);
@@ -223,6 +266,39 @@
 .btn-download-pdf:hover {
     background-color: #d32f2f;
     transform: translateY(-2px);
+}
+
+.btn-edit-lot,
+.btn-edit-items {
+    background-color: var(--orange);
+    color: var(--blanc);
+}
+
+.btn-edit-lot:hover,
+.btn-edit-items:hover {
+    background-color: #e65100;
+    transform: translateY(-2px);
+}
+
+.btn-to-recover {
+    background-color: #ffa726;
+    color: var(--blanc);
+}
+
+.btn-to-recover:hover {
+    background-color: #fb8c00;
+    transform: translateY(-2px);
+}
+
+.btn-recovered {
+    background-color: #66bb6a;
+    color: var(--blanc);
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+
+.btn-recovered:hover {
+    transform: none;
 }
 
 /* État vide */
@@ -268,8 +344,13 @@
 }
 
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
 }
 
 /* Tableau détails lot */
@@ -368,28 +449,23 @@
     color: #7f1d1d;
 }
 
-/* Modal large */
-.modal-lg {
-    max-width: 900px;
-}
-
 /* Responsive */
 @media (max-width: 768px) {
-    .lot-header {
+    .historique-lot-header {
         flex-direction: column;
         align-items: flex-start;
     }
 
-    .lot-title {
+    .historique-lot-title {
         flex-wrap: wrap;
     }
 
-    .lot-stats {
+    .historique-lot-stats {
         flex-direction: column;
         gap: var(--unit-1);
     }
 
-    .lot-actions {
+    .historique-lot-actions {
         width: 100%;
     }
 
