@@ -134,9 +134,11 @@ export default class TracabiliteManager {
     createLotCard(lot) {
         const total = lot.total || 0;
         const recond = lot.recond || 0;
+        const pieces = lot.pieces || 0;
         const hs = lot.hs || 0;
         const pending = lot.pending || 0;
         const isFinished = pending === 0 && total > 0;
+        const isRecovered = lot.recovered_at != null && lot.recovered_at !== '';
 
         return `
             <div class="lot-card" data-lot-id="${lot.id}">
@@ -148,12 +150,12 @@ export default class TracabiliteManager {
                     <div class="lot-card-date">
                         <span class="date-label">Terminé le</span>
                         <span class="date-value">${this.formatDateTime(lot.finished_at)}</span>
+                        ${isRecovered ? `
+                            <span class="date-label" style="margin-top: 0.5rem;">Récupéré le</span>
+                            <span class="date-value" style="color: #2e7d32; font-weight: 600;">${this.formatDateTime(lot.recovered_at)}</span>
+                        ` : ''}
                     </div>
                 </div>
-                
-                ${lot.lot_details ? `<div class="lot-card-details">
-                    <p>${lot.lot_details}</p>
-                </div>` : ''}
                 
                 <div class="lot-card-stats">
                     <div class="stat">
@@ -161,22 +163,30 @@ export default class TracabiliteManager {
                         <span class="stat-value">${total}</span>
                     </div>
                     <div class="stat">
-                        <span class="stat-label">Prêt pour remise</span>
+                        <span class="stat-label">Reconditionnés</span>
                         <span class="stat-value">${recond}</span>
                     </div>
                     <div class="stat">
                         <span class="stat-label">Pour pièces</span>
+                        <span class="stat-value">${pieces}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">HS</span>
                         <span class="stat-value">${hs}</span>
                     </div>
                 </div>
 
                 <div class="lot-card-actions">
                     ${lot.pdf_path ? `
-                        <a href="${(window.APP_CONFIG?.serverUrl || 'http://localhost:8060')}${lot.pdf_path}" target="_blank" class="btn-action btn-download">
-                            <i class="fa-solid fa-download"></i> Télécharger PDF
+                        <a href="${(window.APP_CONFIG?.serverUrl || 'http://localhost:8060')}${lot.pdf_path}?v=${Date.now()}" target="_blank" class="btn-action btn-view">
+                            <i class="fa-solid fa-eye"></i> Voir le PDF
                         </a>
+                        <button type="button" class="btn-action btn-download-pdf" data-lot-id="${lot.id}" data-pdf-path="${lot.pdf_path}">
+                            <i class="fa-solid fa-download"></i> Télécharger PDF
+                        </button>
                         <button type="button" class="btn-action btn-send-email" data-lot-id="${lot.id}">
                             <i class="fa-solid fa-envelope"></i> Envoyer par email
+                        </button>
                         </button>
                     ` : `
                         <button type="button" class="btn-action btn-generate-pdf" data-lot-id="${lot.id}">
@@ -208,6 +218,16 @@ export default class TracabiliteManager {
             });
         });
 
+        // Télécharger PDF
+        document.querySelectorAll('.btn-download-pdf').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const lotId = btn.dataset.lotId;
+                const pdfPath = btn.dataset.pdfPath;
+                this.downloadPDF(lotId, pdfPath);
+            });
+        });
+
         // Envoyer email
         document.querySelectorAll('.btn-send-email').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -216,6 +236,34 @@ export default class TracabiliteManager {
                 this.openEmailModal(lotId);
             });
         });
+    }
+
+    /**
+     * Télécharger le PDF sur le PC
+     */
+    async downloadPDF(lotId, pdfPath) {
+        try {
+            const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
+            const url = `${serverUrl}${pdfPath}?v=${Date.now()}`;
+            
+            // Créer un lien temporaire pour le téléchargement
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `lot-${lotId}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+            
+            this.showNotification('PDF téléchargé avec succès', 'success');
+        } catch (error) {
+            console.error('❌ Erreur téléchargement PDF:', error);
+            this.showNotification('Erreur lors du téléchargement du PDF', 'error');
+        }
     }
 
     /**

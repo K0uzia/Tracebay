@@ -103,3 +103,69 @@
         </div>
     </div>
 </dialog>
+
+<!-- MODALE : Éditer items du lot -->
+<dialog class="universal-modal" id="modal-edit-lot-items" data-modal-id="modal-edit-lot-items">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-list-check"></i> Éditer matériel - Lot #<span id="modal-edit-lot-number">-</span></h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-lot-items">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="edit-items-table-wrapper">
+                <table class="edit-items-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">N°</th>
+                            <th style="width: 140px;">S/N</th>
+                            <th style="width: 100px;">Type</th>
+                            <th style="width: 100px;">Marque</th>
+                            <th style="width: 120px;">Modèle</th>
+                            <th style="width: 120px;">État</th>
+                            <th style="width: 140px;">Technicien</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-edit-items-body">
+                        <!-- Items seront ajoutés dynamiquement -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-lot-items">
+                <i class="fa-solid fa-times"></i> Annuler
+            </button>
+            <button type="button" id="btn-apply-item-edits" class="modal-apply-btn">
+                <i class="fa-solid fa-check"></i> Appliquer
+            </button>
+        </div>
+    </div>
+</dialog>
+
+<!-- MODALE : Éditer nom du lot -->
+<dialog class="universal-modal" id="modal-edit-lot-name" data-modal-id="modal-edit-lot-name">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-edit"></i> Éditer le nom du lot</h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-lot-name">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="input-lot-name">Nom du lot :</label>
+                <input type="text" id="input-lot-name" placeholder="Entrez le nouveau nom du lot" autofocus>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-lot-name">
+                <i class="fa-solid fa-times"></i> Annuler
+            </button>
+            <button type="button" id="btn-save-lot-name" class="modal-apply-btn">
+                <i class="fa-solid fa-check"></i> Enregistrer
+            </button>
+        </div>
+    </div>
+</dialog>

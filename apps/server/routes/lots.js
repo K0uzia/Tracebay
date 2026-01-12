@@ -3,19 +3,91 @@ const path = require('path');
 const fs = require('fs');
 const router = express.Router();
 const { dbPromise } = require('../database.js');
+const { renderLotPDF, convertHtmlToPdf } = require('../lib/pdfTemplateHelper.js');
 
 // Helper: compute lot finished status
 async function computeAndUpdateLotFinished(lotId) {
   const row = await dbPromise.get(
-    `SELECT SUM(CASE WHEN state = 'À faire' THEN 1 ELSE 0 END) AS pending
+    `SELECT COUNT(*) as total,
+            SUM(CASE WHEN state IS NULL OR state = '' THEN 1 ELSE 0 END) AS pending
      FROM lot_items WHERE lot_id = ?`, [lotId]
   );
   const pending = row?.pending || 0;
-  if (pending === 0) {
+  const total = row?.total || 0;
+  
+  // Un lot est terminé si tous les items ont un état défini
+  if (total > 0 && pending === 0) {
+    // Vérifier si le lot était déjà terminé
+    const lot = await dbPromise.get(`SELECT finished_at FROM lots WHERE id = ?`, [lotId]);
+    const wasFinished = lot?.finished_at !== null;
+    
+    // Marquer comme terminé avec la date actuelle si pas déjà fait
     await dbPromise.run(`UPDATE lots SET finished_at = COALESCE(finished_at, CURRENT_TIMESTAMP) WHERE id = ?`, [lotId]);
+    
+    // Générer le PDF automatiquement si le lot vient d'être terminé
+    if (!wasFinished) {
+      console.log(`🎉 Lot ${lotId} terminé - Génération automatique du PDF...`);
+      await generatePDF(lotId);
+    }
+    
     return true;
   }
   return false;
+}
+
+/**
+ * Génère le PDF pour un lot
+ * @param {number} lotId - ID du lot
+ * @returns {Promise<string>} Chemin du PDF généré
+ */
+async function generatePDF(lotId) {
+  try {
+    // Récupérer les données du lot
+    const lot = await dbPromise.get(`SELECT * FROM lots WHERE id = ?`, [lotId]);
+    if (!lot) throw new Error('Lot introuvable');
+    
+    // Récupérer les items du lot avec les noms de marque et modèle
+    const items = await dbPromise.all(`
+      SELECT 
+        li.id,
+        li.lot_id,
+        li.serial_number,
+        li.type,
+        li.marque_id,
+        li.modele_id,
+        li.state,
+        li.state_changed_at,
+        li.technician,
+        m.name as marque_name, 
+        mod.name as modele_name
+      FROM lot_items li
+      LEFT JOIN marques m ON li.marque_id = m.id
+      LEFT JOIN modeles mod ON li.modele_id = mod.id
+      WHERE li.lot_id = ? 
+      ORDER BY li.id ASC
+    `, [lotId]);
+
+    // Générer le HTML du PDF en utilisant le template
+    const html = renderLotPDF(lot, items);
+
+    // Créer le répertoire s'il n'existe pas
+    const pdfDir = path.join(__dirname, '..', 'public', 'pdfs');
+    if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
+    
+    // Générer le PDF avec Puppeteer
+    const pdfFilePath = path.join(pdfDir, `lot-${lotId}.pdf`);
+    await convertHtmlToPdf(html, pdfFilePath);
+
+    // Mettre à jour la base de données avec le chemin du PDF
+    const publicPath = `/pdfs/lot-${lotId}.pdf`;
+    await dbPromise.run(`UPDATE lots SET pdf_path = ? WHERE id = ?`, [publicPath, lotId]);
+    
+    console.log(`✅ PDF généré: ${publicPath}`);
+    return publicPath;
+  } catch (error) {
+    console.error(`❌ Erreur génération PDF pour lot ${lotId}:`, error);
+    throw error;
+  }
 }
 
 // Create a new lot with items
@@ -54,11 +126,12 @@ router.get('/', async (req, res) => {
     const status = (req.query.status || 'all').toLowerCase();
     // Get lots
     const lots = await dbPromise.all(`
-      SELECT l.id, l.created_at, l.finished_at, l.pdf_path, l.lot_name, l.lot_details,
+      SELECT l.id, l.created_at, l.finished_at, l.recovered_at, l.pdf_path, l.lot_name, l.lot_details,
              COUNT(li.id) as total,
-             SUM(CASE WHEN li.state = 'À faire' THEN 1 ELSE 0 END) as pending,
-             SUM(CASE WHEN li.state = 'Prêt pour remise' THEN 1 ELSE 0 END) as recond,
-             SUM(CASE WHEN li.state = 'Pour pièces' THEN 1 ELSE 0 END) as hs
+             SUM(CASE WHEN li.state IS NULL OR li.state = '' THEN 1 ELSE 0 END) as pending,
+             SUM(CASE WHEN li.state = 'Reconditionnés' THEN 1 ELSE 0 END) as recond,
+             SUM(CASE WHEN li.state = 'Pour pièces' THEN 1 ELSE 0 END) as pieces,
+             SUM(CASE WHEN li.state = 'HS' THEN 1 ELSE 0 END) as hs
       FROM lots l
       LEFT JOIN lot_items li ON li.lot_id = l.id
       GROUP BY l.id
@@ -113,13 +186,53 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// Update lot (lot_name)
+router.patch('/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const { lot_name, recovered_at } = req.body || {};
+    
+    // Si lot_name est fourni, le mettre à jour
+    if (lot_name !== undefined) {
+      await dbPromise.run(`UPDATE lots SET lot_name = ? WHERE id = ?`, [lot_name, id]);
+    }
+    
+    // Si recovered_at est fourni (true pour marquer comme récupéré, false pour annuler)
+    if (recovered_at !== undefined) {
+      const value = recovered_at ? new Date().toISOString() : null;
+      await dbPromise.run(`UPDATE lots SET recovered_at = ? WHERE id = ?`, [value, id]);
+      
+      // Régénérer le PDF avec la date de récupération
+      if (recovered_at) {
+        console.log(`📦 Lot ${id} marqué comme récupéré - Régénération du PDF...`);
+        await generatePDF(id);
+      }
+    }
+    
+    const lot = await dbPromise.get(`SELECT id, created_at, finished_at, recovered_at, lot_name, lot_details FROM lots WHERE id = ?`, [id]);
+    res.json({ success: true, item: lot });
+  } catch (error) {
+    console.error('❌ PATCH /api/lots/:id error:', error);
+    res.status(500).json({ success: false, message: 'Erreur mise à jour lot' });
+  }
+});
+
 // Update item state/technician
 router.patch('/items/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ success: false, message: 'ID invalide' });
+    }
+    
     const { state, technician } = req.body || {};
     await dbPromise.run(`UPDATE lot_items SET state = COALESCE(?, state), technician = COALESCE(?, technician), state_changed_at = CURRENT_TIMESTAMP WHERE id = ?`, [state || null, technician || null, id]);
     const item = await dbPromise.get(`SELECT * FROM lot_items WHERE id = ?`, [id]);
+    
+    if (!item) {
+      return res.status(404).json({ success: false, message: 'Item introuvable' });
+    }
+    
     const finished = await computeAndUpdateLotFinished(item.lot_id);
     res.json({ success: true, item, lotFinished: finished });
   } catch (error) {
@@ -128,273 +241,15 @@ router.patch('/items/:id', async (req, res) => {
   }
 });
 
-// Generate a comprehensive PDF with complete lot information
+// Generate a comprehensive PDF with complete lot information (manuel ou debug)
 router.post('/:id/pdf', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const lot = await dbPromise.get(`SELECT * FROM lots WHERE id = ?`, [id]);
-    if (!lot) return res.status(404).json({ success: false, message: 'Lot introuvable' });
-    const items = await dbPromise.all(`
-      SELECT li.*, m.name as marque_name, mod.name as modele_name
-      FROM lot_items li
-      LEFT JOIN marques m ON li.marque_id = m.id
-      LEFT JOIN modeles mod ON li.modele_id = mod.id
-      WHERE li.lot_id = ? 
-      ORDER BY li.id ASC
-    `, [id]);
-
-    const total = items.length;
-    const recond = items.filter(i => i.state === 'Reconditionné').length;
-    const hs = items.filter(i => i.state === 'HS').length;
-
-    // Format dates
-    const formatDate = (dateStr) => {
-      if (!dateStr) return '-';
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-    };
-
-    const html = `<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8">
-  <title>Lot #${id}</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      padding: 30px;
-      color: #333;
-      line-height: 1.6;
-    }
-    .header {
-      border-bottom: 3px solid #3e3b8c;
-      padding-bottom: 20px;
-      margin-bottom: 30px;
-    }
-    .header h1 {
-      margin: 0 0 5px 0;
-      color: #3e3b8c;
-      font-size: 28px;
-    }
-    .header-meta {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-top: 15px;
-      font-size: 14px;
-      color: #666;
-    }
-    .info-section {
-      margin-bottom: 30px;
-      background: #f9f9f9;
-      padding: 20px;
-      border-left: 4px solid #3e3b8c;
-      border-radius: 4px;
-    }
-    .info-section h2 {
-      margin: 0 0 15px 0;
-      color: #3e3b8c;
-      font-size: 16px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    .info-row {
-      display: grid;
-      grid-template-columns: 150px 1fr;
-      padding: 8px 0;
-      border-bottom: 1px solid #e0e0e0;
-    }
-    .info-row:last-child {
-      border-bottom: none;
-    }
-    .info-label {
-      font-weight: 600;
-      color: #555;
-    }
-    .info-value {
-      color: #333;
-    }
-    .summary-stats {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 15px;
-      margin-top: 15px;
-    }
-    .stat-box {
-      background: white;
-      padding: 15px;
-      border-radius: 4px;
-      text-align: center;
-      border: 1px solid #e0e0e0;
-    }
-    .stat-number {
-      font-size: 24px;
-      font-weight: bold;
-      color: #3e3b8c;
-    }
-    .stat-label {
-      font-size: 12px;
-      color: #666;
-      margin-top: 5px;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 20px;
-      background: white;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-    thead {
-      background: #3e3b8c;
-      color: white;
-    }
-    th {
-      padding: 12px;
-      text-align: left;
-      font-weight: 600;
-      font-size: 13px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      border: 1px solid #3e3b8c;
-    }
-    td {
-      padding: 12px;
-      border: 1px solid #e0e0e0;
-      font-size: 13px;
-    }
-    tbody tr:nth-child(even) {
-      background: #f5f5f5;
-    }
-    tbody tr:hover {
-      background: #efefef;
-    }
-    .state-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      border-radius: 3px;
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-    .state-todo {
-      background: #fff3cd;
-      color: #856404;
-    }
-    .state-recond {
-      background: #d4edda;
-      color: #155724;
-    }
-    .state-hs {
-      background: #f8d7da;
-      color: #721c24;
-    }
-    .footer {
-      margin-top: 40px;
-      padding-top: 20px;
-      border-top: 1px solid #e0e0e0;
-      font-size: 12px;
-      color: #999;
-      text-align: center;
-    }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>Fiche de Lot #${id}</h1>
-    <div class="header-meta">
-      <div><strong>Date du rapport :</strong> ${formatDate(new Date().toISOString())}</div>
-      <div><strong>Statut :</strong> ${lot.finished_at ? 'Terminé' : 'En cours'}</div>
-    </div>
-  </div>
-
-  <div class="info-section">
-    <h2>📋 Informations Générales du Lot</h2>
-    <div class="info-row">
-      <span class="info-label">Numéro du Lot :</span>
-      <span class="info-value">#${id}</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">Date de création :</span>
-      <span class="info-value">${formatDate(lot.created_at)}</span>
-    </div>
-    <div class="info-row">
-      <span class="info-label">Date de fin :</span>
-      <span class="info-value">${lot.finished_at ? formatDate(lot.finished_at) : '-'}</span>
-    </div>
-    ${lot.lot_name ? `<div class="info-row">
-      <span class="info-label">Nom du Lot :</span>
-      <span class="info-value">${lot.lot_name}</span>
-    </div>` : ''}
-    ${lot.lot_details ? `<div class="info-row">
-      <span class="info-label">Détails :</span>
-      <span class="info-value">${lot.lot_details}</span>
-    </div>` : ''}
-
-    <div class="summary-stats">
-      <div class="stat-box">
-        <div class="stat-number">${total}</div>
-        <div class="stat-label">Total PC</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-number">${recond}</div>
-        <div class="stat-label">Reconditionnés</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-number">${hs}</div>
-        <div class="stat-label">HS</div>
-      </div>
-      <div class="stat-box">
-        <div class="stat-number">${total - recond - hs}</div>
-        <div class="stat-label">En attente</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="info-section">
-    <h2>💻 Détail des Machines</h2>
-    <table>
-      <thead>
-        <tr>
-          <th style="width: 5%;">#</th>
-          <th style="width: 15%;">Numéro de Série</th>
-          <th style="width: 10%;">Modèle</th>
-          <th style="width: 10%;">Config</th>
-          <th style="width: 12%;">État</th>
-          <th style="width: 18%;">Date du Changement</th>
-          <th style="width: 15%;">Technicien</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${items.map((it, idx) => `<tr>
-          <td>${idx + 1}</td>
-          <td>${it.serial_number || '-'}</td>
-          <td>${it.marque_name || '-'} ${it.modele_name || '-'}</td>
-          <td>${it.type || '-'}</td>
-          <td><span class="state-badge state-${it.state === 'À faire' ? 'todo' : it.state === 'Reconditionné' ? 'recond' : 'hs'}">${it.state || '-'}</span></td>
-          <td>${formatDate(it.state_changed_at)}</td>
-          <td>${it.technician || '-'}</td>
-        </tr>`).join('')}
-      </tbody>
-    </table>
-  </div>
-
-  <div class="footer">
-    <p>Ce document a été généré automatiquement. Tous les détails du lot sont archivés dans la base de données.</p>
-  </div>
-</body>
-</html>`;
-
-    const pdfDir = path.join(__dirname, '..', 'public', 'pdfs');
-    if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
-    const filePath = path.join(pdfDir, `lot-${id}.html`);
-    fs.writeFileSync(filePath, html, 'utf-8');
-
-    const publicPath = `/pdfs/lot-${id}.html`;
-    await dbPromise.run(`UPDATE lots SET pdf_path = ? WHERE id = ?`, [publicPath, id]);
+    const publicPath = await generatePDF(id);
     res.json({ success: true, path: publicPath });
   } catch (error) {
     console.error('❌ POST /api/lots/:id/pdf error:', error);
-    res.status(500).json({ success: false, message: 'Erreur génération PDF' });
+    res.status(500).json({ success: false, message: error.message || 'Erreur génération PDF' });
   }
 });
 
