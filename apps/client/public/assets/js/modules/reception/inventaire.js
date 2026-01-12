@@ -72,27 +72,27 @@ export default class InventaireManager {
         const progress = total > 0 ? ((total - pending) / total * 100).toFixed(0) : 0;
 
         return `
-            <div class="lot-card" data-lot-id="${lot.id}">
-                <div class="lot-header" style="cursor: pointer;">
-                    <div class="lot-title">
+            <div class="inventaire-lot-card" data-lot-id="${lot.id}">
+                <div class="inventaire-lot-header" style="cursor: pointer;">
+                    <div class="inventaire-lot-title">
                         <i class="fa-solid fa-chevron-right expand-icon"></i>
-                        <h3>Lot #${lot.id}</h3>
+                        <h3>Lot #${lot.id}${lot.lot_name ? ' | ' + lot.lot_name : ''}</h3>
                         <span class="badge-created">Créé le ${this.formatDate(lot.created_at)}</span>
                     </div>
-                    <div class="lot-stats">
-                        <span class="stat">
+                    <div class="inventaire-lot-stats">
+                        <span class="inventaire-stat">
                             <i class="fa-solid fa-hourglass-end"></i>
                             <strong>${pending}</strong> à faire
                         </span>
-                        <span class="stat">
+                        <span class="inventaire-stat">
                             <i class="fa-solid fa-check-circle"></i>
                             <strong>${recond}</strong> reconditionnés
                         </span>
-                        <span class="stat">
+                        <span class="inventaire-stat">
                             <i class="fa-solid fa-exclamation-circle"></i>
                             <strong>${hs}</strong> HS
                         </span>
-                        <span class="stat">
+                        <span class="inventaire-stat">
                             <strong>${total}</strong> total
                         </span>
                     </div>
@@ -126,7 +126,7 @@ export default class InventaireManager {
                                         <td>${item.modele_name || '-'}</td>
                                         <td>
                                             <span class="state-badge state-${item.state?.replace(/\s+/g, '-')}">
-                                                ${item.state || 'À faire'}
+                                                ${item.state || 'Reconditionnés'}
                                             </span>
                                         </td>
                                         <td>${this.formatDateTime(item.state_changed_at) || '-'}</td>
@@ -151,11 +151,11 @@ export default class InventaireManager {
      */
     attachLotEventListeners() {
         // Toggle lot expansion
-        document.querySelectorAll('.lot-header').forEach(header => {
+        document.querySelectorAll('.inventaire-lot-header').forEach(header => {
             header.addEventListener('click', (e) => {
                 if (e.target.closest('.btn-edit-pc')) return;
                 
-                const card = header.closest('.lot-card');
+                const card = header.closest('.inventaire-lot-card');
                 const content = card.querySelector('.lot-content');
                 const icon = card.querySelector('.expand-icon');
                 
@@ -204,7 +204,7 @@ export default class InventaireManager {
         document.getElementById('modal-pc-type').textContent = item.type || '-';
         document.getElementById('modal-pc-entry').textContent = item.entry_type || '-';
         document.getElementById('modal-pc-date-changed').textContent = this.formatDateTime(item.state_changed_at) || '-';
-        document.getElementById('modal-pc-state').value = item.state || 'À faire';
+        document.getElementById('modal-pc-state').value = item.state || 'Reconditionnés';
         document.getElementById('modal-pc-technician').value = item.technician || '';
 
         this.modalManager.open('modal-edit-pc');
@@ -260,16 +260,16 @@ export default class InventaireManager {
 
             const data = await response.json();
 
-            this.showNotification('PC mis à jour', 'success');
             this.modalManager.close('modal-edit-pc');
 
             // Recharger les lots
             await this.loadLots();
 
-            // Si le lot est terminé, afficher une notification
+            // Afficher une seule notification en fonction du résultat
             if (data.lotFinished) {
                 this.showNotification('🎉 Lot terminé ! Passage en Historique...', 'success');
-                setTimeout(() => this.loadLots(), 1000);
+            } else {
+                this.showNotification('PC mis à jour', 'success');
             }
 
         } catch (error) {

@@ -3,7 +3,6 @@
 .tracabilite-container {
     padding: 20px;
     max-width: 1400px;
-    margin: 0 auto;
 }
 
 .tracabilite-header {
@@ -37,6 +36,7 @@
 
 .filter-group {
     display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 10px;
 }
@@ -165,7 +165,6 @@
 .lot-card:hover {
     box-shadow: 0 4px 12px rgba(62, 59, 140, 0.15);
     transform: translateY(-2px);
-    border-color: var(--bleu1);
 }
 
 .lot-card-header {

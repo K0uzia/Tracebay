@@ -155,6 +155,7 @@ function initializeTables() {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             finished_at DATETIME DEFAULT NULL,
+            recovered_at DATETIME DEFAULT NULL,
             pdf_path TEXT DEFAULT NULL,
             lot_name TEXT DEFAULT NULL,
             lot_details TEXT DEFAULT NULL
@@ -189,6 +190,21 @@ function initializeTables() {
             logger.error(`Initialisation tables échouée: ${err.message}`);
         } else {
             logger.info('✅ Tables BDD initialisées');
+            
+            // Migration: Ajouter recovered_at si nécessaire
+            db.all("PRAGMA table_info(lots)", (pragmaErr, columns) => {
+                if (pragmaErr) {
+                    logger.error(`Erreur vérification colonne: ${pragmaErr.message}`);
+                    return;
+                }
+                const hasRecoveredAt = columns.some(col => col.name === 'recovered_at');
+                if (!hasRecoveredAt) {
+                    db.run("ALTER TABLE lots ADD COLUMN recovered_at DATETIME DEFAULT NULL", (alterErr) => {
+                        if (alterErr) logger.error(`Erreur ajout recovered_at: ${alterErr.message}`);
+                        else logger.info('✅ Colonne recovered_at ajoutée à la table lots');
+                    });
+                }
+            });
         }
     });
 }

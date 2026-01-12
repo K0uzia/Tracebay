@@ -99,7 +99,7 @@
 }
 
 /* Liste des lots */
-.lots-list {
+.lots-list-inv {
     display: flex;
     flex-direction: column;
     gap: var(--unit-2);
@@ -109,7 +109,7 @@
 }
 
 /* Lot Card */
-.lot-card {
+.inventaire-lot-card {
     background-color: var(--blanc);
     border: 1px solid #e0e0e0;
     border-radius: var(--radius-medium);
@@ -118,11 +118,11 @@
     transition: all 0.3s ease;
 }
 
-.lot-card:hover {
+.inventaire-lot-card:hover {
     box-shadow: var(--shadow-medium);
 }
 
-.lot-header {
+.inventaire-lot-header {
     padding: var(--unit-2);
     background-color: #f5f5f5;
     border-bottom: 1px solid #e0e0e0;
@@ -130,14 +130,14 @@
     user-select: none;
 }
 
-.lot-title {
+.inventaire-lot-title {
     display: flex;
     align-items: center;
     gap: var(--unit-2);
     margin-bottom: var(--unit-2);
 }
 
-.lot-title h3 {
+.inventaire-lot-title h3 {
     margin: 0;
     font-size: 1.2rem;
     color: var(--h2);
@@ -159,14 +159,14 @@
     font-weight: 500;
 }
 
-.lot-stats {
+.inventaire-lot-stats {
     display: flex;
     gap: var(--unit-3);
     margin-bottom: var(--unit-2);
     flex-wrap: wrap;
 }
 
-.stat {
+.inventaire-stat {
     display: flex;
     align-items: center;
     gap: var(--unit-1);
@@ -174,11 +174,11 @@
     color: var(--text2);
 }
 
-.stat strong {
+.inventaire-stat strong {
     color: var(--h2);
 }
 
-.stat i {
+.inventaire-stat i {
     font-size: 1rem;
 }
 
@@ -246,7 +246,6 @@
     font-size: 0.85rem;
     font-weight: 600;
     text-align: center;
-    width: 100%;
 }
 
 .state-badge.state-À-faire {
@@ -327,46 +326,18 @@
 }
 
 @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
+    from {
+        transform: rotate(0deg);
+    }
 
-/* Modal styles pour édition PC */
-#modal-pc-serial,
-#modal-pc-model,
-#modal-pc-type,
-#modal-pc-entry {
-    font-weight: 600;
-    color: var(--bleu1);
+    to {
+        transform: rotate(360deg);
+    }
 }
-
-.pc-info-box {
-    background-color: #f5f5f5;
-    padding: var(--unit-2);
-    border-radius: var(--radius-small);
-    margin-bottom: var(--unit-3);
-}
-
-.info-row {
-    display: flex;
-    justify-content: space-between;
-    padding: var(--unit-1) 0;
-    border-bottom: 1px solid #e0e0e0;
-}
-
-.info-row:last-child {
-    border-bottom: none;
-}
-
-.info-label {
-    font-weight: 600;
-    color: var(--text2);
-}
-
 
 /* Responsive */
 @media (max-width: 768px) {
-    .lot-stats {
+    .inventaire-lot-stats {
         flex-direction: column;
         gap: var(--unit-1);
     }

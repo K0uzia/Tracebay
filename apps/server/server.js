@@ -11,6 +11,7 @@ const helmet = require('helmet');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
+const fs = require('fs');
 
 // Import routes
 const authRouter = require('./routes/auth.js');
@@ -58,8 +59,20 @@ app.use(httpRequestTracker());
 
 // Servir les fichiers publics (dashboard UI)
 app.use(express.static(path.join(__dirname, 'public')));
-// Exposer explicitement les PDFs si présents
-app.use('/pdfs', express.static(path.join(__dirname, 'public', 'pdfs')));
+
+// Route spécifique pour servir les PDFs avec le bon Content-Type
+app.get('/pdfs/:filename', (req, res) => {
+    const filename = req.params.filename;
+    const filePath = path.join(__dirname, 'public', 'pdfs', filename);
+    
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ success: false, message: 'PDF non trouvé' });
+    }
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${filename}"`);
+    res.sendFile(filePath);
+});
 
 // Logging middleware
 app.use((req, res, next) => {

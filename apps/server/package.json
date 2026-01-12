@@ -18,6 +18,7 @@
     "fastify": "^4.24.0",
     "helmet": "^7.2.0",
     "jsonwebtoken": "^9.0.2",
+    "puppeteer": "^24.35.0",
     "sqlite3": "^5.1.7",
     "ws": "^8.18.0"
   },
@@ -47,6 +48,8 @@
     "dev": "concurrently \"tsc --watch\" \"electron .\"",
     "dev:api": "node server.js",
     "start:api": "node server.js",
+    "reset-db": "node reset-db.js",
+    "regenerate-pdfs": "node regenerate-pdfs.js",
     "dev:backend": "tsx watch src/main.ts",
     "server": "node dist/main.js",
     "build": "tsc && electron-forge make",

@@ -394,17 +394,16 @@ export default class GestionLotsManager {
             return;
         }
 
-        // Récupérer les informations optionnelles du lot
+        // Récupérer le nom optionnel du lot
         const lotName = document.getElementById('input-lot-name')?.value?.trim() || null;
-        const lotDetails = document.getElementById('textarea-lot-details')?.value?.trim() || null;
 
         try {
-            console.log('📤 Envoi des données:', { items: lotData, lotName, lotDetails });
+            console.log('📤 Envoi des données:', { items: lotData, lotName });
             const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
             const response = await fetch(`${serverUrl}/api/lots`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: lotData, lotName, lotDetails })
+                body: JSON.stringify({ items: lotData, lotName })
             });
 
             if (!response.ok) {
@@ -463,11 +462,9 @@ export default class GestionLotsManager {
         const tbody = document.getElementById('lot-table-body');
         if (tbody) tbody.innerHTML = '';
         
-        // Réinitialiser les champs d'information du lot
+        // Réinitialiser le champ d'information du lot
         const lotNameInput = document.getElementById('input-lot-name');
-        const lotDetailsInput = document.getElementById('textarea-lot-details');
         if (lotNameInput) lotNameInput.value = '';
-        if (lotDetailsInput) lotDetailsInput.value = '';
         
         this.currentRowNumber = 1;
         
