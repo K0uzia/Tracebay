@@ -13,6 +13,9 @@ const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
 
+// Import discovery service
+const ServerDiscovery = require('./lib/ServerDiscovery.js');
+
 // Import routes
 const authRouter = require('./routes/auth.js');
 const agendaRouter = require('./routes/agenda.js');
@@ -38,6 +41,9 @@ console.log(`\n🚀 Starting Workspace Server...`);
 console.log(`   Environment: ${NODE_ENV}`);
 console.log(`   Host: ${SERVER_HOST}`);
 console.log(`   Port: ${SERVER_PORT}\n`);
+
+// Initialiser le service de découverte
+let discoveryService = null;
 
 // Create Express app
 const app = express();
@@ -307,11 +313,22 @@ server.listen(SERVER_PORT, SERVER_HOST, () => {
     console.log(`\n✅ Workspace Server running on http://${SERVER_HOST}:${SERVER_PORT}`);
     console.log(`📡 WebSocket available at ws://${SERVER_HOST}:${SERVER_PORT}`);
     console.log(`\n🟢 Ready to accept connections\n`);
+
+    // Démarrer le service de découverte
+    if (SERVER_HOST === '0.0.0.0' || SERVER_HOST === 'localhost') {
+        discoveryService = new ServerDiscovery(SERVER_PORT);
+        discoveryService.start();
+    }
 });
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
     console.log('\n📛 Shutting down gracefully...');
+    
+    // Arrêter le service de découverte
+    if (discoveryService) {
+        discoveryService.stop();
+    }
     
     server.close(() => {
         console.log('✅ Server closed');
