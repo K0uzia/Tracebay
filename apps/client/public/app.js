@@ -400,31 +400,42 @@ class PageManager {
 
     async loadPage(pageName) {
         try {
-            // Déterminer le chemin de la page (gestion des pages de réception)
-            let pagePath = `./pages/${pageName}.html`;
             const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabiliter'].includes(pageName);
             
+            // Si c'est une sous-page de réception, charger d'abord reception.html
             if (isReceptionSubPage) {
-                pagePath = `./pages/reception-pages/${pageName}.html`;
-            }
-            
-            const response = await fetch(pagePath);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-            
-            let html = await response.text();
-            html = this.transformFileManagers(html);
-            html = this.transformAppManagers(html);
-            
-            // Si c'est une sous-page de réception, charger dans le recep-section
-            if (isReceptionSubPage) {
+                const receptionResponse = await fetch('./pages/reception.html');
+                if (!receptionResponse.ok) throw new Error(`HTTP error! status: ${receptionResponse.status}`);
+                let receptionHtml = await receptionResponse.text();
+                receptionHtml = this.transformFileManagers(receptionHtml);
+                receptionHtml = this.transformAppManagers(receptionHtml);
+                document.getElementById(this.contentContainer).innerHTML = receptionHtml;
+                
+                // Puis charger la sous-page dans recep-section
+                const pagePath = `./pages/reception-pages/${pageName}.html`;
+                const response = await fetch(pagePath);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                let html = await response.text();
+                html = this.transformFileManagers(html);
+                html = this.transformAppManagers(html);
                 const recepSection = document.querySelector('.recep-section');
                 if (recepSection) {
                     recepSection.innerHTML = html;
-                } else {
-                    // Si pas de block-content, charger normalement
-                    document.getElementById(this.contentContainer).innerHTML = html;
                 }
             } else {
+                // Si on clique sur "Réception" du header, rediriger vers "entrer" par défaut
+                if (pageName === 'reception') {
+                    return this.loadPage('entrer');
+                }
+                
+                // Déterminer le chemin de la page
+                let pagePath = `./pages/${pageName}.html`;
+                const response = await fetch(pagePath);
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                
+                let html = await response.text();
+                html = this.transformFileManagers(html);
+                html = this.transformAppManagers(html);
                 document.getElementById(this.contentContainer).innerHTML = html;
             }
             

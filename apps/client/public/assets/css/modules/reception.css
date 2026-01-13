@@ -1,6 +1,6 @@
 .recep-main{
     display: grid;
-    grid-template-columns: repeat(1,15vw auto);
+    grid-template-columns: 15vw auto;
 }
 aside {
     padding: var(--unit-2) var(--unit-2) 100vh var(--unit-2);

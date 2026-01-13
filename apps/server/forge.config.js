@@ -1,16 +1,16 @@
+const path = require('path');
+
 module.exports = {
     packagerConfig: {
-        asar: true,
-        asarUnpack: [
-            '**/node_modules/sqlite3/**',
-            '**/node_modules/bcrypt/**'
-        ],
+        asar: false,
         ignore: [
             /^\/\.git/,
             /^\/\.vscode/,
             /^\/node_modules\/\.cache/,
             /^\/out/,
-            /^\/dist/
+            /^\/dist/,
+            /^\/\.env/,
+            /^\/\.gitignore/
         ]
     },
     makers: [
