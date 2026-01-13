@@ -15,6 +15,7 @@
     "build": "npm run build --workspaces",
     "build:server": "npm run build --workspace=apps/server",
     "build:client": "npm run build --workspace=apps/client",
+    "build:production": "node build-production.js",
     "start": "concurrently \"npm start --workspace=apps/server\" \"npm start --workspace=apps/client\"",
     "start:server": "npm start --workspace=apps/server",
     "start:client": "npm start --workspace=apps/client",

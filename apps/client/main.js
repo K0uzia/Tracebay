@@ -9,6 +9,133 @@ const fs = require('fs');
 const os = require('os');
 const { exec } = require('child_process');
 
+// Import ClientDiscovery
+const ClientDiscovery = require('./lib/ClientDiscovery.js');
+
+/**
+ * Obtenir toutes les IPs locales du réseau
+ */
+function getLocalNetworkIPs() {
+    const interfaces = os.networkInterfaces();
+    const ips = [];
+    
+    for (const name of Object.keys(interfaces)) {
+        for (const iface of interfaces[name]) {
+            // IPv4, non-interne
+            if (iface.family === 'IPv4' && !iface.internal) {
+                const parts = iface.address.split('.');
+                const subnet = `${parts[0]}.${parts[1]}.${parts[2]}`;
+                ips.push({ subnet, myIp: iface.address });
+            }
+        }
+    }
+    return ips;
+}
+
+/**
+ * Tester la connexion à une IP:PORT spécifique
+ */
+function testServerConnection(ip, port = 8060, timeout = 1000) {
+    return new Promise((resolve) => {
+        const req = http.get(`http://${ip}:${port}/api/health`, { timeout }, (res) => {
+            if (res.statusCode === 200) {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    try {
+                        const health = JSON.parse(data);
+                        if (health.status === 'ok') {
+                            resolve({ found: true, url: `http://${ip}:${port}` });
+                        } else {
+                            resolve({ found: false });
+                        }
+                    } catch (e) {
+                        resolve({ found: false });
+                    }
+                });
+            } else {
+                resolve({ found: false });
+            }
+        });
+
+        req.on('error', () => resolve({ found: false }));
+        req.on('timeout', () => {
+            req.destroy();
+            resolve({ found: false });
+        });
+    });
+}
+
+/**
+ * Scanner le réseau local pour trouver le serveur
+ */
+async function discoverServer(port = 8060) {
+    console.log('🔍 Recherche du serveur via beacons UDP...');
+    
+    // D'abord, essayer la découverte via beacons UDP
+    const discovery = new ClientDiscovery();
+    
+    try {
+        const server = await discovery.findServer(5000);  // Timeout de 5 secondes
+        if (server) {
+            return server;
+        }
+    } catch (err) {
+        console.warn('⚠️  Erreur lors de la découverte UDP:', err.message);
+    }
+    
+    console.log('🔍 Fallback: Recherche manuelle du serveur sur le réseau...');
+    
+    const networks = getLocalNetworkIPs();
+    if (networks.length === 0) {
+        console.warn('⚠️  Aucune interface réseau détectée');
+        return null;
+    }
+    
+    // Tester d'abord localhost
+    console.log('🔍 Test localhost...');
+    const localhostTest = await testServerConnection('localhost', port, 500);
+    if (localhostTest.found) {
+        console.log('✅ Serveur trouvé sur localhost');
+        return { url: localhostTest.url, ws: `ws://localhost:${port}` };
+    }
+    
+    // Ensuite tester notre propre IP
+    for (const network of networks) {
+        console.log(`🔍 Test ${network.myIp}...`);
+        const selfTest = await testServerConnection(network.myIp, port, 500);
+        if (selfTest.found) {
+            console.log(`✅ Serveur trouvé sur ${network.myIp}`);
+            return { url: selfTest.url, ws: `ws://${network.myIp}:${port}` };
+        }
+    }
+    
+    // Scanner le sous-réseau (en parallèle pour plus de rapidité)
+    for (const network of networks) {
+        console.log(`🔍 Scan du réseau ${network.subnet}.0/24...`);
+        const promises = [];
+        
+        for (let i = 1; i <= 254; i++) {
+            const ip = `${network.subnet}.${i}`;
+            if (ip !== network.myIp) {  // Skip notre propre IP déjà testée
+                promises.push(testServerConnection(ip, port, 800));
+            }
+        }
+        
+        const results = await Promise.all(promises);
+        for (let i = 0; i < results.length; i++) {
+            if (results[i].found) {
+                const foundIp = results[i].url.replace('http://', '').replace(`:${port}`, '');
+                console.log(`✅ Serveur trouvé sur ${foundIp}`);
+                return { url: results[i].url, ws: `ws://${foundIp}:${port}` };
+            }
+        }
+    }
+    
+    console.warn('⚠️  Aucun serveur trouvé sur le réseau');
+    return null;
+}
+
 // Charger la configuration serveur
 let serverConfig = {};
 try {
@@ -20,7 +147,7 @@ try {
     console.error('❌ Erreur chargement config serveur:', error.message);
     // Fallback to default local config
     serverConfig = {
-        mode: 'local',
+        mode: 'auto',
         local: {
             url: 'http://localhost:8060',
             ws: 'ws://localhost:8060'
@@ -30,16 +157,23 @@ try {
 
 // Configuration
 const MODE = process.env.SERVER_MODE || serverConfig.mode || 'local';
-const currentConfig = serverConfig[MODE] || serverConfig.local;
-const SERVER_URL = currentConfig.url;
-const SERVER_WS_URL = currentConfig.ws;
-const SERVER_HEALTH_ENDPOINT = `${SERVER_URL}/api/health`;
+let currentConfig = serverConfig[MODE] || serverConfig.local;
+
+// Si mode auto ou config invalide, utiliser la config locale par défaut
+if (MODE === 'auto' || !currentConfig.url || currentConfig.url === 'auto-discover') {
+    currentConfig = serverConfig.local || { url: 'http://localhost:8060', ws: 'ws://localhost:8060' };
+}
+
+let SERVER_URL = currentConfig.url;
+let SERVER_WS_URL = currentConfig.ws;
+let SERVER_HEALTH_ENDPOINT = `${SERVER_URL}/api/health`;
 const MAX_RETRY_ATTEMPTS = 10;
 const RETRY_INTERVAL = 500;
 
 let mainWindow;
 let pdfWindows = new Map();
 let serverConnected = false;
+let discoveredServer = null;
 let lastOpenTime = 0;
 const MIN_OPEN_INTERVAL = 1500; // 1.5s minimum entre chaque ouverture
 
@@ -545,9 +679,17 @@ ipcMain.handle('get-app-config', async () => {
  * Obtenir la configuration serveur complète
  */
 ipcMain.handle('get-server-config', async () => {
+    // Si un serveur a été découvert, mettre à jour currentConfig
+    if (discoveredServer) {
+        currentConfig = { url: SERVER_URL, ws: SERVER_WS_URL };
+    }
+    
     return {
         mode: MODE,
         config: currentConfig,
+        discoveredServer: discoveredServer,
+        serverUrl: SERVER_URL,
+        serverWs: SERVER_WS_URL,
         allModes: Object.keys(serverConfig).filter(k => typeof serverConfig[k] === 'object' && serverConfig[k].url),
         healthCheckInterval: serverConfig.healthCheckInterval,
         reconnectDelay: serverConfig.reconnectDelay,

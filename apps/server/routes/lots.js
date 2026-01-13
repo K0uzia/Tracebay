@@ -128,7 +128,7 @@ router.get('/', async (req, res) => {
     const lots = await dbPromise.all(`
       SELECT l.id, l.created_at, l.finished_at, l.recovered_at, l.pdf_path, l.lot_name, l.lot_details,
              COUNT(li.id) as total,
-             SUM(CASE WHEN li.state IS NULL OR li.state = '' THEN 1 ELSE 0 END) as pending,
+             SUM(CASE WHEN li.state = 'À faire' THEN 1 ELSE 0 END) as pending,
              SUM(CASE WHEN li.state = 'Reconditionnés' THEN 1 ELSE 0 END) as recond,
              SUM(CASE WHEN li.state = 'Pour pièces' THEN 1 ELSE 0 END) as pieces,
              SUM(CASE WHEN li.state = 'HS' THEN 1 ELSE 0 END) as hs

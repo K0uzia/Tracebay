@@ -7,7 +7,7 @@
   "author": "Sandersonn",
   "license": "MIT",
   "dependencies": {
-    "@electron-forge/plugin-webpack": "^7.10.2",
+    "@electron-forge/plugin-webpack": "^7.11.1",
     "electron-squirrel-startup": "^1.0.1"
   },
   "devDependencies": {
@@ -44,6 +44,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "lib/**/*",
       "public/**/*"
     ],
     "win": {

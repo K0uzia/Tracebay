@@ -32,6 +32,13 @@ export default class GestionLotsManager {
                 const row = this.createRow('', 'scan');
                 tbody.appendChild(row);
                 console.log('➕ Ligne SCAN initiale ajoutée');
+                
+                // AutoFocus sur le S/N de la première ligne
+                const snInput = row.querySelector('input[name="serial_number"]');
+                if (snInput) {
+                    snInput.focus();
+                    console.log('✅ AutoFocus sur S/N de la première ligne');
+                }
             }
         }, 400);
         
@@ -240,11 +247,42 @@ export default class GestionLotsManager {
     addRowFromScan(serialNumber) {
         console.log('📷 Scan détecté:', serialNumber);
         
+        // Vérifier que le S/N n'est pas vide
+        if (!serialNumber || serialNumber.trim() === '') {
+            console.warn('⚠️ S/N vide');
+            return;
+        }
+        
         const tbody = document.getElementById('lot-table-body');
         if (!tbody) return;
 
+        // Vérifier si ce S/N a déjà été scanné
+        const existingRows = tbody.querySelectorAll('tr');
+        const snExists = Array.from(existingRows).some(row => {
+            const snInput = row.querySelector('input[name="serial_number"]');
+            return snInput && snInput.value.trim().toUpperCase() === serialNumber.trim().toUpperCase();
+        });
+
+        if (snExists) {
+            console.warn('⚠️ Doublon détecté:', serialNumber);
+            this.showNotification(`S/N déjà scanné: ${serialNumber}`, 'warning');
+            return;
+        }
+
         const row = this.createRow(serialNumber, 'scan');
         tbody.appendChild(row);
+        
+        // Créer une nouvelle ligne vide SCAN pour le prochain scan
+        setTimeout(() => {
+            const newRow = this.createRow('', 'scan');
+            tbody.appendChild(newRow);
+            
+            // AutoFocus sur le S/N de la nouvelle ligne
+            const snInput = newRow.querySelector('input[name="serial_number"]');
+            if (snInput) {
+                snInput.focus();
+            }
+        }, 100);
         
         this.showNotification('Appareil scanné ajouté', 'success');
     }
