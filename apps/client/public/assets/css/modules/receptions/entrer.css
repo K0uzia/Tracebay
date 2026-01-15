@@ -127,11 +127,14 @@
     border-radius: var(--radius-medium);
     box-shadow: var(--shadow-small);
     min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .lot-table {
     border-collapse: collapse;
-    table-layout: fixed;
+    width: 100%;
+    min-width: 100%;
 }
 
 .lot-table thead {
@@ -408,5 +411,62 @@
 
     .warning-icon i {
         font-size: 2rem;
+    }
+}
+
+/* Responsive pour écrans moyens */
+@media (max-width: 1200px) {
+    .actions-bar {
+        padding: var(--unit-1);
+        margin-bottom: var(--unit-2);
+    }
+    
+    .actions-bar button {
+        padding: var(--unit-1) var(--unit-1);
+        font-size: 0.85rem;
+    }
+    
+    .lot-info-section {
+        margin-bottom: var(--unit-2);
+        padding: var(--unit-1);
+    }
+}
+
+@media (max-width: 900px) {
+    
+    .actions-bar {
+        flex-wrap: nowrap;
+        gap: var(--unit-2);
+        align-items: stretch;
+        padding: var(--unit-1);
+    }
+    
+    .actions-left,
+    .actions-right {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .actions-bar button {
+        width: 100%;
+        padding: var(--unit-1);
+        font-size: 0.8rem;
+        justify-content: center;
+    }
+    
+    .form-field input[type="text"] {
+        max-width: 100%;
+    }
+    
+    .lot-table-wrapper {
+        font-size: 0.75rem;
+    }
+    
+    .lot-table tbody td {
+        padding: 4px;
+    }
+    
+    .lot-table thead th {
+        padding: 4px;
     }
 }
