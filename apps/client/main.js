@@ -147,7 +147,7 @@ try {
     console.error('❌ Erreur chargement config serveur:', error.message);
     // Fallback to default local config
     serverConfig = {
-        mode: 'auto',
+        mode: 'local',
         local: {
             url: 'http://localhost:8060',
             ws: 'ws://localhost:8060'
@@ -155,13 +155,13 @@ try {
     };
 }
 
-// Configuration
+// Configuration initiale (fallback) - La vraie config vient du client web via ConnectionConfig.js
 const MODE = process.env.SERVER_MODE || serverConfig.mode || 'local';
 let currentConfig = serverConfig[MODE] || serverConfig.local;
 
-// Si mode auto ou config invalide, utiliser la config locale par défaut
-if (MODE === 'auto' || !currentConfig.url || currentConfig.url === 'auto-discover') {
-    currentConfig = serverConfig.local || { url: 'http://localhost:8060', ws: 'ws://localhost:8060' };
+// Utiliser la config locale par défaut
+if (!currentConfig || !currentConfig.url) {
+    currentConfig = { url: 'http://localhost:8060', ws: 'ws://localhost:8060' };
 }
 
 let SERVER_URL = currentConfig.url;
@@ -289,7 +289,9 @@ function createWindow() {
  */
 app.on('ready', async () => {
     console.log('🚀 Démarrage Workspace Client...');
-    console.log(`📍 Serveur attendu: ${SERVER_URL}`);
+    console.log(`📍 Configuration depuis: ${MODE} (connexion-config.json)`);
+    console.log(`🔗 Serveur par défaut: ${SERVER_URL}`);
+    console.log('ℹ️  La config réelle sera chargée par le client web');
     
     // Tenter la connexion au serveur (non-bloquant)
     await checkServerConnection();

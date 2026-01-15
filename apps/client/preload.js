@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const ALLOWED_CHANNELS = {
     send: ['open-pdf'],
-    invoke: ['open-external', 'open-pdf-window', 'get-app-config', 'get-local-ip', 'get-system-info', 'list-folders', 'open-path', 'launch-app', 'get-app-icon'],
+    invoke: ['open-external', 'open-pdf-window', 'get-app-config', 'get-server-config', 'get-local-ip', 'get-system-info', 'list-folders', 'open-path', 'launch-app', 'get-app-icon'],
     on: ['update:available', 'update:not-available', 'update:downloaded', 'update:progress', 'update:error']
 };
 
@@ -60,3 +60,17 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
         return ipcRenderer.invoke(channel, args);
     }
 });
+
+// Exposer electronAPI comme alias pour electron (pour la compatibilité)
+contextBridge.exposeInMainWorld('electronAPI', {
+    openExternal: async (url) => {
+        if (typeof url !== 'string' || !url.startsWith('http')) {
+            throw new Error('URL invalide');
+        }
+        return ipcRenderer.invoke('open-external', url);
+    },
+    openPath: async (path) => {
+        return ipcRenderer.invoke('open-path', { path });
+    }
+});
+

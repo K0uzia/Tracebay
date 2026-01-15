@@ -63,6 +63,14 @@ export default class FolderManager {
             btn.disabled = true;
             btn.classList.add('is-loading');
             
+            // Tracker l'ouverture du dossier
+            const folderName = btn.dataset.folderName || path.split('/').pop() || path;
+            if (window.recentItemsManager) {
+                window.recentItemsManager.trackFolderOpen(folderName, path);
+                window.recentItemsManager.display();
+                console.log('📁 Dossier tracké:', folderName);
+            }
+            
             if (window.ipcRenderer?.invoke) {
                 await window.ipcRenderer.invoke('open-path', { path });
             }

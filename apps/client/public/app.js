@@ -23,40 +23,22 @@ class PageManager {
     }
 
     async init() {
-        let config = null;
-        // Récupérer la config du serveur depuis le processus principal
-        try {
-            if (window.ipcRenderer && window.ipcRenderer.invoke) {
-                config = await window.ipcRenderer.invoke('get-app-config');
-                const serverConfig = await window.ipcRenderer.invoke('get-server-config');
-                
-                this.serverUrl = config.serverUrl || 'http://localhost:8060';
-                this.serverWsUrl = config.serverWsUrl || 'ws://localhost:8060';
-                this.serverConnected = !!config.serverConnected;
-                this.serverMode = config.serverMode || 'local';
-                this.serverConfig = serverConfig;
-                
-                console.log(`📡 Mode serveur: ${this.serverMode}`);
-                console.log(`🔗 URL: ${this.serverUrl}`);
-                console.log(`🔌 WebSocket: ${this.serverWsUrl}`);
-            } else {
-                this.serverUrl = 'http://localhost:8060';
-                this.serverWsUrl = 'ws://localhost:8060';
-            }
-        } catch (error) {
-            console.error('❌ Erreur récupération config:', error);
-            this.serverUrl = 'http://localhost:8060';
-            this.serverWsUrl = 'ws://localhost:8060';
-            this.serverConnected = false;
-        }
+        // Initialiser la configuration de connexion
+        const module = await import('./assets/js/config/ConnectionConfig.js');
+        const ConnectionConfig = module.default;
+        this.connectionConfig = new ConnectionConfig();
+        await this.connectionConfig.initialize();
 
-        // Exposer serverUrl et état serveur globalement pour les modules
-        window.APP_CONFIG = {
-            serverUrl: this.serverUrl,
-            serverWsUrl: this.serverWsUrl,
-            serverConnected: this.serverConnected,
-            serverMode: this.serverMode
-        };
+        // Récupérer l'URL du serveur
+        this.serverUrl = this.connectionConfig.getServerUrl();
+        this.serverWsUrl = this.connectionConfig.getServerWsUrl();
+        this.serverConnected = this.connectionConfig.serverConnected;
+        
+        console.log(`📡 Serveur: ${this.serverUrl}`);
+        console.log(`🔌 WebSocket: ${this.serverWsUrl}`);
+
+        // Exposer l'instance App globalement
+        window.app = this;
 
         // Initialiser le gestionnaire de connexion serveur
         await this.initializeServerConnection();
@@ -73,17 +55,18 @@ class PageManager {
 
     async initializeServerConnection() {
         try {
-            if (!this.serverConfig) return;
-            
             const module = await import('./assets/js/modules/system/ServerConnectionManager.js');
             const ServerConnectionManager = module.default;
+            
+            // Utiliser les paramètres de ConnectionConfig
+            const config = window.APP_CONFIG;
             
             this.serverConnectionManager = new ServerConnectionManager({
                 url: this.serverUrl,
                 ws: this.serverWsUrl,
-                healthCheckInterval: this.serverConfig.healthCheckInterval || 30000,
-                reconnectDelay: this.serverConfig.reconnectDelay || 3000,
-                maxReconnectAttempts: this.serverConfig.maxReconnectAttempts || 5
+                healthCheckInterval: config.healthCheckInterval || 30000,
+                reconnectDelay: config.reconnectDelay || 3000,
+                maxReconnectAttempts: config.maxReconnectAttempts || 5
             });
 
             this.serverConnectionManager.onStatusChange((status, data) => {
@@ -134,6 +117,10 @@ class PageManager {
             this.authManager.on('auth-change', (user) => {
                 console.log('🔄 Auth change event:', user);
                 this.updateProfileUI(user);
+                // Mettre à jour les récents pour le nouvel utilisateur
+                if (this.recentItemsManager) {
+                    this.recentItemsManager.updateForNewUser();
+                }
             });
 
             await this.loadAuthModal();
@@ -353,6 +340,31 @@ class PageManager {
         }
     }
 
+    trackPageVisit(pageName) {
+        try {
+            // Ne pas tracker la page d'accueil pour éviter les doublons
+            if (pageName === 'home') return;
+
+            // Créer le gestionnaire s'il n'existe pas
+            if (!window.recentItemsManager) {
+                import('./assets/js/modules/recent/RecentItemsManager.js')
+                    .then(module => {
+                        const RecentItemsManager = module.default;
+                        window.recentItemsManager = new RecentItemsManager({ maxItems: 5 });
+                        window.recentItemsManager.trackPageVisit(pageName);
+                    })
+                    .catch(error => {
+                        console.error('❌ Erreur import RecentItemsManager:', error);
+                    });
+            } else {
+                // Tracker la visite si le gestionnaire existe
+                window.recentItemsManager.trackPageVisit(pageName);
+            }
+        } catch (error) {
+            console.warn('⚠️ Impossible de tracker la visite:', error);
+        }
+    }
+
     loadComponentDirect(elementId, html, onLoad) {
         try {
             const element = document.getElementById(elementId);
@@ -440,7 +452,10 @@ class PageManager {
             }
             
             this.saveCurrentPage(pageName);
-            this.updateLayout(pageName);
+            this.trackPageVisit(pageName);
+            // Pour les sous-pages reception, utiliser la config 'reception'
+            const layoutPageName = isReceptionSubPage ? 'reception' : pageName;
+            this.updateLayout(layoutPageName);
             this.initializeChatIfNeeded();
             this.initializeTimeIfNeeded();
             this.initializePageElements(pageName);
@@ -534,15 +549,33 @@ class PageManager {
         if (pageName === 'home') {
             Promise.all([
                 import('./assets/js/modules/pdf/PDFManager.js'),
-                import('./assets/js/config/PDFConfig.js')
-            ]).then(([pdfModule, configModule]) => {
+                import('./assets/js/config/PDFConfig.js'),
+                import('./assets/js/modules/recent/RecentItemsManager.js')
+            ]).then(([pdfModule, configModule, recentModule]) => {
                 const PDFManager = pdfModule.default;
                 const pdfConfig = configModule.pdfConfig;
+                const RecentItemsManager = recentModule.default;
                 
                 window.pdfManager = new PDFManager();
                 window.pdfManager.attachPDFListeners(pdfConfig);
+
+                // Initialiser le gestionnaire des éléments récents
+                if (!window.recentItemsManager) {
+                    window.recentItemsManager = new RecentItemsManager({ maxItems: 5 });
+                    console.log('✅ RecentItemsManager créé');
+                } else {
+                    console.log('♻️ RecentItemsManager réutilisé');
+                }
+                
+                // Afficher les éléments récents après un court délai pour laisser le DOM se stabiliser
+                requestAnimationFrame(() => {
+                    if (window.recentItemsManager) {
+                        window.recentItemsManager.display();
+                        console.log('✅ RecentItemsManager affiché');
+                    }
+                });
             }).catch(error => {
-                console.error('❌ Erreur import PDFManager:', error);
+                console.error('❌ Erreur import modules home:', error);
             });
 
             import('./assets/js/modules/agenda/AgendaStore.js')

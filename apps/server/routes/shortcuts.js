@@ -176,7 +176,7 @@ router.get('/', verifyToken, async (req, res) => {
         const userId = req.user.id;
         
         const shortcuts = await dbPromise.all(
-            'SELECT * FROM shortcuts WHERE user_id = ? ORDER BY category_id, created_at ASC',
+            'SELECT * FROM shortcuts WHERE user_id = ? ORDER BY category_id, position ASC',
             [userId]
         );
 
@@ -222,9 +222,16 @@ router.post('/', verifyToken, async (req, res) => {
             });
         }
 
+        // Get next position
+        const lastShortcut = await dbPromise.get(
+            'SELECT MAX(position) as maxPos FROM shortcuts WHERE category_id = ?',
+            [category_id]
+        );
+        const nextPosition = (lastShortcut?.maxPos ?? -1) + 1;
+
         const result = await dbPromise.run(
-            'INSERT INTO shortcuts (user_id, category_id, name, url) VALUES (?, ?, ?, ?)',
-            [userId, category_id, name.trim(), url.trim()]
+            'INSERT INTO shortcuts (user_id, category_id, name, url, position) VALUES (?, ?, ?, ?, ?)',
+            [userId, category_id, name.trim(), url.trim(), nextPosition]
         );
 
         console.log(`✅ Raccourci créé: ${name} (ID: ${result.lastID})`);
@@ -235,11 +242,75 @@ router.post('/', verifyToken, async (req, res) => {
                 user_id: userId,
                 category_id,
                 name: name.trim(),
-                url: url.trim()
+                url: url.trim(),
+                position: nextPosition
             }
         });
     } catch (error) {
         console.error('❌ Erreur création raccourci:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Erreur serveur' 
+        });
+    }
+});
+
+/**
+ * PUT /api/shortcuts/reorder
+ * Réorganiser les raccourcis dans une catégorie
+ */
+router.put('/reorder', verifyToken, async (req, res) => {
+    try {
+        console.log('🔄 PUT /api/shortcuts/reorder - Requête reçue');
+        const userId = req.user.id;
+        const { category_id, shortcut_ids } = req.body;
+        console.log('📊 reorder params:', { userId, category_id, shortcut_ids });
+
+        if (!category_id || !Array.isArray(shortcut_ids)) {
+            return res.status(400).json({ 
+                success: false, 
+                message: 'Category ID et shortcut IDs requis' 
+            });
+        }
+
+        // Verify category ownership
+        const category = await dbPromise.get(
+            'SELECT id FROM shortcut_categories WHERE id = ? AND user_id = ?',
+            [category_id, userId]
+        );
+
+        if (!category) {
+            return res.status(404).json({ 
+                success: false, 
+                message: 'Catégorie non trouvée' 
+            });
+        }
+
+        // Update the order (position) for each shortcut
+        for (let i = 0; i < shortcut_ids.length; i++) {
+            const shortcutId = shortcut_ids[i];
+            
+            // Verify ownership
+            const shortcut = await dbPromise.get(
+                'SELECT id FROM shortcuts WHERE id = ? AND user_id = ? AND category_id = ?',
+                [shortcutId, userId, category_id]
+            );
+
+            if (shortcut) {
+                await dbPromise.run(
+                    'UPDATE shortcuts SET position = ? WHERE id = ?',
+                    [i, shortcutId]
+                );
+            }
+        }
+
+        console.log(`✅ Raccourcis réorganisés pour la catégorie ${category_id}`);
+        res.json({ 
+            success: true, 
+            message: 'Raccourcis réorganisés'
+        });
+    } catch (error) {
+        console.error('❌ Erreur réorganisation raccourcis:', error);
         res.status(500).json({ 
             success: false, 
             message: 'Erreur serveur' 
@@ -255,7 +326,11 @@ router.put('/:id', verifyToken, async (req, res) => {
     try {
         const userId = req.user.id;
         const shortcutId = req.params.id;
-        const { name, url, category_id } = req.body;
+        let { name, url, category_id } = req.body;
+
+        // Trim values
+        if (name) name = name.trim();
+        if (url) url = url.trim();
 
         if (!name && !url && !category_id) {
             return res.status(400).json({ 
@@ -297,11 +372,11 @@ router.put('/:id', verifyToken, async (req, res) => {
 
         if (name) {
             updates.push('name = ?');
-            values.push(name.trim());
+            values.push(name);
         }
         if (url) {
             updates.push('url = ?');
-            values.push(url.trim());
+            values.push(url);
         }
         if (category_id) {
             updates.push('category_id = ?');
@@ -328,46 +403,4 @@ router.put('/:id', verifyToken, async (req, res) => {
         });
     }
 });
-
-/**
- * DELETE /api/shortcuts/:id
- * Supprimer un raccourci
- */
-router.delete('/:id', verifyToken, async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const shortcutId = req.params.id;
-
-        // Verify ownership
-        const shortcut = await dbPromise.get(
-            'SELECT id FROM shortcuts WHERE id = ? AND user_id = ?',
-            [shortcutId, userId]
-        );
-
-        if (!shortcut) {
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Raccourci non trouvé' 
-            });
-        }
-
-        await dbPromise.run(
-            'DELETE FROM shortcuts WHERE id = ?',
-            [shortcutId]
-        );
-
-        console.log(`✅ Raccourci supprimé: ID ${shortcutId}`);
-        res.json({ 
-            success: true, 
-            message: 'Raccourci supprimé' 
-        });
-    } catch (error) {
-        console.error('❌ Erreur suppression raccourci:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Erreur serveur' 
-        });
-    }
-});
-
 module.exports = router;
