@@ -6,6 +6,103 @@
 
 ---
 
+## 🔧 GUIDE RAPIDE: GitHub Workflow par Phase
+
+### Template Généralisé pour Toutes les Phases
+
+```bash
+# ✅ AVANT DE DÉMARRER
+git checkout dev
+git pull origin dev
+
+# ✅ CRÉER FEATURE BRANCH (une par phase!)
+git checkout -b feature/phaseN-description
+
+# ✅ FAIRE LES CHANGEMENTS
+# ... travail ...
+
+# ✅ VÉRIFIER
+git status
+git diff --stat
+
+# ✅ COMMITER
+git add -A
+git commit -m "feat: phase N - description
+
+CHANGES:
+- Changement 1
+- Changement 2
+- ...
+
+TESTING:
+- Test 1
+- Test 2
+
+READY FOR NEXT PHASE? YES"
+
+# ✅ POUSSER
+git push origin feature/phaseN-description
+
+# ✅ SUR GITHUB
+# 1. Create Pull Request
+# 2. Base: dev
+# 3. Compare: feature/phaseN-description
+# 4. Décrire changements
+# 5. Attendre CI/CD ✅
+# 6. Squash and merge
+
+# ✅ APRÈS MERGE
+git checkout dev
+git pull origin dev
+git branch -d feature/phaseN-description
+
+# ✅ RECOMMENCER POUR PHASE N+1
+```
+
+### Phase 1 à 4: Checklist par Phase
+
+| Phase | Branche | Base | Durée | Commits |
+|-------|---------|------|-------|---------|
+| 1 | `feature/phase1-cleanup-structure` | dev | 1 sem | ~5 |
+| 2 | `feature/phase2-fastify-migration` | dev | 2 sem | ~8 |
+| 3 | `feature/phase3-docker-deployment` | dev | 1 sem | ~5 |
+| 4 | `feature/phase4-monitoring-cicd` | dev | 1 sem | ~8 |
+
+### Résultat Final sur GitHub
+
+```
+Repository: workspace
+
+Branches (Active):
+  main (production)
+  dev (integration) ← branch principale de travail
+
+Pull Requests (Closed):
+  #4 Phase 4: Monitoring, CI/CD & Client Integration ✅
+  #3 Phase 3: Docker & Deployment ✅
+  #2 Phase 2: Fastify Migration & Database Models ✅
+  #1 Phase 1: Structure & Configuration ✅
+
+Releases:
+  v4.0.0 (latest) ← Après toutes phases
+  v3.0.0 (current)
+  v2.0.0 (snapshot)
+  v1.0.0 (snapshot)
+
+Tags:
+  v4.0.0 → main (Release 4.0.0)
+  v3.0.0 → main (Audit state)
+  v2.0.0 → App-V3 snapshot
+  v1.0.0 → Apps-V2 snapshot
+
+GitHub Actions:
+  CI/CD: npm install, build, test, lint ✅
+  Docker: Build & push images ✅
+  Release: Automated on tags ✅
+```
+
+---
+
 ## 🎯 Architecture Cible (Final State)
 
 ```
@@ -248,6 +345,147 @@ export const getConfig = (env: 'development' | 'production') => {
 - [ ] Server utilise depuis config
 
 **Impact:** 🟡 MOYEN - Fusion prochaine
+
+---
+
+#### 1.5 GitHub Workflow pour Phase 1
+
+**Objectif:** Publier Phase 1 sur GitHub avec PR
+
+**Workflow:**
+
+```bash
+# 1️⃣ AVANT DE COMMENCER (si tu reprends après une pause)
+git checkout dev
+git pull origin dev
+git status
+
+# 2️⃣ CRÉER LA FEATURE BRANCH (si pas déjà créée)
+git checkout -b feature/phase1-cleanup-structure
+
+# 3️⃣ FAIRE LES CHANGEMENTS
+# - Node.js update
+# - npm cleanup
+# - Créer dossiers structure
+# - Créer config/network.config.ts
+# - Ajouter package.json/tsconfig.json pour proxmox
+# - Créer .env.example
+
+# 4️⃣ VÉRIFIER LES CHANGEMENTS
+git status
+git diff --stat
+# Devrait montrer: ~30 fichiers changés
+
+# 5️⃣ COMMITER PROPREMENT
+git add -A
+
+git commit -m "feat: phase 1 - structure + config + cleanup dépendances
+
+PHASE 1 CHANGES:
+- Upgrade Node.js to v20 LTS (from 18.19.1)
+- Remove unused dependencies (puppeteer, jest, supertest, ts-jest)
+- Create proxmox app structure (src/, docker/)
+- Create config/network.config.ts for multi-env configuration
+- Create apps/proxmox with package.json and tsconfig.json
+- Create docker/ directory for deployment setup
+- Create shared/ directory for shared types and utilities
+- Create .env.example for Proxmox configuration
+- Add README files to all new modules
+
+IMPACTS:
+- npm install now faster (no puppeteer errors)
+- Node 20 LTS unlocks newer dependencies
+- Ready for Phase 2: Fastify migration"
+
+# 6️⃣ POUSSER SUR GITHUB
+git push origin feature/phase1-cleanup-structure
+
+# Output devrait montrer:
+# * [new branch]      feature/phase1-cleanup-structure -> feature/phase1-cleanup-structure
+# 
+# Create a pull request for 'feature/phase1-cleanup-structure' on GitHub by visiting:
+#      https://github.com/SandersonnDev/workspace/pull/new/feature/phase1-cleanup-structure
+```
+
+**7️⃣ CRÉER LA PR SUR GITHUB:**
+
+```
+GitHub.com → Pull Requests → "New Pull Request"
+  ├─ Compare: feature/phase1-cleanup-structure
+  ├─ Base: dev
+  ├─ Title: "Phase 1: Structure & Configuration"
+  ├─ Description: (copier le message du commit)
+  │   ```
+  │   # Phase 1: Préparation
+  │   
+  │   ## Changements
+  │   - ✅ Node.js v20 LTS
+  │   - ✅ Cleanup dépendances
+  │   - ✅ Structure proxmox
+  │   - ✅ Config centralisée
+  │   
+  │   ## Tests effectués
+  │   - `npm install` passes
+  │   - `npm run dev` works
+  │   
+  │   ## Prêt pour Phase 2? OUI
+  │   ```
+  └─ Create pull request
+```
+
+**8️⃣ REVIEW & APPROVAL:**
+
+```
+Actions post-création PR:
+- GitHub Actions s'exécute (linting, tests)
+- Attendre validation ✅
+- Approuver soi-même (ou attendre feedback)
+- Merger: "Squash and merge" (recommandé)
+```
+
+**9️⃣ MERGER ET NETTOYER:**
+
+```bash
+# Sur GitHub: Click "Squash and merge"
+
+# Localement (après merge):
+git checkout dev
+git pull origin dev
+
+# Supprimer la branche locale
+git branch -d feature/phase1-cleanup-structure
+
+# Vérifier que tout est à jour
+git log --oneline -5
+# Devrait montrer le commit de Phase 1
+```
+
+**✅ Résultat:**
+
+```bash
+$ git branch -a
+* dev
+  main
+  remotes/origin/HEAD -> origin/main
+  remotes/origin/dev
+  remotes/origin/feature/phase1-cleanup-structure (DELETE après merge)
+  remotes/origin/main
+
+$ git log --oneline
+abc1234 (HEAD -> dev) Merge pull request #1 Phase 1: Structure & Configuration
+def5678 feat: phase 1 - structure + config + cleanup dépendances
+xyz9012 (tag: v3.0.0, origin/main) Audit + RoadMap Refactorisation
+```
+
+**Checklist:**
+- [ ] Feature branch poussée
+- [ ] PR créée (base: dev)
+- [ ] CI/CD jobs passent
+- [ ] PR mergée dans dev
+- [ ] Feature branch supprimée
+- [ ] dev mis à jour localement
+
+**Impact:** 🟢 HAUT - Phase 1 complete et documentée
 
 ---
 
@@ -495,6 +733,154 @@ CREATE INDEX idx_activity_logs_user ON activity_logs(user_id);
 
 ---
 
+#### 2.6 GitHub Workflow pour Phase 2
+
+**Objectif:** Publier Migration Fastify sur GitHub
+
+**Workflow:**
+
+```bash
+# 1️⃣ RÉCUPÉRER LES CHANGEMENTS (Phase 1 est mergée)
+git checkout dev
+git pull origin dev
+git status
+
+# 2️⃣ CRÉER NOUVELLE FEATURE BRANCH (par phase!)
+git checkout -b feature/phase2-fastify-migration
+
+# 3️⃣ FAIRE LES CHANGEMENTS PHASE 2
+# - Créer apps/proxmox/src/main.ts (Fastify setup)
+# - Migrer routes Express → Fastify
+# - Créer modèles Database (User, Message, Event, ActivityLog)
+# - Implémenter WebSocket handlers
+# - Créer schema PostgreSQL
+# - Tester endpoints
+
+# 4️⃣ VÉRIFIER LES CHANGEMENTS
+git status
+git diff --stat
+# Devrait montrer: ~20 fichiers changés
+
+# 5️⃣ COMMITER PROPREMENT
+git add -A
+
+git commit -m "feat: phase 2 - fastify migration + database models
+
+PHASE 2 CHANGES:
+- Create apps/proxmox/src/main.ts (Fastify entry point)
+- Setup Fastify with Helmet, CORS, WebSocket
+- Migrate Express routes to Fastify:
+  - /api/auth/* (login, logout, verify)
+  - /api/events/* (agenda management)
+  - /api/messages/* (chat)
+  - /api/shortcuts/* (user shortcuts)
+  - /api/lots/* (réception)
+- Create TypeScript models:
+  - User (getAll, getById, create, update, delete)
+  - Message (create, getByConversation, markAsRead)
+  - Event (create, update, getRange)
+  - ActivityLog (log, getRecent)
+- Implement WebSocket handlers:
+  - message:send
+  - presence:update
+  - typing:indicator
+- Create PostgreSQL schema (users, messages, events, activity_logs)
+- Add indexes for performance
+
+TESTING:
+- /api/health endpoint responds
+- WebSocket /ws connects
+- All routes migrate from Express
+- PostgreSQL schema validated
+
+READY FOR PHASE 3? YES"
+
+# 6️⃣ POUSSER SUR GITHUB
+git push origin feature/phase2-fastify-migration
+```
+
+**7️⃣ CRÉER LA PR SUR GITHUB:**
+
+```
+GitHub.com → Pull Requests → "New Pull Request"
+  ├─ Compare: feature/phase2-fastify-migration
+  ├─ Base: dev
+  ├─ Title: "Phase 2: Fastify Migration & Database Models"
+  ├─ Description:
+  │   ```
+  │   # Phase 2: Migration Proxmox
+  │   
+  │   ## Changements
+  │   - ✅ Fastify setup (replaces Express)
+  │   - ✅ Routes migrated (8 endpoints)
+  │   - ✅ Database models created
+  │   - ✅ WebSocket handlers implemented
+  │   - ✅ PostgreSQL schema designed
+  │   
+  │   ## Tests effectués
+  │   - Routes respond on localhost:4000
+  │   - WebSocket connects
+  │   - Database CRUD operations work
+  │   
+  │   ## Breaking Changes
+  │   - Express endpoint format changes (Fastify syntax)
+  │   - Client must update API calls
+  │   
+  │   ## Prêt pour Phase 3? OUI
+  │   ```
+  └─ Create pull request
+```
+
+**8️⃣ CODE REVIEW & MERGE:**
+
+```bash
+# GitHub Actions valide:
+# - npm install
+# - npm run build
+# - Type checking
+# - Linting
+
+# Une fois approuvé:
+# Click "Squash and merge" on GitHub
+
+# Localement (après merge):
+git checkout dev
+git pull origin dev
+git branch -d feature/phase2-fastify-migration
+
+# Vérifier
+git log --oneline -5
+```
+
+**✅ Résultat:**
+
+```bash
+$ git branch -a
+* dev
+  main
+  remotes/origin/dev
+  remotes/origin/main
+
+$ git log --oneline
+abc1234 (HEAD -> dev) Merge pull request #2 Phase 2: Fastify Migration
+def5678 feat: phase 2 - fastify migration + database models
+ghi9012 Merge pull request #1 Phase 1: Structure & Configuration
+jkl3456 feat: phase 1 - structure + config + cleanup dépendances
+```
+
+**Checklist:**
+- [ ] Feature branch créée depuis dev
+- [ ] Tous changements Phase 2 commités
+- [ ] PR créée (base: dev)
+- [ ] CI/CD jobs passent
+- [ ] PR mergée
+- [ ] dev mis à jour localement
+- [ ] Feature branch supprimée
+
+**Impact:** 🟢 HAUT - Backend foundation solid
+
+---
+
 ### PHASE 3: DOCKER & DÉPLOIEMENT (Semaine 4)
 
 #### 3.1 Dockerfile Proxmox
@@ -580,6 +966,150 @@ volumes:
 
 ---
 
+#### 3.3 GitHub Workflow pour Phase 3
+
+**Objectif:** Publier Docker & Deployment sur GitHub
+
+**Workflow:**
+
+```bash
+# 1️⃣ RÉCUPÉRER LES CHANGEMENTS (Phase 2 est mergée)
+git checkout dev
+git pull origin dev
+git status
+
+# 2️⃣ CRÉER NOUVELLE FEATURE BRANCH
+git checkout -b feature/phase3-docker-deployment
+
+# 3️⃣ FAIRE LES CHANGEMENTS PHASE 3
+# - Créer docker/proxmox/Dockerfile
+# - Créer docker/proxmox/docker-compose.yml
+# - Créer docker/.env.example
+# - Créer scripts de deployment
+# - Créer docs/DEPLOYMENT.md
+# - Tester build Docker
+
+# 4️⃣ VÉRIFIER LES CHANGEMENTS
+git status
+git diff --stat
+# Devrait montrer: ~10 fichiers changés
+
+# 5️⃣ COMMITER PROPREMENT
+git add -A
+
+git commit -m "feat: phase 3 - docker setup + deployment
+
+PHASE 3 CHANGES:
+- Create docker/proxmox/Dockerfile:
+  - Base Node 20 Alpine
+  - Install dependencies
+  - Expose port 4000
+  - Health checks
+- Create docker/proxmox/docker-compose.yml:
+  - Proxmox service (Fastify)
+  - PostgreSQL service
+  - Volume management
+  - Health checks
+- Create docker/.env.example:
+  - Database configuration
+  - Environment variables
+  - Secrets template
+- Create deployment documentation:
+  - docker/README.md
+  - docs/DEPLOYMENT.md
+  - Kubernetes manifests (optional)
+- Setup CI/CD for Docker builds
+
+TESTING:
+- docker-compose up works
+- Container healthcheck passes
+- Services communicate correctly
+- Volume mounts work
+
+READY FOR PHASE 4? YES"
+
+# 6️⃣ POUSSER SUR GITHUB
+git push origin feature/phase3-docker-deployment
+```
+
+**7️⃣ CRÉER LA PR SUR GITHUB:**
+
+```
+GitHub.com → Pull Requests → "New Pull Request"
+  ├─ Compare: feature/phase3-docker-deployment
+  ├─ Base: dev
+  ├─ Title: "Phase 3: Docker & Deployment"
+  ├─ Description:
+  │   ```
+  │   # Phase 3: Docker & Déploiement
+  │   
+  │   ## Changements
+  │   - ✅ Docker containerization
+  │   - ✅ docker-compose for local dev
+  │   - ✅ PostgreSQL container
+  │   - ✅ Deployment documentation
+  │   - ✅ CI/CD for Docker builds
+  │   
+  │   ## Tests effectués
+  │   - docker-compose up successful
+  │   - Container healthchecks pass
+  │   - Services communicate
+  │   - Volume mounts work
+  │   
+  │   ## Prêt pour Phase 4? OUI
+  │   ```
+  └─ Create pull request
+```
+
+**8️⃣ CODE REVIEW & MERGE:**
+
+```bash
+# GitHub Actions:
+# - Build Docker image
+# - Docker compose test
+# - Healthcheck validation
+
+# Une fois approuvé:
+# Click "Squash and merge" on GitHub
+
+# Localement (après merge):
+git checkout dev
+git pull origin dev
+git branch -d feature/phase3-docker-deployment
+
+# Vérifier
+git log --oneline -5
+```
+
+**✅ Résultat:**
+
+```bash
+$ docker-compose -f docker/proxmox/docker-compose.yml up
+# Services démarrent correctement
+
+$ curl http://localhost:4000/api/health
+# {"status":"ok","timestamp":"2026-01-15T..."}
+
+$ git log --oneline
+abc1234 (HEAD -> dev) Merge pull request #3 Phase 3: Docker & Deployment
+def5678 feat: phase 3 - docker setup + deployment
+ghi9012 Merge pull request #2 Phase 2: Fastify Migration
+...
+```
+
+**Checklist:**
+- [ ] Feature branch créée depuis dev
+- [ ] Dockerfile créé et testé
+- [ ] docker-compose.yml créé
+- [ ] PR créée (base: dev)
+- [ ] CI/CD Docker jobs passent
+- [ ] PR mergée
+- [ ] dev mis à jour localement
+
+**Impact:** 🟢 HAUT - Production containerized
+
+---
+
 ### PHASE 4: CLIENTS (Semaine 5)
 
 #### 4.1 Mettre à jour Client Electron
@@ -645,6 +1175,238 @@ ws.onmessage = (e) => {
 - [ ] Reconnection handling
 
 **Impact:** 🟡 MOYEN - Monitoring centralisé
+
+---
+
+#### 4.3 GitHub Workflow pour Phase 4
+
+**Objectif:** Publier Client Integration & Monitoring sur GitHub
+
+**Workflow:**
+
+```bash
+# 1️⃣ RÉCUPÉRER LES CHANGEMENTS (Phase 3 est mergée)
+git checkout dev
+git pull origin dev
+git status
+
+# 2️⃣ CRÉER NOUVELLE FEATURE BRANCH
+git checkout -b feature/phase4-monitoring-cicd
+
+# 3️⃣ FAIRE LES CHANGEMENTS PHASE 4
+# - Mettre à jour Client pour utiliser Proxmox
+# - Mettre à jour connection-config.json
+# - Créer routes monitoring Proxmox
+# - Ajouter stats WebSocket
+# - Créer CI/CD workflows GitHub
+# - Ajouter tests et linting
+
+# 4️⃣ VÉRIFIER LES CHANGEMENTS
+git status
+git diff --stat
+# Devrait montrer: ~15 fichiers changés
+
+# 5️⃣ COMMITER PROPREMENT
+git add -A
+
+git commit -m "feat: phase 4 - monitoring + ci/cd + client integration
+
+PHASE 4 CHANGES:
+- Update Client Electron to use Proxmox backend:
+  - Update connection-config.json (point to Proxmox)
+  - Update API client (new endpoints)
+  - Update WebSocket connection
+- Create monitoring endpoints in Proxmox:
+  - /api/monitoring/stats (live stats)
+  - /api/monitoring/logs (activity logs)
+  - /ws monitoring channel
+- Update Server Dashboard:
+  - Real-time stats from Proxmox
+  - Activity feed updates
+  - User presence tracking
+- Setup GitHub Actions CI/CD:
+  - npm install validation
+  - TypeScript compilation check
+  - ESLint + Prettier linting
+  - Docker build and push
+  - Automated releases
+- Add comprehensive tests:
+  - API endpoints
+  - WebSocket handlers
+  - Database operations
+- Create documentation:
+  - API.md (all endpoints)
+  - WEBSOCKET.md (message format)
+  - DATABASE.md (schema)
+  - DEPLOYMENT.md (production setup)
+  - TROUBLESHOOTING.md (common issues)
+
+TESTING:
+- Client connects to Proxmox
+- Chat works end-to-end
+- Agenda syncs correctly
+- Dashboard shows live stats
+- All tests pass
+- CI/CD jobs succeed
+
+READY FOR PRODUCTION? YES"
+
+# 6️⃣ POUSSER SUR GITHUB
+git push origin feature/phase4-monitoring-cicd
+```
+
+**7️⃣ CRÉER LA PR SUR GITHUB:**
+
+```
+GitHub.com → Pull Requests → "New Pull Request"
+  ├─ Compare: feature/phase4-monitoring-cicd
+  ├─ Base: dev
+  ├─ Title: "Phase 4: Monitoring, CI/CD & Client Integration"
+  ├─ Description:
+  │   ```
+  │   # Phase 4: Monitoring, Tests & CI/CD
+  │   
+  │   ## Changements
+  │   - ✅ Client connected to Proxmox backend
+  │   - ✅ Monitoring endpoints created
+  │   - ✅ Real-time stats via WebSocket
+  │   - ✅ GitHub Actions CI/CD setup
+  │   - ✅ Comprehensive tests added
+  │   - ✅ Full documentation created
+  │   
+  │   ## Tests effectués
+  │   - Client to Proxmox connection successful
+  │   - Chat end-to-end working
+  │   - Agenda synchronization verified
+  │   - Dashboard stats updating in real-time
+  │   - All unit tests pass
+  │   - All integration tests pass
+  │   
+  │   ## CI/CD Workflows Added
+  │   - npm install validation
+  │   - TypeScript compilation
+  │   - ESLint linting
+  │   - Unit tests
+  │   - Docker build & push
+  │   - Automated releases
+  │   
+  │   ## REFACTORISATION COMPLÈTE? OUI ✅
+  │   ```
+  └─ Create pull request
+```
+
+**8️⃣ CODE REVIEW & MERGE:**
+
+```bash
+# GitHub Actions:
+# - npm install and build
+# - TypeScript type checking
+# - ESLint linting
+# - All tests pass
+# - Docker image builds
+# - Automated release creation
+
+# Une fois approuvé:
+# Click "Squash and merge" on GitHub
+
+# Localement (après merge):
+git checkout dev
+git pull origin dev
+git branch -d feature/phase4-monitoring-cicd
+
+# Vérifier
+git log --oneline -5
+```
+
+**✅ Résultat Final:**
+
+```bash
+$ git branch -a
+* dev
+  main
+  remotes/origin/dev
+  remotes/origin/main
+
+$ git log --oneline
+abc1234 (HEAD -> dev) Merge pull request #4 Phase 4: Monitoring & CI/CD
+def5678 feat: phase 4 - monitoring + ci/cd + client integration
+ghi9012 Merge pull request #3 Phase 3: Docker & Deployment
+jkl3456 Merge pull request #2 Phase 2: Fastify Migration
+mno5678 Merge pull request #1 Phase 1: Structure & Configuration
+pqr9012 (tag: v3.0.0) Audit + RoadMap Refactorisation
+
+$ git tag
+v1.0.0 (ancien snapshot)
+v2.0.0 (ancien snapshot)
+v3.0.0 (release courante)
+v4.0.0 (à créer après Phase 4)
+
+$ github.com/SandersonnDev/workspace
+  ├─ Branches: main, dev
+  ├─ Pull Requests: #1, #2, #3, #4 (tous mergés)
+  ├─ Releases: v1.0.0, v2.0.0, v3.0.0, v4.0.0
+  └─ Actions: CI/CD passing ✅
+```
+
+**✅ REFACTORISATION 100% COMPLÈTE**
+
+```bash
+✅ Phase 1: Node upgrade + Structure
+✅ Phase 2: Fastify migration + Database
+✅ Phase 3: Docker containerization
+✅ Phase 4: Monitoring + CI/CD + Integration
+
+Architecture cible atteinte:
+├─ Client Electron (léger)
+├─ Server Dashboard (monitoring)
+└─ Proxmox Backend (Fastify + PostgreSQL)
+```
+
+**Checklist finale:**
+- [ ] Feature branch créée depuis dev
+- [ ] Tous changements Phase 4 commités
+- [ ] PR créée (base: dev)
+- [ ] Tous CI/CD jobs passent
+- [ ] PR mergée
+- [ ] dev mis à jour localement
+- [ ] Tag v4.0.0 créé sur main
+- [ ] Release créée sur GitHub
+
+**Impact:** 🟢 CRITIQUE - Refactorisation Complète!
+
+---
+
+## 🚀 POST-REFACTORISATION (BONUS)
+
+### Créer une Release v4.0.0
+
+Après que Phase 4 soit mergée dans dev:
+
+```bash
+# 1️⃣ FUSIONNER dev DANS main
+git checkout main
+git pull origin main
+git merge dev
+
+# 2️⃣ CRÉER TAG v4.0.0
+git tag v4.0.0 -m "Release v4.0.0: Complete architecture refactoring
+- Phase 1: Node upgrade & structure
+- Phase 2: Fastify migration
+- Phase 3: Docker containerization
+- Phase 4: Monitoring & CI/CD"
+
+# 3️⃣ POUSSER VERS GITHUB
+git push origin main
+git push origin v4.0.0
+
+# 4️⃣ CRÉER RELEASE SUR GITHUB
+GitHub.com → Releases → "Create a new release"
+  ├─ Tag: v4.0.0
+  ├─ Target: main
+  ├─ Title: Release 4.0.0 - Architecture Refactoring Complete
+  ├─ Description: [Voir RELEASE_NOTES.md]
+  └─ Publish release
+```
 
 ---
 

@@ -68,6 +68,84 @@ docs/                 # 🆕 Documentation
 
 ---
 
+## 🔧 GitHub Workflow - Cycle de Refactorisation
+
+### Branching Strategy: Git Flow
+
+```
+main (production, releases tagged)
+  ↑
+dev (integration, feature merges)
+  ├─ feature/phase1-cleanup-structure
+  ├─ feature/phase2-fastify-migration
+  ├─ feature/phase3-docker-deployment
+  └─ feature/phase4-monitoring-cicd
+
+Tags:
+  v1.0.0 (ancien snapshot)
+  v2.0.0 (snapshot before refactor)
+  v3.0.0 (current release)
+  v4.0.0 (after phase 4)
+```
+
+### Workflow pour Chaque Phase
+
+**1️⃣ Avant de démarrer:**
+```bash
+git checkout dev
+git pull origin dev
+```
+
+**2️⃣ Créer feature branch (UNE par phase!):**
+```bash
+git checkout -b feature/phaseN-description
+```
+
+**3️⃣ Travail + commits:**
+```bash
+git add -A
+git commit -m "feat: phase N - description"
+git push origin feature/phaseN-description
+```
+
+**4️⃣ Sur GitHub - Créer PR:**
+- Base: `dev`
+- Compare: `feature/phaseN-description`
+- CI/CD valide (npm, TypeScript, lint, tests)
+
+**5️⃣ Merger:**
+- Squash and merge sur GitHub
+- Suppression automatique de la feature branch
+
+**6️⃣ Mettre à jour localement:**
+```bash
+git checkout dev
+git pull origin dev
+git branch -d feature/phaseN-description
+```
+
+### Résultat Final (Après Phase 4)
+
+```
+Releases sur GitHub:
+  v4.0.0 (latest)  → Release 4.0.0: Architecture refactoring complete
+  v3.0.0           → Release 3.0.0: Current (baseline before changes)
+  v2.0.0           → Snapshot App-V3 before refactor
+  v1.0.0           → Snapshot Apps-V2 before refactor
+
+Pull Requests (Closed):
+  #4 Phase 4: Monitoring, CI/CD & Client Integration
+  #3 Phase 3: Docker & Deployment
+  #2 Phase 2: Fastify Migration & Database
+  #1 Phase 1: Structure & Configuration
+
+Branches:
+  main (tagged releases)
+  dev (active development)
+```
+
+---
+
 ## 🚨 Problèmes Identifiés
 
 ### 1. Node.js Version (CRITIQUE)
