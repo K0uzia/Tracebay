@@ -1,6 +1,5 @@
 {
   "mode": "local",
-
   "local": {
     "url": "http://localhost:8060",
     "ws": "ws://localhost:8060"
@@ -18,7 +17,5 @@
   "healthCheckInterval": 30000,
   "reconnectDelay": 3000,
   "maxReconnectAttempts": 5,
-
-  
-  " _comment:" : "1s = 1000 / 30s = 30000 "
+  "_comment": "NOTE: Cette config est un fallback pour Electron. La vraie config côté web est dans public/config/connection-config.json"
 }

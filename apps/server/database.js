@@ -52,6 +52,7 @@ function initializeTables() {
             category_id INTEGER NOT NULL,
             name TEXT NOT NULL,
             url TEXT NOT NULL,
+            position INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
         );
@@ -202,6 +203,42 @@ function initializeTables() {
                     db.run("ALTER TABLE lots ADD COLUMN recovered_at DATETIME DEFAULT NULL", (alterErr) => {
                         if (alterErr) logger.error(`Erreur ajout recovered_at: ${alterErr.message}`);
                         else logger.info('✅ Colonne recovered_at ajoutée à la table lots');
+                    });
+                }
+            });
+
+            // Migration: Remplir les positions manquantes dans shortcuts
+            db.all("PRAGMA table_info(shortcuts)", (pragmaErr, columns) => {
+                if (pragmaErr) {
+                    logger.error(`Erreur vérification colonne shortcuts: ${pragmaErr.message}`);
+                    return;
+                }
+                const hasPosition = columns.some(col => col.name === 'position');
+                if (!hasPosition) {
+                    // Ajouter la colonne position si elle n'existe pas
+                    db.run("ALTER TABLE shortcuts ADD COLUMN position INTEGER DEFAULT 0", (alterErr) => {
+                        if (alterErr) logger.error(`Erreur ajout colonne position: ${alterErr.message}`);
+                        else {
+                            logger.info('✅ Colonne position ajoutée à la table shortcuts');
+                            // Maintenant remplir les positions
+                            db.run(`
+                                UPDATE shortcuts 
+                                SET position = ROWID - 1
+                            `, (updateErr) => {
+                                if (updateErr) logger.error(`Erreur migration positions: ${updateErr.message}`);
+                                else logger.info('✅ Migration positions raccourcis complétée');
+                            });
+                        }
+                    });
+                } else {
+                    // La colonne existe, remplir les positions NULL
+                    db.run(`
+                        UPDATE shortcuts 
+                        SET position = ROWID - 1
+                        WHERE position IS NULL OR position < 0
+                    `, (updateErr) => {
+                        if (updateErr) logger.error(`Erreur migration positions: ${updateErr.message}`);
+                        else logger.info('✅ Migration positions raccourcis complétée');
                     });
                 }
             });
