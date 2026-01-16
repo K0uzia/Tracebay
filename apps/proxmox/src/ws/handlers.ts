@@ -3,6 +3,8 @@
  * Handles real-time communication events
  */
 
+import { getSystemHealth, getMessageRate, getConnectedUserCount } from '../api/monitoring';
+
 export interface WSMessage {
   type: string;
   data?: any;
@@ -15,6 +17,7 @@ export interface WSContext {
   userId: string;
   username: string;
   broadcast: (message: WSMessage) => void;
+  connectedUsers?: Map<string, any>;
 }
 
 /**
@@ -92,12 +95,35 @@ export const handleTypingIndicator = async (context: WSContext, message: WSMessa
 };
 
 /**
+ * Handle monitoring stats request
+ */
+export const handleStatsRequest = async (context: WSContext, message: WSMessage) => {
+  const { connectedUsers, broadcast } = context;
+
+  const stats = {
+    connectedUsers: connectedUsers ? getConnectedUserCount(connectedUsers) : 0,
+    messagesPerMinute: getMessageRate(),
+    systemHealth: getSystemHealth(),
+    timestamp: new Date().toISOString()
+  };
+
+  // Send stats to the requesting client
+  broadcast({
+    type: 'stats:response',
+    data: stats
+  });
+
+  console.log(`📊 Stats requested at ${new Date().toISOString()}`);
+};
+
+/**
  * Map event handlers
  */
 export const wsHandlers: Record<string, (context: WSContext, message: WSMessage) => Promise<void>> = {
   'message:send': handleMessageSend,
   'presence:update': handlePresenceUpdate,
-  'typing:indicator': handleTypingIndicator
+  'typing:indicator': handleTypingIndicator,
+  'stats:request': handleStatsRequest
 };
 
 /**
