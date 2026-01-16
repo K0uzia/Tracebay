@@ -24,7 +24,11 @@
     "test": "npm run test --workspaces",
     "lint": "eslint \"apps/**/*.{ts,js}\" --fix",
     "format": "prettier --write \"apps/**/*.{ts,js,css,json}\"",
-    "type-check": "npm run type-check --workspace=apps/server"
+    "type-check": "npm run type-check --workspace=apps/server",
+    "docker:proxmox:build": "docker compose -f docker/proxmox/docker-compose.yml build proxmox",
+    "docker:proxmox:up": "docker compose -f docker/proxmox/docker-compose.yml up -d",
+    "docker:proxmox:logs": "docker compose -f docker/proxmox/docker-compose.yml logs -f proxmox",
+    "docker:proxmox:down": "docker compose -f docker/proxmox/docker-compose.yml down"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
