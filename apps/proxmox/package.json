@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Workspace Proxmox Backend API - Fastify + TypeScript",
   "main": "dist/main.js",
-  "type": "module",
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "build": "tsc",
