@@ -48,7 +48,7 @@ function formatDate(dateStr) {
  */
 function getStateBadgeClass(state) {
   if (!state) return 'recond';
-  
+
   const stateNormalized = state.trim();
   const stateMap = {
     'Reconditionnés': 'recond',
@@ -56,7 +56,7 @@ function getStateBadgeClass(state) {
     'HS': 'hs',
     'Pour pièces': 'pieces'
   };
-  
+
   return stateMap[stateNormalized] || 'recond';
 }
 
@@ -102,7 +102,7 @@ function generateItemsRows(items) {
  */
 function generateLotNameRow(lot) {
   if (!lot.lot_name) return '';
-  
+
   return `
     <div class="info-row">
       <span class="info-label">Nom du Lot :</span>
@@ -118,7 +118,7 @@ function generateLotNameRow(lot) {
  */
 function generateLotDetailsRow(lot) {
   if (!lot.lot_details) return '';
-  
+
   return `
     <div class="info-row">
       <span class="info-label">Détails :</span>
@@ -195,14 +195,14 @@ async function convertHtmlToPdf(html, outputPath) {
       headless: 'new',
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
-    
+
     const page = await browser.newPage();
-    
+
     // Charger le HTML avec les styles
     await page.setContent(html, {
       waitUntil: 'networkidle0'
     });
-    
+
     // Générer le PDF
     await page.pdf({
       path: outputPath,
@@ -215,7 +215,7 @@ async function convertHtmlToPdf(html, outputPath) {
         left: '20px'
       }
     });
-    
+
     console.log('✅ PDF généré avec succès:', outputPath);
   } catch (error) {
     console.error('❌ Erreur lors de la conversion HTML → PDF:', error);

@@ -59,14 +59,14 @@ router.get('/all', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { name } = req.body;
-    
+
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Nom de marque requis' });
     }
 
     // Vérifier l'unicité
     const existing = await dbPromise.get(
-      `SELECT id FROM marques WHERE LOWER(name) = LOWER(?)`,
+      'SELECT id FROM marques WHERE LOWER(name) = LOWER(?)',
       [name.trim()]
     );
 
@@ -75,13 +75,13 @@ router.post('/', async (req, res) => {
     }
 
     const result = await dbPromise.run(
-      `INSERT INTO marques (name) VALUES (?)`,
+      'INSERT INTO marques (name) VALUES (?)',
       [name.trim()]
     );
 
-    res.json({ 
-      success: true, 
-      id: result.id, 
+    res.json({
+      success: true,
+      id: result.id,
       name: name.trim(),
       message: 'Marque créée avec succès'
     });
@@ -98,14 +98,14 @@ router.post('/:marqueId/modeles', async (req, res) => {
   try {
     const marqueId = parseInt(req.params.marqueId);
     const { name } = req.body;
-    
+
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Nom de modèle requis' });
     }
 
     // Vérifier que la marque existe
     const marque = await dbPromise.get(
-      `SELECT id FROM marques WHERE id = ?`,
+      'SELECT id FROM marques WHERE id = ?',
       [marqueId]
     );
 
@@ -115,7 +115,7 @@ router.post('/:marqueId/modeles', async (req, res) => {
 
     // Vérifier l'unicité du modèle pour cette marque
     const existing = await dbPromise.get(
-      `SELECT id FROM modeles WHERE LOWER(name) = LOWER(?) AND marque_id = ?`,
+      'SELECT id FROM modeles WHERE LOWER(name) = LOWER(?) AND marque_id = ?',
       [name.trim(), marqueId]
     );
 
@@ -124,13 +124,13 @@ router.post('/:marqueId/modeles', async (req, res) => {
     }
 
     const result = await dbPromise.run(
-      `INSERT INTO modeles (marque_id, name) VALUES (?, ?)`,
+      'INSERT INTO modeles (marque_id, name) VALUES (?, ?)',
       [marqueId, name.trim()]
     );
 
-    res.json({ 
-      success: true, 
-      id: result.id, 
+    res.json({
+      success: true,
+      id: result.id,
       name: name.trim(),
       marque_id: marqueId,
       message: 'Modèle créé avec succès'

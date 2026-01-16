@@ -22,7 +22,7 @@ export class ConnectionPool {
   async initialize(): Promise<void> {
     logger.info('Initializing connection pool', {
       size: this.poolSize,
-      path: this.dbPath,
+      path: this.dbPath
     });
 
     for (let i = 0; i < this.poolSize; i++) {
@@ -112,7 +112,7 @@ export class ConnectionPool {
       total: this.connections.length,
       available: this.available.length,
       inUse: this.inUse.size,
-      waiting: this.waitQueue.length,
+      waiting: this.waitQueue.length
     };
   }
 }

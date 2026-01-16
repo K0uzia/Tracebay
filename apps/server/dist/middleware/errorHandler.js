@@ -8,15 +8,15 @@ export async function errorHandler(error, request, reply) {
         method: request.method,
         url: request.url,
         error: error.message,
-        stack: error.stack,
+        stack: error.stack
     });
     if (error instanceof AppError) {
         reply.status(error.statusCode).send({
             success: false,
             error: {
                 message: error.message,
-                code: error.code,
-            },
+                code: error.code
+            }
         });
     }
     else {
@@ -26,8 +26,8 @@ export async function errorHandler(error, request, reply) {
                 success: false,
                 error: {
                     message: error.message,
-                    code: 'VALIDATION_ERROR',
-                },
+                    code: 'VALIDATION_ERROR'
+                }
             });
         }
         else {
@@ -36,8 +36,8 @@ export async function errorHandler(error, request, reply) {
                 success: false,
                 error: {
                     message: 'Internal server error',
-                    code: 'INTERNAL_ERROR',
-                },
+                    code: 'INTERNAL_ERROR'
+                }
             });
         }
     }

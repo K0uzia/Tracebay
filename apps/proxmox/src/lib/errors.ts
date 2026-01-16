@@ -226,10 +226,6 @@ export const formatError = (error: any) => {
  */
 export const asyncHandler = (fn: Function) => {
   return async (...args: any[]) => {
-    try {
-      return await fn(...args);
-    } catch (error) {
-      throw error;
-    }
+    return fn(...args);
   };
 };

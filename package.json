@@ -22,7 +22,7 @@
     "start:client": "npm start --workspace=apps/client",
     "reset-db": "npm run reset-db --workspace=apps/server",
     "test": "npm run test --workspaces",
-    "lint": "eslint \"apps/**/*.{ts,js}\" --fix",
+    "lint": "eslint \"apps/**/src/**/*.{ts,js}\" \"apps/proxmox/**/*.ts\" --fix",
     "format": "prettier --write \"apps/**/*.{ts,js,css,json}\"",
     "type-check": "npm run type-check --workspace=apps/server",
     "docker:proxmox:build": "docker compose -f docker/proxmox/docker-compose.yml build proxmox",

@@ -11,7 +11,7 @@ interface JwtPayload {
  */
 export function generateToken(payload: JwtPayload): string {
   return jwt.sign(payload, config.jwt.secret, {
-    expiresIn: config.jwt.expiry,
+    expiresIn: config.jwt.expiry
   } as jwt.SignOptions);
 }
 

@@ -7,7 +7,7 @@ import { AuthenticationError } from '../lib/errors.js';
  */
 export async function authMiddleware(
   request: FastifyRequest,
-  reply: FastifyReply
+  _reply: FastifyReply
 ): Promise<void> {
   try {
     const authHeader = request.headers.authorization;
@@ -20,6 +20,7 @@ export async function authMiddleware(
     const payload = verifyToken(token);
 
     // Attach user info to request
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (request as any).user = payload;
   } catch (error) {
     throw new AuthenticationError('Invalid token');

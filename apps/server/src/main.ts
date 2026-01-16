@@ -40,7 +40,7 @@ async function initializeDatabase(): Promise<void> {
  */
 async function createServer() {
   const fastify = Fastify({
-    logger: false, // Using custom logger
+    logger: false // Using custom logger
   });
 
   // Security middleware
@@ -50,15 +50,15 @@ async function createServer() {
         defaultSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:', 'https:'],
-      },
-    },
+        imgSrc: ["'self'", 'data:', 'https:']
+      }
+    }
   });
 
   // CORS
   await fastify.register(cors, {
     origin: config.env === 'development' ? true : ['http://localhost:8060'],
-    credentials: true,
+    credentials: true
   });
 
   // Custom middleware
@@ -76,7 +76,7 @@ async function createServer() {
   fastify.get('/api', async () => {
     return {
       message: 'Workspace API v2.0',
-      version: '2.0.0',
+      version: '2.0.0'
     };
   });
 

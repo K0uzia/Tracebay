@@ -2,4 +2,4 @@ import { FastifyRequest, FastifyReply } from 'fastify';
 /**
  * Authentication middleware
  */
-export declare function authMiddleware(request: FastifyRequest, reply: FastifyReply): Promise<void>;
+export declare function authMiddleware(request: FastifyRequest, _reply: FastifyReply): Promise<void>;

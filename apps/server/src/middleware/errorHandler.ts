@@ -14,7 +14,7 @@ export async function errorHandler(
     method: request.method,
     url: request.url,
     error: error.message,
-    stack: error.stack,
+    stack: error.stack
   });
 
   if (error instanceof AppError) {
@@ -22,8 +22,8 @@ export async function errorHandler(
       success: false,
       error: {
         message: error.message,
-        code: error.code,
-      },
+        code: error.code
+      }
     });
   } else {
     // Handle Fastify validation errors
@@ -32,8 +32,8 @@ export async function errorHandler(
         success: false,
         error: {
           message: error.message,
-          code: 'VALIDATION_ERROR',
-        },
+          code: 'VALIDATION_ERROR'
+        }
       });
     } else {
       // Generic error
@@ -41,8 +41,8 @@ export async function errorHandler(
         success: false,
         error: {
           message: 'Internal server error',
-          code: 'INTERNAL_ERROR',
-        },
+          code: 'INTERNAL_ERROR'
+        }
       });
     }
   }
