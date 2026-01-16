@@ -31,11 +31,11 @@ async function updateServerStatus() {
     // Update status indicator
     const indicator = document.getElementById('status-indicator');
     const statusText = document.getElementById('status-text');
-    
+
     if (response.ok) {
       indicator.className = 'status-indicator online';
       statusText.textContent = 'En ligne';
-      
+
       // Update uptime
       const uptime = Date.now() - startTime;
       document.getElementById('server-uptime').textContent = formatUptime(uptime);
@@ -43,10 +43,10 @@ async function updateServerStatus() {
   } catch (error) {
     const indicator = document.getElementById('status-indicator');
     const statusText = document.getElementById('status-text');
-    
+
     indicator.className = 'status-indicator offline';
     statusText.textContent = 'Hors ligne';
-    
+
     console.error('Failed to fetch server status:', error);
   }
 }
@@ -58,10 +58,10 @@ async function updateSystemResources() {
   // Simulate for now - will be replaced with real data
   const cpuUsage = Math.random() * 50;
   const memoryUsage = Math.random() * 512;
-  
+
   document.getElementById('cpu-progress').style.width = `${cpuUsage}%`;
   document.getElementById('cpu-value').textContent = `${cpuUsage.toFixed(1)}%`;
-  
+
   document.getElementById('memory-progress').style.width = `${(memoryUsage / 1024) * 100}%`;
   document.getElementById('memory-value').textContent = `${memoryUsage.toFixed(0)} MB`;
 }
@@ -83,9 +83,9 @@ function addLogEntry(message) {
   const entry = document.createElement('p');
   entry.className = 'log-entry';
   entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
-  
+
   logContainer.insertBefore(entry, logContainer.firstChild);
-  
+
   // Keep only last 50 entries
   while (logContainer.children.length > 50) {
     logContainer.removeChild(logContainer.lastChild);
@@ -97,11 +97,11 @@ function addLogEntry(message) {
  */
 async function checkHealth() {
   addLogEntry('Vérification de la santé du serveur...');
-  
+
   try {
     const response = await fetch(`${API_URL}/health`);
     const data = await response.json();
-    
+
     if (response.ok) {
       addLogEntry('✓ Serveur en bonne santé');
     } else {
@@ -124,7 +124,7 @@ function viewLogs() {
  */
 function restartServer() {
   const confirmed = confirm('Êtes-vous sûr de vouloir redémarrer le serveur ?');
-  
+
   if (confirmed) {
     addLogEntry('⚠️ Redémarrage du serveur demandé');
     // Will be implemented with IPC
@@ -137,12 +137,12 @@ function restartServer() {
 function initDashboard() {
   addLogEntry('Dashboard initialisé');
   addLogEntry('Connexion au serveur backend...');
-  
+
   // Initial update
   updateServerStatus();
   updateSystemResources();
   updateDatabaseStats();
-  
+
   // Periodic updates
   updateInterval = setInterval(() => {
     updateServerStatus();

@@ -77,7 +77,7 @@ const messageStartTime = Date.now();
     // Auth routes
     fastify.post('/api/auth/login', async (request: FastifyRequest, reply: FastifyReply) => {
       const { username, password } = request.body as { username: string; password: string };
-      
+
       if (!username || !password) {
         reply.statusCode = 400;
         return { error: 'Username and password required' };
@@ -330,70 +330,70 @@ const messageStartTime = Date.now();
             const message = JSON.parse(data.toString());
 
             switch (message.type) {
-              case 'message:send':
-                messageCount++;
-                incrementMessageCount();
-                // Broadcast to all users
-                for (const user of connectedUsers.values()) {
+            case 'message:send':
+              messageCount++;
+              incrementMessageCount();
+              // Broadcast to all users
+              for (const user of connectedUsers.values()) {
+                try {
+                  user.socket.send(JSON.stringify({
+                    type: 'message:new',
+                    data: {
+                      id: `msg_${Date.now()}`,
+                      userId,
+                      username,
+                      text: message.text,
+                      createdAt: new Date().toISOString()
+                    }
+                  }));
+                } catch (e) {
+                  // Socket might be closed
+                }
+              }
+              break;
+
+            case 'typing:indicator':
+              // Broadcast typing status
+              for (const user of connectedUsers.values()) {
+                if (user.id !== userId) {
                   try {
                     user.socket.send(JSON.stringify({
-                      type: 'message:new',
+                      type: 'typing:indicator',
                       data: {
-                        id: `msg_${Date.now()}`,
                         userId,
                         username,
-                        text: message.text,
-                        createdAt: new Date().toISOString()
+                        isTyping: message.isTyping
                       }
                     }));
                   } catch (e) {
                     // Socket might be closed
                   }
                 }
-                break;
+              }
+              break;
 
-              case 'typing:indicator':
-                // Broadcast typing status
-                for (const user of connectedUsers.values()) {
-                  if (user.id !== userId) {
-                    try {
-                      user.socket.send(JSON.stringify({
-                        type: 'typing:indicator',
-                        data: {
-                          userId,
-                          username,
-                          isTyping: message.isTyping
-                        }
-                      }));
-                    } catch (e) {
-                      // Socket might be closed
-                    }
+            case 'presence:update':
+              // Broadcast presence update
+              for (const user of connectedUsers.values()) {
+                if (user.id !== userId) {
+                  try {
+                    user.socket.send(JSON.stringify({
+                      type: 'presence:update',
+                      data: {
+                        userId,
+                        username,
+                        status: message.status
+                      }
+                    }));
+                  } catch (e) {
+                    // Socket might be closed
                   }
                 }
-                break;
+              }
+              break;
 
-              case 'presence:update':
-                // Broadcast presence update
-                for (const user of connectedUsers.values()) {
-                  if (user.id !== userId) {
-                    try {
-                      user.socket.send(JSON.stringify({
-                        type: 'presence:update',
-                        data: {
-                          userId,
-                          username,
-                          status: message.status
-                        }
-                      }));
-                    } catch (e) {
-                      // Socket might be closed
-                    }
-                  }
-                }
-                break;
-
-              default:
-                fastify.log.warn(`Unknown message type: ${message.type}`);
+            default:
+              fastify.log.warn(`Unknown message type: ${message.type}`);
             }
           } catch (e) {
             fastify.log.error(`Error parsing message: ${e}`);

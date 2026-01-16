@@ -2,7 +2,7 @@
  * API Endpoints Integration Tests
  */
 
-import { describe, it, expect, beforeEach } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 
 describe('API Endpoints', () => {
   describe('Health Check', () => {

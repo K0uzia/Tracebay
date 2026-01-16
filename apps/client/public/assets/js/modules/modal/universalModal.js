@@ -1,6 +1,6 @@
 /**
  * Universal Modal Manager
- * 
+ *
  * Gère les modals de manière centralisée et réutilisable
  */
 
@@ -8,7 +8,7 @@ class UniversalModal {
   constructor(modalId) {
     this.modal = document.getElementById(modalId);
     this.modalId = modalId;
-    
+
     if (!this.modal) {
       console.warn(`Modal with id "${modalId}" not found`);
       return;
@@ -157,10 +157,10 @@ class UniversalModal {
       const errorDiv = document.createElement('div');
       errorDiv.className = 'modal-error-message';
       errorDiv.innerHTML = `<p>${message}</p>`;
-      
+
       // Supprimer les anciens messages d'erreur
       body.querySelectorAll('.modal-error-message').forEach(el => el.remove());
-      
+
       body.insertBefore(errorDiv, body.firstChild);
     }
   }
@@ -175,10 +175,10 @@ class UniversalModal {
       const successDiv = document.createElement('div');
       successDiv.className = 'modal-success-message';
       successDiv.innerHTML = `<p>${message}</p>`;
-      
+
       // Supprimer les anciens messages
       body.querySelectorAll('.modal-success-message').forEach(el => el.remove());
-      
+
       body.insertBefore(successDiv, body.firstChild);
     }
   }
@@ -192,7 +192,7 @@ class UniversalModal {
     if (body) {
       body.querySelectorAll('.modal-error-message, .modal-success-message').forEach(el => el.remove());
     }
-    
+
     const form = this.getForm();
     if (form) {
       form.reset();
@@ -318,7 +318,7 @@ export const modalManager = new ModalManager();
 export function initModals() {
   // Initialiser toutes les modals trouvées
   const modalsFound = document.querySelectorAll('[data-modal-id]');
-  
+
   modalsFound.forEach(modal => {
     const modalId = modal.getAttribute('data-modal-id');
     modalManager.get(modalId);

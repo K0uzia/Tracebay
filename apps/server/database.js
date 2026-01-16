@@ -5,40 +5,40 @@ try { require('dotenv').config(); } catch (_) {}
 
 // Simple logger if logger.js not available
 const logger = {
-    info: (msg) => console.log(`ℹ️  ${msg}`),
-    error: (msg) => console.error(`❌ ${msg}`),
-    warn: (msg) => console.warn(`⚠️  ${msg}`)
+  info: (msg) => console.log(`ℹ️  ${msg}`),
+  error: (msg) => console.error(`❌ ${msg}`),
+  warn: (msg) => console.warn(`⚠️  ${msg}`)
 };
 
 function validateDBPath(dbPath) {
-    const dir = path.dirname(dbPath);
-    
-    if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-        logger.info(`📁 Répertoire DB créé: ${dir}`);
-    }
-    
-    return dbPath;
+  const dir = path.dirname(dbPath);
+
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    logger.info(`📁 Répertoire DB créé: ${dir}`);
+  }
+
+  return dbPath;
 }
 
 const dbPath = validateDBPath(
-    path.resolve(
-        process.env.DATABASE_PATH || 
+  path.resolve(
+    process.env.DATABASE_PATH ||
         path.join(__dirname, 'data', 'workspace.db')
-    )
+  )
 );
 
 const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) {
-        logger.error(`Connexion BDD échouée: ${err.message}`);
-        throw err;
-    }
-    logger.info(`✅ Connexion BDD: ${dbPath}`);
-    initializeTables();
+  if (err) {
+    logger.error(`Connexion BDD échouée: ${err.message}`);
+    throw err;
+  }
+  logger.info(`✅ Connexion BDD: ${dbPath}`);
+  initializeTables();
 });
 
 function initializeTables() {
-    const sql = `
+  const sql = `
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
@@ -186,124 +186,124 @@ function initializeTables() {
         CREATE INDEX IF NOT EXISTS idx_lot_items_state ON lot_items(state);
     `;
 
-    db.exec(sql, (err) => {
-        if (err) {
-            logger.error(`Initialisation tables échouée: ${err.message}`);
-        } else {
-            logger.info('✅ Tables BDD initialisées');
-            
-            // Migration: Ajouter recovered_at si nécessaire
-            db.all("PRAGMA table_info(lots)", (pragmaErr, columns) => {
-                if (pragmaErr) {
-                    logger.error(`Erreur vérification colonne: ${pragmaErr.message}`);
-                    return;
-                }
-                const hasRecoveredAt = columns.some(col => col.name === 'recovered_at');
-                if (!hasRecoveredAt) {
-                    db.run("ALTER TABLE lots ADD COLUMN recovered_at DATETIME DEFAULT NULL", (alterErr) => {
-                        if (alterErr) logger.error(`Erreur ajout recovered_at: ${alterErr.message}`);
-                        else logger.info('✅ Colonne recovered_at ajoutée à la table lots');
-                    });
-                }
-            });
+  db.exec(sql, (err) => {
+    if (err) {
+      logger.error(`Initialisation tables échouée: ${err.message}`);
+    } else {
+      logger.info('✅ Tables BDD initialisées');
 
-            // Migration: Remplir les positions manquantes dans shortcuts
-            db.all("PRAGMA table_info(shortcuts)", (pragmaErr, columns) => {
-                if (pragmaErr) {
-                    logger.error(`Erreur vérification colonne shortcuts: ${pragmaErr.message}`);
-                    return;
-                }
-                const hasPosition = columns.some(col => col.name === 'position');
-                if (!hasPosition) {
-                    // Ajouter la colonne position si elle n'existe pas
-                    db.run("ALTER TABLE shortcuts ADD COLUMN position INTEGER DEFAULT 0", (alterErr) => {
-                        if (alterErr) logger.error(`Erreur ajout colonne position: ${alterErr.message}`);
-                        else {
-                            logger.info('✅ Colonne position ajoutée à la table shortcuts');
-                            // Maintenant remplir les positions
-                            db.run(`
+      // Migration: Ajouter recovered_at si nécessaire
+      db.all('PRAGMA table_info(lots)', (pragmaErr, columns) => {
+        if (pragmaErr) {
+          logger.error(`Erreur vérification colonne: ${pragmaErr.message}`);
+          return;
+        }
+        const hasRecoveredAt = columns.some(col => col.name === 'recovered_at');
+        if (!hasRecoveredAt) {
+          db.run('ALTER TABLE lots ADD COLUMN recovered_at DATETIME DEFAULT NULL', (alterErr) => {
+            if (alterErr) logger.error(`Erreur ajout recovered_at: ${alterErr.message}`);
+            else logger.info('✅ Colonne recovered_at ajoutée à la table lots');
+          });
+        }
+      });
+
+      // Migration: Remplir les positions manquantes dans shortcuts
+      db.all('PRAGMA table_info(shortcuts)', (pragmaErr, columns) => {
+        if (pragmaErr) {
+          logger.error(`Erreur vérification colonne shortcuts: ${pragmaErr.message}`);
+          return;
+        }
+        const hasPosition = columns.some(col => col.name === 'position');
+        if (!hasPosition) {
+          // Ajouter la colonne position si elle n'existe pas
+          db.run('ALTER TABLE shortcuts ADD COLUMN position INTEGER DEFAULT 0', (alterErr) => {
+            if (alterErr) logger.error(`Erreur ajout colonne position: ${alterErr.message}`);
+            else {
+              logger.info('✅ Colonne position ajoutée à la table shortcuts');
+              // Maintenant remplir les positions
+              db.run(`
                                 UPDATE shortcuts 
                                 SET position = ROWID - 1
                             `, (updateErr) => {
-                                if (updateErr) logger.error(`Erreur migration positions: ${updateErr.message}`);
-                                else logger.info('✅ Migration positions raccourcis complétée');
-                            });
-                        }
-                    });
-                } else {
-                    // La colonne existe, remplir les positions NULL
-                    db.run(`
+                if (updateErr) logger.error(`Erreur migration positions: ${updateErr.message}`);
+                else logger.info('✅ Migration positions raccourcis complétée');
+              });
+            }
+          });
+        } else {
+          // La colonne existe, remplir les positions NULL
+          db.run(`
                         UPDATE shortcuts 
                         SET position = ROWID - 1
                         WHERE position IS NULL OR position < 0
                     `, (updateErr) => {
-                        if (updateErr) logger.error(`Erreur migration positions: ${updateErr.message}`);
-                        else logger.info('✅ Migration positions raccourcis complétée');
-                    });
-                }
-            });
+            if (updateErr) logger.error(`Erreur migration positions: ${updateErr.message}`);
+            else logger.info('✅ Migration positions raccourcis complétée');
+          });
         }
-    });
+      });
+    }
+  });
 }
 
 const dbPromise = {
-    run(sql, params = []) {
-        return new Promise((resolve, reject) => {
-            db.run(sql, params, function(err) {
-                if (err) reject(err);
-                else resolve({ id: this.lastID, changes: this.changes });
-            });
-        });
-    },
+  run(sql, params = []) {
+    return new Promise((resolve, reject) => {
+      db.run(sql, params, function(err) {
+        if (err) reject(err);
+        else resolve({ id: this.lastID, changes: this.changes });
+      });
+    });
+  },
 
-    get(sql, params = []) {
-        return new Promise((resolve, reject) => {
-            db.get(sql, params, (err, row) => {
-                if (err) reject(err);
-                else resolve(row);
-            });
-        });
-    },
+  get(sql, params = []) {
+    return new Promise((resolve, reject) => {
+      db.get(sql, params, (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+      });
+    });
+  },
 
-    all(sql, params = []) {
-        return new Promise((resolve, reject) => {
-            db.all(sql, params, (err, rows) => {
-                if (err) reject(err);
-                else resolve(rows || []);
-            });
-        });
-    },
+  all(sql, params = []) {
+    return new Promise((resolve, reject) => {
+      db.all(sql, params, (err, rows) => {
+        if (err) reject(err);
+        else resolve(rows || []);
+      });
+    });
+  },
 
-    transaction(fn) {
-        return new Promise((resolve, reject) => {
-            db.run('BEGIN TRANSACTION', (err) => {
-                if (err) return reject(err);
-                
-                fn().then(result => {
-                    db.run('COMMIT', (err) => {
-                        if (err) reject(err);
-                        else resolve(result);
-                    });
-                }).catch(error => {
-                    db.run('ROLLBACK', () => reject(error));
-                });
-            });
+  transaction(fn) {
+    return new Promise((resolve, reject) => {
+      db.run('BEGIN TRANSACTION', (err) => {
+        if (err) return reject(err);
+
+        fn().then(result => {
+          db.run('COMMIT', (err) => {
+            if (err) reject(err);
+            else resolve(result);
+          });
+        }).catch(error => {
+          db.run('ROLLBACK', () => reject(error));
         });
-    }
+      });
+    });
+  }
 };
 
 function closeDatabase() {
-    return new Promise((resolve, reject) => {
-        db.close((err) => {
-            if (err) {
-                logger.error('❌ Erreur fermeture BDD:', err);
-                reject(err);
-            } else {
-                logger.info('✅ BDD fermée');
-                resolve();
-            }
-        });
+  return new Promise((resolve, reject) => {
+    db.close((err) => {
+      if (err) {
+        logger.error('❌ Erreur fermeture BDD:', err);
+        reject(err);
+      } else {
+        logger.info('✅ BDD fermée');
+        resolve();
+      }
     });
+  });
 }
 
 module.exports = db;

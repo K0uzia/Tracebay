@@ -14,6 +14,7 @@ import {
 
 describe('WebSocket Handlers', () => {
   let mockContext: WSContext;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let broadcastCalls: any[];
 
   beforeEach(() => {

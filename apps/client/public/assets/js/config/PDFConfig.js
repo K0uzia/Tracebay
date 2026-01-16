@@ -1,6 +1,6 @@
 /**
  * PDF CONFIG - Configuration centralisée des PDFs
- * 
+ *
  * Format:
  * {
  *   buttonId: 'id-du-bouton',
@@ -10,27 +10,27 @@
  */
 
 export const pdfConfig = [
-    {
-        buttonId: 'rules-pdf-btn',
-        pdfFile: 'Règlement_intérieur_chantier_num.pdf',
-        title: 'Réglement intérieur'
-    },
-    {
-        buttonId: 'fonte-pdf-btn',
-        pdfFile: 'fonte.pdf',
-        title: 'Fonte Pédagogique'
-    },
-    {
-        buttonId: 'livret-pdf-btn',
-        pdfFile: 'livret_d_accueil_mini.pdf',
-        title: 'Livret d\'accueil'
-    },
-    // Ajoute d'autres PDFs ici comme ceci :
-    // {
-    //     buttonId: 'open-guide-btn',
-    //     pdfFile: 'Guide_utilisateur.pdf',
-    //     title: 'Guide utilisateur'
-    // }
+  {
+    buttonId: 'rules-pdf-btn',
+    pdfFile: 'Règlement_intérieur_chantier_num.pdf',
+    title: 'Réglement intérieur'
+  },
+  {
+    buttonId: 'fonte-pdf-btn',
+    pdfFile: 'fonte.pdf',
+    title: 'Fonte Pédagogique'
+  },
+  {
+    buttonId: 'livret-pdf-btn',
+    pdfFile: 'livret_d_accueil_mini.pdf',
+    title: 'Livret d\'accueil'
+  }
+  // Ajoute d'autres PDFs ici comme ceci :
+  // {
+  //     buttonId: 'open-guide-btn',
+  //     pdfFile: 'Guide_utilisateur.pdf',
+  //     title: 'Guide utilisateur'
+  // }
 ];
 
 export default pdfConfig;

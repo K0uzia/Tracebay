@@ -2,7 +2,7 @@
  * Monitoring API Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
+import { describe, it, expect } from '@jest/globals';
 import { getMessageRate, getConnectedUserCount, getSystemHealth } from '../src/api/monitoring';
 
 describe('Monitoring API', () => {

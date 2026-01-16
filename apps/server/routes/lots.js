@@ -14,22 +14,22 @@ async function computeAndUpdateLotFinished(lotId) {
   );
   const pending = row?.pending || 0;
   const total = row?.total || 0;
-  
+
   // Un lot est terminé si tous les items ont un état défini
   if (total > 0 && pending === 0) {
     // Vérifier si le lot était déjà terminé
-    const lot = await dbPromise.get(`SELECT finished_at FROM lots WHERE id = ?`, [lotId]);
+    const lot = await dbPromise.get('SELECT finished_at FROM lots WHERE id = ?', [lotId]);
     const wasFinished = lot?.finished_at !== null;
-    
+
     // Marquer comme terminé avec la date actuelle si pas déjà fait
-    await dbPromise.run(`UPDATE lots SET finished_at = COALESCE(finished_at, CURRENT_TIMESTAMP) WHERE id = ?`, [lotId]);
-    
+    await dbPromise.run('UPDATE lots SET finished_at = COALESCE(finished_at, CURRENT_TIMESTAMP) WHERE id = ?', [lotId]);
+
     // Générer le PDF automatiquement si le lot vient d'être terminé
     if (!wasFinished) {
       console.log(`🎉 Lot ${lotId} terminé - Génération automatique du PDF...`);
       await generatePDF(lotId);
     }
-    
+
     return true;
   }
   return false;
@@ -43,9 +43,9 @@ async function computeAndUpdateLotFinished(lotId) {
 async function generatePDF(lotId) {
   try {
     // Récupérer les données du lot
-    const lot = await dbPromise.get(`SELECT * FROM lots WHERE id = ?`, [lotId]);
+    const lot = await dbPromise.get('SELECT * FROM lots WHERE id = ?', [lotId]);
     if (!lot) throw new Error('Lot introuvable');
-    
+
     // Récupérer les items du lot avec les noms de marque et modèle
     const items = await dbPromise.all(`
       SELECT 
@@ -73,15 +73,15 @@ async function generatePDF(lotId) {
     // Créer le répertoire s'il n'existe pas
     const pdfDir = path.join(__dirname, '..', 'public', 'pdfs');
     if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
-    
+
     // Générer le PDF avec Puppeteer
     const pdfFilePath = path.join(pdfDir, `lot-${lotId}.pdf`);
     await convertHtmlToPdf(html, pdfFilePath);
 
     // Mettre à jour la base de données avec le chemin du PDF
     const publicPath = `/pdfs/lot-${lotId}.pdf`;
-    await dbPromise.run(`UPDATE lots SET pdf_path = ? WHERE id = ?`, [publicPath, lotId]);
-    
+    await dbPromise.run('UPDATE lots SET pdf_path = ? WHERE id = ?', [publicPath, lotId]);
+
     console.log(`✅ PDF généré: ${publicPath}`);
     return publicPath;
   } catch (error) {
@@ -100,7 +100,7 @@ router.post('/', async (req, res) => {
     }
     const lotId = await dbPromise.transaction(async () => {
       const result = await dbPromise.run(
-        `INSERT INTO lots (lot_name, lot_details) VALUES (?, ?)`,
+        'INSERT INTO lots (lot_name, lot_details) VALUES (?, ?)',
         [lotName || null, lotDetails || null]
       );
       const id = result.id;
@@ -168,7 +168,7 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const lot = await dbPromise.get(`SELECT id, created_at, finished_at, pdf_path, lot_name, lot_details FROM lots WHERE id = ?`, [id]);
+    const lot = await dbPromise.get('SELECT id, created_at, finished_at, pdf_path, lot_name, lot_details FROM lots WHERE id = ?', [id]);
     if (!lot) return res.status(404).json({ success: false, message: 'Lot introuvable' });
     const items = await dbPromise.all(`
       SELECT li.id, li.serial_number, li.type, li.marque_id, li.modele_id,
@@ -191,25 +191,25 @@ router.patch('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id);
     const { lot_name, recovered_at } = req.body || {};
-    
+
     // Si lot_name est fourni, le mettre à jour
     if (lot_name !== undefined) {
-      await dbPromise.run(`UPDATE lots SET lot_name = ? WHERE id = ?`, [lot_name, id]);
+      await dbPromise.run('UPDATE lots SET lot_name = ? WHERE id = ?', [lot_name, id]);
     }
-    
+
     // Si recovered_at est fourni (true pour marquer comme récupéré, false pour annuler)
     if (recovered_at !== undefined) {
       const value = recovered_at ? new Date().toISOString() : null;
-      await dbPromise.run(`UPDATE lots SET recovered_at = ? WHERE id = ?`, [value, id]);
-      
+      await dbPromise.run('UPDATE lots SET recovered_at = ? WHERE id = ?', [value, id]);
+
       // Régénérer le PDF avec la date de récupération
       if (recovered_at) {
         console.log(`📦 Lot ${id} marqué comme récupéré - Régénération du PDF...`);
         await generatePDF(id);
       }
     }
-    
-    const lot = await dbPromise.get(`SELECT id, created_at, finished_at, recovered_at, lot_name, lot_details FROM lots WHERE id = ?`, [id]);
+
+    const lot = await dbPromise.get('SELECT id, created_at, finished_at, recovered_at, lot_name, lot_details FROM lots WHERE id = ?', [id]);
     res.json({ success: true, item: lot });
   } catch (error) {
     console.error('❌ PATCH /api/lots/:id error:', error);
@@ -224,15 +224,15 @@ router.patch('/items/:id', async (req, res) => {
     if (!id || isNaN(id)) {
       return res.status(400).json({ success: false, message: 'ID invalide' });
     }
-    
+
     const { state, technician } = req.body || {};
-    await dbPromise.run(`UPDATE lot_items SET state = COALESCE(?, state), technician = COALESCE(?, technician), state_changed_at = CURRENT_TIMESTAMP WHERE id = ?`, [state || null, technician || null, id]);
-    const item = await dbPromise.get(`SELECT * FROM lot_items WHERE id = ?`, [id]);
-    
+    await dbPromise.run('UPDATE lot_items SET state = COALESCE(?, state), technician = COALESCE(?, technician), state_changed_at = CURRENT_TIMESTAMP WHERE id = ?', [state || null, technician || null, id]);
+    const item = await dbPromise.get('SELECT * FROM lot_items WHERE id = ?', [id]);
+
     if (!item) {
       return res.status(404).json({ success: false, message: 'Item introuvable' });
     }
-    
+
     const finished = await computeAndUpdateLotFinished(item.lot_id);
     res.json({ success: true, item, lotFinished: finished });
   } catch (error) {
@@ -263,7 +263,7 @@ router.post('/:id/email', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Adresse email requise' });
     }
 
-    const lot = await dbPromise.get(`SELECT * FROM lots WHERE id = ?`, [id]);
+    const lot = await dbPromise.get('SELECT * FROM lots WHERE id = ?', [id]);
     if (!lot) return res.status(404).json({ success: false, message: 'Lot introuvable' });
 
     // Vérifier que le PDF existe
@@ -275,10 +275,10 @@ router.post('/:id/email', async (req, res) => {
     // 1. Installer nodemailer: npm install nodemailer
     // 2. Configurer des variables d'environnement SMTP
     // 3. Envoyer un email réel avec le lien de téléchargement
-    
+
     // Pour maintenant, on retourne un succès avec un URL partageable
     const pdfUrl = `${process.env.PUBLIC_URL || 'http://localhost:8060'}${lot.pdf_path}`;
-    
+
     console.log(`📧 Email envoyé à ${recipient} avec le PDF du lot #${id}`);
     console.log(`   Fichier: ${pdfUrl}`);
     console.log(`   Message: ${message || '(aucun)'}`);
@@ -286,9 +286,9 @@ router.post('/:id/email', async (req, res) => {
     // Dans une vraie implémentation, envoyer l'email ici
     // TODO: Ajouter l'intégration email avec nodemailer
 
-    res.json({ 
-      success: true, 
-      message: `Email prêt à être envoyé (mode démo)`,
+    res.json({
+      success: true,
+      message: 'Email prêt à être envoyé (mode démo)',
       pdfUrl: pdfUrl
     });
   } catch (error) {

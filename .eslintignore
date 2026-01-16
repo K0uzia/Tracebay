@@ -1,0 +1,7 @@
+node_modules/
+**/out/**
+**/dist/**
+**/*.config.js
+build/
+coverage/
+*.min.js

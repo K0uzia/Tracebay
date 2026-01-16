@@ -19,8 +19,8 @@ async function regenerateAllPDFs() {
     console.log('🔄 Régénération de tous les PDFs...\n');
 
     // Récupérer tous les lots terminés
-    const lots = await dbPromise.all(`SELECT * FROM lots WHERE finished_at IS NOT NULL`);
-    
+    const lots = await dbPromise.all('SELECT * FROM lots WHERE finished_at IS NOT NULL');
+
     if (lots.length === 0) {
       console.log('ℹ️  Aucun lot terminé trouvé.');
       process.exit(0);
@@ -30,7 +30,7 @@ async function regenerateAllPDFs() {
 
     for (const lot of lots) {
       console.log(`📄 Génération du PDF pour le lot #${lot.id}...`);
-      
+
       // Récupérer les items du lot
       const items = await dbPromise.all(`
         SELECT 
@@ -58,15 +58,15 @@ async function regenerateAllPDFs() {
       // Créer le répertoire s'il n'existe pas
       const pdfDir = path.join(__dirname, 'public', 'pdfs');
       if (!fs.existsSync(pdfDir)) fs.mkdirSync(pdfDir, { recursive: true });
-      
+
       // Générer le PDF avec Puppeteer
       const pdfFilePath = path.join(pdfDir, `lot-${lot.id}.pdf`);
       await convertHtmlToPdf(html, pdfFilePath);
 
       // Mettre à jour la base de données
       const publicPath = `/pdfs/lot-${lot.id}.pdf`;
-      await dbPromise.run(`UPDATE lots SET pdf_path = ? WHERE id = ?`, [publicPath, lot.id]);
-      
+      await dbPromise.run('UPDATE lots SET pdf_path = ? WHERE id = ?', [publicPath, lot.id]);
+
       console.log(`✅ PDF généré: ${publicPath}\n`);
     }
 

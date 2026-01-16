@@ -97,7 +97,7 @@ export class DatabaseConnection {
         } else {
           resolve({
             lastID: this.lastID,
-            changes: this.changes,
+            changes: this.changes
           });
         }
       });

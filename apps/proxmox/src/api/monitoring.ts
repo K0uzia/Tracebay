@@ -45,7 +45,7 @@ export interface ActivityLogEntry {
  * Message rate tracking
  */
 let messageCount = 0;
-let messageStartTime = Date.now();
+const messageStartTime = Date.now();
 
 /**
  * Increment message count (call this when a message is sent)
@@ -147,7 +147,7 @@ export async function registerMonitoringRoutes(
   fastify: FastifyInstance,
   connectedUsers: Map<string, any>
 ): Promise<void> {
-  
+
   /**
    * GET /api/monitoring/stats
    * Returns real-time system statistics
@@ -264,8 +264,8 @@ export async function registerMonitoringRoutes(
       const now = new Date();
       const upcomingEvents = Array.isArray(events)
         ? events
-            .filter((event: any) => new Date(event.startTime) >= now)
-            .slice(0, Number(limit))
+          .filter((event: any) => new Date(event.startTime) >= now)
+          .slice(0, Number(limit))
         : [];
 
       return {

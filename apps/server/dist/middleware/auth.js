@@ -3,7 +3,7 @@ import { AuthenticationError } from '../lib/errors.js';
 /**
  * Authentication middleware
  */
-export async function authMiddleware(request, reply) {
+export async function authMiddleware(request, _reply) {
     try {
         const authHeader = request.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -12,6 +12,7 @@ export async function authMiddleware(request, reply) {
         const token = authHeader.substring(7);
         const payload = verifyToken(token);
         // Attach user info to request
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         request.user = payload;
     }
     catch (error) {
