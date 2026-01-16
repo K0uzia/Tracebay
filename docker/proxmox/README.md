@@ -4,8 +4,23 @@
 - Docker Engine 20+
 - Docker Compose v2
 
-## Quick Start
+### Installer Docker sur Proxmox
 ```bash
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose-plugin curl
+sudo systemctl enable --now docker
+```
+
+## Quick Start (script)
+```bash
+cp .env.example .env
+chmod +x run-proxmox.sh
+./run-proxmox.sh
+```
+
+## Quick Start (manuel)
+```bash
+docker compose -f docker/proxmox/docker-compose.yml config -q
 docker compose -f docker/proxmox/docker-compose.yml up --build -d
 ```
 
@@ -13,10 +28,10 @@ Services:
 - Proxmox API: http://localhost:4000
 - PostgreSQL: localhost:5432 (workspace/workspace/SECRET_RETIRE)
 
-## Healthcheck
+Healthcheck:
 - Proxmox: http://localhost:4000/api/health
 
-## Stop & Clean
+Stop & Clean:
 ```bash
 docker compose -f docker/proxmox/docker-compose.yml down -v
 ```
