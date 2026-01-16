@@ -4,8 +4,31 @@
 - Docker Engine 20+
 - Docker Compose v2
 
-## Build & Run (Local)
+### Installer Docker sur Proxmox (hôte Debian/Proxmox)
 ```bash
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose-plugin curl
+sudo systemctl enable --now docker
+docker --version
+docker compose version
+```
+
+## Préparer l'environnement
+```bash
+cp docker/proxmox/.env.example docker/proxmox/.env
+# Éditer docker/proxmox/.env (LOG_LEVEL, DATABASE_URL si besoin)
+```
+
+## Lancer via script automatisé (recommandé)
+```bash
+chmod +x docker/proxmox/run-proxmox.sh
+./docker/proxmox/run-proxmox.sh
+```
+Le script vérifie docker, valide la config, build, démarre, attend les healthchecks (db puis proxmox) et teste `/api/health`.
+
+## Lancer manuellement
+```bash
+docker compose -f docker/proxmox/docker-compose.yml config -q
 docker compose -f docker/proxmox/docker-compose.yml up --build -d
 ```
 
