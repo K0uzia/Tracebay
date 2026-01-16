@@ -93,6 +93,54 @@ export function getSystemHealth(): MonitoringStats['systemHealth'] {
 }
 
 /**
+ * Get total user count (mock for now - will use database)
+ */
+export async function getTotalUserCount(): Promise<number> {
+  try {
+    const users = await (User as any).getAll();
+    return Array.isArray(users) ? users.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Get total message count (mock for now - will use database)
+ */
+export async function getTotalMessageCount(): Promise<number> {
+  try {
+    const messages = await (Message as any).getRecent(1000);
+    return Array.isArray(messages) ? messages.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Get total event count (mock for now - will use database)
+ */
+export async function getTotalEventCount(): Promise<number> {
+  try {
+    const events = await (Event as any).getAll();
+    return Array.isArray(events) ? events.length : 0;
+  } catch {
+    return 0;
+  }
+}
+
+/**
+ * Get recent activity logs (mock for now - will use database)
+ */
+export async function getRecentActivityLogs(limit: number = 50, offset: number = 0): Promise<ActivityLogEntry[]> {
+  try {
+    const logs = await (ActivityLog as any).getAll();
+    return Array.isArray(logs) ? logs.slice(offset, offset + limit) : [];
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Register monitoring routes
  */
 export async function registerMonitoringRoutes(
@@ -107,9 +155,9 @@ export async function registerMonitoringRoutes(
   fastify.get('/api/monitoring/stats', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       const [totalUsers, totalMessages, totalEvents] = await Promise.all([
-        User.count(),
-        Message.count(),
-        Event.count()
+        getTotalUserCount(),
+        getTotalMessageCount(),
+        getTotalEventCount()
       ]);
 
       const stats: MonitoringStats = {
@@ -123,8 +171,9 @@ export async function registerMonitoringRoutes(
       };
 
       return stats;
-    } catch (error) {
-      fastify.log.error('Error fetching monitoring stats:', error);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      fastify.log.error({ msg: 'Error fetching monitoring stats', error: errorMsg });
       reply.statusCode = 500;
       return { error: 'Failed to fetch monitoring stats' };
     }
@@ -138,20 +187,18 @@ export async function registerMonitoringRoutes(
     try {
       const { limit = 50, offset = 0 } = request.query as { limit?: number; offset?: number };
 
-      const logs = await ActivityLog.findAll({
-        limit: Number(limit),
-        offset: Number(offset),
-        order: [['createdAt', 'DESC']]
-      });
+      const logs = await getRecentActivityLogs(Number(limit), Number(offset));
+      const allLogs = await (ActivityLog as any).getAll();
 
       return {
         logs,
-        total: await ActivityLog.count(),
+        total: Array.isArray(allLogs) ? allLogs.length : 0,
         limit: Number(limit),
         offset: Number(offset)
       };
-    } catch (error) {
-      fastify.log.error('Error fetching activity logs:', error);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      fastify.log.error({ msg: 'Error fetching activity logs', error: errorMsg });
       reply.statusCode = 500;
       return { error: 'Failed to fetch activity logs' };
     }
@@ -174,8 +221,9 @@ export async function registerMonitoringRoutes(
         connectedUsers: connectedUsersList,
         count: connectedUsersList.length
       };
-    } catch (error) {
-      fastify.log.error('Error fetching connected users:', error);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      fastify.log.error({ msg: 'Error fetching connected users', error: errorMsg });
       reply.statusCode = 500;
       return { error: 'Failed to fetch connected users' };
     }
@@ -189,17 +237,16 @@ export async function registerMonitoringRoutes(
     try {
       const { limit = 20 } = request.query as { limit?: number };
 
-      const messages = await Message.findAll({
-        limit: Number(limit),
-        order: [['createdAt', 'DESC']]
-      });
+      const messages = await (Message as any).getRecent(Number(limit));
+      const recentMessages = Array.isArray(messages) ? messages : [];
 
       return {
-        messages,
-        count: messages.length
+        messages: recentMessages,
+        count: recentMessages.length
       };
-    } catch (error) {
-      fastify.log.error('Error fetching recent messages:', error);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      fastify.log.error({ msg: 'Error fetching recent messages', error: errorMsg });
       reply.statusCode = 500;
       return { error: 'Failed to fetch recent messages' };
     }
@@ -213,23 +260,21 @@ export async function registerMonitoringRoutes(
     try {
       const { limit = 10 } = request.query as { limit?: number };
 
-      const events = await Event.findAll({
-        where: {
-          startTime: {
-            // @ts-ignore - Sequelize operator
-            [require('sequelize').Op.gte]: new Date()
-          }
-        },
-        limit: Number(limit),
-        order: [['startTime', 'ASC']]
-      });
+      const events = await (Event as any).getAll();
+      const now = new Date();
+      const upcomingEvents = Array.isArray(events)
+        ? events
+            .filter((event: any) => new Date(event.startTime) >= now)
+            .slice(0, Number(limit))
+        : [];
 
       return {
-        events,
-        count: events.length
+        events: upcomingEvents,
+        count: upcomingEvents.length
       };
-    } catch (error) {
-      fastify.log.error('Error fetching upcoming events:', error);
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      fastify.log.error({ msg: 'Error fetching upcoming events', error: errorMsg });
       reply.statusCode = 500;
       return { error: 'Failed to fetch upcoming events' };
     }
