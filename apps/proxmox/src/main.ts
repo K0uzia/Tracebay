@@ -4,6 +4,7 @@ import helmet from '@fastify/helmet';
 import websocket from '@fastify/websocket';
 import dotenv from 'dotenv';
 import { getConfig } from '../../../config/network.config';
+import { registerMonitoringRoutes, incrementMessageCount } from './api/monitoring';
 
 // Load environment variables
 dotenv.config();
@@ -58,6 +59,9 @@ const messageStartTime = Date.now();
 
     // WebSocket
     await fastify.register(websocket);
+
+    // Register monitoring routes
+    await registerMonitoringRoutes(fastify, connectedUsers);
 
     // Health check endpoint
     fastify.get('/api/health', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -184,6 +188,7 @@ const messageStartTime = Date.now();
       }
 
       messageCount++;
+      incrementMessageCount();
       const message = {
         id: `msg_${Date.now()}`,
         userId,
@@ -276,27 +281,6 @@ const messageStartTime = Date.now();
       };
     });
 
-    // Monitoring stats
-    fastify.get('/api/monitoring/stats', async (request: FastifyRequest, reply: FastifyReply) => {
-      const uptime = process.uptime();
-      const memUsage = process.memoryUsage();
-      const messagesPerMinute = (messageCount / (uptime / 60)).toFixed(2);
-
-      return {
-        success: true,
-        stats: {
-          connectedUsers: connectedUsers.size,
-          messagesPerMinute: parseFloat(messagesPerMinute as any),
-          memoryUsage: {
-            rss: (memUsage.rss / 1024 / 1024).toFixed(2) + ' MB',
-            heapUsed: (memUsage.heapUsed / 1024 / 1024).toFixed(2) + ' MB',
-            heapTotal: (memUsage.heapTotal / 1024 / 1024).toFixed(2) + ' MB'
-          },
-          uptime: (uptime / 60).toFixed(2) + ' minutes'
-        }
-      };
-    });
-
     // WebSocket routes
     fastify.register(async (fastify: any) => {
       fastify.get('/ws', { websocket: true }, (socket: any, request: any) => {
@@ -348,6 +332,7 @@ const messageStartTime = Date.now();
             switch (message.type) {
               case 'message:send':
                 messageCount++;
+                incrementMessageCount();
                 // Broadcast to all users
                 for (const user of connectedUsers.values()) {
                   try {
