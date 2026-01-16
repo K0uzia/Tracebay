@@ -4,7 +4,7 @@
 Commit: `0b4cdf17b6f765224fb6b480d04ec2157ffe9f59`  
 Check Suite: https://github.com/SandersonnDev/workspace/commit/0b4cdf17b6f765224fb6b480d04ec2157ffe9f59/checks?check_suite_id=54576005310
 
-## Question: "pourquoi ca fail ?"
+## Question: "pourquoi ça fail ?"
 Translation: "Why did it fail?"
 
 ## Root Cause
@@ -32,12 +32,8 @@ const events = await Event.findAll();         // Property 'findAll' does not exi
 ```
 
 **Error Messages:**
-- `error TS2339: Property 'count' does not exist on type 'typeof User'`
-- `error TS2339: Property 'count' does not exist on type 'typeof Message'`
-- `error TS2339: Property 'count' does not exist on type 'typeof Event'`
-- `error TS2339: Property 'findAll' does not exist on type 'typeof ActivityLog'`
-- `error TS2339: Property 'findAll' does not exist on type 'typeof Message'`
-- `error TS2339: Property 'findAll' does not exist on type 'typeof Event'`
+- `error TS2339: Property 'count' does not exist on type 'typeof [User|Message|Event]'`
+- `error TS2339: Property 'findAll' does not exist on type 'typeof [ActivityLog|Message|Event]'`
 
 ### 2. Logger Format Issues
 The Pino logger requires specific parameter formats:
