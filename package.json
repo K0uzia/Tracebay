@@ -5,7 +5,8 @@
   "private": true,
   "workspaces": [
     "apps/server",
-    "apps/client"
+    "apps/client",
+    "apps/proxmox"
   ],
   "scripts": {
     "dev": "concurrently \"npm run start:api --workspace=apps/server\" \"npm start --workspace=apps/client\"",
