@@ -10,35 +10,42 @@ import { performanceConfig } from '../config/performance.config';
 export async function registerRateLimit(fastify: FastifyInstance) {
   const { rateLimit: rateLimitConfig } = performanceConfig;
 
-  // Global rate limit
-  await fastify.register(rateLimit, {
-    global: true,
-    max: rateLimitConfig.global.max,
-    timeWindow: rateLimitConfig.global.timeWindow,
-    cache: 10000, // Store 10k IPs
-    allowList: ['127.0.0.1', '::1'], // Localhost exempted
-    redis: undefined, // Can add Redis later for distributed
-    nameSpace: 'rate-limit-',
-    continueExceeding: false,
-    skipOnError: true, // Don't fail if rate limit service fails
-    keyGenerator: (request: FastifyRequest) => {
-      // Use IP + User-Agent for better accuracy
-      return `${request.ip}-${request.headers['user-agent'] || 'unknown'}`;
-    },
-    errorResponseBuilder: (request: FastifyRequest, context: any) => {
-      return {
-        statusCode: 429,
-        error: 'Too Many Requests',
-        message: `Rate limit exceeded. Try again in ${Math.ceil(context.ttl / 1000)} seconds.`,
-        retryAfter: context.ttl,
-      };
-    },
-    onExceeding: (request: FastifyRequest, key: string) => {
-      fastify.log.warn({
-        ip: request.ip,
-        path: request.url,
-      }, `Rate limit exceeded for ${key}`);
-    },
+  // Exempt health and metrics endpoints from rate limiting
+  fastify.register(async (fastify) => {
+    await fastify.register(rateLimit, {
+      global: true,
+      max: rateLimitConfig.global.max,
+      timeWindow: rateLimitConfig.global.timeWindow,
+      cache: 10000, // Store 10k IPs
+      allowList: ['127.0.0.1', '::1'], // Localhost exempted
+      redis: undefined, // Can add Redis later for distributed
+      nameSpace: 'rate-limit-',
+      continueExceeding: false,
+      skipOnError: true, // Don't fail if rate limit service fails
+      keyGenerator: (request: FastifyRequest) => {
+        // Bypass rate limit for health/metrics if from localhost
+        if ((request.url === '/api/health' || request.url === '/api/metrics') && 
+            (request.ip === '127.0.0.1' || request.ip === '::1')) {
+          return 'localhost-exempt';
+        }
+        // Use IP + User-Agent for better accuracy
+        return `${request.ip}-${request.headers['user-agent'] || 'unknown'}`;
+      },
+      errorResponseBuilder: (request: FastifyRequest, context: any) => {
+        return {
+          statusCode: 429,
+          error: 'Too Many Requests',
+          message: `Rate limit exceeded. Try again in ${Math.ceil(context.ttl / 1000)} seconds.`,
+          retryAfter: context.ttl,
+        };
+      },
+      onExceeding: (request: FastifyRequest, key: string) => {
+        fastify.log.warn({
+          ip: request.ip,
+          path: request.url,
+        }, `Rate limit exceeded for ${key}`);
+      },
+    });
   });
 
   fastify.log.info({
