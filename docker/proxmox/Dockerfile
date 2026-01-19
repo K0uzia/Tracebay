@@ -24,7 +24,9 @@ COPY config ./config
 RUN echo "Cache buster: ${CACHE_BUSTER}" \
     && npm ci --workspace=apps/proxmox --include-workspace-root \
     && npm run build --workspace=apps/proxmox \
-    && test -f apps/proxmox/dist/main.js
+    && ./apps/proxmox/node_modules/.bin/tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir ./ ./config/network.config.ts \
+    && test -f apps/proxmox/dist/src/main.js \
+    && test -f config/network.config.js
 
 ENV NODE_ENV=production
 ENV PORT=4000
@@ -34,4 +36,4 @@ EXPOSE 4000
 
 # Use tini to handle signals properly
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/src/main.js"]
