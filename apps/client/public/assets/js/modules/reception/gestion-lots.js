@@ -73,27 +73,7 @@ export default class GestionLotsManager {
       this.updateMarqueSelects();
     } catch (error) {
       console.error('❌ Erreur chargement données:', error);
-      // Charger données par défaut en cas d'erreur
-      this.loadDefaultData();
     }
-  }
-
-  /**
-     * Charger données par défaut (fallback)
-     */
-  loadDefaultData() {
-    this.marques = [
-      { id: 1, name: 'Dell' },
-      { id: 2, name: 'HP' },
-      { id: 3, name: 'Lenovo' }
-    ];
-    this.modeles = [
-      { id: 1, name: 'Latitude 5410', marque_id: 1 },
-      { id: 2, name: 'ProBook 450', marque_id: 2 },
-      { id: 3, name: 'ThinkPad T14', marque_id: 3 }
-    ];
-    console.log('ℹ️ Données par défaut chargées');
-    this.updateMarqueSelects();
   }
 
   /**
