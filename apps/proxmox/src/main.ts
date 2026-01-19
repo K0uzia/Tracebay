@@ -49,18 +49,6 @@ const connectedUsers = new Map<string, WebSocketUser>();
 let messageCount = 0;
 const messageStartTime = Date.now();
 
-// In-memory reference data for marques / modèles (development only)
-const marques = [
-  { id: 1, name: 'Dell' },
-  { id: 2, name: 'HP' },
-  { id: 3, name: 'Lenovo' }
-];
-
-const modeles = [
-  { id: 1, name: 'Latitude 5410', marque_id: 1 },
-  { id: 2, name: 'ProBook 450', marque_id: 2 },
-  { id: 3, name: 'ThinkPad T14', marque_id: 3 }
-];
 
 // Register plugins
 (async () => {
@@ -140,15 +128,12 @@ const modeles = [
         return { error: 'Username and password required' };
       }
 
-      // Mock authentication for development
-      const userId = `user_${Date.now()}`;
-      const token = `mock_token_${userId}`;
-
+      // TODO: Vérifier les credentials dans la base de données et générer JWT
       return {
         success: true,
-        token,
+        token: 'jwt_token_todo',
         user: {
-          id: userId,
+          id: 1,
           username,
           createdAt: new Date().toISOString()
         }
@@ -183,18 +168,10 @@ const modeles = [
 
     // Events routes (Agenda)
     fastify.get('/api/events', async (request: FastifyRequest, reply: FastifyReply) => {
-      // Mock events for development
+      // TODO: Charger les événements depuis la base de données
       return {
         success: true,
-        events: [
-          {
-            id: 'evt_1',
-            title: 'Team Meeting',
-            start: new Date().toISOString(),
-            end: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-            createdAt: new Date().toISOString()
-          }
-        ]
+        events: []
       };
     });
 
@@ -206,10 +183,11 @@ const modeles = [
         return { error: 'Title, start, and end are required' };
       }
 
+      // TODO: Insérer l'événement dans la base de données
       return {
         success: true,
         event: {
-          id: `evt_${Date.now()}`,
+          id: 1,
           title,
           start,
           end,
@@ -222,17 +200,11 @@ const modeles = [
     fastify.get('/api/messages', async (request: FastifyRequest, reply: FastifyReply) => {
       const limit = (request.query as any).limit || 50;
 
+      // TODO: Charger les messages depuis la base de données avec limite
       return {
         success: true,
-        messages: [
-          {
-            id: 'msg_1',
-            userId: 'user_1',
-            text: 'Welcome to Workspace!',
-            createdAt: new Date().toISOString()
-          }
-        ],
-        total: 1
+        messages: [],
+        total: 0
       };
     });
 
@@ -270,16 +242,10 @@ const modeles = [
 
     // Shortcuts routes
     fastify.get('/api/shortcuts', async (request: FastifyRequest, reply: FastifyReply) => {
+      // TODO: Charger les raccourcis depuis la base de données
       return {
         success: true,
-        shortcuts: [
-          {
-            id: 'sc_1',
-            name: 'Meeting',
-            description: 'Schedule a meeting',
-            icon: 'calendar'
-          }
-        ]
+        shortcuts: []
       };
     });
 
@@ -291,10 +257,11 @@ const modeles = [
         return { error: 'Name is required' };
       }
 
+      // TODO: Insérer le raccourci dans la base de données
       return {
         success: true,
         shortcut: {
-          id: `sc_${Date.now()}`,
+          id: 1,
           name,
           description,
           icon,
@@ -305,11 +272,13 @@ const modeles = [
 
     // Marques & Modèles (Réception)
     fastify.get('/api/marques', async () => {
-      return { success: true, items: marques };
+      // TODO: Charger depuis la base de données
+      return { success: true, items: [] };
     });
 
     fastify.get('/api/marques/all', async () => {
-      return { success: true, items: modeles };
+      // TODO: Charger depuis la base de données
+      return { success: true, items: [] };
     });
 
     fastify.post('/api/marques', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -319,11 +288,8 @@ const modeles = [
         return { error: 'Name is required' };
       }
 
-      const id = marques.length ? Math.max(...marques.map(m => m.id)) + 1 : 1;
-      const newMarque = { id, name };
-      marques.push(newMarque);
-
-      return { success: true, ...newMarque };
+      // TODO: Insérer dans la base de données
+      return { success: true, id: 1, name };
     });
 
     fastify.post('/api/marques/:marqueId/modeles', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -335,25 +301,16 @@ const modeles = [
         return { error: 'Name and marqueId are required' };
       }
 
-      const id = modeles.length ? Math.max(...modeles.map(m => m.id)) + 1 : 1;
-      const newModele = { id, name, marque_id: marqueId };
-      modeles.push(newModele);
-
-      return { success: true, ...newModele };
+      // TODO: Insérer dans la base de données
+      return { success: true, id: 1, name, marque_id: marqueId };
     });
 
     // Lots routes (Réception)
     fastify.get('/api/lots', async (request: FastifyRequest, reply: FastifyReply) => {
+      // TODO: Charger les lots depuis la base de données
       return {
         success: true,
-        lots: [
-          {
-            id: 'lot_1',
-            status: 'received',
-            itemCount: 5,
-            receivedAt: new Date().toISOString()
-          }
-        ]
+        lots: []
       };
     });
 
@@ -365,10 +322,11 @@ const modeles = [
         return { error: 'itemCount is required' };
       }
 
+      // TODO: Insérer le lot dans la base de données
       return {
         success: true,
         lot: {
-          id: `lot_${Date.now()}`,
+          id: 1,
           itemCount,
           description,
           status: 'received',
