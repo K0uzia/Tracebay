@@ -10,6 +10,7 @@ import { registerRateLimit } from './middleware/rate-limit';
 import { registerMonitoring } from './middleware/monitoring';
 import { globalMetrics } from './utils/metrics';
 import { globalCache } from './utils/cache';
+import { testConnection, initializeDatabase } from './db';
 
 // Load environment variables
 dotenv.config();
@@ -51,6 +52,16 @@ const messageStartTime = Date.now();
 // Register plugins
 (async () => {
   try {
+    // Initialize database connection
+    console.log('🔄 Connecting to PostgreSQL...');
+    const dbConnected = await testConnection();
+    if (!dbConnected) {
+      throw new Error('Failed to connect to database');
+    }
+
+    // Initialize database schema
+    await initializeDatabase();
+
     // Phase 5: Performance optimization middlewares
     await registerCompression(fastify);
     await registerRateLimit(fastify);

@@ -1,38 +1,83 @@
 version: '3.9'
 
 services:
+  # PostgreSQL 16 Database
+  db:
+    image: postgres:16-bookworm
+    container_name: workspace-db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-workspace}
+      POSTGRES_USER: ${DB_USER:-workspace}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-SECRET_RETIRE}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres.conf:/etc/postgresql/postgresql.conf:ro
+    command: 
+      - "postgres"
+      - "-c"
+      - "config_file=/etc/postgresql/postgresql.conf"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-workspace} -d ${DB_NAME:-workspace}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - workspace-network
+
+  # Proxmox Backend (Fastify + Node.js)
   proxmox:
     build:
       context: ../..
       dockerfile: docker/proxmox/Dockerfile
-    env_file:
-      - .env
-    ports:
-      - "4000:4000"
+      args:
+        NODE_ENV: ${NODE_ENV:-production}
+    container_name: workspace-proxmox
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-4000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DB_HOST: db
+      DB_PORT: ${DB_PORT:-5432}
+      DB_NAME: ${DB_NAME:-workspace}
+      DB_USER: ${DB_USER:-workspace}
+      DB_PASSWORD: ${DB_PASSWORD:-SECRET_RETIRE}
+      DB_POOL_MIN: ${DB_POOL_MIN:-2}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+    ports:
+      - "${PORT:-4000}:4000"
+    volumes:
+      - ./logs:/app/apps/proxmox/logs
+      - /etc/localtime:/etc/localtime:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:4000/api/health"]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 15s
     restart: unless-stopped
+    networks:
+      - workspace-network
+    # Limiter les ressources
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 1G
+        reservations:
+          cpus: '1'
+          memory: 512M
 
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: workspace
-      POSTGRES_USER: workspace
-      POSTGRES_PASSWORD: SECRET_RETIRE
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U workspace"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+networks:
+  workspace-network:
+    driver: bridge
 
 volumes:
   postgres_data:
+    driver: local
