@@ -3,6 +3,9 @@ FROM node:20-bookworm
 # Set workdir at repo root to preserve relative imports to ../../config
 WORKDIR /app
 
+# Cache-busting argument to force rebuild of build steps
+ARG CACHE_BUSTER=initial
+
 # Install system dependencies (curl pour healthcheck, tini pour signal handling)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
@@ -18,8 +21,10 @@ COPY apps/proxmox/src ./apps/proxmox/src
 COPY config ./config
 
 # Install dependencies using root lock file
-RUN npm ci --workspace=apps/proxmox --include-workspace-root \
-    && npm run build --workspace=apps/proxmox
+RUN echo "Cache buster: ${CACHE_BUSTER}" \
+    && npm ci --workspace=apps/proxmox --include-workspace-root \
+    && npm run build --workspace=apps/proxmox \
+    && test -f apps/proxmox/dist/main.js
 
 ENV NODE_ENV=production
 ENV PORT=4000

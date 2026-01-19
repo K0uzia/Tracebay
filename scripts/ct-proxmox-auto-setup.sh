@@ -204,7 +204,10 @@ progress "7) Démarrage des services Docker"
 cd "$ENV_DIR"
 docker compose config -q
 
-docker compose up --build -d
+# Force a fresh image build to ensure TypeScript output is present
+export CACHE_BUSTER="$(date +%s)"
+docker compose build --no-cache proxmox
+docker compose up -d
 ok "Stack démarrée"
 
 # Wait for DB
