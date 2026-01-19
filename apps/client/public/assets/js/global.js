@@ -41,20 +41,40 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Initialiser ChatWidgetManager (widget flottant)
-  try {
-    const serverUrl = window.APP_CONFIG?.serverUrl || 'http://localhost:8060';
-    window.chatWidgetManager = new ChatWidgetManager({
-      wrapperId: 'chat-widget-wrapper',
-      buttonId: 'chat-widget-btn',
-      panelId: 'chat-widget-panel',
-      closeButtonId: 'chat-widget-close',
-      pseudoModalId: 'chat-widget-pseudo-modal',
-      notificationBadgeId: 'chat-notification-badge',
-      serverUrl: serverUrl
-    });
-  } catch (error) {
-    console.error('❌ Erreur initialisation ChatWidgetManager:', error);
+  // Initialiser ChatWidgetManager (widget flottant) une fois APP_CONFIG dispo
+  const initChatWidget = () => {
+    try {
+      const serverUrl = window.APP_CONFIG?.serverUrl || 'http://localhost:8060';
+      const serverWsUrl = window.APP_CONFIG?.serverWsUrl;
+      window.chatWidgetManager = new ChatWidgetManager({
+        wrapperId: 'chat-widget-wrapper',
+        buttonId: 'chat-widget-btn',
+        panelId: 'chat-widget-panel',
+        closeButtonId: 'chat-widget-close',
+        pseudoModalId: 'chat-widget-pseudo-modal',
+        notificationBadgeId: 'chat-notification-badge',
+        serverUrl: serverUrl,
+        serverWsUrl: serverWsUrl
+      });
+    } catch (error) {
+      console.error('❌ Erreur initialisation ChatWidgetManager:', error);
+    }
+  };
+
+  if (window.APP_CONFIG?.serverUrl) {
+    initChatWidget();
+  } else {
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts++;
+      if (window.APP_CONFIG?.serverUrl) {
+        clearInterval(timer);
+        initChatWidget();
+      } else if (attempts >= 20) {
+        clearInterval(timer);
+        console.warn('⚠️ APP_CONFIG non disponible pour le chat (timeout).');
+      }
+    }, 200);
   }
 
   // NOTE: ChatManager sera initialisé par app.js après le chargement de la page

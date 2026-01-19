@@ -49,6 +49,19 @@ const connectedUsers = new Map<string, WebSocketUser>();
 let messageCount = 0;
 const messageStartTime = Date.now();
 
+// In-memory reference data for marques / modèles (development only)
+const marques = [
+  { id: 1, name: 'Dell' },
+  { id: 2, name: 'HP' },
+  { id: 3, name: 'Lenovo' }
+];
+
+const modeles = [
+  { id: 1, name: 'Latitude 5410', marque_id: 1 },
+  { id: 2, name: 'ProBook 450', marque_id: 2 },
+  { id: 3, name: 'ThinkPad T14', marque_id: 3 }
+];
+
 // Register plugins
 (async () => {
   try {
@@ -288,6 +301,45 @@ const messageStartTime = Date.now();
           createdAt: new Date().toISOString()
         }
       };
+    });
+
+    // Marques & Modèles (Réception)
+    fastify.get('/api/marques', async () => {
+      return { success: true, items: marques };
+    });
+
+    fastify.get('/api/marques/all', async () => {
+      return { success: true, items: modeles };
+    });
+
+    fastify.post('/api/marques', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { name } = request.body as any;
+      if (!name) {
+        reply.statusCode = 400;
+        return { error: 'Name is required' };
+      }
+
+      const id = marques.length ? Math.max(...marques.map(m => m.id)) + 1 : 1;
+      const newMarque = { id, name };
+      marques.push(newMarque);
+
+      return { success: true, ...newMarque };
+    });
+
+    fastify.post('/api/marques/:marqueId/modeles', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { name } = request.body as any;
+      const marqueId = parseInt((request.params as any).marqueId, 10);
+
+      if (!name || Number.isNaN(marqueId)) {
+        reply.statusCode = 400;
+        return { error: 'Name and marqueId are required' };
+      }
+
+      const id = modeles.length ? Math.max(...modeles.map(m => m.id)) + 1 : 1;
+      const newModele = { id, name, marque_id: marqueId };
+      modeles.push(newModele);
+
+      return { success: true, ...newModele };
     });
 
     // Lots routes (Réception)

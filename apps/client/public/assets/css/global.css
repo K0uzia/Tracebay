@@ -18,7 +18,7 @@
 
 /* ----------CSS RECEPTION----------- */
 @import url(./modules/receptions/entrer.css);
-@import url(./modules/receptions/sortie.css);
+/* Removed missing sortie.css to avoid 404 */
 @import url(./modules/receptions/historique.css);
 @import url(./modules/receptions/inventaire.css);
 @import url(./modules/receptions/tracabiliter.css);

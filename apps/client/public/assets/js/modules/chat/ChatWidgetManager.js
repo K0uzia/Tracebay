@@ -29,6 +29,7 @@ class ChatWidgetManager {
     // Initialiser ChatManager
     this.chatManager = new ChatManager({
       serverUrl: options.serverUrl || 'http://localhost:8060',
+      wsUrl: options.serverWsUrl,
       pseudoWrapperId: 'chat-widget-pseudo-area',
       pseudoDisplayId: 'chat-widget-pseudo-display',
       pseudoInputId: 'chat-widget-pseudo-input',
