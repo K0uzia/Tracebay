@@ -18,7 +18,7 @@ services:
       - "-c"
       - "config_file=/etc/postgresql/postgresql.conf"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-workspace} -d ${DB_NAME:-workspace}"]
+      test: ["CMD", "psql", "-U", "${DB_USER:-workspace}", "-d", "${DB_NAME:-workspace}", "-c", "SELECT 1"]
       interval: 5s
       timeout: 5s
       retries: 10

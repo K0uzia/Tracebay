@@ -107,20 +107,20 @@ fi
 ok "Node $(node --version), npm $(npm --version)"
 
 # ==========================
-# Clone project (dev branch)
+# Clone project (feature/phase5-production-scaling branch)
 # ==========================
-progress "4) Clonage du projet (branche dev)"
+progress "4) Clonage du projet (branche feature/phase5-production-scaling)"
 
 WORKDIR="/workspace"
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
 if [[ -d workspace/.git ]]; then
-  info "Repo déjà présent — pull dev"
-  cd workspace && git fetch && git checkout dev && git pull origin dev && cd ..
+  info "Repo déjà présent — pull feature/phase5-production-scaling"
+  cd workspace && git fetch && git checkout feature/phase5-production-scaling && git pull origin feature/phase5-production-scaling && cd ..
 else
   info "Clonage du repo"
-  git clone --branch dev https://github.com/SandersonnDev/workspace.git
+  git clone --branch feature/phase5-production-scaling https://github.com/SandersonnDev/workspace.git
 fi
 cd workspace
 ok "Repository prêt: $(git rev-parse --abbrev-ref HEAD)"
