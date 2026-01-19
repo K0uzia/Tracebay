@@ -79,8 +79,15 @@ progress "2) Installation Docker & dépendances"
 apt-get update -y
 DEBIAN_FRONTEND=noninteractive apt-get install -y \
   ca-certificates curl gnupg lsb-release \
-  docker.io docker-compose-plugin \
+  docker.io \
   git jq net-tools iproute2
+
+# Install docker-compose standalone (docker-compose-plugin not yet in Trixie)
+info "Installing docker-compose (standalone)"
+COMPOSE_VERSION=$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)
+curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+chmod +x /usr/local/bin/docker-compose
+ok "docker-compose ${COMPOSE_VERSION} installed"
 
 systemctl enable --now docker
 ok "Docker service enabled & started"
