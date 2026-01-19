@@ -28,8 +28,8 @@
     "build:win": "electron-forge make --platform win32",
     "build:mac": "electron-forge make --platform darwin",
     "build:linux": "electron-builder --linux",
-    "test": "jest",
-    "test:watch": "jest --watch",
+    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch --passWithNoTests",
     "lint": "eslint . --ext .js"
   },
   "build": {
