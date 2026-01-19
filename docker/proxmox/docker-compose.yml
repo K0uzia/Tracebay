@@ -12,16 +12,14 @@ services:
       - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres.conf:/etc/postgresql/postgresql.conf:ro
     command: 
       - "postgres"
-      - "-c"
-      - "config_file=/etc/postgresql/postgresql.conf"
     healthcheck:
       test: ["CMD", "psql", "-U", "${DB_USER:-workspace}", "-d", "${DB_NAME:-workspace}", "-c", "SELECT 1"]
       interval: 5s
       timeout: 5s
-      retries: 10
+      retries: 20
+      start_period: 30s
     restart: unless-stopped
     networks:
       - workspace-network
