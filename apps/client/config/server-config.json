@@ -1,5 +1,5 @@
 {
-  "mode": "local",
+  "mode": "proxmox",
   "local": {
     "url": "http://localhost:8060",
     "ws": "ws://localhost:8060"

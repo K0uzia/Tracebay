@@ -9,6 +9,10 @@
     "apps/proxmox"
   ],
   "scripts": {
+    "setup": "bash scripts/setup-node.sh",
+    "health-check": "bash scripts/health-check.sh",
+    "audit:smart": "bash scripts/smart-audit-fix.sh",
+    "audit:report": "npm audit",
     "dev": "concurrently \"npm run start:api --workspace=apps/server\" \"npm start --workspace=apps/client\"",
     "dev:server": "npm run start:api --workspace=apps/server",
     "dev:server:ui": "npm run dev --workspace=apps/server",
