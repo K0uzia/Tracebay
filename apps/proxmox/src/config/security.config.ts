@@ -13,7 +13,7 @@ export const securityConfig = {
 
   // Password requirements
   password: {
-    minLength: 8,
+    minLength: 6,
     requireUppercase: true,
     requireLowercase: true,
     requireNumbers: true,
