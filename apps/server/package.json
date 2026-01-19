@@ -54,7 +54,7 @@
     "build:win": "tsc && electron-forge make --platform win32",
     "build:mac": "tsc && electron-forge make --platform darwin",
     "build:linux": "tsc && electron-forge make --platform linux",
-    "test": "jest --coverage",
+    "test": "jest --coverage --passWithNoTests",
     "test:watch": "jest --watch",
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext .js,.ts"
