@@ -22,9 +22,9 @@ COPY config ./config
 
 # Install dependencies using root lock file
 RUN echo "Cache buster: ${CACHE_BUSTER}" \
-    && npm ci --workspace=apps/proxmox --include-workspace-root \
+    && npm ci --workspace=apps/proxmox --include-workspace-root --include=dev \
     && npm run build --workspace=apps/proxmox \
-    && ./apps/proxmox/node_modules/.bin/tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir ./ ./config/network.config.ts \
+    && /app/node_modules/.bin/tsc --module commonjs --target ES2020 --moduleResolution node --esModuleInterop --skipLibCheck --outDir config config/network.config.ts \
     && test -f apps/proxmox/dist/src/main.js \
     && test -f config/network.config.js
 
