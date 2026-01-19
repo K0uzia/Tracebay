@@ -26,8 +26,8 @@ class ChatManager {
     this.clearChatBtnId = options.clearChatBtnId || 'chat-widget-clear';
 
     // WebSocket avec serverUrl
-    const serverUrl = options.serverUrl || 'http://localhost:8060';
-    const wsUrl = serverUrl.replace('http://', 'ws://').replace('https://', 'wss://');
+    const serverUrl = options.serverUrl || (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
+    const wsUrl = options.wsUrl || options.serverWsUrl || (window.APP_CONFIG && window.APP_CONFIG.serverWsUrl) || serverUrl.replace('http://', 'ws://').replace('https://', 'wss://');
     this.webSocket = new ChatWebSocket({ wsUrl });
 
     // État

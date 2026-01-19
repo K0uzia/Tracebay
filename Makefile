@@ -5,7 +5,14 @@
 # 
 # Aligned with: PLAN_REFACTORISATION_ET_ARCHI.md
 
-.PHONY: help setup health audit dev build test clean docker-up docker-down
+.PHONY: help setup health audit dev build test clean docker-up docker-down proxmox-start proxmox-stop proxmox-restart proxmox-status proxmox-logs proxmox-logs-live
+
+# Colors
+BLUE := \033[0;34m
+GREEN := \033[0;32m
+RED := \033[0;31m
+YELLOW := \033[1;33m
+NC := \033[0m
 
 # Default target
 .DEFAULT_GOAL := help
@@ -62,9 +69,52 @@ dev-server-ui: ## Start server UI only
 dev-client: ## Start client (Electron) only
 	npm run dev:client
 
-dev-proxmox: ## Start Proxmox backend (Phase 2+)
-	npm run dev --workspace=apps/proxmox
+proxmox-start: ## Start Proxmox backend production
+	@echo "$(BLUE)🚀 Démarrage du backend Proxmox...$(NC)"
+	@cd apps/proxmox && npm run start > logs/proxmox.log 2>&1 &
+	@sleep 3
+	@echo "$(GREEN)✅ Backend lancé$(NC)"
+	@echo ""
+	@echo "$(BLUE)╔═══════════════════════════════════════════════════════════════╗$(NC)"
+	@echo "$(BLUE)║ 🎯 ENDPOINTS DISPONIBLES                                      ║$(NC)"
+	@echo "$(BLUE)╠═══════════════════════════════════════════════════════════════╣$(NC)"
+	@echo "$(BLUE)║ URL HTTP:    $(GREEN)http://192.168.1.62:4000$(BLUE)                           ║$(NC)"
+	@echo "$(BLUE)║ WebSocket:   $(GREEN)ws://192.168.1.62:4000/ws$(BLUE)                         ║$(NC)"
+	@echo "$(BLUE)║ Health:      $(GREEN)http://192.168.1.62:4000/api/health$(BLUE)               ║$(NC)"
+	@echo "$(BLUE)║ Metrics:     $(GREEN)http://192.168.1.62:4000/api/metrics$(BLUE)               ║$(NC)"
+	@echo "$(BLUE)║ Messages:    $(GREEN)http://192.168.1.62:4000/api/messages$(BLUE)              ║$(NC)"
+	@echo "$(BLUE)║ Marques:     $(GREEN)http://192.168.1.62:4000/api/marques$(BLUE)               ║$(NC)"
+	@echo "$(BLUE)║ Events:      $(GREEN)http://192.168.1.62:4000/api/events$(BLUE)                ║$(NC)"
+	@echo "$(BLUE)║ Lots:        $(GREEN)http://192.168.1.62:4000/api/lots$(BLUE)                  ║$(NC)"
+	@echo "$(BLUE)║ Shortcuts:   $(GREEN)http://192.168.1.62:4000/api/shortcuts$(BLUE)             ║$(NC)"
+	@echo "$(BLUE)╚═══════════════════════════════════════════════════════════════╝$(NC)"
+	@echo ""
 
+proxmox-stop: ## Stop Proxmox backend
+	@echo "$(RED)🛑 Arrêt du backend Proxmox...$(NC)"
+	@pkill -f "node.*main.js" || pkill -f "tsx.*main.ts" || true
+	@sleep 1
+	@echo "$(GREEN)✅ Backend arrêté$(NC)"
+
+proxmox-restart: proxmox-stop ## Restart Proxmox backend
+	@sleep 2
+	@make proxmox-start
+
+proxmox-status: ## Check Proxmox backend status
+	@echo "$(BLUE)📊 Vérification du statut Proxmox...$(NC)"
+	@if curl -s http://192.168.1.62:4000/api/health > /dev/null 2>&1; then \
+		echo "$(GREEN)✅ Backend en ligne$(NC)"; \
+		curl -s http://192.168.1.62:4000/api/health | jq . 2>/dev/null || echo "✅ Health endpoint responsive"; \
+	else \
+		echo "$(RED)❌ Backend hors ligne$(NC)"; \
+	fi
+
+proxmox-logs: ## Show Proxmox logs (last 50 lines)
+	@echo "$(BLUE)📋 Derniers logs Proxmox:$(NC)"
+	@tail -50 logs/proxmox.log 2>/dev/null || echo "$(YELLOW)Pas de logs disponibles$(NC)"
+
+proxmox-logs-live: ## Show Proxmox logs live (tail -f)
+	@echo "$(BLUE)🔴 Logs en direct (Ctrl+C pour arrêter):$(NC)"
 ################################################################################
 # 🏗️ Build
 ################################################################################
