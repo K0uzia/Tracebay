@@ -25,6 +25,8 @@ RUN echo "Cache buster: ${CACHE_BUSTER}" \
     && npm ci --workspace=apps/proxmox --include-workspace-root --include=dev \
     && npm run build --workspace=apps/proxmox \
     && /app/node_modules/.bin/tsc --module commonjs --target ES2020 --moduleResolution node --esModuleInterop --skipLibCheck --outDir config config/network.config.ts \
+    && mkdir -p apps/proxmox/dist/apps/proxmox/src/db \
+    && cp apps/proxmox/src/db/schema.sql apps/proxmox/dist/apps/proxmox/src/db/schema.sql \
     && test -f apps/proxmox/dist/apps/proxmox/src/main.js \
     && test -f config/network.config.js
 
