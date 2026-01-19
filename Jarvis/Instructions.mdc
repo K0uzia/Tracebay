@@ -18,7 +18,8 @@ Frontend:
   UI: HTML5 + CSS3
   
 Runtime:
-  Node.js 18+ LTS
+  Node.js 20+ LTS (Required: >=20.11.0)
+  npm 10+ (Required: >=10.0.0)
   Electron 39+
   
 Additional:
@@ -434,6 +435,134 @@ Commits:
   docs: Mettre à jour docs
   test: Ajouter tests
   chore: Maintenance
+```
+
+---
+
+## 🛠️ SCRIPTS & AUTOMATISATION
+
+### Makefile Commands (Recommandé)
+
+```bash
+# Setup & Health
+make setup              # Install Node.js 20+ via NVM + dependencies
+make health             # Run comprehensive health check
+make audit              # Smart audit fix (threshold-based)
+make audit-report       # Show detailed vulnerability report
+
+# Development
+make dev                # Start client + server (full dev mode)
+make dev-server         # Server only
+make dev-client         # Client only
+make dev-proxmox        # Proxmox backend only (Phase 2+)
+
+# Build & Production
+make build              # Build all apps
+make build-production   # Production build with optimizations
+
+# Testing & Quality
+make test               # Run all tests
+make lint               # ESLint check + fix
+make format             # Prettier format
+make type-check         # TypeScript compilation check
+
+# Database
+make reset-db           # Reset database (with confirmation)
+
+# Docker (Phase 3+)
+make docker-build       # Build Docker images
+make docker-up          # Start containers
+make docker-down        # Stop containers
+make docker-logs        # Show logs
+
+# Cleanup
+make clean              # Remove node_modules + build artifacts
+make clean-logs         # Remove log files
+make reinstall          # Clean + fresh install
+
+# Information
+make info               # Show project info (Node, npm, branch, etc.)
+make help               # Show all available commands
+```
+
+### npm Scripts
+
+```bash
+# Setup & Verification (Phase 1)
+npm run setup              # Run scripts/setup-node.sh
+npm run health-check       # Run scripts/health-check.sh
+npm run audit:smart        # Run scripts/smart-audit-fix.sh
+npm run audit:report       # Show npm audit report
+
+# Development
+npm run dev                # Client + Server
+npm run dev:server         # Server only
+npm run dev:client         # Client only
+
+# Build
+npm run build              # Build all
+npm run build:server       # Server only
+npm run build:client       # Client only
+npm run build:production   # Production build
+
+# Quality
+npm run test               # Jest tests
+npm run lint               # ESLint
+npm run format             # Prettier
+npm run type-check         # TypeScript
+
+# Database
+npm run reset-db           # Reset SQLite database
+
+# Docker
+npm run docker:proxmox:build
+npm run docker:proxmox:up
+npm run docker:proxmox:down
+npm run docker:proxmox:logs
+```
+
+### Scripts Locations
+
+```
+scripts/
+├── setup-node.sh          # Node.js 20+ installation via NVM
+├── health-check.sh        # Comprehensive system health check
+└── smart-audit-fix.sh     # Intelligent vulnerability fix
+
+Features:
+✅ Automated Node.js version management (NVM)
+✅ Dependency verification
+✅ TypeScript compilation check
+✅ Forbidden package detection (puppeteer, express, etc.)
+✅ Security audit with thresholds (critical: 0, high: <15)
+✅ Smart fix strategy (safe → aggressive if needed)
+✅ Project integrity validation after fixes
+```
+
+### Setup Workflow (New Developer)
+
+```bash
+# 1. Clone repository
+git clone https://github.com/SandersonnDev/workspace.git
+cd workspace
+
+# 2. Setup Node.js + dependencies (one command)
+make setup
+# OR: npm run setup
+
+# 3. Health check
+make health
+# OR: npm run health-check
+
+# 4. Fix vulnerabilities if needed
+make audit
+# OR: npm run audit:smart
+
+# 5. Start development
+make dev
+# OR: npm run dev
+
+# ✅ Ready to code!
 ```
 
 ---
