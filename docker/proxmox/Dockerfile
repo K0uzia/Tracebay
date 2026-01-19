@@ -9,14 +9,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tini \
     && rm -rf /var/lib/apt/lists/*
 
-# Install app dependencies
+# Copy root package files for monorepo structure
+COPY package.json package-lock.json ./
+
+# Copy workspace specific files
 COPY apps/proxmox/package*.json apps/proxmox/tsconfig.json ./apps/proxmox/
 COPY apps/proxmox/src ./apps/proxmox/src
 COPY config ./config
 
-RUN cd apps/proxmox \
-    && npm ci --production=false \
-    && npm run build
+# Install dependencies using root lock file
+RUN npm ci --workspace=apps/proxmox --include-workspace-root \
+    && npm run build --workspace=apps/proxmox
 
 ENV NODE_ENV=production
 ENV PORT=4000
