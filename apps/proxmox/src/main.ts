@@ -5,6 +5,11 @@ import websocket from '@fastify/websocket';
 import dotenv from 'dotenv';
 import { getConfig } from '../../../config/network.config';
 import { registerMonitoringRoutes, incrementMessageCount } from './api/monitoring';
+import { registerCompression } from './middleware/compression';
+import { registerRateLimit } from './middleware/rate-limit';
+import { registerMonitoring } from './middleware/monitoring';
+import { globalMetrics } from './utils/metrics';
+import { globalCache } from './utils/cache';
 
 // Load environment variables
 dotenv.config();
@@ -46,6 +51,11 @@ const messageStartTime = Date.now();
 // Register plugins
 (async () => {
   try {
+    // Phase 5: Performance optimization middlewares
+    await registerCompression(fastify);
+    await registerRateLimit(fastify);
+    await registerMonitoring(fastify);
+
     // Security
     await fastify.register(helmet, {
       contentSecurityPolicy: false
@@ -65,12 +75,35 @@ const messageStartTime = Date.now();
 
     // Health check endpoint
     fastify.get('/api/health', async (request: FastifyRequest, reply: FastifyReply) => {
+      const cacheStats = globalCache.stats();
+      
       return {
         status: 'ok',
         timestamp: new Date().toISOString(),
         uptime: process.uptime(),
         environment: nodeEnv,
-        version: '2.0.0'
+        version: '2.0.0',
+        cache: {
+          size: cacheStats.size,
+          maxSize: cacheStats.maxSize,
+        },
+        memory: {
+          heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+          heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        },
+      };
+    });
+
+    // Metrics endpoint (Phase 5)
+    fastify.get('/api/metrics', async (request: FastifyRequest, reply: FastifyReply) => {
+      const metrics = globalMetrics.getMetrics();
+      const cacheStats = globalCache.stats();
+      
+      return {
+        ...metrics,
+        cache: cacheStats,
+        memory: process.memoryUsage(),
+        timestamp: new Date().toISOString(),
       };
     });
 
