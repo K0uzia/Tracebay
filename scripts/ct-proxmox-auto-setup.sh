@@ -115,6 +115,12 @@ WORKDIR="/workspace"
 mkdir -p "$WORKDIR"
 cd "$WORKDIR"
 
+# Clean up if workspace directory exists but is not a valid git repo
+if [[ -d workspace ]] && [[ ! -d workspace/.git ]]; then
+  info "Cleaning up invalid workspace directory"
+  rm -rf workspace
+fi
+
 if [[ -d workspace/.git ]]; then
   info "Repo déjà présent — pull feature/phase5-production-scaling"
   cd workspace && git fetch && git checkout feature/phase5-production-scaling && git pull origin feature/phase5-production-scaling && cd ..
