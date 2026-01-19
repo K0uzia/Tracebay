@@ -11,7 +11,7 @@ export async function registerCompression(fastify: FastifyInstance) {
   const { compression } = performanceConfig;
 
   if (!compression.enabled) {
-    fastify.log.info('Compression disabled');
+    fastify.log.info('Compression disabled for stability');
     return;
   }
 
@@ -21,11 +21,6 @@ export async function registerCompression(fastify: FastifyInstance) {
     encodingPriority: compression.encodingPriority,
     brotliOptions: compression.brotli,
     zlibOptions: compression.gzip,
-    // Don't compress if already compressed
-    onUnsupportedEncoding: (encoding: string, request: any, reply: any) => {
-      reply.code(406);
-      return 'Unsupported encoding';
-    },
   } as any);
 
   fastify.log.info({ threshold: compression.threshold, encodings: compression.encodingPriority }, 'Compression middleware registered');

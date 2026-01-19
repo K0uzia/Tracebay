@@ -6,7 +6,7 @@
 export const performanceConfig = {
   // Compression settings
   compression: {
-    enabled: true,
+    enabled: false, // Disabled for stability; can be enabled in production with proper tuning
     threshold: 1024, // Compress responses > 1KB
     encodingPriority: ['br', 'gzip', 'deflate'], // Brotli preferred
     brotli: {
@@ -20,15 +20,15 @@ export const performanceConfig = {
   // Rate limiting
   rateLimit: {
     global: {
-      max: 100, // requests
+      max: 1000, // requests (relaxed for dev/CT testing)
       timeWindow: '1 minute',
     },
     api: {
-      max: 50,
+      max: 500,
       timeWindow: '1 minute',
     },
     auth: {
-      max: 5,
+      max: 50,
       timeWindow: '15 minutes',
     },
   },
