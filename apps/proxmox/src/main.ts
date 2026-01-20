@@ -130,12 +130,15 @@ const messageStartTime = Date.now();
         return { error: 'Username and password required' };
       }
 
-      // TODO: Vérifier les credentials dans la base de données et générer JWT
+      // Mock: génère un token temporaire avec timestamp
+      const userId = `user_${Date.now()}`;
+      const token = `jwt_${Buffer.from(JSON.stringify({ userId, username, iat: Date.now() })).toString('base64')}`;
+
       return {
         success: true,
-        token: 'jwt_token_todo',
+        token,
         user: {
-          id: 1,
+          id: userId,
           username,
           createdAt: new Date().toISOString()
         }
@@ -155,17 +158,24 @@ const messageStartTime = Date.now();
     fastify.post('/api/auth/verify', async (request: FastifyRequest, reply: FastifyReply) => {
       const token = request.headers.authorization?.replace('Bearer ', '');
 
-      if (!token || !token.startsWith('mock_token_')) {
+      if (!token || !token.startsWith('jwt_')) {
         reply.statusCode = 401;
         return { error: 'Invalid token' };
       }
 
-      const userId = token.replace('mock_token_', '');
-      return {
-        valid: true,
-        userId,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
-      };
+      try {
+        // Decode simple token
+        const decoded = JSON.parse(Buffer.from(token.replace('jwt_', ''), 'base64').toString());
+        return {
+          valid: true,
+          userId: decoded.userId,
+          username: decoded.username,
+          expiresAt: new Date(decoded.iat + 7 * 24 * 60 * 60 * 1000).toISOString()
+        };
+      } catch (e) {
+        reply.statusCode = 401;
+        return { error: 'Invalid token format' };
+      }
     });
 
     // Mock register endpoint to avoid 404
@@ -177,8 +187,18 @@ const messageStartTime = Date.now();
         return { error: 'Username and password required' };
       }
 
+      if (username.length < 3 || username.length > 20) {
+        reply.statusCode = 400;
+        return { error: 'Username must be between 3 and 20 characters' };
+      }
+
+      if (password.length < 6) {
+        reply.statusCode = 400;
+        return { error: 'Password must be at least 6 characters' };
+      }
+
       const userId = `user_${Date.now()}`;
-      const token = `mock_token_${userId}`;
+      const token = `jwt_${Buffer.from(JSON.stringify({ userId, username, iat: Date.now() })).toString('base64')}`;
 
       return {
         success: true,
@@ -265,6 +285,35 @@ const messageStartTime = Date.now();
       return { success: true, message };
     });
 
+    // Shortcuts categories routes
+    fastify.get('/api/shortcuts/categories', async (request: FastifyRequest, reply: FastifyReply) => {
+      // TODO: Charger depuis la base de données
+      return {
+        success: true,
+        categories: []
+      };
+    });
+
+    fastify.post('/api/shortcuts/categories', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { name, position } = request.body as any;
+
+      if (!name) {
+        reply.statusCode = 400;
+        return { error: 'Category name is required' };
+      }
+
+      const categoryId = `cat_${Date.now()}`;
+      return {
+        success: true,
+        category: {
+          id: categoryId,
+          name,
+          position: position || 0,
+          createdAt: new Date().toISOString()
+        }
+      };
+    });
+
     // Shortcuts routes
     fastify.get('/api/shortcuts', async (request: FastifyRequest, reply: FastifyReply) => {
       // TODO: Charger les raccourcis depuis la base de données
@@ -275,23 +324,73 @@ const messageStartTime = Date.now();
     });
 
     fastify.post('/api/shortcuts', async (request: FastifyRequest, reply: FastifyReply) => {
-      const { name, description, icon } = request.body as any;
+      const { category_id, name, url, description, icon } = request.body as any;
 
-      if (!name) {
+      if (!category_id || !name || !url) {
         reply.statusCode = 400;
-        return { error: 'Name is required' };
+        return { error: 'Category ID, name, and URL are required' };
       }
 
-      // TODO: Insérer le raccourci dans la base de données
+      const shortcutId = `shortcut_${Date.now()}`;
       return {
         success: true,
         shortcut: {
-          id: 1,
+          id: shortcutId,
+          category_id,
           name,
+          url,
           description,
           icon,
           createdAt: new Date().toISOString()
         }
+      };
+    });
+
+    fastify.get('/api/shortcuts/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      // TODO: Charger depuis la base de données
+      return {
+        success: true,
+        shortcut: {
+          id,
+          category_id: 'cat_1',
+          name: 'Mock Shortcut',
+          url: 'https://example.com',
+          createdAt: new Date().toISOString()
+        }
+      };
+    });
+
+    fastify.put('/api/shortcuts/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const { name, url, description, icon } = request.body as any;
+
+      if (!name || !url) {
+        reply.statusCode = 400;
+        return { error: 'Name and URL are required' };
+      }
+
+      // TODO: Mettre à jour dans la base de données
+      return {
+        success: true,
+        shortcut: {
+          id,
+          name,
+          url,
+          description,
+          icon,
+          updatedAt: new Date().toISOString()
+        }
+      };
+    });
+
+    fastify.delete('/api/shortcuts/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      // TODO: Supprimer de la base de données
+      return {
+        success: true,
+        message: 'Shortcut deleted successfully',
+        id
       };
     });
 
@@ -306,6 +405,22 @@ const messageStartTime = Date.now();
       return { success: true, items: [] };
     });
 
+    fastify.get('/api/marques/:marqueId/modeles', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { marqueId } = request.params as { marqueId: string };
+      
+      if (!marqueId) {
+        reply.statusCode = 400;
+        return { error: 'MarqueId is required' };
+      }
+
+      // TODO: Charger les modèles pour cette marque depuis la base de données
+      return {
+        success: true,
+        marqueId,
+        modeles: []
+      };
+    });
+
     fastify.post('/api/marques', async (request: FastifyRequest, reply: FastifyReply) => {
       const { name } = request.body as any;
       if (!name) {
@@ -313,8 +428,9 @@ const messageStartTime = Date.now();
         return { error: 'Name is required' };
       }
 
+      const marqueId = `marque_${Date.now()}`;
       // TODO: Insérer dans la base de données
-      return { success: true, id: 1, name };
+      return { success: true, id: marqueId, name };
     });
 
     fastify.post('/api/marques/:marqueId/modeles', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -326,8 +442,9 @@ const messageStartTime = Date.now();
         return { error: 'Name and marqueId are required' };
       }
 
+      const modeloId = `modelo_${Date.now()}`;
       // TODO: Insérer dans la base de données
-      return { success: true, id: 1, name, marque_id: marqueId };
+      return { success: true, id: modeloId, name, marque_id: marqueId };
     });
 
     // Lots routes (Réception)
