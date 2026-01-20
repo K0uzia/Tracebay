@@ -296,7 +296,7 @@ const messageStartTime = Date.now();
       // Broadcast to all connected users
       for (const user of connectedUsers.values()) {
         try {
-          user.socket.write(JSON.stringify({
+          user.socket.socket.send(JSON.stringify({
             type: 'message:new',
             data: message
           }));
@@ -767,7 +767,7 @@ const messageStartTime = Date.now();
         }, 30000);
 
         // Send welcome message
-        socket.write(JSON.stringify({
+        socket.socket.send(JSON.stringify({
           type: 'connected',
           userId,
           username,
@@ -779,7 +779,7 @@ const messageStartTime = Date.now();
         for (const user of connectedUsers.values()) {
           if (user.id !== userId) {
             try {
-              user.socket.write(JSON.stringify({
+              user.socket.socket.send(JSON.stringify({
                 type: 'presence:update',
                 data: {
                   userId,
@@ -798,7 +798,7 @@ const messageStartTime = Date.now();
           for (const user of connectedUsers.values()) {
             if (excludeId && user.id === excludeId) continue;
             try {
-              user.socket.write(JSON.stringify(payload));
+              user.socket.socket.send(JSON.stringify(payload));
             } catch {
               // Ignore send failures
             }
@@ -813,14 +813,14 @@ const messageStartTime = Date.now();
             switch (message.type) {
             case 'auth':
               // Mock auth acknowledgement
-              socket.write(JSON.stringify({ type: 'auth:ack', ok: true }));
+              socket.socket.send(JSON.stringify({ type: 'auth:ack', ok: true }));
               break;
 
             case 'message':
             case 'message:send': {
               const text = message.text || message.data?.text;
               if (!text || !text.toString().trim()) {
-                socket.write(JSON.stringify({ type: 'error', message: 'Message text is required' }));
+                socket.socket.send(JSON.stringify({ type: 'error', message: 'Message text is required' }));
                 return;
               }
 
@@ -859,7 +859,7 @@ const messageStartTime = Date.now();
                   }
                 }, userId);
 
-                socket.write(JSON.stringify({ type: 'success', message: 'Pseudo updated' }));
+                socket.socket.send(JSON.stringify({ type: 'success', message: 'Pseudo updated' }));
               }
               break;
             }
@@ -893,7 +893,7 @@ const messageStartTime = Date.now();
           } catch (e) {
             fastify.log.error(`Error parsing message: ${e}`);
             try {
-              socket.write(JSON.stringify({ type: 'error', message: 'Invalid message payload' }));
+              socket.socket.send(JSON.stringify({ type: 'error', message: 'Invalid message payload' }));
             } catch {
               // Ignore send failures
             }
@@ -910,7 +910,7 @@ const messageStartTime = Date.now();
           // Broadcast user left
           for (const user of connectedUsers.values()) {
             try {
-              user.socket.write(JSON.stringify({
+              user.socket.socket.send(JSON.stringify({
                 type: 'presence:update',
                 data: {
                   userId,
