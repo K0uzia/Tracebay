@@ -216,8 +216,8 @@ Requires=docker.service
 Type=simple
 User=root
 WorkingDirectory=/workspace/workspace/docker/proxmox
-ExecStart=/usr/local/bin/docker-compose up
-ExecStop=/usr/local/bin/docker-compose down
+ExecStart=/usr/bin/docker compose up
+ExecStop=/usr/bin/docker compose down
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -317,7 +317,7 @@ cmd_status() {
   cd "$DOCKER_DIR"
   echo ""
   info "Containers Docker:"
-  docker-compose ps 2>/dev/null || docker compose ps || true
+  docker compose ps
   
   # Show debug mode status
   if [[ -f "$ENV_FILE" ]]; then
@@ -342,10 +342,10 @@ cmd_dbreset() {
   
   cd "$DOCKER_DIR"
   info "Arrêt des services..."
-  docker-compose down -v 2>/dev/null || docker compose down -v
+  docker compose down -v
   
   info "Redémarrage avec base vierge..."
-  docker-compose up -d 2>/dev/null || docker compose up -d
+  docker compose up -d
   
   ok "Base de données réinitialisée"
 }
