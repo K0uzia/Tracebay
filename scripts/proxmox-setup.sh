@@ -105,12 +105,22 @@ EOF
     docker.io \
     git jq net-tools iproute2
 
-  # Install docker-compose standalone
-  info "Installing docker-compose (standalone)"
-  COMPOSE_VERSION=$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)
-  curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-  chmod +x /usr/local/bin/docker-compose
-  ok "docker-compose ${COMPOSE_VERSION} installed"
+  # Check if docker compose works (built-in or standalone)
+  if docker compose version &>/dev/null; then
+    ok "docker compose already available"
+  elif [[ -f /usr/local/bin/docker-compose ]]; then
+    ok "docker-compose standalone already installed"
+  else
+    # Install docker-compose standalone only if needed
+    info "Installing docker-compose (standalone)"
+    COMPOSE_VERSION=$(curl -fsSL https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name 2>/dev/null || echo "v2.24.0")
+    if curl -fsSL "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose 2>/dev/null; then
+      chmod +x /usr/local/bin/docker-compose
+      ok "docker-compose ${COMPOSE_VERSION} installed"
+    else
+      warn "docker-compose download failed, but 'docker compose' is available"
+    fi
+  fi
 
   systemctl enable --now docker
   ok "Docker service enabled & started"
