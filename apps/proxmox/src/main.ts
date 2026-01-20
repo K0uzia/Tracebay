@@ -168,6 +168,29 @@ const messageStartTime = Date.now();
       };
     });
 
+    // Mock register endpoint to avoid 404
+    fastify.post('/api/auth/register', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { username, password } = request.body as { username: string; password: string };
+
+      if (!username || !password) {
+        reply.statusCode = 400;
+        return { error: 'Username and password required' };
+      }
+
+      const userId = `user_${Date.now()}`;
+      const token = `mock_token_${userId}`;
+
+      return {
+        success: true,
+        token,
+        user: {
+          id: userId,
+          username,
+          createdAt: new Date().toISOString()
+        }
+      };
+    });
+
     // Events routes (Agenda)
     fastify.get('/api/events', async (request: FastifyRequest, reply: FastifyReply) => {
       // TODO: Charger les événements depuis la base de données
@@ -317,23 +340,41 @@ const messageStartTime = Date.now();
     });
 
     fastify.post('/api/lots', async (request: FastifyRequest, reply: FastifyReply) => {
-      const { itemCount, description } = request.body as any;
+      const { itemCount, description, items, lotName } = request.body as any;
 
-      if (!itemCount) {
+      // Support both legacy shape (itemCount) and new client shape (items array)
+      const computedItemCount = Array.isArray(items) ? items.length : Number(itemCount);
+
+      if (!computedItemCount || Number.isNaN(computedItemCount)) {
         reply.statusCode = 400;
-        return { error: 'itemCount is required' };
+        return { error: 'itemCount or items[] is required' };
       }
+
+      const lotId = `lot_${Date.now()}`;
 
       // TODO: Insérer le lot dans la base de données
       return {
         success: true,
+        id: lotId,
         lot: {
-          id: 1,
-          itemCount,
+          id: lotId,
+          itemCount: computedItemCount,
           description,
+          name: lotName || null,
           status: 'received',
           receivedAt: new Date().toISOString()
         }
+      };
+    });
+
+    // PDF generation stub
+    fastify.post('/api/lots/:id/pdf', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      return {
+        success: true,
+        id,
+        pdf: `Lot ${id} PDF generation stub`,
+        generatedAt: new Date().toISOString()
       };
     });
 
@@ -341,7 +382,10 @@ const messageStartTime = Date.now();
     fastify.register(async (fastify: any) => {
       fastify.get('/ws', { websocket: true }, (socket: any, request: any) => {
         const userId = `ws_user_${Date.now()}`;
-        const username = request.query?.username as string || `User_${Math.random().toString(36).substr(2, 9)}`;
+        let username = request.query?.username as string || `User_${Math.random().toString(36).substr(2, 9)}`;
+        let isAlive = true;
+
+        const heartbeat = () => { isAlive = true; };
 
         // Store connected user
         connectedUsers.set(userId, {
@@ -352,6 +396,25 @@ const messageStartTime = Date.now();
         });
 
         fastify.log.info(`✅ WebSocket connected: ${username} (${userId})`);
+
+        // Heartbeat to keep connections alive and detect dead sockets
+        const pingInterval = setInterval(() => {
+          if (!isAlive) {
+            fastify.log.warn(`⏱️ Closing stale WebSocket for ${username} (${userId})`);
+            try {
+              socket.terminate?.();
+            } catch {
+              try { socket.close(); } catch { /* ignore */ }
+            }
+            return;
+          }
+          isAlive = false;
+          try {
+            socket.ping();
+          } catch {
+            // Ignore ping failures
+          }
+        }, 30000);
 
         // Send welcome message
         socket.send(JSON.stringify({
@@ -380,72 +443,98 @@ const messageStartTime = Date.now();
           }
         }
 
+        // Helper for broadcasting
+        const broadcast = (payload: any, excludeId?: string) => {
+          for (const user of connectedUsers.values()) {
+            if (excludeId && user.id === excludeId) continue;
+            try {
+              user.socket.send(JSON.stringify(payload));
+            } catch {
+              // Ignore send failures
+            }
+          }
+        };
+
         // Handle incoming messages
         socket.on('message', (data: any) => {
           try {
             const message = JSON.parse(data.toString());
 
             switch (message.type) {
-            case 'message:send':
-              messageCount++;
-              incrementMessageCount();
-              // Broadcast to all users
-              for (const user of connectedUsers.values()) {
-                try {
-                  user.socket.send(JSON.stringify({
-                    type: 'message:new',
-                    data: {
-                      id: `msg_${Date.now()}`,
-                      userId,
-                      username,
-                      text: message.text,
-                      createdAt: new Date().toISOString()
-                    }
-                  }));
-                } catch (e) {
-                  // Socket might be closed
-                }
-              }
+            case 'auth':
+              // Mock auth acknowledgement
+              socket.send(JSON.stringify({ type: 'auth:ack', ok: true }));
               break;
 
-            case 'typing:indicator':
-              // Broadcast typing status
-              for (const user of connectedUsers.values()) {
-                if (user.id !== userId) {
-                  try {
-                    user.socket.send(JSON.stringify({
-                      type: 'typing:indicator',
-                      data: {
-                        userId,
-                        username,
-                        isTyping: message.isTyping
-                      }
-                    }));
-                  } catch (e) {
-                    // Socket might be closed
-                  }
-                }
+            case 'message':
+            case 'message:send': {
+              const text = message.text || message.data?.text;
+              if (!text || !text.toString().trim()) {
+                socket.send(JSON.stringify({ type: 'error', message: 'Message text is required' }));
+                return;
               }
+
+              messageCount++;
+              incrementMessageCount();
+
+              const outbound = {
+                type: 'message:new',
+                data: {
+                  id: `msg_${Date.now()}`,
+                  userId,
+                  username,
+                  text,
+                  createdAt: new Date().toISOString()
+                }
+              };
+
+              broadcast(outbound);
+              break;
+            }
+
+            case 'setPseudo': {
+              if (message.pseudo && typeof message.pseudo === 'string') {
+                username = message.pseudo;
+                const existing = connectedUsers.get(userId);
+                if (existing) {
+                  existing.username = username;
+                }
+
+                broadcast({
+                  type: 'presence:update',
+                  data: {
+                    userId,
+                    username,
+                    status: 'online'
+                  }
+                }, userId);
+
+                socket.send(JSON.stringify({ type: 'success', message: 'Pseudo updated' }));
+              }
+              break;
+            }
+
+            case 'typing':
+            case 'typing:indicator':
+              broadcast({
+                type: 'typing:indicator',
+                data: {
+                  userId,
+                  username,
+                  isTyping: Boolean(message.isTyping)
+                }
+              }, userId);
               break;
 
             case 'presence:update':
-              // Broadcast presence update
-              for (const user of connectedUsers.values()) {
-                if (user.id !== userId) {
-                  try {
-                    user.socket.send(JSON.stringify({
-                      type: 'presence:update',
-                      data: {
-                        userId,
-                        username,
-                        status: message.status
-                      }
-                    }));
-                  } catch (e) {
-                    // Socket might be closed
-                  }
+              broadcast({
+                type: 'presence:update',
+                data: {
+                  userId,
+                  username,
+                  status: message.status || 'online'
                 }
-              }
+              }, userId);
               break;
 
             default:
@@ -453,13 +542,20 @@ const messageStartTime = Date.now();
             }
           } catch (e) {
             fastify.log.error(`Error parsing message: ${e}`);
+            try {
+              socket.send(JSON.stringify({ type: 'error', message: 'Invalid message payload' }));
+            } catch {
+              // Ignore send failures
+            }
           }
         });
 
         // Handle disconnection
-        socket.on('close', () => {
+        socket.on('close', (code?: number, reason?: Buffer) => {
           connectedUsers.delete(userId);
-          fastify.log.info(`❌ WebSocket disconnected: ${username} (${userId})`);
+          fastify.log.info(`❌ WebSocket disconnected: ${username} (${userId}) code=${code} reason=${reason?.toString() || ''}`);
+
+          clearInterval(pingInterval);
 
           // Broadcast user left
           for (const user of connectedUsers.values()) {
@@ -482,6 +578,9 @@ const messageStartTime = Date.now();
         socket.on('error', (error: any) => {
           fastify.log.error(`WebSocket error for ${username}: ${error.message}`);
         });
+
+        // Handle pong response
+        socket.on('pong', heartbeat);
       });
     });
 
