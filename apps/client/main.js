@@ -136,24 +136,22 @@ async function discoverServer(port = 8060) {
     return null;
 }
 
-// Charger la configuration serveur
-let serverConfig = {};
-try {
-    const configPath = path.join(__dirname, 'config', 'server-config.json');
-    const configData = fs.readFileSync(configPath, 'utf8');
-    serverConfig = JSON.parse(configData);
-    console.log('✅ Configuration serveur chargée:', serverConfig.mode);
-} catch (error) {
-    console.error('❌ Erreur chargement config serveur:', error.message);
-    // Fallback to default local config
-    serverConfig = {
-        mode: 'local',
-        local: {
-            url: 'http://localhost:8060',
-            ws: 'ws://localhost:8060'
-        }
-    };
-}
+// Configuration serveur (fallback Electron) - sans fichier externe
+const serverConfig = {
+    mode: 'proxmox',
+    local: {
+        url: 'http://localhost:8060',
+        ws: 'ws://localhost:8060'
+    },
+    proxmox: {
+        url: 'http://192.168.1.62:4000',
+        ws: 'ws://192.168.1.62:4000'
+    },
+    production: {
+        url: 'https://workspace.example.com',
+        ws: 'wss://workspace.example.com'
+    }
+};
 
 // Configuration initiale (fallback) - La vraie config vient du client web via ConnectionConfig.js
 const MODE = process.env.SERVER_MODE || serverConfig.mode || 'local';

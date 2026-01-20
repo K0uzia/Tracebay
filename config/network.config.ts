@@ -3,13 +3,13 @@ export const NETWORK_CONFIG = {
     development: {
       client: {
         port: 3000,
-        apiUrl: 'http://localhost:4000',
-        wsUrl: 'ws://localhost:4000/ws'
+        apiUrl: 'http://192.168.1.62:4000',
+        wsUrl: 'ws://192.168.1.62:4000/ws'
       },
       server: {
         port: 5000,
-        apiUrl: 'http://localhost:4000',
-        wsUrl: 'ws://localhost:4000/ws'
+        apiUrl: 'http://192.168.1.62:4000',
+        wsUrl: 'ws://192.168.1.62:4000/ws'
       },
       proxmox: {
         port: 4000,

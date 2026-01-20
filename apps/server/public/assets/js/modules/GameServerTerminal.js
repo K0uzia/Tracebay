@@ -129,7 +129,7 @@ class GameServerTerminal {
                 this.setStatus('running');
                 this.startPolling();
                 if (window.ServerMonitorInstance) {
-                    window.ServerMonitorInstance.start('http://localhost:8060');
+                    window.ServerMonitorInstance.start('http://192.168.1.62:4000');
                 }
             }
             if (action === 'stop' || action === 'kill') {
@@ -231,7 +231,7 @@ class GameServerTerminal {
     }
 
     apiBase(pathname) {
-        const base = 'http://localhost:8060';
+        const base = 'http://192.168.1.62:4000';
         return `${base}${pathname}`;
     }
 

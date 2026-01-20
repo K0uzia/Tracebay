@@ -1,7 +1,7 @@
 /**
  * Dashboard configuration
  */
-const API_URL = 'http://localhost:8060';
+const API_URL = 'http://192.168.1.62:4000';
 let updateInterval;
 let startTime = Date.now();
 

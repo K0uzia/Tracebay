@@ -15,16 +15,8 @@ const proxmoxConfig = config.proxmox;
 
 // Initialize Fastify
 const fastify: FastifyInstance = Fastify({
-  logger: {
-    level: process.env.LOG_LEVEL || 'info',
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        colorize: true,
-        translateTime: 'SYS:standard',
-        ignore: 'pid,hostname'
-      }
-    }
+  logger: process.env.NODE_ENV === 'production' ? true : {
+    level: process.env.LOG_LEVEL || 'info'
   },
   bodyLimit: 1048576 // 1MB
 });

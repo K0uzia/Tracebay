@@ -17,8 +17,8 @@ class ConnectionConfig {
                 ws: 'ws://localhost:8060'
             },
             proxmox: {
-                url: 'http://192.168.1.141:8060',
-                ws: 'ws://192.168.1.141:8060',
+                url: 'http://192.168.1.62:4000',
+                ws: 'ws://192.168.1.62:4000',
                 host: 'proxmox-ws.local'
             },
             production: {

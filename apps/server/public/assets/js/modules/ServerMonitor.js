@@ -4,7 +4,7 @@
  */
 
 class ServerMonitor {
-    constructor(baseUrl = 'http://localhost:8060') {
+    constructor(baseUrl = 'http://192.168.1.62:4000') {
         this.ws = null;
         this.reconnectAttempts = 0;
         this.maxReconnectAttempts = 10;
@@ -462,7 +462,7 @@ class ServerMonitor {
 // Expose a starter/stopper so we only connect when backend is running
 window.ServerMonitorInstance = {
     monitor: null,
-    start(baseUrl = 'http://localhost:8060') {
+    start(baseUrl = 'http://192.168.1.62:4000') {
         if (this.monitor) return this.monitor;
         this.monitor = new ServerMonitor(baseUrl);
         this.monitor.start();

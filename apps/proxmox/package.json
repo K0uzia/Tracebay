@@ -25,7 +25,8 @@
     "@types/node": "^20.10.0",
     "@types/pg": "^8.11.0",
     "tsx": "^4.7.0",
-    "ts-node": "^10.9.2"
+    "ts-node": "^10.9.2",
+    "pino-pretty": "^10.3.0"
   },
   "engines": {
     "node": ">=20.11.0"
