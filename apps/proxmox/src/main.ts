@@ -527,11 +527,23 @@ const messageStartTime = Date.now();
 
     // Lots routes (Réception)
     fastify.get('/api/lots', async (request: FastifyRequest, reply: FastifyReply) => {
-      // TODO: Charger les lots depuis la base de données
-      return {
-        success: true,
-        lots: []
-      };
+      try {
+        const result = await query(`
+          SELECT 
+            l.id, l.name, l.status, l.item_count, l.description, 
+            l.received_at, l.created_at
+          FROM lots l
+          ORDER BY l.received_at DESC
+        `);
+        return {
+          success: true,
+          lots: result.rows
+        };
+      } catch (error) {
+        console.error('Error fetching lots:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
     });
 
     fastify.post('/api/lots', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -545,21 +557,53 @@ const messageStartTime = Date.now();
         return { error: 'itemCount or items[] is required' };
       }
 
-      const lotId = `lot_${Date.now()}`;
+      try {
+        // Insert lot
+        const lotResult = await query(
+          'INSERT INTO lots (name, item_count, description, status) VALUES ($1, $2, $3, $4) RETURNING *',
+          [lotName || null, computedItemCount, description || null, 'received']
+        );
 
-      // TODO: Insérer le lot dans la base de données
-      return {
-        success: true,
-        id: lotId,
-        lot: {
-          id: lotId,
-          itemCount: computedItemCount,
-          description,
-          name: lotName || null,
-          status: 'received',
-          receivedAt: new Date().toISOString()
+        const lot = lotResult.rows[0];
+
+        // Insert lot items if provided
+        if (Array.isArray(items) && items.length > 0) {
+          for (const item of items) {
+            await query(
+              `INSERT INTO lot_items 
+               (lot_id, serial_number, type, marque_id, modele_id, entry_type, entry_date, entry_time)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+              [
+                lot.id,
+                item.serialNumber || null,
+                item.type || null,
+                item.marqueId || null,
+                item.modeleId || null,
+                item.entryType || 'manual',
+                item.date || null,
+                item.time || null
+              ]
+            );
+          }
         }
-      };
+
+        return {
+          success: true,
+          id: lot.id,
+          lot: {
+            id: lot.id,
+            name: lot.name,
+            itemCount: lot.item_count,
+            description: lot.description,
+            status: lot.status,
+            receivedAt: lot.received_at
+          }
+        };
+      } catch (error) {
+        console.error('Error creating lot:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
     });
 
     // PDF generation stub

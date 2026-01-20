@@ -89,6 +89,7 @@ CREATE INDEX IF NOT EXISTS idx_shortcuts_order_index ON shortcuts(order_index);
 CREATE TABLE IF NOT EXISTS lots (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  name VARCHAR(255),
   status VARCHAR(50) NOT NULL DEFAULT 'received',
   item_count INTEGER NOT NULL,
   description TEXT,
@@ -100,6 +101,26 @@ CREATE TABLE IF NOT EXISTS lots (
 CREATE INDEX IF NOT EXISTS idx_lots_user_id ON lots(user_id);
 CREATE INDEX IF NOT EXISTS idx_lots_status ON lots(status);
 CREATE INDEX IF NOT EXISTS idx_lots_received_at ON lots(received_at DESC);
+
+-- Lot items table (Individual items in a lot)
+CREATE TABLE IF NOT EXISTS lot_items (
+  id SERIAL PRIMARY KEY,
+  lot_id INTEGER NOT NULL REFERENCES lots(id) ON DELETE CASCADE,
+  serial_number VARCHAR(255) NOT NULL,
+  type VARCHAR(100),
+  marque_id INTEGER REFERENCES marques(id) ON DELETE SET NULL,
+  modele_id INTEGER REFERENCES modeles(id) ON DELETE SET NULL,
+  entry_type VARCHAR(50) DEFAULT 'manual',
+  entry_date DATE,
+  entry_time TIME,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_lot_items_lot_id ON lot_items(lot_id);
+CREATE INDEX IF NOT EXISTS idx_lot_items_serial_number ON lot_items(serial_number);
+CREATE INDEX IF NOT EXISTS idx_lot_items_marque_id ON lot_items(marque_id);
+CREATE INDEX IF NOT EXISTS idx_lot_items_modele_id ON lot_items(modele_id);
 
 -- Sessions table (for JWT/session management)
 CREATE TABLE IF NOT EXISTS sessions (
