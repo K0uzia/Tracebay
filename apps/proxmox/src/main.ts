@@ -155,6 +155,29 @@ const messageStartTime = Date.now();
       return { success: true, message: 'Logged out successfully' };
     });
 
+    fastify.get('/api/auth/verify', async (request: FastifyRequest, reply: FastifyReply) => {
+      const token = request.headers.authorization?.replace('Bearer ', '');
+
+      if (!token || !token.startsWith('jwt_')) {
+        reply.statusCode = 401;
+        return { error: 'Invalid token' };
+      }
+
+      try {
+        // Decode simple token
+        const decoded = JSON.parse(Buffer.from(token.replace('jwt_', ''), 'base64').toString());
+        return {
+          valid: true,
+          userId: decoded.userId,
+          username: decoded.username,
+          expiresAt: new Date(decoded.iat + 7 * 24 * 60 * 60 * 1000).toISOString()
+        };
+      } catch (e) {
+        reply.statusCode = 401;
+        return { error: 'Invalid token format' };
+      }
+    });
+
     fastify.post('/api/auth/verify', async (request: FastifyRequest, reply: FastifyReply) => {
       const token = request.headers.authorization?.replace('Bearer ', '');
 
@@ -273,7 +296,7 @@ const messageStartTime = Date.now();
       // Broadcast to all connected users
       for (const user of connectedUsers.values()) {
         try {
-          user.socket.send(JSON.stringify({
+          user.socket.write(JSON.stringify({
             type: 'message:new',
             data: message
           }));
@@ -525,6 +548,94 @@ const messageStartTime = Date.now();
       }
     });
 
+    // Agenda routes
+    fastify.get('/api/agenda/events', async (request: FastifyRequest, reply: FastifyReply) => {
+      // Mock: return empty events
+      return { success: true, events: [] };
+    });
+
+    fastify.post('/api/agenda/events', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { title, startTime, endTime, description } = request.body as any;
+
+      if (!title || !startTime || !endTime) {
+        reply.statusCode = 400;
+        return { error: 'Title, startTime, and endTime are required' };
+      }
+
+      const eventId = `event_${Date.now()}`;
+      return {
+        success: true,
+        event: {
+          id: eventId,
+          title,
+          description,
+          startTime,
+          endTime,
+          createdAt: new Date().toISOString()
+        }
+      };
+    });
+
+    fastify.get('/api/agenda/events/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      return {
+        success: true,
+        event: { id, title: 'Mock Event' }
+      };
+    });
+
+    fastify.put('/api/agenda/events/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      return { success: true, event: { id } };
+    });
+
+    fastify.delete('/api/agenda/events/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      return { success: true, message: 'Event deleted' };
+    });
+
+    // Agenda routes
+    fastify.get('/api/agenda/events', async (request: FastifyRequest, reply: FastifyReply) => {
+      return { success: true, events: [] };
+    });
+
+    fastify.post('/api/agenda/events', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { title, startTime, endTime, description } = request.body as any;
+
+      if (!title || !startTime || !endTime) {
+        reply.statusCode = 400;
+        return { error: 'Title, startTime, and endTime are required' };
+      }
+
+      const eventId = `event_${Date.now()}`;
+      return {
+        success: true,
+        event: {
+          id: eventId,
+          title,
+          description,
+          startTime,
+          endTime,
+          createdAt: new Date().toISOString()
+        }
+      };
+    });
+
+    fastify.get('/api/agenda/events/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      return { success: true, event: { id, title: 'Mock Event' } };
+    });
+
+    fastify.put('/api/agenda/events/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      return { success: true, event: { id } };
+    });
+
+    fastify.delete('/api/agenda/events/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      return { success: true, message: 'Event deleted' };
+    });
+
     // Lots routes (Réception)
     fastify.get('/api/lots', async (request: FastifyRequest, reply: FastifyReply) => {
       try {
@@ -656,7 +767,7 @@ const messageStartTime = Date.now();
         }, 30000);
 
         // Send welcome message
-        socket.send(JSON.stringify({
+        socket.write(JSON.stringify({
           type: 'connected',
           userId,
           username,
@@ -668,7 +779,7 @@ const messageStartTime = Date.now();
         for (const user of connectedUsers.values()) {
           if (user.id !== userId) {
             try {
-              user.socket.send(JSON.stringify({
+              user.socket.write(JSON.stringify({
                 type: 'presence:update',
                 data: {
                   userId,
@@ -687,7 +798,7 @@ const messageStartTime = Date.now();
           for (const user of connectedUsers.values()) {
             if (excludeId && user.id === excludeId) continue;
             try {
-              user.socket.send(JSON.stringify(payload));
+              user.socket.write(JSON.stringify(payload));
             } catch {
               // Ignore send failures
             }
@@ -702,14 +813,14 @@ const messageStartTime = Date.now();
             switch (message.type) {
             case 'auth':
               // Mock auth acknowledgement
-              socket.send(JSON.stringify({ type: 'auth:ack', ok: true }));
+              socket.write(JSON.stringify({ type: 'auth:ack', ok: true }));
               break;
 
             case 'message':
             case 'message:send': {
               const text = message.text || message.data?.text;
               if (!text || !text.toString().trim()) {
-                socket.send(JSON.stringify({ type: 'error', message: 'Message text is required' }));
+                socket.write(JSON.stringify({ type: 'error', message: 'Message text is required' }));
                 return;
               }
 
@@ -748,7 +859,7 @@ const messageStartTime = Date.now();
                   }
                 }, userId);
 
-                socket.send(JSON.stringify({ type: 'success', message: 'Pseudo updated' }));
+                socket.write(JSON.stringify({ type: 'success', message: 'Pseudo updated' }));
               }
               break;
             }
@@ -782,7 +893,7 @@ const messageStartTime = Date.now();
           } catch (e) {
             fastify.log.error(`Error parsing message: ${e}`);
             try {
-              socket.send(JSON.stringify({ type: 'error', message: 'Invalid message payload' }));
+              socket.write(JSON.stringify({ type: 'error', message: 'Invalid message payload' }));
             } catch {
               // Ignore send failures
             }
@@ -799,7 +910,7 @@ const messageStartTime = Date.now();
           // Broadcast user left
           for (const user of connectedUsers.values()) {
             try {
-              user.socket.send(JSON.stringify({
+              user.socket.write(JSON.stringify({
                 type: 'presence:update',
                 data: {
                   userId,
