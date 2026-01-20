@@ -264,18 +264,24 @@ check_health() {
 cmd_start() {
   log "Démarrage du backend Proxmox..."
   systemctl start "$SERVICE_NAME"
-  sleep 3
-  if check_health; then
-    ok "Backend démarré et opérationnel"
-    echo ""
-    SERVER_IP=$(hostname -I | awk '{print $1}')
-    info "HTTP API:  http://${SERVER_IP}:4000"
-    info "WebSocket: ws://${SERVER_IP}:4000/ws"
-    info "Health:    http://${SERVER_IP}:4000/api/health"
-  else
-    warn "Backend en cours de démarrage, vérifiez les logs..."
-    journalctl -u "$SERVICE_NAME" -n 20 --no-pager
-  fi
+  
+  # Wait for health check (max 30s)
+  info "Attente du démarrage complet..."
+  ATTEMPTS=6
+  for i in $(seq 1 $ATTEMPTS); do
+    sleep 5
+    if check_health; then
+      ok "Backend démarré et opérationnel"
+      echo ""
+      SERVER_IP=$(hostname -I | awk '{print $1}')
+      info "HTTP API:  http://${SERVER_IP}:4000"
+      info "WebSocket: ws://${SERVER_IP}:4000/ws"
+      info "Health:    http://${SERVER_IP}:4000/api/health"
+      return
+    fi
+  done
+  warn "Backend en cours de démarrage, vérifiez les logs..."
+  journalctl -u "$SERVICE_NAME" -n 20 --no-pager
 }
 
 cmd_stop() {
@@ -287,16 +293,28 @@ cmd_stop() {
 cmd_restart() {
   log "Redémarrage du backend Proxmox..."
   systemctl restart "$SERVICE_NAME"
-  sleep 3
-  if check_health; then
-    ok "Backend redémarré avec succès"
-  else
-    warn "Backend en cours de redémarrage..."
-  fi
+  sleep 5
+  
+  # Wait for health check (max 30s)
+  ATTEMPTS=6
+  for i in $(seq 1 $ATTEMPTS); do
+    if check_health; then
+      ok "Backend redémarré avec succès"
+      SERVER_IP=$(hostname -I | awk '{print $1}')
+      echo ""
+      info "HTTP API:  http://${SERVER_IP}:4000"
+      info "WebSocket: ws://${SERVER_IP}:4000/ws"
+      info "Health:    http://${SERVER_IP}:4000/api/health"
+      return
+    fi
+    sleep 5
+  done
+  warn "Backend en cours de redémarrage..."
 }
 
 cmd_status() {
   SYSTEMD_STATUS=$(systemctl is-active "$SERVICE_NAME" || echo "inactive")
+  SERVER_IP=$(hostname -I | awk '{print $1}')
   
   echo -e "${BOLD}═══════════════════════════════════════${RESET}"
   echo -e "${BOLD}  Status Proxmox Backend${RESET}"
@@ -313,6 +331,14 @@ cmd_status() {
   else
     echo -e "Health:   ${RED}OFFLINE${RESET}"
   fi
+  
+  # Show network info
+  echo ""
+  echo -e "${BOLD}Network:${RESET}"
+  echo -e "  IP:        ${CYAN}${SERVER_IP}${RESET}"
+  echo -e "  HTTP API:  ${CYAN}http://${SERVER_IP}:4000${RESET}"
+  echo -e "  WebSocket: ${CYAN}ws://${SERVER_IP}:4000/ws${RESET}"
+  echo -e "  Health:    ${CYAN}http://${SERVER_IP}:4000/api/health${RESET}"
   
   # Show Docker containers
   cd "$DOCKER_DIR"
