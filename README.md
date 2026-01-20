@@ -29,24 +29,6 @@ proxmox debug on    # Active les logs détaillés
 proxmox debug off   # Désactive les logs détaillés
 proxmox logs        # Affiche les logs
 proxmox logs live   # Logs en temps réel
-
-# Créer le fichier .env
-cp .env.example .env
-```
-
-### Développement
-
-```bash
-# Démarrer les deux applications Electron en parallèle
-npm run dev
-
-# Ou séparément:
-npm run dev:server  # Application Electron serveur (Backend Fastify + Dashboard)
-npm run dev:client  # Application Electron client (Interface utilisateur)
-```
-
-### Mode production
-
 ```
 
 ## 📖 Documentation complète
