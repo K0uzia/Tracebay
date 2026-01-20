@@ -18,13 +18,11 @@ COPY package.json package-lock.json ./
 # Copy workspace specific files
 COPY apps/proxmox/package*.json apps/proxmox/tsconfig.json ./apps/proxmox/
 COPY apps/proxmox/src ./apps/proxmox/src
-COPY config ./config
 
 # Install dependencies using root lock file
 RUN echo "Cache buster: ${CACHE_BUSTER}" \
     && npm ci --workspace=apps/proxmox --include-workspace-root --include=dev \
     && npm run build --workspace=apps/proxmox \
-    && /app/node_modules/.bin/tsc --module commonjs --target ES2020 --moduleResolution node --esModuleInterop --skipLibCheck --outDir config config/network.config.ts \
     && mkdir -p apps/proxmox/dist/apps/proxmox/src/db \
     && cp apps/proxmox/src/db/schema.sql apps/proxmox/dist/apps/proxmox/src/db/schema.sql
 
