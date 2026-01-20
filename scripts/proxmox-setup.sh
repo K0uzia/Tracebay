@@ -315,46 +315,71 @@ cmd_restart() {
 cmd_status() {
   SYSTEMD_STATUS=$(systemctl is-active "$SERVICE_NAME" || echo "inactive")
   SERVER_IP=$(hostname -I | awk '{print $1}')
+  API_PORT=4000
   
-  echo -e "${BOLD}═══════════════════════════════════════${RESET}"
-  echo -e "${BOLD}  Status Proxmox Backend${RESET}"
-  echo -e "${BOLD}═══════════════════════════════════════${RESET}"
+  echo ""
+  echo -e "${BOLD}╔════════════════════════════════════════════════════════════════════╗${RESET}"
+  echo -e "${BOLD}║                   Proxmox Backend Status                          ║${RESET}"
+  echo -e "${BOLD}╚════════════════════════════════════════════════════════════════════╝${RESET}"
+  echo ""
   
+  # Status Table
+  echo -e "${BOLD}┌─────────────────────┬──────────────────────────────────────────────┐${RESET}"
+  echo -e "${BOLD}│ Component           │ Status                                       │${RESET}"
+  echo -e "${BOLD}├─────────────────────┼──────────────────────────────────────────────┤${RESET}"
+  
+  # Systemd status
   if [[ "$SYSTEMD_STATUS" == "active" ]]; then
-    echo -e "Service:  ${GREEN}ACTIVE${RESET}"
+    printf "${BOLD}│${RESET} %-19s ${BOLD}│${RESET} ${GREEN}%-44s${RESET} ${BOLD}│${RESET}\n" "Systemd Service" "● ACTIVE"
   else
-    echo -e "Service:  ${RED}INACTIVE${RESET}"
+    printf "${BOLD}│${RESET} %-19s ${BOLD}│${RESET} ${RED}%-44s${RESET} ${BOLD}│${RESET}\n" "Systemd Service" "● INACTIVE"
   fi
   
+  # API Health
   if check_health; then
-    echo -e "Health:   ${GREEN}ONLINE${RESET}"
+    printf "${BOLD}│${RESET} %-19s ${BOLD}│${RESET} ${GREEN}%-44s${RESET} ${BOLD}│${RESET}\n" "API Health" "● ONLINE"
   else
-    echo -e "Health:   ${RED}OFFLINE${RESET}"
+    printf "${BOLD}│${RESET} %-19s ${BOLD}│${RESET} ${RED}%-44s${RESET} ${BOLD}│${RESET}\n" "API Health" "● OFFLINE"
   fi
   
-  # Show network info
-  echo ""
-  echo -e "${BOLD}Network:${RESET}"
-  echo -e "  IP:        ${CYAN}${SERVER_IP}${RESET}"
-  echo -e "  HTTP API:  ${CYAN}http://${SERVER_IP}:4000${RESET}"
-  echo -e "  WebSocket: ${CYAN}ws://${SERVER_IP}:4000/ws${RESET}"
-  echo -e "  Health:    ${CYAN}http://${SERVER_IP}:4000/api/health${RESET}"
-  
-  # Show Docker containers
-  cd "$DOCKER_DIR"
-  echo ""
-  info "Containers Docker:"
-  docker compose ps
-  
-  # Show debug mode status
+  # Debug mode
   if [[ -f "$ENV_FILE" ]]; then
     DEBUG_MODE=$(grep "^DEBUG_MODE=" "$ENV_FILE" | cut -d= -f2 || echo "false")
     if [[ "$DEBUG_MODE" == "true" ]]; then
-      echo -e "\nDebug:    ${YELLOW}ON${RESET}"
+      printf "${BOLD}│${RESET} %-19s ${BOLD}│${RESET} ${YELLOW}%-44s${RESET} ${BOLD}│${RESET}\n" "Debug Mode" "● ENABLED"
     else
-      echo -e "\nDebug:    ${BLUE}OFF${RESET}"
+      printf "${BOLD}│${RESET} %-19s ${BOLD}│${RESET} ${BLUE}%-44s${RESET} ${BOLD}│${RESET}\n" "Debug Mode" "○ DISABLED"
     fi
   fi
+  
+  echo -e "${BOLD}└─────────────────────┴──────────────────────────────────────────────┘${RESET}"
+  echo ""
+  
+  # Network Configuration Table
+  echo -e "${BOLD}┌─────────────────────┬──────────────────────────────────────────────┐${RESET}"
+  echo -e "${BOLD}│ Network             │ Configuration                                │${RESET}"
+  echo -e "${BOLD}├─────────────────────┼──────────────────────────────────────────────┤${RESET}"
+  printf "${BOLD}│${RESET} %-19s ${BOLD}│${RESET} ${CYAN}%-44s${RESET} ${BOLD}│${RESET}\n" "IP Address" "$SERVER_IP"
+  printf "${BOLD}│${RESET} %-19s ${BOLD}│${RESET} ${CYAN}%-44s${RESET} ${BOLD}│${RESET}\n" "API Port" "$API_PORT"
+  echo -e "${BOLD}└─────────────────────┴──────────────────────────────────────────────┘${RESET}"
+  echo ""
+  
+  # Endpoints Table
+  echo -e "${BOLD}┌─────────────────────┬──────────────────────────────────────────────┐${RESET}"
+  echo -e "${BOLD}│ Endpoint            │ URL                                          │${RESET}"
+  echo -e "${BOLD}├─────────────────────┼──────────────────────────────────────────────┤${RESET}"
+  printf "${BOLD}│${RESET} %-19s ${BOLD}│${RESET} ${CYAN}%-44s${RESET} ${BOLD}│${RESET}\n" "HTTP API" "http://${SERVER_IP}:${API_PORT}"
+  printf "${BOLD}│${RESET} %-19s ${BOLD}│${RESET} ${CYAN}%-44s${RESET} ${BOLD}│${RESET}\n" "WebSocket" "ws://${SERVER_IP}:${API_PORT}/ws"
+  printf "${BOLD}│${RESET} %-19s ${BOLD}│${RESET} ${CYAN}%-44s${RESET} ${BOLD}│${RESET}\n" "Health Check" "http://${SERVER_IP}:${API_PORT}/api/health"
+  printf "${BOLD}│${RESET} %-19s ${BOLD}│${RESET} ${CYAN}%-44s${RESET} ${BOLD}│${RESET}\n" "Metrics" "http://${SERVER_IP}:${API_PORT}/api/metrics"
+  echo -e "${BOLD}└─────────────────────┴──────────────────────────────────────────────┘${RESET}"
+  echo ""
+  
+  # Docker containers status
+  cd "$DOCKER_DIR"
+  echo -e "${BOLD}Docker Containers:${RESET}"
+  docker compose ps --format "table {{.Name}}\t{{.Status}}\t{{.Ports}}" | sed 's/^/  /'
+  echo ""
 }
 
 cmd_dbreset() {
