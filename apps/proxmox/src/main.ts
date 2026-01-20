@@ -396,13 +396,38 @@ const messageStartTime = Date.now();
 
     // Marques & Modèles (Réception)
     fastify.get('/api/marques', async () => {
-      // TODO: Charger depuis la base de données
-      return { success: true, items: [] };
+      try {
+        const result = await query('SELECT id, name FROM marques ORDER BY name');
+        return { success: true, items: result.rows };
+      } catch (error) {
+        console.error('Error fetching marques:', error);
+        return { success: false, error: 'Database error' };
+      }
     });
 
     fastify.get('/api/marques/all', async () => {
-      // TODO: Charger depuis la base de données
-      return { success: true, items: [] };
+      try {
+        // Retourner toutes les marques avec leurs modèles
+        const marquesResult = await query('SELECT id, name FROM marques ORDER BY name');
+        const marques = marquesResult.rows;
+        
+        // Pour chaque marque, charger ses modèles
+        const marquesAvecModeles = await Promise.all(marques.map(async (marque) => {
+          const modelesResult = await query(
+            'SELECT id, name, marque_id FROM modeles WHERE marque_id = $1 ORDER BY name',
+            [marque.id]
+          );
+          return {
+            ...marque,
+            modeles: modelesResult.rows
+          };
+        }));
+        
+        return { success: true, items: marquesAvecModeles };
+      } catch (error) {
+        console.error('Error fetching marques/all:', error);
+        return { success: false, error: 'Database error' };
+      }
     });
 
     fastify.get('/api/marques/:marqueId/modeles', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -413,38 +438,91 @@ const messageStartTime = Date.now();
         return { error: 'MarqueId is required' };
       }
 
-      // TODO: Charger les modèles pour cette marque depuis la base de données
-      return {
-        success: true,
-        marqueId,
-        modeles: []
-      };
+      try {
+        const marqueIdNum = parseInt(marqueId, 10);
+        if (isNaN(marqueIdNum)) {
+          reply.statusCode = 400;
+          return { error: 'Invalid marqueId' };
+        }
+        
+        const result = await query(
+          'SELECT id, name, marque_id FROM modeles WHERE marque_id = $1 ORDER BY name',
+          [marqueIdNum]
+        );
+        return {
+          success: true,
+          marqueId,
+          modeles: result.rows
+        };
+      } catch (error) {
+        console.error('Error fetching modeles:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
     });
 
     fastify.post('/api/marques', async (request: FastifyRequest, reply: FastifyReply) => {
       const { name } = request.body as any;
-      if (!name) {
+      if (!name || !name.trim()) {
         reply.statusCode = 400;
         return { error: 'Name is required' };
       }
 
-      const marqueId = `marque_${Date.now()}`;
-      // TODO: Insérer dans la base de données
-      return { success: true, id: marqueId, name };
+      try {
+        const result = await query(
+          'INSERT INTO marques (name) VALUES ($1) RETURNING id, name',
+          [name.trim()]
+        );
+        
+        if (result.rows.length > 0) {
+          return { success: true, ...result.rows[0] };
+        } else {
+          reply.statusCode = 500;
+          return { error: 'Failed to create marque' };
+        }
+      } catch (error: any) {
+        console.error('Error creating marque:', error);
+        if (error.code === '23505') {
+          reply.statusCode = 409;
+          return { error: 'Marque already exists' };
+        }
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
     });
 
     fastify.post('/api/marques/:marqueId/modeles', async (request: FastifyRequest, reply: FastifyReply) => {
       const { name } = request.body as any;
-      const marqueId = parseInt((request.params as any).marqueId, 10);
+      const { marqueId } = request.params as any;
 
-      if (!name || Number.isNaN(marqueId)) {
+      if (!name || !name.trim() || !marqueId) {
         reply.statusCode = 400;
         return { error: 'Name and marqueId are required' };
       }
 
-      const modeloId = `modelo_${Date.now()}`;
-      // TODO: Insérer dans la base de données
-      return { success: true, id: modeloId, name, marque_id: marqueId };
+      try {
+        const marqueIdNum = parseInt(marqueId, 10);
+        if (isNaN(marqueIdNum)) {
+          reply.statusCode = 400;
+          return { error: 'Invalid marqueId' };
+        }
+        
+        const result = await query(
+          'INSERT INTO modeles (marque_id, name) VALUES ($1, $2) RETURNING id, name, marque_id',
+          [marqueIdNum, name.trim()]
+        );
+        
+        if (result.rows.length > 0) {
+          return { success: true, ...result.rows[0] };
+        } else {
+          reply.statusCode = 500;
+          return { error: 'Failed to create modele' };
+        }
+      } catch (error) {
+        console.error('Error creating modele:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
     });
 
     // Lots routes (Réception)

@@ -115,10 +115,30 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 
--- Insert default admin user (password: SECRET_RETIRE)
 INSERT INTO users (username, password_hash, email) 
 VALUES (
   'admin', 
   '$2a$10$8K1p/a0dL3LzMzX8K9F4OeKwZ8k6HYdYvYr5pXpjxB8qY5n5FLT8q',
   'admin@workspace.local'
 ) ON CONFLICT (username) DO NOTHING;
+-- Marques table (Brands for reception materials)
+CREATE TABLE IF NOT EXISTS marques (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_marques_name ON marques(name);
+
+-- Modeles table (Models for reception materials)
+CREATE TABLE IF NOT EXISTS modeles (
+  id SERIAL PRIMARY KEY,
+  marque_id INTEGER NOT NULL REFERENCES marques(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_modeles_marque_id ON modeles(marque_id);
+CREATE INDEX IF NOT EXISTS idx_modeles_name ON modeles(name);
