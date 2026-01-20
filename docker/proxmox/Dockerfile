@@ -23,8 +23,8 @@ COPY apps/proxmox/src ./apps/proxmox/src
 RUN echo "Cache buster: ${CACHE_BUSTER}" \
     && npm ci --workspace=apps/proxmox --include-workspace-root --include=dev \
     && npm run build --workspace=apps/proxmox \
-    && mkdir -p apps/proxmox/dist/apps/proxmox/src/db \
-    && cp apps/proxmox/src/db/schema.sql apps/proxmox/dist/apps/proxmox/src/db/schema.sql
+    && mkdir -p apps/proxmox/dist/db \
+    && cp apps/proxmox/src/db/schema.sql apps/proxmox/dist/db/schema.sql
 
 ENV NODE_ENV=production
 ENV PORT=4000
@@ -34,4 +34,4 @@ EXPOSE 4000
 
 # Use tini to handle signals properly
 ENTRYPOINT ["/usr/bin/tini", "--"]
-CMD ["node", "dist/apps/proxmox/src/main.js"]
+CMD ["node", "dist/main.js"]
