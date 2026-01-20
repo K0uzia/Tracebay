@@ -3,7 +3,6 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import websocket from '@fastify/websocket';
 import dotenv from 'dotenv';
-import { getConfig } from '../../../config/network.config';
 import { registerMonitoringRoutes, incrementMessageCount } from './api/monitoring';
 import { registerCompression } from './middleware/compression';
 import { registerRateLimit } from './middleware/rate-limit';
@@ -17,8 +16,11 @@ dotenv.config();
 
 // Configuration
 const nodeEnv = (process.env.NODE_ENV || 'development') as 'development' | 'production';
-const config = getConfig(nodeEnv);
-const proxmoxConfig = config.proxmox;
+const proxmoxConfig = {
+  port: parseInt(process.env.API_PORT || '4000', 10),
+  host: process.env.SERVER_HOST || '0.0.0.0',
+  wsPort: parseInt(process.env.WS_PORT || '4000', 10)
+};
 
 // Initialize Fastify
 const fastify: FastifyInstance = Fastify({
