@@ -35,7 +35,7 @@ function getLocalNetworkIPs() {
 /**
  * Tester la connexion à une IP:PORT spécifique
  */
-function testServerConnection(ip, port = 8060, timeout = 1000) {
+function testServerConnection(ip, port = 4000, timeout = 1000) {
   return new Promise((resolve) => {
     const req = http.get(`http://${ip}:${port}/api/health`, { timeout }, (res) => {
       if (res.statusCode === 200) {
@@ -69,7 +69,7 @@ function testServerConnection(ip, port = 8060, timeout = 1000) {
 /**
  * Scanner le réseau local pour trouver le serveur
  */
-async function discoverServer(port = 8060) {
+async function discoverServer(port = 4000) {
   console.log('🔍 Recherche du serveur via beacons UDP...');
 
   // D'abord, essayer la découverte via beacons UDP
@@ -147,21 +147,25 @@ try {
   console.error('❌ Erreur chargement config serveur:', error.message);
   // Fallback to default local config
   serverConfig = {
-    mode: 'local',
+    mode: 'proxmox',
     local: {
-      url: 'http://localhost:8060',
-      ws: 'ws://localhost:8060'
+      url: 'http://localhost:4000',
+      ws: 'ws://localhost:4000/ws'
+    },
+    proxmox: {
+      url: 'http://192.168.1.62:4000',
+      ws: 'ws://192.168.1.62:4000/ws'
     }
   };
 }
 
 // Configuration initiale (fallback) - La vraie config vient du client web via ConnectionConfig.js
-const MODE = process.env.SERVER_MODE || serverConfig.mode || 'local';
+const MODE = process.env.SERVER_MODE || serverConfig.mode || 'proxmox';
 let currentConfig = serverConfig[MODE] || serverConfig.local;
 
 // Utiliser la config locale par défaut
 if (!currentConfig || !currentConfig.url) {
-  currentConfig = { url: 'http://localhost:8060', ws: 'ws://localhost:8060' };
+  currentConfig = { url: 'http://192.168.1.62:4000', ws: 'ws://192.168.1.62:4000/ws' };
 }
 
 let SERVER_URL = currentConfig.url;

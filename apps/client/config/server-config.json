@@ -1,17 +1,17 @@
 {
-  "mode": "local",
+  "mode": "proxmox",
   "local": {
-    "url": "http://localhost:8060",
-    "ws": "ws://localhost:8060"
+    "url": "http://localhost:4000",
+    "ws": "ws://localhost:4000/ws"
   },
   "proxmox": {
-    "url": "http://192.168.1.141:8060",
-    "ws": "ws://192.168.1.141:8060",
+    "url": "http://192.168.1.62:4000",
+    "ws": "ws://192.168.1.62:4000/ws",
     "host": "proxmox-ws.local"
   },
   "production": {
     "url": "https://workspace.example.com",
-    "ws": "wss://workspace.example.com",
+    "ws": "wss://workspace.example.com/ws",
     "host": "workspace.example.com"
   },
   "healthCheckInterval": 30000,
