@@ -21,7 +21,7 @@ COPY apps/proxmox/src ./apps/proxmox/src
 
 # Install dependencies using root lock file
 RUN echo "Cache buster: ${CACHE_BUSTER}" \
-    && npm ci --workspace=apps/proxmox --include-workspace-root --include=dev \
+    && npm ci \
     && npm run build --workspace=apps/proxmox \
     && mkdir -p apps/proxmox/dist/db \
     && cp apps/proxmox/src/db/schema.sql apps/proxmox/dist/db/schema.sql
