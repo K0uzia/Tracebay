@@ -1,52 +1,34 @@
-# Workspace v2.0
+# Proxmox Backend - Branche Dédiée
 
-Application de gestion de workspace avec deux applications Electron distinctes : un serveur backend (Fastify + TypeScript + Dashboard) et un client interface utilisateur.
+Cette branche contient **uniquement** les fichiers nécessaires au déploiement du backend Proxmox.
 
-## 🎯 Architecture
-
-- **Monorepo** avec npm workspaces
-- **Serveur (Electron)**: Application Electron avec backend Fastify + TypeScript + SQLite3 + Dashboard monitoring
-- **Client (Electron)**: Application Electron avec interface utilisateur Vanilla JS + Web Components
-- **Communication**: HTTP REST API + WebSocket temps réel
-- **Déploiement**: Deux applications séparées (via Proxmox)
-
-### Vue d'ensemble
-
-```
-┌─────────────────────────────┐         HTTP/WS         ┌─────────────────────────────┐
-│  apps/client (Electron)     │  ◄──────────────────►   │  apps/server (Electron)     │
-│                             │                          │                             │
-│  ┌───────────────────────┐  │                          │  ┌───────────────────────┐  │
-│  │  Interface            │  │                          │  │  Dashboard            │  │
-│  │  Utilisateur          │  │                          │  │  Monitoring           │  │
-│  └───────────────────────┘  │                          │  └───────────────────────┘  │
-│                             │                          │                             │
-│  ┌───────────────────────┐  │                          │  ┌───────────────────────┐  │
-│  │  API Client           │  │    REST API (8060)       │  │  Fastify Server       │  │
-│  │  (fetch/WebSocket)    │──┼──────────────────────────┼─►│  TypeScript           │  │
-│  └───────────────────────┘  │                          │  └───────────────────────┘  │
-│                             │                          │           │                 │
-│                             │                          │           ▼                 │
-│                             │                          │  ┌───────────────────────┐  │
-│                             │                          │  │  SQLite3 + Pool       │  │
-│                             │                          │  │  (5 connexions)       │  │
-│                             │                          │  └───────────────────────┘  │
-└─────────────────────────────┘                          └─────────────────────────────┘
-      Machine Cliente                                           Machine Serveur
-```
-
-## 🚀 Démarrage rapide
-
-### Prérequis
-
-- Node.js 18+ LTS
-- npm 8+
-
-### Installation
+## 🚀 Installation en une commande
 
 ```bash
-# Installer toutes les dépendances
-npm install
+curl -fsSL https://raw.githubusercontent.com/SandersonnDev/workspace/proxmox/scripts/proxmox-setup.sh | sudo bash -s install
+```
+
+## 📋 Contenu de cette branche
+
+- `apps/proxmox/` - Backend TypeScript (Node.js + Express + PostgreSQL + WebSocket)
+- `docker/proxmox/` - Configuration Docker Compose
+- `scripts/proxmox-setup.sh` - Script d'installation et gestion automatiques
+- `PROXMOX_README.md` - Documentation complète
+
+## 🎮 Commandes disponibles
+
+Après installation, utilisez simplement :
+
+```bash
+proxmox start       # Démarre le backend
+proxmox stop        # Arrête le backend
+proxmox restart     # Redémarre le backend
+proxmox status      # Affiche le statut
+proxmox dbreset     # Réinitialise la BDD
+proxmox debug on    # Active les logs détaillés
+proxmox debug off   # Désactive les logs détaillés
+proxmox logs        # Affiche les logs
+proxmox logs live   # Logs en temps réel
 
 # Créer le fichier .env
 cp .env.example .env
@@ -65,114 +47,69 @@ npm run dev:client  # Application Electron client (Interface utilisateur)
 
 ### Mode production
 
-```bash
-# Build du backend TypeScript
-npm run build
-
-# Démarrer
-npm start
 ```
 
-## 📁 Structure du projet
+## 📖 Documentation complète
+
+Voir **[PROXMOX_README.md](PROXMOX_README.md)** pour :
+- Instructions d'installation détaillées
+- Configuration des variables d'environnement
+- Gestion du service systemd
+- Dépannage et logs
+- Mise à jour et maintenance
+
+## 🔧 Architecture
 
 ```
-workspace/
-├── apps/
-│   ├── server/               # Application Electron Serveur
-│   │   ├── src/              # Backend TypeScript + Fastify
-│   │   │   ├── config/       # Configuration
-│   │   │   ├── db/           # Couche base de données + pool
-│   │   │   ├── lib/          # JWT, Password, Errors
-│   │   │   ├── middleware/   # Auth, Logger, ErrorHandler
-│   │   │   ├── models/       # User, Event, Message (CRUD)
-│   │   │   ├── types/        # Types TypeScript
-│   │   │   └── main.ts       # Entry point Fastify
-│   │   ├── public/           # Dashboard Electron + monitoring
-│   │   ├── main.js           # Entry point Electron
-│   │   ├── preload.js        # Preload Electron
-│   │   └── package.json
-│   │
-│   └── client/               # Application Electron Client
-│       ├── public/
-│       │   ├── pages/        # Pages HTML
-│       │   ├── components/   # Composants HTML
-│       │   ├── assets/       # CSS, JS
-│       │   └── index.html    # Page principale
-│       ├── config/           # Configuration serveur
-│       ├── main.js           # Entry point Electron
-│       ├── preload.js        # Preload Electron
-│       └── package.json
-│
-├── data/                     # Base de données SQLite (gitignored)
-├── Jarvis/                   # Standards AI + patterns
-├── .env                      # Variables d'environnement
-├── package.json              # Root + workspaces
-├── tsconfig.json             # TypeScript root
-└── README.md                 # Cette documentation
+┌─────────────────────────────────────┐
+│   Backend Proxmox (Docker)          │
+│                                     │
+│  ┌──────────────────────────────┐   │
+│  │  API HTTP/WebSocket          │   │
+│  │  (Express + TypeScript)      │   │
+│  └──────────┬───────────────────┘   │
+│             │                       │
+│  ┌──────────▼───────────────────┐   │
+│  │  PostgreSQL Database         │   │
+│  │  (Docker Compose)            │   │
+│  └──────────────────────────────┘   │
+│                                     │
+│  Ports: 4000 (API/WS)               │
+└─────────────────────────────────────┘
+        ▲
+        │  HTTP/WebSocket
+        │
+   [Clients externes]
 ```
 
-## 🔧 Configuration
+## 🎯 Caractéristiques
 
-Voir `.env.example` pour toutes les variables disponibles.
+✅ **Installation automatisée** - Script tout-en-un  
+✅ **Service systemd** - Démarrage automatique au boot  
+✅ **Auto-restart** - Redémarrage en cas de crash  
+✅ **Mode debug** - Logs détaillés client ↔ serveur  
+✅ **Gestion simple** - Commandes intuitives  
+✅ **Docker Compose** - Isolation et reproductibilité  
+✅ **Health checks** - Monitoring intégré  
+✅ **PostgreSQL** - Base de données robuste
 
-Variables principales:
-- `PORT`: Port du serveur (défaut: 8060)
-- `DATABASE_PATH`: Chemin de la base SQLite
-- `JWT_SECRET`: Secret pour JWT ⚠️ **CHANGER EN PRODUCTION**
-- `DB_POOL_SIZE`: Taille du pool de connexions (défaut: 5)
+## 🌐 Endpoints
 
-## 🧪 Tests
+Une fois le backend démarré :
 
-```bash
-# Lancer tous les tests
-npm test
+- **API HTTP** : `http://<IP>:4000`
+- **WebSocket** : `ws://<IP>:4000/ws`
+- **Health** : `http://<IP>:4000/api/health`
+- **Metrics** : `http://<IP>:4000/api/metrics`
 
-# Tests avec coverage
-npm test -- --coverage
-```
+## 📝 Notes
 
-## 🔍 Qualité du code
+- **Branche dédiée** : Seuls les fichiers Proxmox sont présents
+- **Prérequis** : Debian 13 (Trixie) ou compatible
+- **Pas de Makefile** : Commandes simples et directes
+- **Mode production** : Optimisé pour 24h/24
 
-```bash
-# TypeScript compilation
-npm run type-check
+---
 
-# Linting
-npm run lint
+**Pour plus d'informations** : Consultez [PROXMOX_README.md](PROXMOX_README.md)
 
-# Formatting
-npm run format
-```
-
-## 📜 Historique
-
-Voir [CHANGELOG](./CHANGELOG-V2.md) pour les détails des versions.
-
-## 🤝 Contribution
-
-Voir [Jarvis/Instructions.mdc](./Jarvis/Instructions.mdc) pour les standards du projet.
-
-## 📄 Licence
-
-MIT
-
-## ✨ Avantages de cette architecture
-
-### Séparation des préoccupations
-- **Serveur**: Gestion des données, logique métier, monitoring
-- **Client**: Interface utilisateur, expérience utilisateur
-
-### Déploiement flexible
-- Serveur déployé sur une machine/VM dédiée
-- Clients déployés sur différentes machines
-- Scalabilité: Plusieurs clients se connectent au même serveur
-
-### Sécurité
-- Backend isolé dans l'application serveur
-- Authentification JWT pour chaque client
-- Base de données non accessible directement
-
-### Maintenance
-- Mise à jour du serveur sans toucher aux clients
-- Mise à jour des clients sans redémarrer le serveur
-- Monitoring centralisé sur le dashboard serveur
