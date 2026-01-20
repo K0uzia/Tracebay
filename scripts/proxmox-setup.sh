@@ -268,9 +268,10 @@ cmd_start() {
   if check_health; then
     ok "Backend démarré et opérationnel"
     echo ""
-    info "HTTP API:  http://localhost:4000"
-    info "WebSocket: ws://localhost:4000/ws"
-    info "Health:    http://localhost:4000/api/health"
+    SERVER_IP=$(hostname -I | awk '{print $1}')
+    info "HTTP API:  http://${SERVER_IP}:4000"
+    info "WebSocket: ws://${SERVER_IP}:4000/ws"
+    info "Health:    http://${SERVER_IP}:4000/api/health"
   else
     warn "Backend en cours de démarrage, vérifiez les logs..."
     journalctl -u "$SERVICE_NAME" -n 20 --no-pager
