@@ -9,7 +9,7 @@ import { registerRateLimit } from './middleware/rate-limit';
 import { registerMonitoring } from './middleware/monitoring';
 import { globalMetrics } from './utils/metrics';
 import { globalCache } from './utils/cache';
-import { testConnection, initializeDatabase } from './db';
+import { testConnection, initializeDatabase, query } from './db';
 
 // Load environment variables
 dotenv.config();
@@ -412,7 +412,7 @@ const messageStartTime = Date.now();
         const marques = marquesResult.rows;
         
         // Pour chaque marque, charger ses modèles
-        const marquesAvecModeles = await Promise.all(marques.map(async (marque) => {
+        const marquesAvecModeles = await Promise.all(marques.map(async (marque: { id: number; name: string }) => {
           const modelesResult = await query(
             'SELECT id, name, marque_id FROM modeles WHERE marque_id = $1 ORDER BY name',
             [marque.id]
