@@ -624,7 +624,15 @@ cmd_rebuild() {
   npm run build >/dev/null 2>&1
   ok "Build complete"
   
-  # Rebuild Docker images
+  # Stop and remove old containers/images for clean rebuild
+  info "Cleaning Docker containers and images..."
+  cd "$DOCKER_DIR"
+  docker_compose down -v >/dev/null 2>&1 || true
+  docker image rm workspace-proxmox >/dev/null 2>&1 || true
+  docker image prune -f >/dev/null 2>&1 || true
+  ok "Docker cleanup complete"
+  
+  # Rebuild Docker images with no cache
   info "Rebuilding Docker images..."
   cd "$DOCKER_DIR"
   docker_compose build --no-cache >/dev/null 2>&1
