@@ -5,13 +5,13 @@
 #
 # Usage:
 #   sudo bash proxmox.sh install    - Initial setup
-#   proxmox start                    - Start services
-#   proxmox stop                     - Stop services
+#   proxmox up/on                    - Start services
+#   proxmox down/off                 - Stop services
+#   proxmox status                   - Show status with IPs
 #   proxmox restart                  - Restart services
-#   proxmox status                   - Show status
 #   proxmox logs [live]              - Show logs
 #   proxmox diag                     - Run diagnostics
-#   proxmox rebuild                  - Rebuild and update
+#   proxmox build                    - Update & rebuild
 #   proxmox reset-db                 - Reset database
 
 set -euo pipefail
@@ -51,6 +51,28 @@ require_root() {
     err "This command requires root. Run with sudo."
     exit 1
   fi
+}
+
+# Display server info in a clean table
+display_server_info() {
+  local ct_ip=$1
+  
+  echo ""
+  echo -e "${BOLD}╔════════════════════════════════════════════════════════════════════════════╗${RESET}"
+  echo -e "${BOLD}║${RESET}                   ${GREEN}✅ PROXMOX BACKEND - READY${RESET}                                    ${BOLD}║${RESET}"
+  echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════════╣${RESET}"
+  echo -e "${BOLD}║${RESET} Server Information                                                    ${BOLD}║${RESET}"
+  echo -e "${BOLD}├────────────────────────────────────────────────────────────────────────────┤${RESET}"
+  printf "${BOLD}║${RESET}  %-30s │  ${CYAN}%-41s${RESET}  ${BOLD}║${RESET}\n" "IP Address" "${ct_ip}"
+  printf "${BOLD}║${RESET}  %-30s │  ${CYAN}%-41s${RESET}  ${BOLD}║${RESET}\n" "Port" "${API_PORT}"
+  echo -e "${BOLD}├────────────────────────────────────────────────────────────────────────────┤${RESET}"
+  echo -e "${BOLD}║${RESET} API Endpoints                                                        ${BOLD}║${RESET}"
+  echo -e "${BOLD}├────────────────────────────────────────────────────────────────────────────┤${RESET}"
+  printf "${BOLD}║${RESET}  %-30s │  ${CYAN}%-41s${RESET}  ${BOLD}║${RESET}\n" "HTTP API" "http://${ct_ip}:${API_PORT}"
+  printf "${BOLD}║${RESET}  %-30s │  ${CYAN}%-41s${RESET}  ${BOLD}║${RESET}\n" "WebSocket" "ws://${ct_ip}:${API_PORT}/ws"
+  printf "${BOLD}║${RESET}  %-30s │  ${CYAN}%-41s${RESET}  ${BOLD}║${RESET}\n" "Health Check" "http://${ct_ip}:${API_PORT}/api/health"
+  echo -e "${BOLD}╚════════════════════════════════════════════════════════════════════════════╝${RESET}"
+  echo ""
 }
 
 # Detect docker compose command
@@ -281,7 +303,6 @@ cmd_start() {
   
   log "Starting Proxmox backend..."
   
-  # Just start services without rebuild (images already built during install/rebuild)
   cd "$DOCKER_DIR"
   info "Starting systemd service..."
   systemctl start "$SERVICE_NAME" || { err "Failed to start service"; exit 1; }
@@ -293,44 +314,9 @@ cmd_start() {
     if curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then
       ok "Backend started successfully"
       
-      # Get server IPs
+      # Get server IPs and display
       CT_IP=$(hostname -I | awk '{print $1}')
-      
-      # Display beautiful banner
-      echo ""
-      echo -e "${BOLD}╔════════════════════════════════════════════════════════════════════════════╗${RESET}"
-      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}               ${GREEN}✅ PROXMOX BACKEND - READY TO USE${RESET}                       ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
-      echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════════╣${RESET}"
-      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}  ${CYAN}📍 SERVER${RESET}                                                             ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     IP Address:      ${CYAN}${CT_IP}${RESET}                                             ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     Port:            ${CYAN}${API_PORT}${RESET}                                                   ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}  ${CYAN}🌐 ENDPOINTS${RESET}                                                          ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     HTTP API:        ${CYAN}http://${CT_IP}:${API_PORT}${RESET}                                  ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     WebSocket:       ${CYAN}ws://${CT_IP}:${API_PORT}/ws${RESET}                             ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     Health Check:    ${CYAN}http://${CT_IP}:${API_PORT}/api/health${RESET}               ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}  ${CYAN}📊 KEY ROUTES${RESET}                                                         ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     GET  /api/health              Health check                        ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     GET  /api/users               List users                          ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     POST /api/users/login         User authentication                 ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     GET  /api/messages            List messages                       ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     GET  /api/agenda/events       List events                         ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     GET  /api/lots                List reception lots                 ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     WS   /ws                      WebSocket connection                ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}  ${CYAN}💻 USEFUL COMMANDS${RESET}                                                    ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     proxmox status    Check service status                            ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     proxmox logs      View live logs                                  ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     proxmox stop      Stop the backend                                ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     proxmox restart   Restart the backend                             ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     proxmox rebuild   Update & rebuild                                ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
-      echo -e "${BOLD}╚════════════════════════════════════════════════════════════════════════════╝${RESET}"
-      echo ""
+      display_server_info "$CT_IP"
       return 0
     fi
   done
@@ -379,53 +365,43 @@ cmd_status() {
   local ct_ip=$(hostname -I | awk '{print $1}')
   
   echo ""
-  title "╔════════════════════════════════════════════════════════════════════╗"
-  title "║                   Proxmox Backend Status                          ║"
-  title "╚════════════════════════════════════════════════════════════════════╝"
-  echo ""
-  
-  # Component status
-  title "┌─────────────────────┬──────────────────────────────────────────────┐"
-  title "│ Component           │ Status                                       │"
-  title "├─────────────────────┼──────────────────────────────────────────────┤"
+  echo -e "${BOLD}╔════════════════════════════════════════════════════════════════════════════╗${RESET}"
+  echo -e "${BOLD}║${RESET}                   ${CYAN}Proxmox Backend - Status Report${RESET}                             ${BOLD}║${RESET}"
+  echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════════╣${RESET}"
+  echo -e "${BOLD}║${RESET} Service Status                                                        ${BOLD}║${RESET}"
+  echo -e "${BOLD}├────────────────────────────────────────────────────────────────────────────┤${RESET}"
   
   if [[ "$systemd_status" == "active" ]]; then
-    printf "│ %-19s │ ${GREEN}%-44s${RESET} │\n" "Systemd Service" "● ACTIVE"
+    printf "${BOLD}║${RESET}  %-30s │  ${GREEN}%-41s${RESET}  ${BOLD}║${RESET}\n" "Systemd Service" "● ACTIVE"
   else
-    printf "│ %-19s │ ${RED}%-44s${RESET} │\n" "Systemd Service" "● INACTIVE"
+    printf "${BOLD}║${RESET}  %-30s │  ${RED}%-41s${RESET}  ${BOLD}║${RESET}\n" "Systemd Service" "● INACTIVE"
   fi
   
   if curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then
-    printf "│ %-19s │ ${GREEN}%-44s${RESET} │\n" "API Health" "● ONLINE"
+    printf "${BOLD}║${RESET}  %-30s │  ${GREEN}%-41s${RESET}  ${BOLD}║${RESET}\n" "API Health" "● ONLINE"
   else
-    printf "│ %-19s │ ${RED}%-44s${RESET} │\n" "API Health" "● OFFLINE"
+    printf "${BOLD}║${RESET}  %-30s │  ${RED}%-41s${RESET}  ${BOLD}║${RESET}\n" "API Health" "● OFFLINE"
   fi
   
-  title "└─────────────────────┴──────────────────────────────────────────────┘"
-  echo ""
+  echo -e "${BOLD}├────────────────────────────────────────────────────────────────────────────┤${RESET}"
+  echo -e "${BOLD}║${RESET} Network Information                                                   ${BOLD}║${RESET}"
+  echo -e "${BOLD}├────────────────────────────────────────────────────────────────────────────┤${RESET}"
+  printf "${BOLD}║${RESET}  %-30s │  ${CYAN}%-41s${RESET}  ${BOLD}║${RESET}\n" "IP Address" "$ct_ip"
+  printf "${BOLD}║${RESET}  %-30s │  ${CYAN}%-41s${RESET}  ${BOLD}║${RESET}\n" "API Port" "$API_PORT"
   
-  # Network info
-  title "┌─────────────────────┬──────────────────────────────────────────────┐"
-  title "│ Network             │ Configuration                                │"
-  title "├─────────────────────┼──────────────────────────────────────────────┤"
-  printf "│ %-19s │ ${CYAN}%-44s${RESET} │\n" "IP Address" "$ct_ip"
-  printf "│ %-19s │ ${CYAN}%-44s${RESET} │\n" "API Port" "$API_PORT"
-  title "└─────────────────────┴──────────────────────────────────────────────┘"
-  echo ""
+  echo -e "${BOLD}├────────────────────────────────────────────────────────────────────────────┤${RESET}"
+  echo -e "${BOLD}║${RESET} API Endpoints                                                        ${BOLD}║${RESET}"
+  echo -e "${BOLD}├────────────────────────────────────────────────────────────────────────────┤${RESET}"
+  printf "${BOLD}║${RESET}  %-30s │  ${CYAN}%-41s${RESET}  ${BOLD}║${RESET}\n" "HTTP API" "http://${ct_ip}:${API_PORT}"
+  printf "${BOLD}║${RESET}  %-30s │  ${CYAN}%-41s${RESET}  ${BOLD}║${RESET}\n" "WebSocket" "ws://${ct_ip}:${API_PORT}/ws"
+  printf "${BOLD}║${RESET}  %-30s │  ${CYAN}%-41s${RESET}  ${BOLD}║${RESET}\n" "Health Check" "http://${ct_ip}:${API_PORT}/api/health"
   
-  # Endpoints
-  title "┌─────────────────────┬──────────────────────────────────────────────┐"
-  title "│ Endpoint            │ URL                                          │"
-  title "├─────────────────────┼──────────────────────────────────────────────┤"
-  printf "│ %-19s │ ${CYAN}%-44s${RESET} │\n" "HTTP API" "http://${ct_ip}:${API_PORT}"
-  printf "│ %-19s │ ${CYAN}%-44s${RESET} │\n" "WebSocket" "ws://${ct_ip}:${API_PORT}/ws"
-  printf "│ %-19s │ ${CYAN}%-44s${RESET} │\n" "Health Check" "http://${ct_ip}:${API_PORT}/api/health"
-  title "└─────────────────────┴──────────────────────────────────────────────┘"
+  echo -e "${BOLD}╚════════════════════════════════════════════════════════════════════════════╝${RESET}"
   echo ""
   
   # Docker containers
   if command -v docker >/dev/null 2>&1 && [[ -d "$DOCKER_DIR" ]]; then
-    title "Docker Containers:"
+    echo -e "${BOLD}Docker Containers:${RESET}"
     cd "$DOCKER_DIR"
     docker_compose ps 2>/dev/null | sed 's/^/  /' || true
     echo ""
@@ -664,27 +640,14 @@ cmd_rebuild() {
     if curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then
       ok "Services restarted successfully"
       
-      # Display banner
+      # Display server info
       CT_IP=$(hostname -I | awk '{print $1}')
-      echo ""
-      echo -e "${BOLD}╔════════════════════════════════════════════════════════════════════════════╗${RESET}"
-      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}               ${GREEN}✅ PROXMOX BACKEND - RESTART COMPLETE${RESET}              ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
-      echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════════╣${RESET}"
-      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}  ${CYAN}🌐 API ENDPOINTS${RESET}                                                        ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     HTTP:    ${CYAN}http://${CT_IP}:${API_PORT}${RESET}                                        ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     WebSocket: ${CYAN}ws://${CT_IP}:${API_PORT}/ws${RESET}                                  ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}     Health:  ${CYAN}http://${CT_IP}:${API_PORT}/api/health${RESET}                      ${BOLD}║${RESET}"
-      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
-      echo -e "${BOLD}╚════════════════════════════════════════════════════════════════════════════╝${RESET}"
-      echo ""
+      display_server_info "$CT_IP"
     else
       warn "Services restarted but health check failed - check logs"
     fi
   else
-    warn "Services not running — start with 'proxmox start'"
+    warn "Services not running — start with 'proxmox up'"
   fi
   
   ok "Rebuild complete"
@@ -714,34 +677,34 @@ cmd_reset_db() {
   ok "Database reset complete"
 }
 
-# ==========================
-# Main Command Dispatcher
-# ==========================
 COMMAND="${1:-help}"
 
 case "$COMMAND" in
+  # Installation
   install)
     cmd_install
     ;;
-  start)
+  # Service Management - Simplified aliases
+  up|on|start)
     cmd_start
     ;;
-  stop)
+  down|off|stop)
     cmd_stop
     ;;
   restart)
     cmd_restart
     ;;
-  status)
+  status|st)
     cmd_status
     ;;
   logs)
     cmd_logs "${2:-}"
     ;;
+  # Maintenance
   diag|diagnostic)
     cmd_diag
     ;;
-  rebuild)
+  build|rebuild)
     cmd_rebuild
     ;;
   reset-db|resetdb)
@@ -767,16 +730,16 @@ ${BOLD}Proxmox Backend Manager${RESET}
 ${BOLD}Installation:${RESET}
   sudo bash proxmox.sh install    Install and configure everything
 
-${BOLD}Service Management:${RESET}
-  proxmox start                   Start backend services
-  proxmox stop                    Stop backend services
+${BOLD}Service Management (simplified commands):${RESET}
+  proxmox up / on / start         Start backend services
+  proxmox down / off / stop       Stop backend services
   proxmox restart                 Restart backend
-  proxmox status                  Show detailed status
+  proxmox status / st             Show status with IPs & endpoints
 
 ${BOLD}Maintenance:${RESET}
   proxmox logs [live]             Show logs (add 'live' for real-time)
   proxmox diag                    Run full diagnostics
-  proxmox rebuild                 Update code & rebuild
+  proxmox build                   Update code & rebuild services
   proxmox reset-db                Reset database (WARNING: deletes data)
 
 ${BOLD}Configuration:${RESET}
@@ -786,13 +749,14 @@ ${BOLD}Configuration:${RESET}
 
 ${BOLD}Examples:${RESET}
   sudo bash proxmox.sh install
-  proxmox start
+  proxmox up
   proxmox status
   proxmox logs live
+  proxmox build
 
 ${BOLD}Quick Start:${RESET}
   1. sudo bash proxmox.sh install
-  2. proxmox start
+  2. proxmox up
   3. proxmox status
 HELP
     [[ "$COMMAND" != "help" && "$COMMAND" != "--help" && "$COMMAND" != "-h" ]] && exit 1
