@@ -143,8 +143,14 @@ EOF
   # 5. Install Dependencies
   title "5/8 Installation des dépendances"
   
-  [[ -f package.json ]] && npm install >/dev/null 2>&1 || true
-  cd "$APP_DIR" && npm install >/dev/null 2>&1
+  if [[ -f package.json ]]; then
+    info "Installing root dependencies..."
+    npm install || { err "Failed to install root dependencies"; exit 1; }
+  fi
+  
+  cd "$APP_DIR"
+  info "Installing app dependencies..."
+  npm install || { err "Failed to install app dependencies"; exit 1; }
   ok "Dependencies installed"
   
   # 6. Build TypeScript
