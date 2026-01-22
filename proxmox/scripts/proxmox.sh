@@ -540,6 +540,12 @@ cmd_rebuild() {
   
   cd "$WORKDIR"
   
+  # Clean cache and build artifacts
+  info "Cleaning cache and build artifacts..."
+  cd "$APP_DIR"
+  rm -rf dist node_modules/.cache >/dev/null 2>&1
+  ok "Cache cleaned"
+  
   # Update repository
   info "Fetching latest code..."
   git fetch && git checkout proxmox && git pull origin proxmox
@@ -567,7 +573,30 @@ cmd_rebuild() {
     info "Restarting services..."
     systemctl restart "$SERVICE_NAME"
     sleep 5
-    ok "Services restarted"
+    
+    # Check if service started
+    if curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then
+      ok "Services restarted successfully"
+      
+      # Display banner
+      CT_IP=$(hostname -I | awk '{print $1}')
+      echo ""
+      echo -e "${BOLD}╔════════════════════════════════════════════════════════════════════════════╗${RESET}"
+      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}               ${GREEN}✅ PROXMOX BACKEND - RESTART COMPLETE${RESET}              ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
+      echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════════╣${RESET}"
+      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}  ${CYAN}🌐 API ENDPOINTS${RESET}                                                        ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     HTTP:    ${CYAN}http://${CT_IP}:${API_PORT}${RESET}                                        ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     WebSocket: ${CYAN}ws://${CT_IP}:${API_PORT}/ws${RESET}                                  ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     Health:  ${CYAN}http://${CT_IP}:${API_PORT}/api/health${RESET}                      ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
+      echo -e "${BOLD}╚════════════════════════════════════════════════════════════════════════════╝${RESET}"
+      echo ""
+    else
+      warn "Services restarted but health check failed - check logs"
+    fi
   else
     warn "Services not running — start with 'proxmox start'"
   fi
