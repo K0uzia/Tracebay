@@ -1,6 +1,6 @@
 FROM node:20-bookworm
 
-# Set workdir at repo root to preserve relative imports to ../../config
+# Set workdir
 WORKDIR /app
 
 # Cache-busting argument to force rebuild of build steps
@@ -12,24 +12,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     tini \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy root package files for monorepo structure
-COPY package.json package-lock.json ./
+# Copy app package files
+COPY proxmox/app/package*.json proxmox/app/tsconfig.json ./
 
-# Copy workspace specific files
-COPY proxmox/app/package*.json proxmox/app/tsconfig.json ./proxmox/app/
-COPY proxmox/app/src ./proxmox/app/src
+# Copy source code
+COPY proxmox/app/src ./src
 
-# Install dependencies using root lock file
+# Install dependencies and build
 RUN echo "Cache buster: ${CACHE_BUSTER}" \
     && npm ci \
-    && npm run build --workspace=proxmox/app \
-    && mkdir -p proxmox/app/dist/db \
-    && cp proxmox/app/src/db/schema.sql proxmox/app/dist/db/schema.sql
+    && npm run build \
+    && mkdir -p dist/db \
+    && cp src/db/schema.sql dist/db/schema.sql
 
 ENV NODE_ENV=production
 ENV PORT=4000
 ENV LOG_LEVEL=info
-WORKDIR /app/proxmox/app
 EXPOSE 4000
 
 # Use tini to handle signals properly
