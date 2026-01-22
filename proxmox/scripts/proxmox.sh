@@ -143,11 +143,6 @@ EOF
   # 5. Install Dependencies
   title "5/8 Installation des dépendances"
   
-  if [[ -f package.json ]]; then
-    info "Installing root dependencies..."
-    npm install || { err "Failed to install root dependencies"; exit 1; }
-  fi
-  
   cd "$APP_DIR"
   info "Installing app dependencies..."
   npm install || { err "Failed to install app dependencies"; exit 1; }
@@ -273,10 +268,11 @@ cmd_start() {
   # Build images first
   cd "$DOCKER_DIR"
   info "Building Docker images..."
-  docker_compose build --no-cache >/dev/null 2>&1
+  docker_compose build --no-cache || { err "Docker build failed"; exit 1; }
   
   # Start services
-  systemctl start "$SERVICE_NAME"
+  info "Starting systemd service..."
+  systemctl start "$SERVICE_NAME" || { err "Failed to start service"; exit 1; }
   
   # Wait for health check
   info "Waiting for services to start..."
