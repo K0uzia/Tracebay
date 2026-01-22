@@ -18,6 +18,22 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # ==========================
+# Self-Update Check
+# ==========================
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+GLOBAL_SCRIPT="/usr/local/bin/proxmox"
+GITHUB_RAW="https://raw.githubusercontent.com/SandersonnDev/workspace/proxmox/proxmox/scripts/proxmox.sh"
+
+# If running from /usr/local/bin, try to update from workspace folder
+if [[ "$SCRIPT_PATH" == "$GLOBAL_SCRIPT" && -d /workspace ]]; then
+  SCRIPT_PATH="/workspace/proxmox/scripts/proxmox.sh"
+  if [[ -f "$SCRIPT_PATH" ]]; then
+    exec bash "$SCRIPT_PATH" "$@"
+  fi
+fi
+
+# ==========================
 # Colors & Helpers
 # ==========================
 RED="\033[0;31m"; GREEN="\033[0;32m"; YELLOW="\033[1;33m"
