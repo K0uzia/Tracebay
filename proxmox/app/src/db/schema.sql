@@ -106,7 +106,7 @@ CREATE INDEX IF NOT EXISTS idx_lots_received_at ON lots(received_at DESC);
 CREATE TABLE IF NOT EXISTS lot_items (
   id SERIAL PRIMARY KEY,
   lot_id INTEGER NOT NULL REFERENCES lots(id) ON DELETE CASCADE,
-  serial_number VARCHAR(255) NOT NULL,
+  serial_number VARCHAR(255),
   type VARCHAR(100),
   marque_id INTEGER REFERENCES marques(id) ON DELETE SET NULL,
   modele_id INTEGER REFERENCES modeles(id) ON DELETE SET NULL,
@@ -142,6 +142,40 @@ VALUES (
   '$2a$10$8K1p/a0dL3LzMzX8K9F4OeKwZ8k6HYdYvYr5pXpjxB8qY5n5FLT8q',
   'admin@workspace.local'
 ) ON CONFLICT (username) DO NOTHING;
+
+INSERT INTO users (username, password_hash, email) 
+VALUES (
+  'admin', 
+  '$2a$10$8K1p/a0dL3LzMzX8K9F4OeKwZ8k6HYdYvYr5pXpjxB8qY5n5FLT8q',
+  'admin@workspace.local'
+) ON CONFLICT (username) DO NOTHING;
+
+-- =====================================================
+-- Migrations pour déploiements existants (idempotent)
+-- =====================================================
+ALTER TABLE IF EXISTS lots
+  ADD COLUMN IF NOT EXISTS name VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'received',
+  ADD COLUMN IF NOT EXISTS item_count INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS description TEXT,
+  ADD COLUMN IF NOT EXISTS received_at TIMESTAMP DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
+ALTER TABLE IF EXISTS lot_items
+  ALTER COLUMN serial_number DROP NOT NULL;
+
+-- Marques table (Brands for reception materials)
+ALTER TABLE IF EXISTS lots
+  ADD COLUMN IF NOT EXISTS name VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'received',
+  ADD COLUMN IF NOT EXISTS item_count INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS description TEXT,
+  ADD COLUMN IF NOT EXISTS received_at TIMESTAMP DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
+ALTER TABLE IF EXISTS lot_items
+  ALTER COLUMN serial_number DROP NOT NULL;
+
 -- Marques table (Brands for reception materials)
 CREATE TABLE IF NOT EXISTS marques (
   id SERIAL PRIMARY KEY,
