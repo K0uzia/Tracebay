@@ -899,17 +899,63 @@ const messageStartTime = Date.now();
     // Start server
     await fastify.listen({ port: proxmoxConfig.port, host: '0.0.0.0' });
 
-    console.log(`
-╔═══════════════════════════════════════════════════════════════╗
-║ 🚀 PROXMOX BACKEND RUNNING                                    ║
-╠═══════════════════════════════════════════════════════════════╣
-║ Environment: ${nodeEnv.padEnd(28)} ║
-║ URL:         http://0.0.0.0:${proxmoxConfig.port.toString().padEnd(22)} ║
-║ Health:      http://0.0.0.0:${proxmoxConfig.port}/api/health ${' '.repeat(10)} ║
-║ WebSocket:   ws://0.0.0.0:${proxmoxConfig.port}/ws ${' '.repeat(21)} ║
-║ Docs:        Postman/curl ready                               ║
-╚═══════════════════════════════════════════════════════════════╝
-    `);
+    // Get server IP
+    const os = require('os');
+    const interfaces = os.networkInterfaces();
+    let serverIP = 'localhost';
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          serverIP = iface.address;
+          break;
+        }
+      }
+    }
+
+    const banner = `
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║               🚀 PROXMOX BACKEND API - RUNNING                             ║
+║                                                                            ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║ 📍 SERVER INFORMATION                                                      ║
+║   Environment:      ${nodeEnv.padEnd(54)} ║
+║   Server IP:        ${serverIP.padEnd(54)} ║
+║   Port:             ${proxmoxConfig.port.toString().padEnd(54)} ║
+║                                                                            ║
+║ 🌐 ENDPOINTS                                                               ║
+║   HTTP API:         http://${serverIP}:${proxmoxConfig.port}${' '.repeat(Math.max(0, 42 - serverIP.length - proxmoxConfig.port.toString().length))} ║
+║   WebSocket:        ws://${serverIP}:${proxmoxConfig.port}/ws${' '.repeat(Math.max(0, 45 - serverIP.length - proxmoxConfig.port.toString().length))} ║
+║   Health Check:     http://${serverIP}:${proxmoxConfig.port}/api/health${' '.repeat(Math.max(0, 29 - serverIP.length - proxmoxConfig.port.toString().length))} ║
+║                                                                            ║
+║ 📊 AVAILABLE ROUTES                                                        ║
+║   GET    /api/health              - Health check                          ║
+║   GET    /api/monitoring          - Server monitoring                     ║
+║   GET    /api/users               - List users                            ║
+║   POST   /api/users/login         - User login                            ║
+║   GET    /api/messages            - List messages                         ║
+║   WS     /ws                      - WebSocket connection                  ║
+║   GET    /api/agenda/events       - List events                           ║
+║   POST   /api/agenda/events       - Create event                          ║
+║   GET    /api/lots                - List reception lots                   ║
+║   POST   /api/lots                - Create lot                            ║
+║                                                                            ║
+║ 💻 MANAGEMENT COMMANDS (on host)                                          ║
+║   proxmox status                  - Show service status                   ║
+║   proxmox logs                    - View live logs                        ║
+║   proxmox stop                    - Stop backend services                 ║
+║   proxmox restart                 - Restart backend                       ║
+║   proxmox rebuild                 - Update and rebuild                    ║
+║                                                                            ║
+║ 🔗 DOCUMENTATION                                                           ║
+║   Docs:              See proxmox/docs/ for detailed API docs              ║
+║   WebSocket:         See docs/WEBSOCKET.md                                ║
+║   Database:          See docs/DATABASE.md                                 ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+    `;
+    console.log(banner);
   } catch (error) {
     fastify.log.error(error);
     process.exit(1);

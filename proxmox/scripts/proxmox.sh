@@ -265,12 +265,8 @@ cmd_start() {
   
   log "Starting Proxmox backend..."
   
-  # Build images first
+  # Just start services without rebuild (images already built during install/rebuild)
   cd "$DOCKER_DIR"
-  info "Building Docker images..."
-  docker_compose build --no-cache || { err "Docker build failed"; exit 1; }
-  
-  # Start services
   info "Starting systemd service..."
   systemctl start "$SERVICE_NAME" || { err "Failed to start service"; exit 1; }
   
