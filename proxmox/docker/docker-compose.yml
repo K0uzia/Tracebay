@@ -31,6 +31,7 @@ services:
       dockerfile: proxmox/docker/Dockerfile
       args:
         CACHE_BUSTER: ${CACHE_BUSTER:-manual}
+    image: workspace-proxmox:latest
     container_name: workspace-proxmox
     depends_on:
       db:
