@@ -598,48 +598,6 @@ const messageStartTime = Date.now();
       return { success: true, message: 'Event deleted' };
     });
 
-    // Agenda routes
-    fastify.get('/api/agenda/events', async (request: FastifyRequest, reply: FastifyReply) => {
-      return { success: true, events: [] };
-    });
-
-    fastify.post('/api/agenda/events', async (request: FastifyRequest, reply: FastifyReply) => {
-      const { title, startTime, endTime, description } = request.body as any;
-
-      if (!title || !startTime || !endTime) {
-        reply.statusCode = 400;
-        return { error: 'Title, startTime, and endTime are required' };
-      }
-
-      const eventId = `event_${Date.now()}`;
-      return {
-        success: true,
-        event: {
-          id: eventId,
-          title,
-          description,
-          startTime,
-          endTime,
-          createdAt: new Date().toISOString()
-        }
-      };
-    });
-
-    fastify.get('/api/agenda/events/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-      const { id } = request.params as { id: string };
-      return { success: true, event: { id, title: 'Mock Event' } };
-    });
-
-    fastify.put('/api/agenda/events/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-      const { id } = request.params as { id: string };
-      return { success: true, event: { id } };
-    });
-
-    fastify.delete('/api/agenda/events/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-      const { id } = request.params as { id: string };
-      return { success: true, message: 'Event deleted' };
-    });
-
     // Lots routes (Réception)
     fastify.get('/api/lots', async (request: FastifyRequest, reply: FastifyReply) => {
       try {
