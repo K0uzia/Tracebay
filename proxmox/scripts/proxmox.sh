@@ -37,6 +37,18 @@ require_root() {
   fi
 }
 
+# Detect docker compose command
+docker_compose() {
+  if docker compose version &>/dev/null; then
+    docker compose "$@"
+  elif command -v docker-compose &>/dev/null; then
+    docker-compose "$@"
+  else
+    err "Neither 'docker compose' nor 'docker-compose' found"
+    exit 1
+  fi
+}
+
 # ==========================
 # Configuration
 # ==========================
@@ -88,8 +100,8 @@ EOF
   
   apt-get install -y ca-certificates curl gnupg docker.io git jq net-tools iproute2 >/dev/null 2>&1
   
-  if docker compose version &>/dev/null; then
-    ok "docker compose available"
+  if docker_compose version &>/dev/null; then
+    ok "docker_compose available"
   elif [[ -f /usr/local/bin/docker-compose ]]; then
     ok "docker-compose standalone available"
   else
@@ -174,8 +186,18 @@ EOF
     ok ".env already exists"
   fi
   
+  # Detect which docker compose to use
+  if docker compose version &>/dev/null 2>&1; then
+    DOCKER_COMPOSE_CMD="/usr/bin/docker compose"
+  elif command -v docker-compose &>/dev/null; then
+    DOCKER_COMPOSE_CMD="$(command -v docker-compose)"
+  else
+    err "Neither 'docker compose' nor 'docker-compose' found"
+    exit 1
+  fi
+  
   # Create systemd service (manual start)
-  cat > "$SERVICE_FILE" <<'ENDSERVICE'
+  cat > "$SERVICE_FILE" <<ENDSERVICE
 [Unit]
 Description=Workspace Proxmox Backend API
 After=network.target docker.service
@@ -186,8 +208,8 @@ Requires=docker.service
 Type=simple
 User=root
 WorkingDirectory=/workspace/proxmox/docker
-ExecStart=/usr/bin/docker compose up
-ExecStop=/usr/bin/docker compose down
+ExecStart=${DOCKER_COMPOSE_CMD} up
+ExecStop=${DOCKER_COMPOSE_CMD} down
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -245,7 +267,7 @@ cmd_start() {
   # Build images first
   cd "$DOCKER_DIR"
   info "Building Docker images..."
-  docker compose build --no-cache >/dev/null 2>&1
+  docker_compose build --no-cache >/dev/null 2>&1
   
   # Start services
   systemctl start "$SERVICE_NAME"
@@ -357,7 +379,7 @@ cmd_status() {
   if command -v docker >/dev/null 2>&1 && [[ -d "$DOCKER_DIR" ]]; then
     title "Docker Containers:"
     cd "$DOCKER_DIR"
-    docker compose ps 2>/dev/null | sed 's/^/  /' || true
+    docker_compose ps 2>/dev/null | sed 's/^/  /' || true
     echo ""
   fi
 }
@@ -393,10 +415,10 @@ cmd_diag() {
     err "Docker not found"
   fi
   
-  if docker compose version &> /dev/null; then
-    ok "$(docker compose version)"
+  if docker_compose version &> /dev/null; then
+    ok "$(docker_compose version)"
   else
-    err "docker compose not working"
+    err "docker_compose not working"
   fi
   
   # Node.js
@@ -505,7 +527,7 @@ cmd_rebuild() {
   # Rebuild Docker images
   info "Rebuilding Docker images..."
   cd "$DOCKER_DIR"
-  docker compose build --no-cache >/dev/null 2>&1
+  docker_compose build --no-cache >/dev/null 2>&1
   ok "Docker images rebuilt"
   
   # Restart if running
@@ -536,10 +558,10 @@ cmd_reset_db() {
   
   cd "$DOCKER_DIR"
   info "Stopping services..."
-  docker compose down -v
+  docker_compose down -v
   
   info "Restarting with fresh database..."
-  docker compose up -d
+  docker_compose up -d
   
   sleep 5
   ok "Database reset complete"

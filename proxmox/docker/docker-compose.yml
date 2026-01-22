@@ -28,7 +28,7 @@ services:
   proxmox:
     build:
       context: ../..
-      dockerfile: docker/proxmox/Dockerfile
+      dockerfile: proxmox/docker/Dockerfile
       args:
         NODE_ENV: ${NODE_ENV:-production}
         CACHE_BUSTER: ${CACHE_BUSTER:-manual}

@@ -16,20 +16,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY package.json package-lock.json ./
 
 # Copy workspace specific files
-COPY apps/proxmox/package*.json apps/proxmox/tsconfig.json ./apps/proxmox/
-COPY apps/proxmox/src ./apps/proxmox/src
+COPY proxmox/app/package*.json proxmox/app/tsconfig.json ./proxmox/app/
+COPY proxmox/app/src ./proxmox/app/src
 
 # Install dependencies using root lock file
 RUN echo "Cache buster: ${CACHE_BUSTER}" \
     && npm ci \
-    && npm run build --workspace=apps/proxmox \
-    && mkdir -p apps/proxmox/dist/db \
-    && cp apps/proxmox/src/db/schema.sql apps/proxmox/dist/db/schema.sql
+    && npm run build --workspace=proxmox/app \
+    && mkdir -p proxmox/app/dist/db \
+    && cp proxmox/app/src/db/schema.sql proxmox/app/dist/db/schema.sql
 
 ENV NODE_ENV=production
 ENV PORT=4000
 ENV LOG_LEVEL=info
-WORKDIR /app/apps/proxmox
+WORKDIR /app/proxmox/app
 EXPOSE 4000
 
 # Use tini to handle signals properly
