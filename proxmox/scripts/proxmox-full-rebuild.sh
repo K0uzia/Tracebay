@@ -6,7 +6,7 @@ set -e
 
 echo "🚀 Full Proxmox rebuild et migration..."
 
-cd /workspace/workspace
+cd /workspace
 
 # 1) Git pull latest
 echo "📥 Récupération du dernier code (branche proxmox)..."
@@ -15,17 +15,17 @@ git pull origin proxmox
 
 # 2) Build
 echo "🔨 Build TypeScript..."
-npm ci --workspace=apps/proxmox
-npm run build --workspace=apps/proxmox
+npm ci --workspace=proxmox/app
+npm run build --workspace=proxmox/app
 
 # 3) Rebuild image Docker
 echo "🐳 Rebuild image Docker..."
-docker build --no-cache -f docker/proxmox/Dockerfile -t workspace-proxmox:latest .
+docker build --no-cache -f proxmox/docker/Dockerfile -t workspace-proxmox:latest .
 docker tag workspace-proxmox:latest proxmox-proxmox:latest
 
 # 4) Restart compose
 echo "♻️  Redémarrage docker-compose..."
-cd docker/proxmox
+cd proxmox/docker
 docker-compose down
 docker-compose up -d --force-recreate
 

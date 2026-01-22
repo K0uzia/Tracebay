@@ -36,8 +36,8 @@ trap 'err "Unexpected error at line $LINENO"; exit 1' ERR
 # Configuration
 # ==========================
 WORKDIR="/workspace"
-PROXMOX_DIR="$WORKDIR/workspace/apps/proxmox"
-DOCKER_DIR="$WORKDIR/workspace/docker/proxmox"
+PROXMOX_DIR="$WORKDIR/proxmox/app"
+DOCKER_DIR="$WORKDIR/proxmox/docker"
 SERVICE_NAME="workspace-proxmox"
 SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
 CTRL_SCRIPT="/usr/local/bin/proxmox"
@@ -173,7 +173,7 @@ EOF
 
   # Install proxmox workspace
   info "npm install proxmox"
-  npm install --workspace=apps/proxmox || true
+  npm install --workspace=proxmox/app || true
   ok "Dépendances installées"
 
   # ==========================
@@ -225,7 +225,7 @@ Requires=docker.service
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/workspace/workspace/docker/proxmox
+WorkingDirectory=/workspace/proxmox/docker
 ExecStart=/usr/bin/docker compose up
 ExecStop=/usr/bin/docker compose down
 Restart=always
@@ -254,7 +254,7 @@ ENDSERVICE
 set -euo pipefail
 
 SERVICE_NAME="workspace-proxmox"
-DOCKER_DIR="/workspace/workspace/docker/proxmox"
+DOCKER_DIR="/workspace/proxmox/docker"
 HEALTH_URL="http://localhost:4000/api/health"
 ENV_FILE="$DOCKER_DIR/.env"
 

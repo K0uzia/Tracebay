@@ -44,8 +44,8 @@ fi
 
 # Check workspace
 log "Checking workspace..."
-if [[ -d /workspace/workspace ]]; then
-  ok "Workspace found at /workspace/workspace"
+if [[ -d /workspace/proxmox ]]; then
+  ok "Workspace found at /workspace/proxmox"
 else
   err "Workspace not found"
   exit 1
@@ -53,7 +53,7 @@ fi
 
 # Check git branch
 log "Checking git branch..."
-cd /workspace/workspace
+cd /workspace
 BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown")
 if [[ "$BRANCH" == "proxmox" ]]; then
   ok "On branch: $BRANCH"
@@ -76,35 +76,35 @@ fi
 
 # Check proxmox app
 log "Checking proxmox app..."
-if [[ -f apps/proxmox/package.json ]]; then
-  ok "apps/proxmox/package.json found"
-  if [[ -d apps/proxmox/node_modules ]]; then
-    ok "apps/proxmox/node_modules found"
+if [[ -f proxmox/app/package.json ]]; then
+  ok "proxmox/app/package.json found"
+  if [[ -d proxmox/app/node_modules ]]; then
+    ok "proxmox/app/node_modules found"
   else
-    warn "apps/proxmox/node_modules not found"
+    warn "proxmox/app/node_modules not found"
   fi
 else
-  err "apps/proxmox/package.json not found"
+  err "proxmox/app/package.json not found"
 fi
 
 # Check Docker files
 log "Checking Docker files..."
-if [[ -f docker/proxmox/Dockerfile ]]; then
-  ok "docker/proxmox/Dockerfile found"
+if [[ -f proxmox/docker/Dockerfile ]]; then
+  ok "proxmox/docker/Dockerfile found"
 else
   err "Dockerfile not found"
 fi
 
-if [[ -f docker/proxmox/docker-compose.yml ]]; then
-  ok "docker/proxmox/docker-compose.yml found"
+if [[ -f proxmox/docker/docker-compose.yml ]]; then
+  ok "proxmox/docker/docker-compose.yml found"
 else
   err "docker-compose.yml not found"
 fi
 
-if [[ -f docker/proxmox/.env ]]; then
-  ok "docker/proxmox/.env found"
+if [[ -f proxmox/docker/.env ]]; then
+  ok "proxmox/docker/.env found"
 else
-  warn "docker/proxmox/.env not found - will be created by setup"
+  warn "proxmox/docker/.env not found - will be created by setup"
 fi
 
 # Check systemd service
@@ -157,27 +157,27 @@ echo -e "${BOLD}═════════════════════�
 echo ""
 
 # Recommendations
-if ! [[ -d /workspace/workspace/node_modules ]]; then
+if ! [[ -d /workspace/proxmox/node_modules ]]; then
   echo "1. Install root dependencies:"
-  echo "   cd /workspace/workspace && npm install"
+  echo "   cd /workspace/proxmox && npm install"
   echo ""
 fi
 
-if ! [[ -d /workspace/workspace/apps/proxmox/node_modules ]]; then
+if ! [[ -d /workspace/proxmox/app/node_modules ]]; then
   echo "2. Install proxmox dependencies:"
-  echo "   npm install --workspace=apps/proxmox"
+  echo "   npm install --workspace=proxmox/app"
   echo ""
 fi
 
 if ! [[ -f /etc/systemd/system/workspace-proxmox.service ]]; then
   echo "3. Setup systemd service:"
-  echo "   sudo bash /workspace/workspace/scripts/proxmox-setup.sh install"
+  echo "   sudo bash /workspace/proxmox/scripts/proxmox-setup.sh install"
   echo ""
 fi
 
 if ! docker ps 2>/dev/null | grep -q "proxmox"; then
   echo "4. Start Docker services:"
-  echo "   cd /workspace/workspace/docker/proxmox"
+  echo "   cd /workspace/proxmox/docker"
   echo "   docker compose build --no-cache"
   echo "   docker compose up -d"
   echo ""
