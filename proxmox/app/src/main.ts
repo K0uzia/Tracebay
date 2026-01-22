@@ -76,8 +76,12 @@ const messageStartTime = Date.now();
     });
 
     // CORS
+    const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',').map(o => o.trim());
+    
     await fastify.register(cors, {
-      origin: true, // Allow all origins for development
+      origin: allowedOrigins.length === 1 && allowedOrigins[0] === '*' 
+        ? true 
+        : allowedOrigins,
       credentials: true
     });
 
