@@ -1013,6 +1013,42 @@ const messageStartTime = Date.now();
         return { error: 'Database error' };
       }
     });
+    // Start server
+    await fastify.listen({ port: proxmoxConfig.port, host: '0.0.0.0' });
+
+    // Get server IP for banner
+    const os = require('os');
+    const interfaces = os.networkInterfaces();
+    let serverIP = 'localhost';
+    for (const name of Object.keys(interfaces)) {
+      const ifaceList = interfaces[name];
+      if (!ifaceList) continue;
+
+      for (const iface of ifaceList) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          serverIP = iface.address;
+          break;
+        }
+      }
+
+      if (serverIP !== 'localhost') break;
+    }
+
+    const banner = `
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║               🚀 PROXMOX BACKEND API - RUNNING                             ║
+║                                                                            ║
+╠════════════════════════════════════════════════════════════════════════════╣
+║                                                                            ║
+║ 📍 SERVER INFORMATION                                                      ║
+║   Environment:      ${nodeEnv.padEnd(54)} ║
+║   Server IP:        ${serverIP.padEnd(54)} ║
+║   Port:             ${proxmoxConfig.port.toString().padEnd(54)} ║
+║                                                                            ║
+║ 🌐 ENDPOINTS                                                               ║
+║   HTTP API:         http://${serverIP}:${proxmoxConfig.port}${' '.repeat(Math.max(0, 42 - serverIP.length - proxmoxConfig.port.toString().length))} ║
+║   WebSocket:        ws://${serverIP}:${proxmoxConfig.port}/ws${' '.repeat(Math.max(0, 45 - serverIP.length - proxmoxConfig.port.toString().length))} ║
 ║   Health Check:     http://${serverIP}:${proxmoxConfig.port}/api/health${' '.repeat(Math.max(0, 29 - serverIP.length - proxmoxConfig.port.toString().length))} ║
 ║                                                                            ║
 ║ 📊 AVAILABLE ROUTES                                                        ║
