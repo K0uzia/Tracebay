@@ -15,6 +15,28 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 
+-- Marques table (Brands for reception materials) - CREATE EARLY for references
+CREATE TABLE IF NOT EXISTS marques (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_marques_name ON marques(name);
+
+-- Modeles table (Models for reception materials) - CREATE EARLY for references
+CREATE TABLE IF NOT EXISTS modeles (
+  id SERIAL PRIMARY KEY,
+  marque_id INTEGER NOT NULL REFERENCES marques(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_modeles_marque_id ON modeles(marque_id);
+CREATE INDEX IF NOT EXISTS idx_modeles_name ON modeles(name);
+
 -- Messages table
 CREATE TABLE IF NOT EXISTS messages (
   id SERIAL PRIMARY KEY,
@@ -163,37 +185,3 @@ ALTER TABLE IF EXISTS lots
 
 ALTER TABLE IF EXISTS lot_items
   ALTER COLUMN serial_number DROP NOT NULL;
-
--- Marques table (Brands for reception materials)
-ALTER TABLE IF EXISTS lots
-  ADD COLUMN IF NOT EXISTS name VARCHAR(255),
-  ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'received',
-  ADD COLUMN IF NOT EXISTS item_count INTEGER NOT NULL DEFAULT 0,
-  ADD COLUMN IF NOT EXISTS description TEXT,
-  ADD COLUMN IF NOT EXISTS received_at TIMESTAMP DEFAULT NOW(),
-  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
-
-ALTER TABLE IF EXISTS lot_items
-  ALTER COLUMN serial_number DROP NOT NULL;
-
--- Marques table (Brands for reception materials)
-CREATE TABLE IF NOT EXISTS marques (
-  id SERIAL PRIMARY KEY,
-  name VARCHAR(255) NOT NULL UNIQUE,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_marques_name ON marques(name);
-
--- Modeles table (Models for reception materials)
-CREATE TABLE IF NOT EXISTS modeles (
-  id SERIAL PRIMARY KEY,
-  marque_id INTEGER NOT NULL REFERENCES marques(id) ON DELETE CASCADE,
-  name VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_modeles_marque_id ON modeles(marque_id);
-CREATE INDEX IF NOT EXISTS idx_modeles_name ON modeles(name);
