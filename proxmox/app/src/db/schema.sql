@@ -120,7 +120,6 @@ CREATE TABLE IF NOT EXISTS shortcuts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_shortcuts_user_id ON shortcuts(user_id);
-CREATE INDEX IF NOT EXISTS idx_shortcuts_category_id ON shortcuts(category_id);
 CREATE INDEX IF NOT EXISTS idx_shortcuts_order_index ON shortcuts(order_index);
 
 -- Lots table (Réception)
@@ -201,3 +200,9 @@ ALTER TABLE IF EXISTS lots
 
 ALTER TABLE IF EXISTS lot_items
   ALTER COLUMN serial_number DROP NOT NULL;
+
+-- Add category_id to shortcuts if missing (for existing deployments)
+ALTER TABLE IF EXISTS shortcuts
+  ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES shortcut_categories(id) ON DELETE CASCADE;
+
+CREATE INDEX IF NOT EXISTS idx_shortcuts_category_id ON shortcuts(category_id);
