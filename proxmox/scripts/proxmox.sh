@@ -276,11 +276,45 @@ cmd_start() {
     sleep 2
     if curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then
       ok "Backend started successfully"
-      echo ""
+      
+      # Get server IPs
       CT_IP=$(hostname -I | awk '{print $1}')
-      info "HTTP API:  http://${CT_IP}:${API_PORT}"
-      info "WebSocket: ws://${CT_IP}:${API_PORT}/ws"
-      info "Health:    http://${CT_IP}:${API_PORT}/api/health"
+      
+      # Display beautiful banner
+      echo ""
+      echo -e "${BOLD}╔════════════════════════════════════════════════════════════════════════════╗${RESET}"
+      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}               ${GREEN}✅ PROXMOX BACKEND - READY TO USE${RESET}                       ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
+      echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════════╣${RESET}"
+      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}  ${CYAN}📍 SERVER${RESET}                                                             ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     IP Address:      ${CYAN}${CT_IP}${RESET}                                             ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     Port:            ${CYAN}${API_PORT}${RESET}                                                   ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}  ${CYAN}🌐 ENDPOINTS${RESET}                                                          ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     HTTP API:        ${CYAN}http://${CT_IP}:${API_PORT}${RESET}                                  ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     WebSocket:       ${CYAN}ws://${CT_IP}:${API_PORT}/ws${RESET}                             ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     Health Check:    ${CYAN}http://${CT_IP}:${API_PORT}/api/health${RESET}               ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}  ${CYAN}📊 KEY ROUTES${RESET}                                                         ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     GET  /api/health              Health check                        ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     GET  /api/users               List users                          ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     POST /api/users/login         User authentication                 ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     GET  /api/messages            List messages                       ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     GET  /api/agenda/events       List events                         ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     GET  /api/lots                List reception lots                 ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     WS   /ws                      WebSocket connection                ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}  ${CYAN}💻 USEFUL COMMANDS${RESET}                                                    ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     proxmox status    Check service status                            ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     proxmox logs      View live logs                                  ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     proxmox stop      Stop the backend                                ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     proxmox restart   Restart the backend                             ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}     proxmox rebuild   Update & rebuild                                ${BOLD}║${RESET}"
+      echo -e "${BOLD}║${RESET}                                                                            ${BOLD}║${RESET}"
+      echo -e "${BOLD}╚════════════════════════════════════════════════════════════════════════════╝${RESET}"
+      echo ""
       return 0
     fi
   done
