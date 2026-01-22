@@ -270,75 +270,127 @@ const messageStartTime = Date.now();
 
     // Messages routes (Chat)
     fastify.get('/api/messages', async (request: FastifyRequest, reply: FastifyReply) => {
-      const limit = (request.query as any).limit || 50;
+      const limit = Math.min(Number((request.query as any).limit) || 50, 200);
 
-      // TODO: Charger les messages depuis la base de données avec limite
-      return {
-        success: true,
-        messages: [],
-        total: 0
-      };
+      try {
+        const result = await query(
+          'SELECT id, user_id, username, text, conversation_id, created_at FROM messages ORDER BY created_at DESC LIMIT $1',
+          [limit]
+        );
+
+        return {
+          success: true,
+          messages: result.rows.map((m: any) => ({
+            id: m.id,
+            user_id: m.user_id,
+            pseudo: m.username,
+            message: m.text,
+            conversation_id: m.conversation_id,
+            created_at: m.created_at
+          })),
+          total: result.rows.length
+        };
+      } catch (error) {
+        console.error('Error fetching messages:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
     });
 
     fastify.post('/api/messages', async (request: FastifyRequest, reply: FastifyReply) => {
-      const { text, userId } = request.body as any;
+      const { text, pseudo, userId } = request.body as any;
 
-      if (!text || !userId) {
+      if (!text || !pseudo) {
         reply.statusCode = 400;
-        return { error: 'Text and userId are required' };
+        return { error: 'Text and pseudo are required' };
       }
 
-      messageCount++;
-      incrementMessageCount();
-      const message = {
-        id: `msg_${Date.now()}`,
-        userId,
-        text,
-        createdAt: new Date().toISOString()
-      };
+      try {
+        const result = await query(
+          'INSERT INTO messages (user_id, username, text, conversation_id, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING id, username, text, created_at',
+          [userId || null, pseudo, text, null]
+        );
 
-      // Broadcast to all connected users
-      for (const user of connectedUsers.values()) {
-        try {
-          user.socket.socket.send(JSON.stringify({
-            type: 'message:new',
-            data: message
-          }));
-        } catch (e) {
-          // Socket might be closed
+        const msg = result.rows[0];
+
+        messageCount++;
+        incrementMessageCount();
+
+        // Broadcast to all connected users
+        for (const user of connectedUsers.values()) {
+          try {
+            user.socket.socket.send(JSON.stringify({
+              type: 'message:new',
+              data: {
+                id: msg.id,
+                pseudo: msg.username,
+                message: msg.text,
+                created_at: msg.created_at
+              }
+            }));
+          } catch (e) {
+            // Socket might be closed
+          }
         }
-      }
 
-      return { success: true, message };
+        return { success: true, message: msg };
+      } catch (error) {
+        console.error('Error creating message:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
     });
 
     // Shortcuts categories routes
     fastify.get('/api/shortcuts/categories', async (request: FastifyRequest, reply: FastifyReply) => {
-      // TODO: Charger depuis la base de données
-      return {
-        success: true,
-        categories: []
-      };
+      const userId = (request.query as any).userId || 1; // Default user if not provided
+
+      try {
+        const result = await query(
+          'SELECT id, name, order_index, created_at FROM shortcut_categories WHERE user_id = $1 ORDER BY order_index ASC',
+          [userId]
+        );
+
+        return {
+          success: true,
+          categories: result.rows
+        };
+      } catch (error) {
+        console.error('Error fetching shortcut categories:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
     });
 
     fastify.post('/api/shortcuts/categories', async (request: FastifyRequest, reply: FastifyReply) => {
-      const { name, position } = request.body as any;
+      const { name } = request.body as any;
+      const userId = (request.query as any).userId || 1; // Default user if not provided
 
-      if (!name) {
+      if (!name || !name.trim()) {
         reply.statusCode = 400;
         return { error: 'Category name is required' };
       }
 
-      const categoryId = `cat_${Date.now()}`;
-      return {
-        success: true,
-        category: {
-          id: categoryId,
-          name,
-          position: position || 0,
-          createdAt: new Date().toISOString()
+      try {
+        const result = await query(
+          'INSERT INTO shortcut_categories (user_id, name, order_index) VALUES ($1, $2, (SELECT COALESCE(MAX(order_index) + 1, 0) FROM shortcut_categories WHERE user_id = $1)) RETURNING id, name, order_index, created_at',
+          [userId, name.trim()]
+        );
+
+        const category = result.rows[0];
+        return {
+          success: true,
+          category
+        };
+      } catch (error: any) {
+        console.error('Error creating shortcut category:', error);
+        if (error.code === '23505') {
+          reply.statusCode = 409;
+          return { error: 'Category already exists for this user' };
         }
-      };
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
     });
 
     // Shortcuts routes
@@ -896,37 +948,71 @@ const messageStartTime = Date.now();
       });
     });
 
-    // Start server
-    await fastify.listen({ port: proxmoxConfig.port, host: '0.0.0.0' });
+    // Shortcuts routes
+    fastify.get('/api/shortcuts', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = (request.query as any).userId || 1; // Default user if not provided
 
-    // Get server IP
-    const os = require('os');
-    const interfaces = os.networkInterfaces();
-    let serverIP = 'localhost';
-    for (const name of Object.keys(interfaces)) {
-      for (const iface of interfaces[name]) {
-        if (iface.family === 'IPv4' && !iface.internal) {
-          serverIP = iface.address;
-          break;
-        }
+      try {
+        const result = await query(
+          `SELECT id, title, description, url, category_id, order_index, created_at
+           FROM shortcuts
+           WHERE user_id = $1
+           ORDER BY category_id ASC NULLS FIRST, order_index ASC`,
+          [userId]
+        );
+
+        return {
+          success: true,
+          shortcuts: result.rows
+        };
+      } catch (error) {
+        console.error('Error fetching shortcuts:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
       }
-    }
+    });
 
-    const banner = `
-╔════════════════════════════════════════════════════════════════════════════╗
-║                                                                            ║
-║               🚀 PROXMOX BACKEND API - RUNNING                             ║
-║                                                                            ║
-╠════════════════════════════════════════════════════════════════════════════╣
-║                                                                            ║
-║ 📍 SERVER INFORMATION                                                      ║
-║   Environment:      ${nodeEnv.padEnd(54)} ║
-║   Server IP:        ${serverIP.padEnd(54)} ║
-║   Port:             ${proxmoxConfig.port.toString().padEnd(54)} ║
-║                                                                            ║
-║ 🌐 ENDPOINTS                                                               ║
-║   HTTP API:         http://${serverIP}:${proxmoxConfig.port}${' '.repeat(Math.max(0, 42 - serverIP.length - proxmoxConfig.port.toString().length))} ║
-║   WebSocket:        ws://${serverIP}:${proxmoxConfig.port}/ws${' '.repeat(Math.max(0, 45 - serverIP.length - proxmoxConfig.port.toString().length))} ║
+    fastify.post('/api/shortcuts', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { title, description, url, categoryId } = request.body as any;
+      const userId = (request.query as any).userId || 1; // Default user if not provided
+
+      if (!title || !title.trim() || !url || !url.trim()) {
+        reply.statusCode = 400;
+        return { error: 'Title and URL are required' };
+      }
+
+      try {
+        // Validate category ownership if provided
+        if (categoryId) {
+          const categoryCheck = await query(
+            'SELECT 1 FROM shortcut_categories WHERE id = $1 AND user_id = $2',
+            [categoryId, userId]
+          );
+
+          if (categoryCheck.rowCount === 0) {
+            reply.statusCode = 404;
+            return { error: 'Category not found' };
+          }
+        }
+
+        const result = await query(
+          `INSERT INTO shortcuts (user_id, title, description, url, category_id, order_index)
+           VALUES ($1, $2, $3, $4, $5, (SELECT COALESCE(MAX(order_index) + 1, 0) FROM shortcuts WHERE user_id = $1 AND (category_id = $5 OR (category_id IS NULL AND $5 IS NULL))))
+           RETURNING id, title, description, url, category_id, order_index, created_at`,
+          [userId, title.trim(), description || null, url.trim(), categoryId || null]
+        );
+
+        const shortcut = result.rows[0];
+        return {
+          success: true,
+          shortcut
+        };
+      } catch (error: any) {
+        console.error('Error creating shortcut:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
 ║   Health Check:     http://${serverIP}:${proxmoxConfig.port}/api/health${' '.repeat(Math.max(0, 29 - serverIP.length - proxmoxConfig.port.toString().length))} ║
 ║                                                                            ║
 ║ 📊 AVAILABLE ROUTES                                                        ║

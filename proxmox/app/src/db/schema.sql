@@ -91,10 +91,25 @@ CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs(action);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_metadata ON activity_logs USING gin(metadata);
 
+-- Shortcut categories table
+CREATE TABLE IF NOT EXISTS shortcut_categories (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  order_index INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, name)
+);
+
+CREATE INDEX IF NOT EXISTS idx_shortcut_categories_user_id ON shortcut_categories(user_id);
+CREATE INDEX IF NOT EXISTS idx_shortcut_categories_order_index ON shortcut_categories(order_index);
+
 -- Shortcuts table
 CREATE TABLE IF NOT EXISTS shortcuts (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  category_id INTEGER REFERENCES shortcut_categories(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   description TEXT,
   icon VARCHAR(100),
@@ -105,6 +120,7 @@ CREATE TABLE IF NOT EXISTS shortcuts (
 );
 
 CREATE INDEX IF NOT EXISTS idx_shortcuts_user_id ON shortcuts(user_id);
+CREATE INDEX IF NOT EXISTS idx_shortcuts_category_id ON shortcuts(category_id);
 CREATE INDEX IF NOT EXISTS idx_shortcuts_order_index ON shortcuts(order_index);
 
 -- Lots table (Réception)
