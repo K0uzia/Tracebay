@@ -447,6 +447,76 @@ cmd_logs() {
 }
 
 # ==========================
+# Function: Auto-Restart Management
+# ==========================
+cmd_autorestart_enable() {
+  info "Enabling auto-restart on crash..."
+  
+  # Modify systemd service to enable restart
+  if [[ -f "$SERVICE_FILE" ]]; then
+    sed -i 's/Restart=no/Restart=always/g' "$SERVICE_FILE"
+    sed -i 's/^Restart=$/Restart=always/g' "$SERVICE_FILE"
+    systemctl daemon-reload
+    ok "Auto-restart ${GREEN}ENABLED${RESET}"
+    info "Service will restart on crash with 10s delay"
+  else
+    err "Service file not found at $SERVICE_FILE"
+  fi
+}
+
+cmd_autorestart_disable() {
+  info "Disabling auto-restart..."
+  
+  # Modify systemd service to disable restart
+  if [[ -f "$SERVICE_FILE" ]]; then
+    sed -i 's/Restart=always/Restart=no/g' "$SERVICE_FILE"
+    sed -i 's/RestartSec=10/RestartSec=0/g' "$SERVICE_FILE"
+    systemctl daemon-reload
+    ok "Auto-restart ${RED}DISABLED${RESET}"
+    info "Service will NOT restart on crash"
+  else
+    err "Service file not found at $SERVICE_FILE"
+  fi
+}
+
+cmd_autorestart_status() {
+  echo ""
+  title "╔════════════════════════════════════════════════════════════════════╗"
+  title "║               Auto-Restart Policy Status                          ║"
+  title "╚════════════════════════════════════════════════════════════════════╝"
+  echo ""
+  
+  if [[ -f "$SERVICE_FILE" ]]; then
+    RESTART_POLICY=$(grep "^Restart=" "$SERVICE_FILE" | cut -d'=' -f2)
+    RESTART_DELAY=$(grep "^RestartSec=" "$SERVICE_FILE" | cut -d'=' -f2)
+    
+    title "┌─────────────────────┬──────────────────────────────────────────────┐"
+    title "│ Configuration       │ Value                                        │"
+    title "├─────────────────────┼──────────────────────────────────────────────┤"
+    
+    if [[ "$RESTART_POLICY" == "always" ]]; then
+      printf "│ %-19s │ ${GREEN}%-44s${RESET} │\n" "Auto-Restart" "● ENABLED"
+    else
+      printf "│ %-19s │ ${RED}%-44s${RESET} │\n" "Auto-Restart" "● DISABLED"
+    fi
+    
+    printf "│ %-19s │ ${CYAN}%-44s${RESET} │\n" "Restart Delay" "${RESTART_DELAY}s"
+    printf "│ %-19s │ ${CYAN}%-44s${RESET} │\n" "Service Name" "$SERVICE_NAME"
+    
+    title "└─────────────────────┴──────────────────────────────────────────────┘"
+    echo ""
+    
+    title "Commands:"
+    echo "  proxmox autorestart enable    - Enable auto-restart on crash"
+    echo "  proxmox autorestart disable   - Disable auto-restart"
+    echo ""
+  else
+    err "Service file not found"
+  fi
+}
+
+
+# ==========================
 # Function: Diagnostics
 # ==========================
 cmd_diag() {
@@ -677,6 +747,19 @@ case "$COMMAND" in
   reset-db|resetdb)
     cmd_reset_db
     ;;
+  autorestart)
+    case "${2:-status}" in
+      enable)
+        cmd_autorestart_enable
+        ;;
+      disable)
+        cmd_autorestart_disable
+        ;;
+      status|*)
+        cmd_autorestart_status
+        ;;
+    esac
+    ;;
   help|--help|-h|*)
     cat <<HELP
 ${BOLD}Proxmox Backend Manager${RESET}
@@ -695,6 +778,11 @@ ${BOLD}Maintenance:${RESET}
   proxmox diag                    Run full diagnostics
   proxmox rebuild                 Update code & rebuild
   proxmox reset-db                Reset database (WARNING: deletes data)
+
+${BOLD}Configuration:${RESET}
+  proxmox autorestart status      Show auto-restart policy
+  proxmox autorestart enable      Enable auto-restart on crash
+  proxmox autorestart disable     Disable auto-restart
 
 ${BOLD}Examples:${RESET}
   sudo bash proxmox.sh install
