@@ -189,7 +189,7 @@ status_table() {
   ct_ip=$(hostname -I | awk '{print $1}')
   svc_state=$(systemctl is-active "$SERVICE_NAME" 2>/dev/null || echo inactive)
   if curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then api_health="ONLINE"; else api_health="OFFLINE"; fi
-  if docker ps --filter name=workspace-proxmox --format '{{.Status}}' | grep -qi running; then node_state="RUNNING"; else node_state="STOPPED"; fi
+  if docker ps --filter name=workspace-proxmox --format '{{.Status}}' | grep -Eqi 'running|up|healthy'; then node_state="RUNNING"; else node_state="STOPPED"; fi
   echo -e "${CYAN}${BOLD}Proxmox Backend - Statut${RESET}"
   printf "%-22s : %s\n" "Systemd" "${svc_state^^}"
   printf "%-22s : %s\n" "API Health" "$api_health"
@@ -231,7 +231,7 @@ print_status() {
   ct_ip=$(hostname -I | awk '{print $1}')
   svc_state=$(systemctl is-active "$SERVICE_NAME" 2>/dev/null || echo inactive)
   if curl -fsS "http://localhost:${API_PORT_DEFAULT}/api/health" >/dev/null 2>&1; then api_health="ONLINE"; else api_health="OFFLINE"; fi
-  if docker ps --filter name=workspace-proxmox --format '{{.Status}}' | grep -qi running; then node_state="RUNNING"; else node_state="STOPPED"; fi
+  if docker ps --filter name=workspace-proxmox --format '{{.Status}}' | grep -Eqi 'running|up|healthy'; then node_state="RUNNING"; else node_state="STOPPED"; fi
   echo -e "${CYAN}${BOLD}Proxmox Backend - Statut${RESET}"
   printf "%-22s : %s\n" "Systemd" "${svc_state^^}"
   printf "%-22s : %s\n" "API Health" "$api_health"
