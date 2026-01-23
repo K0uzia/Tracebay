@@ -176,7 +176,7 @@ CYAN="\033[0;36m"; BLUE="\033[0;34m"; GREEN="\033[0;32m"; YELLOW="\033[1;33m"; R
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 resolve_ws() {
   local candidate
-  candidate=$(find / -maxdepth 4 -type f -name package.json -path "*/workspace/*" -print -quit 2>/dev/null || true)
+  candidate=$(find / -maxdepth 6 -type f -name package.json -path "*/workspace/*" -print -quit 2>/dev/null || true)
   [[ -n "$candidate" ]] && dirname "$candidate" | xargs dirname
 }
 REPO_ROOT="$(resolve_ws)" || { echo "workspace non trouvé"; exit 1; }
@@ -185,8 +185,9 @@ SERVICE_NAME="workspace-proxmox"
 HEALTH_URL="http://localhost:4000/api/health"
 
 status_table() {
-  local ct_ip api_health svc_state node_state
+  local ct_ip api_health svc_state node_state port
   ct_ip=$(hostname -I | awk '{print $1}')
+  port=4000
   svc_state=$(systemctl is-active "$SERVICE_NAME" 2>/dev/null || echo inactive)
   if curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then api_health="ONLINE"; else api_health="OFFLINE"; fi
   if docker ps --filter name=workspace-proxmox --format '{{.Status}}' | grep -Eqi 'running|up|healthy'; then node_state="RUNNING"; else node_state="STOPPED"; fi
@@ -195,8 +196,14 @@ status_table() {
   printf "%-22s : %s\n" "API Health" "$api_health"
   printf "%-22s : %s\n" "Node/Express" "$node_state"
   printf "%-22s : %s\n" "IP" "$ct_ip"
-  printf "%-22s : %s\n" "Port" "4000"
-  printf "%-22s : %s\n" "Endpoints" "chat, agenda, reception, raccourcis, comptes"
+  printf "%-22s : %s\n" "Port" "$port"
+  echo "Endpoints              :"
+  printf "  - Chat        http://%s:%s/api/chat\n" "$ct_ip" "$port"
+  printf "  - Agenda      http://%s:%s/api/agenda\n" "$ct_ip" "$port"
+  printf "  - Réception   http://%s:%s/api/reception\n" "$ct_ip" "$port"
+  printf "  - Raccourcis  http://%s:%s/api/raccourcis\n" "$ct_ip" "$port"
+  printf "  - Comptes     http://%s:%s/api/comptes\n" "$ct_ip" "$port"
+  printf "  - WebSocket   ws://%s:%s/ws\n" "$ct_ip" "$port"
   echo
   echo -e "${BLUE}Containers Docker:${RESET}"
   docker ps --format '  {{.Names}}  {{.Status}}  {{.Ports}}'
@@ -204,7 +211,7 @@ status_table() {
 
 case "${1:-status}" in
   install)
-    echo "Use proxmox.sh install inside repo"; exit 0 ;;
+    echo "Utilisez proxmox.sh install dans le dépôt"; exit 0 ;;
   start|up)
     systemctl start "$SERVICE_NAME" && sleep 3 && status_table ;;
   stop|down)
@@ -216,7 +223,22 @@ case "${1:-status}" in
   logs)
     shift || true
     if [[ "${1:-}" == "live" ]]; then journalctl -u "$SERVICE_NAME" -f; else journalctl -u "$SERVICE_NAME" -n 200 --no-pager; fi ;;
-  status|st|*)
+  status|st)
+    status_table ;;
+  help|--help|-h)
+    cat <<EOT
+Proxmox CLI - Commandes disponibles :
+  proxmox start      Démarrer les services
+  proxmox stop       Arrêter les services
+  proxmox restart    Redémarrer le backend
+  proxmox rebuild    Rebuild complet (code + images)
+  proxmox logs       Afficher les logs
+  proxmox logs live  Logs en temps réel
+  proxmox status     Statut détaillé
+  proxmox help       Cette aide
+EOT
+    ;;
+  *)
     status_table ;;
 esac
 EOF
