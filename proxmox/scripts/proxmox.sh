@@ -167,19 +167,20 @@ EOF
 
 # =============== CLI global ===============
 install_cli() {
+
   info "Installation de la commande globale proxmox"
   cat > "$CLI_SOURCE" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 CYAN="\033[0;36m"; BLUE="\033[0;34m"; GREEN="\033[0;32m"; YELLOW="\033[1;33m"; RED="\033[0;31m"; RESET="\033[0m"; BOLD="\033[1m"
 
+# Détection robuste du chemin racine du dépôt
 SCRIPT_PATH="${BASH_SOURCE[0]}"
-resolve_ws() {
-  local candidate
-  candidate=$(find / -maxdepth 6 -type f -name package.json -path "*/workspace/*" -print -quit 2>/dev/null || true)
-  [[ -n "$candidate" ]] && dirname "$candidate" | xargs dirname
-}
-REPO_ROOT="$(resolve_ws)" || { echo "workspace non trouvé"; exit 1; }
+if [[ -L "$SCRIPT_PATH" ]]; then
+  SCRIPT_PATH="$(readlink -f "$SCRIPT_PATH")"
+fi
+SCRIPTS_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPTS_DIR/../.." && pwd)"
 DOCKER_DIR="$REPO_ROOT/proxmox/docker"
 SERVICE_NAME="workspace-proxmox"
 HEALTH_URL="http://localhost:4000/api/health"
