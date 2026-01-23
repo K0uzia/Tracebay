@@ -24,7 +24,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 find_path() {
   local name="$1"; shift
   local start="$REPO_ROOT"; local res
-  res=$(find "$start" -maxdepth 4 -name "$name" -print -quit 2>/dev/null || true)
+  res=$(find "$start" -maxdepth 6 -name "$name" -print -quit 2>/dev/null || true)
   [[ -n "$res" ]] && echo "$res"
 }
 
@@ -33,6 +33,7 @@ TS_CONFIG="$(find_path tsconfig.json)"
 LOCKFILE="$(find_path package-lock.json)"
 DOCKER_COMPOSE="$(find_path docker-compose.yml)"
 SCHEMA_SQL="$(find_path schema.sql)"
+[[ -z "$SCHEMA_SQL" && -f "$REPO_ROOT/proxmox/app/src/db/schema.sql" ]] && SCHEMA_SQL="$REPO_ROOT/proxmox/app/src/db/schema.sql"
 APP_SRC_DIR="$REPO_ROOT/proxmox/app"
 DOCKER_DIR="$REPO_ROOT/proxmox/docker"
 SCRIPTS_DIR="$REPO_ROOT/proxmox/scripts"
