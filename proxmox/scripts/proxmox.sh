@@ -34,16 +34,16 @@ status() {
     echo -e "${BLUE}[STATUS]${NC} $1"
 }
 
-# 1. CLONAGE/MISE À JOUR DU DÉPÔT
+# 1. GESTION DÉPÔT EXISTANT
 clone_or_update() {
-    log "Clonage/Mise à jour du dépôt (branche proxmox)"
-    if [ -d "$REPO_DIR/.git" ]; then
-        cd "$REPO_DIR"
-        git checkout proxmox
-        git pull origin proxmox
+    cd "$REPO_DIR"
+    if [ -d ".git" ]; then
+        log "Mise à jour du dépôt existant (branche proxmox)"
+        git checkout proxmox || git checkout -b proxmox
+        git pull origin proxmox || git pull origin main
+        log "Dépôt mis à jour: $(git rev-parse --short HEAD)"
     else
-        git clone -b proxmox https://github.com/votre-repo/proxmox-backend.git "$REPO_DIR"
-        cd "$REPO_DIR"
+        error "Dépôt git non trouvé dans $REPO_DIR. Clonez manuellement d'abord."
     fi
 }
 
