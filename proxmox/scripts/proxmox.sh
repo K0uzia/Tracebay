@@ -46,6 +46,8 @@ warn() { echo -e "${YELLOW}⚠${RESET} $*"; }
 err() { echo -e "${RED}✖${RESET} $*"; }
 title() { echo -e "\n${BOLD}$*${RESET}"; }
 
+export TERM=xterm-256color
+
 require_root() {
   if [[ $EUID -ne 0 ]]; then
     err "This command requires root. Run with sudo."
@@ -418,7 +420,7 @@ cmd_logs() {
     info "Live logs (Ctrl+C to stop)"
     journalctl -u "$SERVICE_NAME" -f
   else
-    journalctl -u "$SERVICE_NAME" -n 100 --no-pager
+    journalctl -u "$SERVICE_NAME" -n 100 -o cat --no-pager
   fi
 }
 
@@ -610,7 +612,11 @@ cmd_rebuild() {
   
   # Update repository
   info "Fetching latest code..."
-  git fetch && git checkout proxmox && git pull origin proxmox
+  if git fetch origin proxmox 2>&1 | grep -i "could not resolve\|network\|timeout"; then
+    warn "Network error during git fetch - using local code"
+  else
+    git checkout proxmox && git pull origin proxmox || warn "Git pull failed - using current local code"
+  fi
   ok "Repository updated"
   
   # Install dependencies
@@ -635,7 +641,11 @@ cmd_rebuild() {
   # Rebuild Docker images with no cache
   info "Rebuilding Docker images..."
   cd "$DOCKER_DIR"
-  docker_compose build --no-cache >/dev/null 2>&1
+  if ! docker_compose build --no-cache 2>&1 | tee /tmp/docker_build.log; then
+    err "Docker build failed. Output saved to /tmp/docker_build.log"
+    cat /tmp/docker_build.log
+    exit 1
+  fi
   ok "Docker images rebuilt"
   
   # Restart if running
@@ -705,7 +715,7 @@ case "$COMMAND" in
   status|st)
     cmd_status
     ;;
-  logs)
+  log|logs)
     cmd_logs "${2:-}"
     ;;
   # Maintenance
