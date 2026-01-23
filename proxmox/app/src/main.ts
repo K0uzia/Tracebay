@@ -38,6 +38,15 @@ const fastify: FastifyInstance = Fastify({
   bodyLimit: 1048576 // 1MB
 });
 
+
+// Log every HTTP request (method, url, status, ms, ip)
+fastify.addHook('onResponse', async (request, reply) => {
+  const { method, url, ip } = request;
+  const statusCode = reply.statusCode;
+  const responseTime = reply.getResponseTime ? reply.getResponseTime() : (reply as any).elapsedTime || '-';
+  fastify.log.info({ method, url, statusCode, responseTime, ip }, `HTTP ${method} ${url} ${statusCode} (${responseTime}ms) from ${ip}`);
+});
+
 // Type definitions for WebSocket context
 interface WebSocketUser {
   id: string;
