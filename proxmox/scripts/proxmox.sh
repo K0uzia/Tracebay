@@ -26,7 +26,10 @@ echo -e "${BLUE}=== DÉBUT INSTALLATION SERVEUR PROXMOX BACKEND ===${NC}"
 # 1. MISE À JOUR SYSTÈME & INSTALLATION DÉPENDANCES
 echo -e "${BLUE}1. Mise à jour système et installation dépendances...${NC}"
 apt update && apt upgrade -y
-apt install -y curl wget git docker.io docker-compose jq nodejs npm systemd-journal-remote iproute2 net-tools
+apt install -y curl wget git docker.io jq systemd-journal-remote iproute2 net-tools
+curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+apt install -y docker-compose-plugin
 
 # Activation Docker
 systemctl enable docker --now
@@ -164,9 +167,9 @@ Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=$PROJECT_DIR
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-ExecStartPre=/usr/bin/docker-compose -f $COMPOSE_FILE pull
-ExecStart=/usr/bin/docker-compose -f $COMPOSE_FILE up -d
-ExecStop=/usr/bin/docker-compose -f $COMPOSE_FILE down
+ExecStartPre=/usr/bin/docker compose -f $COMPOSE_FILE pull
+ExecStart=/usr/bin/docker compose -f $COMPOSE_FILE up -d
+ExecStop=/usr/bin/docker compose -f $COMPOSE_FILE down
 TimeoutStopSec=30
 Restart=always
 RestartSec=10
@@ -234,7 +237,7 @@ print_status() {
 
 case "$1" in
     install)
-        cd $PROJECT_DIR && docker-compose -f $COMPOSE_FILE up -d --build
+        cd $PROJECT_DIR && docker compose -f $COMPOSE_FILE up -d --build
         systemctl restart $SERVICE_NAME
         echo -e "\n${GREEN}Installation terminée !${NC}"
         print_status
@@ -255,9 +258,9 @@ case "$1" in
         journalctl -u $SERVICE_NAME -f
         ;;
     rebuild)
-        cd $PROJECT_DIR && docker-compose -f $COMPOSE_FILE down -v
+        cd $PROJECT_DIR && docker compose -f $COMPOSE_FILE down -v
         docker system prune -f
-        docker-compose -f $COMPOSE_FILE up -d --build
+        docker compose -f $COMPOSE_FILE up -d --build
         print_status
         ;;
     status)
