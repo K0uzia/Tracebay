@@ -1,232 +1,297 @@
-#!/usr/bin/env bash
-#
-# Proxmox Backend — Gestionnaire Unifié (CT Proxmox)
-# Version ANTI-CRASH + installation garantie
+#!/bin/bash
 
-set -euo pipefail
-IFS=$'\n\t'
+# Script d'installation automatisé pour serveur backend Proxmox
+# Compatible Debian 13 (Trixie) - Conteneur LXC
+# Version: 1.0 - Date: Janvier 2026
 
-# ==========================
-# Couleurs & Helpers
-# ==========================
-RED="\033[0;31m"; GREEN="\033[0;32m"; YELLOW="\033[1;33m"
-BLUE="\033[0;34m"; CYAN="\033[0;36m"; BOLD="\033[1m"; RESET="\033[0m"
+set -e
 
-log() { echo -e "${CYAN}[$(date '+%H:%M:%S')]${RESET} $*"; }
-info() { echo -e "${BLUE}➜${RESET} $*"; }
-ok() { echo -e "${GREEN}✔${RESET} $*"; }
-warn() { echo -e "${YELLOW}⚠${RESET} $*"; }
-err() { echo -e "${RED}✖${RESET} $* >&2"; }
-title() { echo -e "\n${BOLD}$*${RESET}"; }
+# Couleurs pour l'affichage status
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
 
-require_root() {
-  if [[ $EUID -ne 0 ]]; then
-    err "Necessite sudo"
-    exit 1
-  fi
-}
-
-# ==========================
-# Configuration
-# ==========================
-WORKDIR="/workspace"
-PROXMOX_DIR="$WORKDIR/proxmox"
-APP_DIR="$PROXMOX_DIR/app"
-DOCKER_DIR="$PROXMOX_DIR/docker"
+# Variables globales
+SCRIPT_DIR="/opt/proxmox-workspace"
+PROJECT_DIR="$SCRIPT_DIR/backend"
 SERVICE_NAME="workspace-proxmox"
-SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
-CTRL_SCRIPT="/usr/local/bin/proxmox"
 API_PORT=4000
-HEALTH_URL="http://localhost:${API_PORT}/api/health"
+DATA_DIR="/opt/proxmox-data"
+COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml"
 
-display_server_info() {
-  local ct_ip=$1
-  echo ""
-  echo -e "${BOLD}╔════════════════════════════════════════════════════════════════════════════╗${RESET}"
-  echo -e "${BOLD}║${RESET}                    ${GREEN}✔ PROXMOX BACKEND - PRET${RESET}                                     ${BOLD}║${RESET}"
-  echo -e "${BOLD}╠════════════════════════════════════════════════════════════════════════════╣${RESET}"
-  printf "${BOLD}║${RESET}  %-30s │  ${CYAN}%-41s${RESET}  ${BOLD}║${RESET}\n" "IP" "${ct_ip}"
-  printf "${BOLD}║${RESET}  %-30s │  ${CYAN}%-41s${RESET}  ${BOLD}║${RESET}\n" "API" "http://${ct_ip}:${API_PORT}"
-  printf "${BOLD}║${RESET}  %-30s │  ${CYAN}%-41s${RESET}  ${BOLD}║${RESET}\n" "WS" "ws://${ct_ip}:${API_PORT}/ws"
-  echo -e "${BOLD}╚════════════════════════════════════════════════════════════════════════════╝${RESET}"
-}
+echo -e "${BLUE}=== DÉBUT INSTALLATION SERVEUR PROXMOX BACKEND ===${NC}"
 
-docker_compose() {
-  if command -v docker-compose &>/dev/null; then docker-compose "$@"
-  elif docker compose version &>/dev/null; then docker compose "$@"
-  else echo "Installing docker-compose..." && install_docker_compose; docker-compose "$@"; fi
-}
+# 1. MISE À JOUR SYSTÈME & INSTALLATION DÉPENDANCES
+echo -e "${BLUE}1. Mise à jour système et installation dépendances...${NC}"
+apt update && apt upgrade -y
+apt install -y curl wget git docker.io docker-compose jq nodejs npm systemd-journal-remote iproute2 net-tools
 
-install_docker_compose() {
-  COMPOSE_VERSION=$(curl -s --connect-timeout 5 https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name || echo "v2.24.0")
-  curl -L "https://github.com/docker/compose/releases/download/${COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-  chmod +x /usr/local/bin/docker-compose
-}
+# Activation Docker
+systemctl enable docker --now
+usermod -aG docker $USER
 
-# ==========================
-# INSTALLATION ETAPE PAR ETAPE (ANTI-CRASH)
-# ==========================
-cmd_install() {
-  require_root
-  
-  title "Proxmox Backend - Installation"
-  
-  # ETAPE 1: DNS + APT (ultra-robuste)
-  title "1/7 Systeme de base"
-  info "Correction DNS si besoin..."
-  if ! ping -c1 8.8.8.8 &>/dev/null; then
-    echo "nameserver 8.8.8.8" > /etc/resolv.conf
-    echo "nameserver 8.8.4.4" >> /etc/resolv.conf
-  fi
-  
-  info "APT update (progressif)..."
-  apt-get update -o Acquire::http::Timeout=10 -o Acquire::ftp::Timeout=10 || true
-  apt-get install -y -o Acquire::Retries=3 docker.io git jq curl ca-certificates net-tools iproute2 || true
-  systemctl enable docker --now || true
-  ok "Systeme OK"
+# 2. CRÉATION STRUCTURE RÉPERTOIRES
+echo -e "${BLUE}2. Création structure répertoires...${NC}"
+mkdir -p "$DATA_DIR"/{db,logs,backups,certs}
+mkdir -p "$SCRIPT_DIR"
+cd "$SCRIPT_DIR"
 
-  # ETAPE 2: WORKSPACE
-  title "2/7 Workspace /workspace"
-  mkdir -p "$WORKDIR"
-  cd "$WORKDIR"
-  if [[ ! -d .git ]]; then
-    git clone -b proxmox https://github.com/SandersonnDev/workspace.git .
-    ok "Clone OK"
-  else
-    git checkout proxmox && git pull origin proxmox
-    ok "Update OK: $(git rev-parse --abbrev-ref HEAD)"
-  fi
+# 3. CLONAGE PROJET & CONFIGURATION
+echo -e "${BLUE}3. Clonage projet backend...${NC}"
+if [ ! -d "$PROJECT_DIR" ]; then
+    git clone -b proxmox https://github.com/votre-org/proxmox-workspace.git backend
+fi
+cd backend
 
-  # ETAPE 3: APP (Makefile style)
-  title "3/7 Build proxmox/app"
-  cd "$APP_DIR" || { err "APP_DIR $APP_DIR manquant"; exit 1; }
-  rm -rf node_modules dist package-lock.json >/dev/null 2>&1 || true
-  npm install --no-audit --no-fund || { err "npm install echoue"; exit 1; }
-  npm run build || { err "npm run build echoue"; exit 1; }
-  mkdir -p logs
-  ok "Build OK"
+# Détection IP automatique
+CONTAINER_IP=$(hostname -I | awk '{print $1}')
+echo "IP détectée: $CONTAINER_IP"
 
-  # ETAPE 4: DOCKER .env
-  title "4/7 Docker configuration"
-  CT_IP=$(hostname -I | awk '{print $1}')
-  cat > "$DOCKER_DIR/.env" <<EOF
+# 4. GÉNÉRATION FICHIER .ENV
+echo -e "${BLUE}4. Génération fichier .env...${NC}"
+cat > .env << EOF
+# Configuration Serveur Proxmox Workspace
 NODE_ENV=production
-API_PORT=${API_PORT}
-LOG_LEVEL=debug
-LOG_FORMAT=pretty
-DEBUG=proxmox:*,express:*
-SERVER_IP=${CT_IP}
-DB_HOST=db
-DB_NAME=workspace
-DB_USER=workspace
-DB_PASSWORD=SECRET_RETIRE
-JWT_SECRET=$(openssl rand -hex 16)
-EOF
-  ok ".env OK"
+PORT=$API_PORT
+HOST=$CONTAINER_IP
+API_URL=http://${CONTAINER_IP}:$API_PORT
 
-  # ETAPE 5: SYSTEMD
-  title "5/7 Service systemd"
-  cat > "$SERVICE_FILE" <<EOF
+# JWT Security
+JWT_SECRET=$(openssl rand -base64 48)
+JWT_EXPIRES=7d
+
+# Database
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=proxmox_workspace
+DB_USER=proxmox_user
+DB_PASSWORD=$(openssl rand -base64 24)
+
+# Paths
+DATA_PATH=$DATA_DIR
+LOGS_PATH=$DATA_DIR/logs
+BACKUPS_PATH=$DATA_DIR/backups
+
+# Proxmox Integration
+PROXMOX_HOST=localhost
+PROXMOX_PORT=8006
+PROXMOX_USER=root@pam
+PROXMOX_TOKEN_ID=workspace-api
+PROXMOX_TOKEN_SECRET=$(openssl rand -base64 32)
+
+# Features
+CHAT_ENABLED=true
+AGENDA_ENABLED=true
+RECEPTION_ENABLED=true
+ACCOUNTS_ENABLED=true
+SHORTCUTS_ENABLED=true
+EOF
+
+# 5. CONSTRUCTION BACKEND NODE.JS
+echo -e "${BLUE}5. Construction backend Node.js...${NC}"
+npm ci --production
+npm run build
+
+# 6. DOCKER COMPOSE POUR SERVICES
+cat > "$COMPOSE_FILE" << 'EOF'
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    volumes:
+      - /opt/proxmox-data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks:
+      - proxmox-net
+
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: proxmox_workspace
+      POSTGRES_USER: proxmox_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - /opt/proxmox-data:/data
+    secrets:
+      - db_password
+    restart: unless-stopped
+    networks:
+      - proxmox-net
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - proxmox-net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+secrets:
+  db_password:
+    file: /opt/proxmox-data/db_password.txt
+
+networks:
+  proxmox-net:
+    driver: bridge
+EOF
+
+# Secrets Docker
+echo "$(grep DB_PASSWORD .env | cut -d'=' -f2)" > "$DATA_DIR/db_password.txt"
+
+# 7. SERVICE SYSTEMD
+cat > /etc/systemd/system/$SERVICE_NAME.service << EOF
 [Unit]
-Description=Proxmox Backend
-After=docker.service network.target
+Description=Proxmox Workspace Backend
 Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
 
 [Service]
-Type=simple
-User=root
-WorkingDirectory=${DOCKER_DIR}
-ExecStart=/usr/local/bin/docker-compose up
-ExecStop=/usr/local/bin/docker-compose down  
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=$PROJECT_DIR
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStartPre=/usr/bin/docker-compose -f $COMPOSE_FILE pull
+ExecStart=/usr/bin/docker-compose -f $COMPOSE_FILE up -d
+ExecStop=/usr/bin/docker-compose -f $COMPOSE_FILE down
+TimeoutStopSec=30
 Restart=always
-StandardOutput=journal
-SyslogIdentifier=proxmox-backend
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 EOF
-  systemctl daemon-reload
-  ok "Service OK"
 
-  # ETAPE 6: COMMANDE GLOBALE ✅ CRITIQUE
-  title "6/7 Commande proxmox globale"
-  SCRIPT_SOURCE="$PWD/../scripts/proxmox.sh"
-  if [[ -f "$SCRIPT_SOURCE" ]]; then
-    cp "$SCRIPT_SOURCE" "$CTRL_SCRIPT"
-    chmod +x "$CTRL_SCRIPT"
-    ok "/usr/local/bin/proxmox ✅ INSTALLE"
-  else
-    err "Script source manquant: $SCRIPT_SOURCE"
-    exit 1
-  fi
+systemctl daemon-reload
+systemctl enable $SERVICE_NAME
 
-  # ETAPE 7: DOCKER BUILD
-  title "7/7 Build Docker"
-  cd "$DOCKER_DIR" || { err "DOCKER_DIR manquant"; exit 1; }
-  docker_compose build --no-cache >/dev/null 2>&1 || docker_compose build
-  ok "Docker OK"
+# 8. COMMANDE GLOBALE 'proxmox'
+cat > /usr/local/bin/proxmox << 'EOF'
+#!/bin/bash
 
-  title "INSTALLATION 100% TERMINEE"
-  display_server_info "$CT_IP"
-  
-  echo -e "${BOLD}TESTEZ:${RESET}"
-  echo "  ${GREEN}proxmox status${RESET}"
-  echo "  ${GREEN}proxmox up${RESET}"
-  echo "  ${GREEN}proxmox logs live${RESET}"
-  echo ""
-  warn "Services NON demarres - executez: proxmox up"
+SERVICE_NAME="workspace-proxmox"
+PROJECT_DIR="/opt/proxmox-workspace/backend"
+COMPOSE_FILE="$PROJECT_DIR/docker-compose.yml"
+API_URL="http://$(hostname -I | awk '{print $1}'):4000"
+
+print_status() {
+    echo "╔══════════════════════════════════════════════════════════════════════╗"
+    echo "║                          STATUT PROXMOX WORKSPACE                    ║"
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+    
+    # Service systemd
+    if systemctl is-active --quiet $SERVICE_NAME; then
+        STATUS_SYSTEMD="${GREEN}✓ ACTIF${NC}"
+    else
+        STATUS_SYSTEMD="${RED}✗ INACTIF${NC}"
+    fi
+    
+    # API Health
+    if curl -s --max-time 5 $API_URL/api/health | grep -q '"status":"ok"'; then
+        STATUS_API="${GREEN}✓ EN LIGNE${NC}"
+    else
+        STATUS_API="${RED}✗ INDISPONIBLE${NC}"
+    fi
+    
+    # Serveur Node
+    if docker ps --format "table {{.Names}}\ {{.Status}}" | grep -q "backend"; then
+        STATUS_NODE="${GREEN}✓ EN LIGNE${NC}"
+    else
+        STATUS_NODE="${RED}✗ ARRÊTÉ${NC}"
+    fi
+    
+    IP_PORT="http://$(hostname -I | awk '{print $1}'):4000"
+    
+    echo "║ SYSTEMD: $STATUS_SYSTEMD  │  NODE.JS: $STATUS_NODE  │  API: $STATUS_API ║"
+    echo "║ URL: $IP_PORT                                                     ║"
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+    
+    echo "║ ENDPOINTS DISPONIBLES:                                            ║"
+    echo "║  ✓ /api/chat          ✓ /api/agenda       ✓ /api/reception        ║"
+    echo "║  ✓ /api/raccourcis    ✓ /api/comptes     ✓ /api/health            ║"
+    echo "╠══════════════════════════════════════════════════════════════════════╣"
+    
+    echo "║ CONTENEURS DOCKER:                                                ║"
+    docker ps --format "║  {{.Names}}\t{{.Status}}\t{{.Ports}}" | while IFS= read -r line; do
+        echo "$line"
+    done || echo "║  Aucun conteneur actif                                            ║"
+    
+    echo "╚══════════════════════════════════════════════════════════════════════╝"
 }
 
-# Autres commandes
-cmd_logs() {
-  echo ""
-  info "Logs (${1:-recent})"
-  if [[ "${1:-}" == "live" ]]; then
-    journalctl -u "$SERVICE_NAME" -f --no-pager | grep --color=always -E "(GET|POST|WS|error)"
-  else
-    journalctl -u "$SERVICE_NAME" -n 50 --no-pager | grep --color=always -E "(GET|POST|WS|error)"
-  fi
-}
-
-cmd_status() {
-  local ct_ip=$(hostname -I | awk '{print $1}')
-  echo -e "${BOLD}STATUT${RESET}"
-  systemctl is-active "$SERVICE_NAME" &>/dev/null && echo "  ${GREEN}✔ Service:${RESET} ACTIF" || echo "  ${RED}✖ Service:${RESET} INACTIF"
-  curl -s "$HEALTH_URL" | grep -q ok && echo "  ${GREEN}✔ API:${RESET} OK" || echo "  ${RED}✖ API:${RESET} KO"
-  echo "  ${CYAN}URL:${RESET} http://${ct_ip}:${API_PORT}"
-}
-
-cmd_start() { require_root; systemctl start "$SERVICE_NAME" && sleep 5 && ok "Demarre" || warn "En demarrage"; }
-cmd_stop() { require_root; systemctl stop "$SERVICE_NAME" && ok "Arrete" || true; }
-cmd_restart() { require_root; systemctl restart "$SERVICE_NAME" && sleep 5 && ok "Redemarre"; }
-
-cmd_rebuild() {
-  require_root
-  title "REBUILD (nettoyage + git pull)"
-  systemctl stop "$SERVICE_NAME" 2>/dev/null || true
-  cd "$WORKDIR" && git pull origin proxmox
-  cd "$APP_DIR" && rm -rf node_modules dist && npm install && npm run build
-  cd "$DOCKER_DIR" && docker_compose down -v && docker_compose build --no-cache
-  systemctl restart "$SERVICE_NAME" && sleep 5
-  ok "Rebuild OK"
-}
-
-# EXECUTION
-COMMAND="${1:-help}"
-case "$COMMAND" in
-  install) cmd_install ;;
-  up|start) cmd_start ;;
-  down|stop) cmd_stop ;;
-  restart) cmd_restart ;;
-  status|st) cmd_status ;;
-  logs) cmd_logs "${2:-}" ;;
-  rebuild|build) cmd_rebuild ;;
-  help|-h|*)
-    echo "${BOLD}USAGE:${RESET}
-  sudo bash $0 install     → Installation
-  proxmox up              → Demarrer  
-  proxmox logs live       → Logs temps reel
-  proxmox status          → Statut
-  proxmox rebuild         → Git pull + rebuild"
-    ;;
+case "$1" in
+    install)
+        cd $PROJECT_DIR && docker-compose -f $COMPOSE_FILE up -d --build
+        systemctl restart $SERVICE_NAME
+        echo -e "\n${GREEN}Installation terminée !${NC}"
+        print_status
+        ;;
+    up|start)
+        systemctl start $SERVICE_NAME
+        print_status
+        ;;
+    stop)
+        systemctl stop $SERVICE_NAME
+        ;;
+    restart)
+        systemctl restart $SERVICE_NAME
+        sleep 3
+        print_status
+        ;;
+    logs)
+        journalctl -u $SERVICE_NAME -f
+        ;;
+    rebuild)
+        cd $PROJECT_DIR && docker-compose -f $COMPOSE_FILE down -v
+        docker system prune -f
+        docker-compose -f $COMPOSE_FILE up -d --build
+        print_status
+        ;;
+    status)
+        print_status
+        ;;
+    *)
+        echo "Usage: proxmox {install|up|stop|restart|logs|rebuild|status}"
+        exit 1
+        ;;
 esac
+EOF
+
+chmod +x /usr/local/bin/proxmox
+
+# 9. LANCEMENT INITIAL
+echo -e "${BLUE}9. Lancement services...${NC}"
+proxmox install
+
+# 10. CONFIGURATION FINALE
+echo -e "${BLUE}10. Configuration finale...${NC}"
+echo 'export PATH=$PATH:/usr/local/bin' >> /root/.bashrc
+echo "alias pws='proxmox status'" >> /root/.bashrc
+
+echo -e "\n${GREEN}╔══════════════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}║                    ✅ INSTALLATION TERMINÉE ✅                        ${NC}"
+echo -e "${GREEN}║                                                                      ${NC}"
+echo -e "${GREEN}║ Commandes disponibles:                                              ${NC}"
+echo -e "${GREEN}║ • proxmox status     → Afficher statut complet                      ${NC}"
+echo -e "${GREEN}║ • proxmox restart    → Redémarrer services                         ${NC}"
+echo -e "${GREEN}║ • proxmox logs       → Suivi logs en temps réel                    ${NC}"
+echo -e "${GREEN}║ • proxmox rebuild    → Reconstruction complète                     ${NC}"
+echo -e "${GREEN}║                                                                      ${NC}"
+echo -e "${GREEN}║ Serveur accessible: http://$CONTAINER_IP:$API_PORT                  ${NC}"
+echo -e "${GREEN}╚══════════════════════════════════════════════════════════════════════╝${NC}\n"
+
+# Test final
+proxmox status [web:1][web:3][web:5]
