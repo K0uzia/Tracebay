@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
-# Version 3.0 : Fix Colonne 'is_read' + Restauration Commandes Complètes (test-api, endpoints)
+# Version 6.0 : FIX Schema (start_time) + Help Debug + Nettoyage DB Auto
 # Debian 13 Trixie
 
 set -euo pipefail
@@ -45,10 +45,18 @@ get_ip() { hostname -I | awk '{print $1}'; }
 stop_and_clean() {
   warn "Arrêt et Nettoyage complet..."
   systemctl stop "$SERVICE_NAME" 2>/dev/null || true
+  
   if [[ -f "$DOCKER_DIR/docker-compose.yml" ]]; then
     cd "$DOCKER_DIR"
     docker compose down -v --remove-orphans 2>/dev/null || true
   fi
+  
+  # Suppression explicite du volume persistant
+  if docker volume ls -q | grep -q proxmox_postgres_data; then
+    info "Suppression du volume persistant 'proxmox_postgres_data'..."
+    docker volume rm proxmox_postgres_data 2>/dev/null || true
+  fi
+  
   ok "Nettoyage terminé."
 }
 
@@ -89,10 +97,12 @@ EOF
   ok "Config générée (IP: $ct_ip)"
 }
 
-# =============== SQL Script (FIX: Ajout colonne is_read) ===============
+# =============== SQL Script (FIX: start_time / end_time) ===============
 prepare_sql_script() {
   cat <<'SQLEOF' > /tmp/proxmox_schema.sql
 \c workspace_db
+
+-- 1. Création standard (avec noms corrigés)
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
@@ -100,17 +110,19 @@ CREATE TABLE IF NOT EXISTS users (
   password VARCHAR(255),
   created_at TIMESTAMP DEFAULT NOW()
 );
+
 CREATE TABLE IF NOT EXISTS events (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   username VARCHAR(50),
   title VARCHAR(255) NOT NULL,
-  start TIMESTAMP NOT NULL,
-  "end" TIMESTAMP NOT NULL,
+  start_time TIMESTAMP NOT NULL,
+  end_time TIMESTAMP NOT NULL,
   description TEXT,
   location VARCHAR(255),
   created_at TIMESTAMP DEFAULT NOW()
 );
+
 CREATE TABLE IF NOT EXISTS messages (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -120,15 +132,18 @@ CREATE TABLE IF NOT EXISTS messages (
   is_read BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
 CREATE TABLE IF NOT EXISTS lots (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255),
-  item_count INTEGER,
+  item_count INTEGER NOT NULL DEFAULT 0,
   description TEXT,
-  status VARCHAR(50),
+  status VARCHAR(50) NOT NULL DEFAULT 'received',
   received_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
   created_at TIMESTAMP DEFAULT NOW()
 );
+
 CREATE TABLE IF NOT EXISTS lot_items (
   id SERIAL PRIMARY KEY,
   lot_id INTEGER REFERENCES lots(id) ON DELETE CASCADE,
@@ -140,15 +155,18 @@ CREATE TABLE IF NOT EXISTS lot_items (
   entry_date DATE,
   entry_time TIME
 );
+
 CREATE TABLE IF NOT EXISTS marques (
   id SERIAL PRIMARY KEY,
   name VARCHAR(255) UNIQUE NOT NULL
 );
+
 CREATE TABLE IF NOT EXISTS modeles (
   id SERIAL PRIMARY KEY,
   marque_id INTEGER REFERENCES marques(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL
 );
+
 CREATE TABLE IF NOT EXISTS shortcut_categories (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -157,6 +175,7 @@ CREATE TABLE IF NOT EXISTS shortcut_categories (
   created_at TIMESTAMP DEFAULT NOW(),
   UNIQUE(user_id, name)
 );
+
 CREATE TABLE IF NOT EXISTS shortcuts (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -167,10 +186,27 @@ CREATE TABLE IF NOT EXISTS shortcuts (
   order_index INTEGER,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- 2. Migrations (Correction des noms de colonnes pour anciennes versions)
+-- Si la table 'events' existe avec 'start', on la renomme
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='start') THEN
+        ALTER TABLE events RENAME COLUMN "start" TO start_time;
+    END IF;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='end') THEN
+        ALTER TABLE events RENAME COLUMN "end" TO end_time;
+    END IF;
+END $$;
+
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;
+ALTER TABLE shortcuts ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES shortcut_categories(id) ON DELETE CASCADE;
+
+-- 3. Index
 CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id);
 CREATE INDEX IF NOT EXISTS idx_lot_items_lot_id ON lot_items(lot_id);
 CREATE INDEX IF NOT EXISTS idx_shortcuts_user_id ON shortcuts(user_id);
+CREATE INDEX IF NOT EXISTS idx_shortcuts_category_id ON shortcuts(category_id);
 SQLEOF
 }
 
@@ -189,7 +225,7 @@ run_db_setup() {
     done
     echo
     sleep 2
-    docker compose exec -T db psql -U "$DB_USER_DEFAULT" -d "$DB_NAME_DEFAULT" < /tmp/proxmox_schema.sql && ok "Tables créées." || warn "Erreur Tables."
+    docker compose exec -T db psql -U "$DB_USER_DEFAULT" -d "$DB_NAME_DEFAULT" < /tmp/proxmox_schema.sql && ok "Tables & Migrations créées." || warn "Erreur Tables."
     docker compose down
   fi
   rm -f /tmp/proxmox_schema_sql
@@ -231,14 +267,13 @@ EOF
   ok "Service activé."
 }
 
-# =============== CLI Installation (Full Restore) ===============
+# =============== CLI Installation ===============
 install_cli() {
-  info "Installation CLI (V3)..."
+  info "Installation CLI (V6 - Schema Fix)..."
   cat > "$CLI_SOURCE" <<'CLISCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Colors
 CYAN=$'\033[0;36m'; BLUE=$'\033[0;34m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'; RED=$'\033[0;31m'; RESET=$'\033[0m'; BOLD=$'\033[1m'
 
 ok() { echo -e "${GREEN}OK${RESET}   $*"; }
@@ -246,7 +281,6 @@ warn() { echo -e "${YELLOW}WARN${RESET} $*"; }
 err() { echo -e "${RED}ERR${RESET}  $*"; }
 header() { echo -e "${CYAN}${BOLD}$*${RESET}"; }
 
-# Paths
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 if [[ -L "$SCRIPT_PATH" ]]; then SCRIPT_PATH="$(readlink -f "$SCRIPT_PATH")"; fi
 REPO_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
@@ -254,7 +288,6 @@ DOCKER_DIR="$REPO_ROOT/proxmox/docker"
 SERVICE_NAME="proxmox-backend"
 API_URL="http://localhost:4000"
 
-# Smart Detection
 get_api_name() {
   docker ps -a --format "{{.Names}}" | grep -E "workspace-proxmox|proxmox.*api" | head -1
 }
@@ -262,7 +295,6 @@ get_db_name() {
   docker ps -a --format "{{.Names}}" | grep -E "workspace-db|proxmox.*db" | head -1
 }
 
-# Diagnostics
 show_diagnostics() {
   echo ""
   header "=== DIAGNOSTIC DOCKER ==="
@@ -290,7 +322,6 @@ show_diagnostics() {
   echo ""
 }
 
-# Full Status Table with Endpoints
 draw_table_header() {
   local border="+-------------------------+-------------------------+"
   echo "$border"
@@ -299,7 +330,6 @@ draw_table_header() {
 }
 
 draw_table_row() {
-  # FIX: %b pour interpréter les codes ANSI
   printf "| %-23s | %-23b |\n" "$1" "$2"
 }
 
@@ -319,7 +349,6 @@ status_table() {
   if [[ -n "$api_name" ]] && docker inspect "$api_name" --format '{{.State.Status}}' | grep -iq "running"; then api_status="${GREEN}RUNNING${RESET}"; fi
   if [[ -n "$db_name" ]] && docker inspect "$db_name" --format '{{.State.Status}}' | grep -iq "running"; then db_status="${GREEN}RUNNING${RESET}"; fi
 
-  # API Health Check
   if curl -fsS "$API_URL/api/health" >/dev/null 2>&1; then 
     web_status="${GREEN}ONLINE${RESET}"; 
   else 
@@ -368,7 +397,6 @@ status_table() {
   echo
 }
 
-# Full Test Suite
 run_tests() {
   set +e
   local user="AdminTest"
@@ -390,7 +418,6 @@ run_tests() {
   fi
   ok "Login OK"
 
-  # Définition des endpoints à tester
   declare -A endpoints
   endpoints[GET]="/api/health /api/metrics /api/monitoring/stats /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories /api/marques /api/marques/all /api/agenda/events /api/auth/verify"
   endpoints[POST]="/api/auth/login /api/auth/logout /api/auth/verify /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories /api/marques"
@@ -419,7 +446,7 @@ run_tests() {
           "/api/auth/login") data="{\"username\":\"$user\",\"password\":\"$pass\"}" ;;
           "/api/auth/logout") data="{}" ;;
           "/api/auth/verify") data="{}" ;;
-          "/api/events") data="{\"title\":\"Test Auto\",\"start\":\"2026-01-01T10:00:00Z\",\"end\":\"2026-01-01T11:00:00Z\",\"description\":\"Test\",\"location\":\"Salle Test\"}" ;;
+          "/api/events") data="{\"title\":\"Test Auto\",\"start_time\":\"2026-01-01T10:00:00Z\",\"end_time\":\"2026-01-01T11:00:00Z\",\"description\":\"Test\",\"location\":\"Salle Test\"}" ;;
           "/api/marques") data="{\"name\":\"TestMarque\"}" ;;
           "/api/messages") data="{\"text\":\"Test cleanup\",\"pseudo\":\"AdminTest\"}" ;;
           "/api/lots") data="{\"itemCount\":1,\"description\":\"Lot Test API\"}" ;;
@@ -441,12 +468,10 @@ run_tests() {
   done
 
   echo "4. Nettoyage..."
-  # Note: Suppression manuelle non implémentée ici pour simplicité
   ok "Tests terminés."
   set -e
 }
 
-# Main Switch
 cmd="${1:-status}"
 case "$cmd" in
   start)
@@ -454,7 +479,6 @@ case "$cmd" in
     systemctl start proxmox-backend
     echo "Attente de stabilisation (5s)..."
     sleep 5
-    # FIX: Retrait de 'local'
     is_running=false
     api_name=$(get_api_name)
     if [[ -n "$api_name" ]] && docker inspect "$api_name" --format '{{.State.Status}}' | grep -iq "running"; then
@@ -483,10 +507,11 @@ case "$cmd" in
     if [[ "${1:-}" == "live" ]]; then journalctl -u "$SERVICE_NAME" -f; else journalctl -u "$SERVICE_NAME" -n 50 --no-pager; fi
     ;;
   status) status_table ;;
-  debug) show_diagnostics ;;
-  test-api) run_tests ;;
+  debug|diag) show_diagnostics ;;
+  test-api|api-test) run_tests ;;
   help|--help|-h)
     echo "Usage: proxmox [start|stop|restart|rebuild|logs|status|debug|test-api]"
+    echo "  debug     : Affiche les logs Docker pour diagnostiquer les crashs"
     ;;
   *) status_table ;;
 esac
@@ -494,13 +519,13 @@ CLISCRIPT
 
   chmod +x "$CLI_SOURCE"
   ln -sf "$CLI_SOURCE" "$GLOBAL_CLI"
-  ok "CLI installée (avec test-api complet)."
+  ok "CLI installée."
 }
 
 # =============== Main ===============
 cmd_install() {
   require_root
-  log "=== INSTALLATION V3 (FIX is_read + Tests) ==="
+  log "=== INSTALLATION V6 (Fix start_time + Help) ==="
   stop_and_clean
   ensure_paths
   git_update
@@ -526,6 +551,6 @@ case "$COMMAND" in
   stop) cmd_stop ;;
   restart) cmd_restart ;;
   status) cmd_status ;;
-  test-api) cmd_test ;;
+  test-api|api-test) cmd_test ;;
   *) echo "Usage: $0 [install|start|stop|restart|status|test-api]" ;;
 esac
