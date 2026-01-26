@@ -439,26 +439,63 @@ cmd_rebuild() {
 test_api() {
   local api_url="http://localhost:4000"
   echo "--- [TEST API] ---"
-  endpoints=(
-    "/api/health"
-    "/api/messages"
-    "/api/events"
-    "/api/lots"
-    "/api/shortcuts"
-    "/api/shortcuts/categories"
-    "/api/marques"
-    "/api/marques/all"
-    "/api/agenda/events"
-  )
-  for ep in "${endpoints[@]}"; do
-    echo -n "GET $ep ... "
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" "$api_url$ep")
-    if [[ "$http_code" == "200" ]]; then echo "OK"; else echo "FAIL ($http_code)"; fi
+  # Utilisateur de test
+  local test_user="Test_Admin"
+  local test_pass="Test@123"
+  # 1. Login pour obtenir un token
+  token=$(curl -s -X POST "$api_url/api/auth/login" -H 'Content-Type: application/json' -d '{"username":"'$test_user'","password":"'$test_pass'"}' | grep -o '"token":"[^\"]*"' | cut -d '"' -f4)
+  # Si login échoue, tente de créer le compte
+  if [[ -z "$token" ]]; then
+    echo "[INFO] Création du compte de test $test_user..."
+    curl -s -X POST "$api_url/api/auth/register" -H 'Content-Type: application/json' -d '{"username":"'$test_user'","password":"'$test_pass'"}' >/dev/null
+    # Re-tente le login
+    token=$(curl -s -X POST "$api_url/api/auth/login" -H 'Content-Type: application/json' -d '{"username":"'$test_user'","password":"'$test_pass'"}' | grep -o '"token":"[^\"]*"' | cut -d '"' -f4)
+  fi
+  if [[ -z "$token" ]]; then echo "[FAIL] Login impossible, tests protégés ignorés"; fi
+
+  # 2. Définir les endpoints et payloads
+  declare -A endpoints
+  endpoints[GET]="/api/health /api/metrics /api/monitoring/stats /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories /api/marques /api/marques/all /api/agenda/events"
+  endpoints[POST]="/api/auth/login /api/auth/logout /api/auth/verify /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories"
+
+  # Payloads valides pour chaque POST
+  declare -A payloads
+  payloads[/api/auth/login]='{"username":"'$test_user'","password":"'$test_pass'"}'
+  payloads[/api/auth/logout]='{}'
+  payloads[/api/auth/verify]='{}'
+  payloads[/api/events]='{"title":"Réunion API","start":"2026-01-26T10:00:00Z","end":"2026-01-26T11:00:00Z","description":"Test automatique","location":"Salle API"}'
+  payloads[/api/messages]='{"text":"Ceci est un test API","pseudo":"'$test_user'"}'
+  payloads[/api/lots]='{"itemCount":1,"description":"Lot test via API"}'
+  payloads[/api/shortcuts]='{"title":"API Test","url":"https://test.local"}'
+  payloads[/api/shortcuts/categories]='{"name":"Catégorie API"}'
+
+  # Endpoints nécessitant Authorization
+  protected="/api/metrics /api/monitoring/stats /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories /api/marques /api/marques/all /api/agenda/events /api/auth/logout /api/auth/verify"
+
+  for method in GET POST; do
+    for ep in ${endpoints[$method]}; do
+      if [[ -z "$ep" ]]; then continue; fi
+      extra_args=()
+      # Ajout du token si protégé
+      if [[ " $protected " == *" $ep "* && -n "$token" ]]; then
+        extra_args+=( -H "Authorization: Bearer $token" )
+      fi
+      # Ajout userId dans query si events/messages/shortcuts
+      url="$api_url$ep"
+      if [[ "$ep" == "/api/events" || "$ep" == "/api/messages" || "$ep" == "/api/shortcuts" || "$ep" == "/api/shortcuts/categories" ]]; then
+        url+="?userId=1"
+      fi
+      if [[ "$method" == "POST" ]]; then
+        data=${payloads[$ep]:-"{}"}
+        echo -n "POST $ep ... "
+        http_code=$(eval curl -s -o /dev/null -w "%{http_code}" -X POST "$url" -H 'Content-Type: application/json' "${extra_args[@]}" -d "$data")
+      else
+        echo -n "GET $ep ... "
+        http_code=$(eval curl -s -o /dev/null -w "%{http_code}" "$url" "${extra_args[@]}")
+      fi
+      if [[ "$http_code" == "200" || "$http_code" == "201" ]]; then echo "OK"; else echo "FAIL ($http_code)"; fi
+    done
   done
-  # Test POST login
-  echo -n "POST /api/auth/login ... "
-  http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$api_url/api/auth/login" -H 'Content-Type: application/json' -d '{"username":"testuser","password":"testpass"}')
-  if [[ "$http_code" == "200" ]]; then echo "OK"; else echo "FAIL ($http_code)"; fi
 }
 cmd_logs() { if [[ "${1:-}" == "live" ]]; then journalctl -u "$SERVICE_NAME" -f; else journalctl -u "$SERVICE_NAME" -n 200 --no-pager; fi }
 cmd_status() { print_status; }
