@@ -373,10 +373,3 @@ Commandes :
 EOF
     ;;
 esac
-SCRIPT_EOF
-
-# 2. Rendre exécutable
-chmod +x proxmox/scripts/proxmox.sh
-
-# 3. Lancer l'installation
-bash proxmox/scripts/proxmox.sh install
