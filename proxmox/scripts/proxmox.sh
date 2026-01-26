@@ -10,9 +10,9 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # =============== Configuration ===============
-DB_USER_DEFAULT="proxmox_user"
-DB_PASS_DEFAULT="proxmox_password"
-DB_NAME_DEFAULT="proxmox_db"
+DB_USER_DEFAULT="Admin"
+DB_PASS_DEFAULT="SECRET_RETIRE"
+DB_NAME_DEFAULT="workspace_db"
 DB_PORT_DEFAULT=5432
 API_PORT_DEFAULT=4000
 
@@ -64,46 +64,139 @@ git_update() {
   if [[ -d "$REPO_ROOT/.git" ]]; then
     info "Mise à jour du dépôt Git..."
     cd "$REPO_ROOT"
-    git reset --hard HEAD
-    git pull origin proxmox || git pull origin main || warn "Git pull échoué."
+    git fetch --all
+    git reset --hard origin/proxmox || git reset --hard origin/main || true
   fi
 }
 
 generate_env() {
   info "Génération de la configuration (.env)"
   local ct_ip=$(get_ip)
+  # On configure les valeurs souhaitées (proxmox_user)
   cat > "$ENV_FILE" <<EOF
+# Configuration générée automatiquement par proxmox.sh
+
+# API Configuration
 NODE_ENV=production
 API_PORT=${API_PORT_DEFAULT}
-API_HOST=0.0.0.0
+PORT=${API_PORT_DEFAULT}
+LOG_LEVEL=info
+
+# Database Configuration
 DB_HOST=db
 DB_PORT=${DB_PORT_DEFAULT}
 DB_NAME=${DB_NAME_DEFAULT}
 DB_USER=${DB_USER_DEFAULT}
 DB_PASSWORD=${DB_PASS_DEFAULT}
+
+# DB Pool
+DB_POOL_MIN=2
+DB_POOL_MAX=10
+
+# Docker
 COMPOSE_PROJECT_NAME=proxmox
 EOF
-  ok "Config générée (IP: $ct_ip)"
+  ok "Config générée (IP: $ct_ip) - User DB: $DB_USER_DEFAULT"
 }
 
-# =============== SQL Script ===============
+# =============== SQL Script (Création des tables uniquement) ===============
+# Docker gère la création de l'utilisateur 'proxmox_user' et de la base 'proxmox_db'
 prepare_sql_script() {
-  cat <<'SQLEOF' > /tmp/proxmox_install.sql
-CREATE USER proxmox_user WITH PASSWORD 'proxmox_password';
-CREATE DATABASE proxmox_db OWNER proxmox_user;
-GRANT ALL PRIVILEGES ON DATABASE proxmox_db TO proxmox_user;
+  cat <<'SQLEOF' > /tmp/proxmox_schema.sql
+-- Connection à la BDD (gérée par docker exec)
 \c proxmox_db
 
-CREATE TABLE IF NOT EXISTS users (id SERIAL PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, password VARCHAR(255), created_at TIMESTAMP DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS events (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, username VARCHAR(50), title VARCHAR(255) NOT NULL, start TIMESTAMP NOT NULL, "end" TIMESTAMP NOT NULL, description TEXT, location VARCHAR(255), created_at TIMESTAMP DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS messages (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE SET NULL, username VARCHAR(50), text TEXT NOT NULL, conversation_id INTEGER, created_at TIMESTAMP DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS lots (id SERIAL PRIMARY KEY, name VARCHAR(255), item_count INTEGER, description TEXT, status VARCHAR(50), received_at TIMESTAMP DEFAULT NOW(), created_at TIMESTAMP DEFAULT NOW());
-CREATE TABLE IF NOT EXISTS lot_items (id SERIAL PRIMARY KEY, lot_id INTEGER REFERENCES lots(id) ON DELETE CASCADE, serial_number VARCHAR(255), type VARCHAR(50), marque_id INTEGER, modele_id INTEGER, entry_type VARCHAR(50), entry_date DATE, entry_time TIME);
-CREATE TABLE IF NOT EXISTS marques (id SERIAL PRIMARY KEY, name VARCHAR(255) UNIQUE NOT NULL);
-CREATE TABLE IF NOT EXISTS modeles (id SERIAL PRIMARY KEY, marque_id INTEGER REFERENCES marques(id) ON DELETE CASCADE, name VARCHAR(255) NOT NULL);
-CREATE TABLE IF NOT EXISTS shortcut_categories (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, name VARCHAR(255) NOT NULL, order_index INTEGER, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id, name));
-CREATE TABLE IF NOT EXISTS shortcuts (id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, title VARCHAR(255) NOT NULL, description TEXT, url VARCHAR(255) NOT NULL, category_id INTEGER REFERENCES shortcut_categories(id) ON DELETE SET NULL, order_index INTEGER, created_at TIMESTAMP DEFAULT NOW());
+-- Table utilisateurs
+CREATE TABLE IF NOT EXISTS users (
+  id SERIAL PRIMARY KEY,
+  username VARCHAR(50) UNIQUE NOT NULL,
+  password VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
+);
 
+-- Table événements (agenda)
+CREATE TABLE IF NOT EXISTS events (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  username VARCHAR(50),
+  title VARCHAR(255) NOT NULL,
+  start TIMESTAMP NOT NULL,
+  "end" TIMESTAMP NOT NULL,
+  description TEXT,
+  location VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Table messages (chat)
+CREATE TABLE IF NOT EXISTS messages (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  username VARCHAR(50),
+  text TEXT NOT NULL,
+  conversation_id INTEGER,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Table lots (réception)
+CREATE TABLE IF NOT EXISTS lots (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255),
+  item_count INTEGER,
+  description TEXT,
+  status VARCHAR(50),
+  received_at TIMESTAMP DEFAULT NOW(),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Table lot_items
+CREATE TABLE IF NOT EXISTS lot_items (
+  id SERIAL PRIMARY KEY,
+  lot_id INTEGER REFERENCES lots(id) ON DELETE CASCADE,
+  serial_number VARCHAR(255),
+  type VARCHAR(50),
+  marque_id INTEGER,
+  modele_id INTEGER,
+  entry_type VARCHAR(50),
+  entry_date DATE,
+  entry_time TIME
+);
+
+-- Table marques
+CREATE TABLE IF NOT EXISTS marques (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) UNIQUE NOT NULL
+);
+
+-- Table modèles
+CREATE TABLE IF NOT EXISTS modeles (
+  id SERIAL PRIMARY KEY,
+  marque_id INTEGER REFERENCES marques(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL
+);
+
+-- Table catégories de raccourcis
+CREATE TABLE IF NOT EXISTS shortcut_categories (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  order_index INTEGER,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, name)
+);
+
+-- Table raccourcis
+CREATE TABLE IF NOT EXISTS shortcuts (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  url VARCHAR(255) NOT NULL,
+  category_id INTEGER REFERENCES shortcut_categories(id) ON DELETE SET NULL,
+  order_index INTEGER,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Indexes
 CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id);
 CREATE INDEX IF NOT EXISTS idx_lot_items_lot_id ON lot_items(lot_id);
@@ -113,18 +206,38 @@ SQLEOF
 
 run_db_setup() {
   prepare_sql_script
-  info "Configuration de la base de données..."
+  info "Configuration de la base de données (Tables)..."
   if command -v docker >/dev/null 2>&1; then
     cd "$DOCKER_DIR"
+    # 1. On démarre uniquement la DB
     docker compose up -d db
-    info "Attente PostgreSQL..."
-    for i in {1..20}; do docker compose exec -T db pg_isready -U "$DB_USER_DEFAULT" >/dev/null 2>&1 && break || sleep 1; done
-    docker compose exec -T db psql -U postgres < /tmp/proxmox_install.sql && ok "Base configurée (Docker)."
+    info "Attente PostgreSQL (User: $DB_USER_DEFAULT)..."
+    
+    # 2. On attend que la DB soit prête
+    for i in {1..30}; do
+      if docker compose exec -T db pg_isready -U "$DB_USER_DEFAULT" >/dev/null 2>&1; then
+        ok "PostgreSQL prêt"
+        break
+      fi
+      echo -n "."
+      sleep 1
+    done
+    echo
+
+    # 3. On injecte les tables (Docker a déjà créé l'utilisateur et la DB via le .env)
+    info "Injection du schéma..."
+    if docker compose exec -T db psql -U "$DB_USER_DEFAULT" -d "$DB_NAME_DEFAULT" < /tmp/proxmox_schema.sql; then
+        ok "Tables créées avec succès."
+    else
+        warn "Erreur lors de la création des tables."
+    fi
+
+    # 4. On éteint tout
     docker compose down
   else
-    sudo -u postgres psql -f /tmp/proxmox_install.sql && ok "Base configurée (Natif)."
+    warn "Docker non trouvé, impossible de configurer la DB."
   fi
-  rm -f /tmp/proxmox_install.sql
+  rm -f /tmp/proxmox_schema.sql
 }
 
 npm_build() {
@@ -184,6 +297,11 @@ install_cli() {
 set -euo pipefail
 CYAN="\033[0;36m"; BLUE="\033[0;34m"; GREEN="\033[0;32m"; YELLOW="\033[1;33m"; RED="\033[0;31m"; RESET="\033[0m"; BOLD="\033[1m"
 
+# Helpers CLI
+ok() { echo -e "${GREEN}OK${RESET}   $*"; }
+warn() { echo -e "${YELLOW}WARN${RESET} $*"; }
+err() { echo -e "${RED}ERR${RESET}  $*"; }
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 if [[ -L "$SCRIPT_PATH" ]]; then SCRIPT_PATH="$(readlink -f "$SCRIPT_PATH")"; fi
 REPO_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
@@ -212,8 +330,8 @@ status_table() {
   svc=$(systemctl is-active "$SERVICE_NAME" 2>/dev/null || echo "inactive")
   
   if curl -fsS "$API_URL/api/health" >/dev/null 2>&1; then api_status="${GREEN}ONLINE${RESET}"; else api_status="${RED}OFFLINE${RESET}"; fi
-  if docker ps --filter name=proxmox --format '{{.Status}}' | grep -iq "running"; then api_cont="${GREEN}RUNNING${RESET}"; else api_cont="${RED}STOPPED${RESET}"; fi
-  if docker ps --filter name=proxmox --format '{{.Names}}' | grep -iq "db"; then db_cont="${GREEN}RUNNING${RESET}"; else db_cont="${RED}STOPPED${RESET}"; fi
+  if docker ps --filter name=workspace-proxmox --format '{{.Status}}' | grep -iq "running"; then api_cont="${GREEN}RUNNING${RESET}"; else api_cont="${RED}STOPPED${RESET}"; fi
+  if docker ps --filter name=workspace-db --format '{{.Status}}' | grep -iq "running"; then db_cont="${GREEN}RUNNING${RESET}"; else db_cont="${RED}STOPPED${RESET}"; fi
 
   echo -e "\n${CYAN}${BOLD}=== Proxmox Backend Status ===${RESET}\n"
   draw_table_header "Service" "État"
@@ -222,6 +340,38 @@ status_table() {
   draw_table_row "Container DB" "$db_cont"
   draw_table_row "API Health" "$api_status"
   draw_table_row "Accès" "http://$ip:4000"
+  draw_table_footer
+  echo
+  
+  echo -e "${BLUE}Endpoints disponibles :${RESET}"
+  draw_table_header "Type" "Route"
+  local endpoints=(
+    "GET:/api/health"
+    "GET:/api/metrics"
+    "GET:/api/monitoring/stats"
+    "POST:/api/auth/login"
+    "POST:/api/auth/register"
+    "POST:/api/auth/logout"
+    "POST:/api/auth/verify"
+    "GET:/api/events"
+    "POST:/api/events"
+    "GET:/api/messages"
+    "POST:/api/messages"
+    "GET:/api/lots"
+    "POST:/api/lots"
+    "GET:/api/shortcuts"
+    "POST:/api/shortcuts"
+    "GET:/api/shortcuts/categories"
+    "POST:/api/shortcuts/categories"
+    "GET:/api/marques"
+    "GET:/api/marques/all"
+    "GET:/api/agenda/events"
+  )
+  
+  for ep in "${endpoints[@]}"; do
+    IFS=':' read -r type route <<< "$ep"
+    draw_table_row "$type" "http://$ip:4000$route"
+  done
   draw_table_footer
   echo
 }
@@ -233,7 +383,7 @@ run_tests() {
   local token=""
   local cleanup_ids=()
 
-  echo -e "\n${CYAN}--- [TEST API CLIENT] ---${RESET}\n"
+  echo -e "\n${CYAN}--- [TEST API CLIENT COMPLET] ---${RESET}\n"
 
   echo "1. Configuration utilisateur de test..."
   curl -s -X POST "$API_URL/api/auth/register" -H "Content-Type: application/json" -d "{\"username\":\"$user\",\"password\":\"$pass\"}" >/dev/null
@@ -241,35 +391,64 @@ run_tests() {
 
   echo "2. Authentification..."
   token=$(curl -s -X POST "$API_URL/api/auth/login" -H "Content-Type: application/json" -d "{\"username\":\"$user\",\"password\":\"$pass\"}" | grep -o '"token":"[^"]*"' | cut -d '"' -f4)
-  if [[ -z "$token" ]]; then echo -e "${RED}Login FAIL${RESET}"; return 1; fi
+  if [[ -z "$token" ]]; then 
+    echo -e "${RED}Login FAIL${RESET}"; 
+    return 1; 
+  fi
   ok "Login OK"
 
-  echo "3. Tests d'écriture (DB)..."
-  echo -n "   - Création Event ... "
-  res_ev=$(curl -s -X POST "$API_URL/api/events" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"title":"Test API Auto","start":"2026-01-01T10:00:00Z","end":"2026-01-01T11:00:00Z","description":"Test","location":"Salle Test"}')
-  ev_id=$(echo "$res_ev" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
-  if [[ "$ev_id" =~ ^[0-9]+$ ]]; then 
-    echo -e "${GREEN}OK (ID: $ev_id)${RESET}"; cleanup_ids+=("events:$ev_id"); 
-  else echo -e "${RED}FAIL${RESET}"; fi
+  declare -A payloads
+  payloads[/api/auth/login]("{\"username\":\"$user\",\"password\":\"$pass\"}")
+  payloads[/api/auth/logout]("{}")
+  payloads[/api/auth/verify]("{}")
+  payloads[/api/events]("{\"title\":\"Test Auto\",\"start\":\"2026-01-01T10:00:00Z\",\"end\":\"2026-01-01T11:00:00Z\",\"description\":\"Test\",\"location\":\"Salle Test\"}")
+  payloads[/api/marques]("{\"name\":\"TestMarque\"}")
+  payloads[/api/messages]("{\"text\":\"Test cleanup\",\"pseudo\":\"AdminTest\"}")
+  payloads[/api/lots]("{\"itemCount\":1,\"description\":\"Lot Test API\"}")
+  payloads[/api/shortcuts]("{\"title\":\"API Test\",\"url\":\"https://test.local\"}")
+  payloads[/api/shortcuts/categories]("{\"name\":\"Catégorie API\"}")
 
-  echo -n "   - Création Message ... "
-  res_msg=$(curl -s -X POST "$API_URL/api/messages" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"text":"Test cleanup","pseudo":"AdminTest"}')
-  msg_id=$(echo "$res_msg" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
-  if [[ "$msg_id" =~ ^[0-9]+$ ]]; then 
-    echo -e "${GREEN}OK (ID: $msg_id)${RESET}"; cleanup_ids+=("messages:$msg_id"); 
-  else echo -e "${RED}FAIL${RESET}"; fi
+  declare -A endpoints
+  endpoints[GET]="/api/health /api/metrics /api/monitoring/stats /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories /api/marques /api/marques/all /api/agenda/events /api/auth/verify"
+  endpoints[POST]="/api/auth/login /api/auth/logout /api/auth/verify /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories /api/marques"
 
-  echo "4. Tests de lecture..."
-  curl -s -X GET "$API_URL/api/health" >/dev/null && echo -n "   GET /health ... " && echo -e "${GREEN}OK${RESET}" || echo -e "${RED}FAIL${RESET}"
-  curl -s -X GET "$API_URL/api/messages" -H "Authorization: Bearer $token" >/dev/null && echo -n "   GET /messages ... " && echo -e "${GREEN}OK${RESET}" || echo -e "${RED}FAIL${RESET}"
+  local protected="/api/metrics /api/monitoring/stats /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories /api/marques /api/marques/all /api/agenda/events /api/auth/logout /api/auth/verify"
 
-  echo "5. Nettoyage..."
-  for item in "${cleanup_ids[@]}"; do
-    IFS=':' read -r type id <<< "$item"
-    echo -n "   - Suppression $type id:$id ... "
-    code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "$API_URL/api/$type/$id" -H "Authorization: Bearer $token")
-    if [[ "$code" == "200" || "$code" == "204" ]]; then echo -e "${GREEN}OK${RESET}"; else echo -e "SKIP ($code)"; fi
+  echo "3. Tests des Endpoints..."
+  for method in GET POST; do
+    for ep in ${endpoints[$method]}; do
+      [[ -z "$ep" ]] && continue
+      local url="$API_URL$ep"
+      local http_code="000"
+      
+      local extra_args=()
+      if [[ " $protected " == *" $ep "* && -n "$token" ]]; then
+        extra_args+=(-H "Authorization: Bearer $token")
+      fi
+      
+      if [[ "$ep" == "/api/events" || "$ep" == "/api/messages" || "$ep" == "/api/shortcuts" || "$ep" == "/api/shortcuts/categories" ]]; then
+        url+="?userId=1"
+      fi
+
+      if [[ "$method" == "POST" ]]; then
+        local data="${payloads[$ep]:-\"{}}\""
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$url" -H "Content-Type: application/json" "${extra_args[@]}" -d "$data")
+      else
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" "$url" "${extra_args[@]}")
+      fi
+      
+      if [[ "$http_code" == "200" || "$http_code" == "201" || "$http_code" == "204" ]]; then
+        echo -e "${GREEN}OK${RESET}   $method $ep"
+      else
+        echo -e "${RED}FAIL${RESET} $method $ep ($http_code)"
+      fi
+    done
   done
+
+  echo "4. Nettoyage..."
+  code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "$API_URL/api/auth/user/$user" -H "Authorization: Bearer $token")
+  if [[ "$code" == "200" || "$code" == "204" ]]; then ok "Utilisateur de test supprimé"; else warn "Suppression impossible (Code: $code)"; fi
+
   echo -e "\n${GREEN}--- TESTS TERMINÉS ---${RESET}\n"
   set -e
 }
@@ -278,16 +457,16 @@ case "${1:-status}" in
   start|up)
     echo "Démarrage du service Systemd..."
     systemctl start "$SERVICE_NAME"
-    sleep 2
+    sleep 3
     status_table ;;
   stop|down)
     systemctl stop "$SERVICE_NAME" && echo "Services arrêtés." ;;
   restart)
     systemctl restart "$SERVICE_NAME"
-    sleep 2
+    sleep 3
     status_table ;;
   rebuild)
-    cd "$DOCKER_DIR" && docker compose build --no-cache && systemctl restart "$SERVICE_NAME" && sleep 2 && status_table ;;
+    cd "$DOCKER_DIR" && docker compose build --no-cache && systemctl restart "$SERVICE_NAME" && sleep 3 && status_table ;;
   logs)
     shift || true
     if [[ "${1:-}" == "live" ]]; then journalctl -u "$SERVICE_NAME" -f; else journalctl -u "$SERVICE_NAME" -n 50 --no-pager; fi ;;
@@ -327,9 +506,9 @@ cmd_install() {
   info "Pour tester :  ${GREEN}proxmox test-api${RESET}"
 }
 
-cmd_start() { require_root; systemctl start "$SERVICE_NAME"; sleep 2; /usr/local/bin/proxmox status; }
+cmd_start() { require_root; systemctl start "$SERVICE_NAME"; sleep 3; /usr/local/bin/proxmox status; }
 cmd_stop() { require_root; systemctl stop "$SERVICE_NAME"; ok "Arrêté."; }
-cmd_restart() { require_root; systemctl restart "$SERVICE_NAME"; sleep 2; /usr/local/bin/proxmox status; }
+cmd_restart() { require_root; systemctl restart "$SERVICE_NAME"; sleep 3; /usr/local/bin/proxmox status; }
 cmd_rebuild() { 
   require_root; 
   cmd_stop
@@ -368,7 +547,7 @@ Commandes :
   restart      Redémarrer
   rebuild      Rebuild images et redémarrer
   logs         Voir les logs (ajouter 'live')
-  status       Tableau de statut propre
+  status       Tableau de statut complet + Endpoints
   test-api     Test client complet (AdminTest) + Nettoyage auto
 EOF
     ;;
