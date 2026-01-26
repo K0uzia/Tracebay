@@ -210,13 +210,31 @@ status_table() {
   printf "%-22s : %s\n" "Node/Express" "$node_state"
   printf "%-22s : %s\n" "IP" "$ct_ip"
   printf "%-22s : %s\n" "Port" "$port"
-  echo "Endpoints              :"
-  printf "  - Chat        http://%s:%s/api/chat\n" "$ct_ip" "$port"
-  printf "  - Agenda      http://%s:%s/api/agenda\n" "$ct_ip" "$port"
-  printf "  - Réception   http://%s:%s/api/reception\n" "$ct_ip" "$port"
-  printf "  - Raccourcis  http://%s:%s/api/raccourcis\n" "$ct_ip" "$port"
-  printf "  - Comptes     http://%s:%s/api/comptes\n" "$ct_ip" "$port"
-  printf "  - WebSocket   ws://%s:%s/ws\n" "$ct_ip" "$port"
+  echo "Endpoints documentés/configurés :"
+  local endpoints=(
+    "/api/health"
+    "/api/metrics"
+    "/api/monitoring/stats"
+    "/api/auth/login"
+    "/api/auth/logout"
+    "/api/auth/verify"
+    "/api/events"
+    "/api/messages"
+    "/api/lots"
+    "/api/shortcuts"
+    "/api/shortcuts/categories"
+    "/api/marques"
+    "/api/marques/all"
+    "/api/agenda/events"
+    "/ws"
+  )
+  for ep in "${endpoints[@]}"; do
+    if [[ "$ep" == "/ws" ]]; then
+      printf "  - WebSocket        ws://%s:%s/ws\n" "$ct_ip" "$port"
+    else
+      printf "  - %-17s http://%s:%s%s\n" "$ep" "$ct_ip" "$port" "$ep"
+    fi
+  done
   echo
   echo -e "${BLUE}Containers Docker:${RESET}"
   docker ps --format '  {{.Names}}  {{.Status}}  {{.Ports}}'
@@ -225,26 +243,44 @@ status_table() {
 test_api() {
   local api_url="http://localhost:4000"
   echo "--- [TEST API] ---"
-  endpoints=(
-    "/api/health"
-    "/api/messages"
-    "/api/events"
-    "/api/lots"
-    "/api/shortcuts"
-    "/api/shortcuts/categories"
-    "/api/marques"
-    "/api/marques/all"
-    "/api/agenda/events"
-  )
-  for ep in "${endpoints[@]}"; do
-    echo -n "GET $ep ... "
-    http_code=$(curl -s -o /dev/null -w "%{http_code}" "$api_url$ep")
-    if [[ "$http_code" == "200" ]]; then echo "OK"; else echo "FAIL ($http_code)"; fi
+  declare -A endpoints
+  endpoints[GET]="/api/health /api/metrics /api/monitoring/stats /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories /api/marques /api/marques/all /api/agenda/events"
+  endpoints[POST]="/api/auth/login /api/auth/logout /api/auth/verify /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories"
+  endpoints[PUT]=""
+  endpoints[DELETE]=""
+  for method in GET POST PUT DELETE; do
+    for ep in ${endpoints[$method]}; do
+      if [[ -z "$ep" ]]; then continue; fi
+      if [[ "$method" == "POST" ]]; then
+        echo -n "POST $ep ... "
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$api_url$ep" -H 'Content-Type: application/json' -d '{"username":"testuser","password":"testpass"}')
+      elif [[ "$method" == "PUT" ]]; then
+        echo -n "PUT $ep ... "
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "$api_url$ep" -H 'Content-Type: application/json' -d '{}')
+      elif [[ "$method" == "DELETE" ]]; then
+        echo -n "DELETE $ep ... "
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "$api_url$ep")
+      else
+        echo -n "GET $ep ... "
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" "$api_url$ep")
+      fi
+      if [[ "$http_code" == "200" || "$http_code" == "201" ]]; then echo "OK"; else echo "FAIL ($http_code)"; fi
+    done
   done
-  # Test POST login
-  echo -n "POST /api/auth/login ... "
-  http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$api_url/api/auth/login" -H 'Content-Type: application/json' -d '{"username":"testuser","password":"testpass"}')
-  if [[ "$http_code" == "200" ]]; then echo "OK"; else echo "FAIL ($http_code)"; fi
+}
+test_auth() {
+  local api_url="http://localhost:4000"
+  echo "--- [TEST AUTH] ---"
+  # 1. Login
+  token=$(curl -s -X POST "$api_url/api/auth/login" -H 'Content-Type: application/json' -d '{"username":"testuser","password":"testpass"}' | grep -o '"token":"[^"]*"' | cut -d '"' -f4)
+  if [[ -z "$token" ]]; then echo "Login FAIL"; return 1; else echo "Login OK (token: $token)"; fi
+  # 2. Vérification du token
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$api_url/api/auth/verify" -H "Authorization: Bearer $token")
+  if [[ "$http_code" == "200" ]]; then echo "Token verify OK"; else echo "Token verify FAIL ($http_code)"; fi
+  # 3. Accès à un endpoint protégé
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" "$api_url/api/messages" -H "Authorization: Bearer $token")
+  if [[ "$http_code" == "200" ]]; then echo "Endpoint protégé OK"; else echo "Endpoint protégé FAIL ($http_code)"; fi
+}
 }
 
 case "${1:-status}" in
@@ -265,6 +301,8 @@ case "${1:-status}" in
     status_table ;;
   test-api)
     test_api ;;
+  test-auth)
+    test_auth ;;
   help|--help|-h)
     cat <<EOT
 Proxmox CLI - Commandes disponibles :
@@ -275,7 +313,8 @@ Proxmox CLI - Commandes disponibles :
   proxmox logs       Afficher les logs
   proxmox logs live  Logs en temps réel
   proxmox status     Statut détaillé
-  proxmox test-api   Tester les endpoints principaux
+  proxmox test-api   Tester tous les endpoints (GET/POST...)
+  proxmox test-auth  Vérifier l'authentification (login/token)
   proxmox help       Cette aide
 EOT
     ;;
