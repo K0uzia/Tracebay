@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
-# Version 10.0 : FIX Final (Align DB names to App 'start'/'end')
+# Version 11.0 : FIX "Schroedinger's Schema" (Support start ET start_time)
 # Debian 13 Trixie
 
 set -euo pipefail
@@ -51,7 +51,6 @@ stop_and_clean() {
     docker compose down -v --remove-orphans 2>/dev/null || true
   fi
   
-  # Suppression explicite du volume persistant
   if docker volume ls -q | grep -q proxmox_postgres_data; then
     info "Suppression du volume persistant 'proxmox_postgres_data'..."
     docker volume rm proxmox_postgres_data 2>/dev/null || true
@@ -97,12 +96,12 @@ EOF
   ok "Config générée (IP: $ct_ip)"
 }
 
-# =============== SQL Script (FINAL: start/end) ===============
+# =============== SQL Script (FIX: Support start & start_time) ===============
 prepare_sql_script() {
   cat <<'SQLEOF' > /tmp/proxmox_schema.sql
 \c workspace_db
 
--- 1. Création standard (Noms corrigés pour matcher l'App)
+-- 1. Création standard
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
@@ -117,8 +116,10 @@ CREATE TABLE IF NOT EXISTS events (
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   username VARCHAR(50),
   title VARCHAR(255) NOT NULL,
-  start TIMESTAMP NOT NULL,       -- FIX: Retour à 'start'
-  "end" TIMESTAMP NOT NULL,       -- FIX: Retour à 'end'
+  start TIMESTAMP NOT NULL,       -- Colonne principale (pour GET)
+  "end" TIMESTAMP NOT NULL,       -- Colonne principale
+  start_time TIMESTAMP GENERATED ALWAYS AS (start) STORED,    -- Alias pour Init
+  end_time TIMESTAMP GENERATED ALWAYS AS ("end") STORED,    -- Alias pour Init
   description TEXT,
   location VARCHAR(255),
   deleted_at TIMESTAMP,
@@ -197,7 +198,7 @@ CREATE TABLE IF NOT EXISTS shortcuts (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- 2. Migrations (Alignement Final)
+-- 2. Migrations Unifiées (Fix V9 & V10)
 -- Fix Users password
 DO $$ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='password') THEN
@@ -205,17 +206,23 @@ DO $$ BEGIN
     END IF;
 END $$;
 
--- Fix Events Names (Revert to match App)
+-- Fix Events (Support des deux noms)
 DO $$ BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='start_time') THEN
+    -- Si on a V9 (start_time existe) mais pas start -> Renommer en start
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='start_time') 
+       AND NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='start') THEN
         ALTER TABLE events RENAME COLUMN start_time TO start;
-    END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='end_time') THEN
         ALTER TABLE events RENAME COLUMN end_time TO "end";
+    END IF;
+
+    -- Ajouter les colonnes générées si manquantes (Compatible V9 & V10)
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='start_time') THEN
+        ALTER TABLE events ADD COLUMN start_time TIMESTAMP GENERATED ALWAYS AS (start) STORED;
+        ALTER TABLE events ADD COLUMN end_time TIMESTAMP GENERATED ALWAYS AS ("end") STORED;
     END IF;
 END $$;
 
--- Ajout Colonnes manquantes (deleted_at, etc)
+-- Ajout Colonnes manquantes standard
 ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
@@ -226,10 +233,8 @@ ALTER TABLE lot_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE marques ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE modeles ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 
--- Fix is_read
+-- Fix is_read, Lots, Shortcuts
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;
-
--- Fix Lots colonnes
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS name VARCHAR(255);
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'received';
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS item_count INTEGER NOT NULL DEFAULT 0;
@@ -237,8 +242,6 @@ ALTER TABLE lots ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS received_at TIMESTAMP DEFAULT NOW();
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
-
--- Fix Shortcuts
 ALTER TABLE shortcuts ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES shortcut_categories(id) ON DELETE CASCADE;
 
 -- 3. Index
@@ -310,7 +313,7 @@ EOF
 
 # =============== CLI Installation ===============
 install_cli() {
-  info "Installation CLI (V10 - Fix start/end)..."
+  info "Installation CLI (V11 - Fix Start Schrodinger)..."
   cat > "$CLI_SOURCE" <<'CLISCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -487,7 +490,7 @@ run_tests() {
           "/api/auth/login") data="{\"username\":\"$user\",\"password\":\"$pass\"}" ;;
           "/api/auth/logout") data="{}" ;;
           "/api/auth/verify") data="{}" ;;
-          # FIX: Utiliser 'start' et 'end' au lieu de 'start_time'
+          # On utilise 'start' et 'end' car ce sont les vraies colonnes
           "/api/events") data="{\"title\":\"Test Auto\",\"start\":\"2026-01-01T10:00:00Z\",\"end\":\"2026-01-01T11:00:00Z\",\"description\":\"Test\",\"location\":\"Salle Test\"}" ;;
           "/api/marques") data="{\"name\":\"TestMarque\"}" ;;
           "/api/messages") data="{\"text\":\"Test cleanup\",\"pseudo\":\"AdminTest\"}" ;;
@@ -567,7 +570,7 @@ CLISCRIPT
 # =============== Main ===============
 cmd_install() {
   require_root
-  log "=== INSTALLATION V10 (FINAL) ==="
+  log "=== INSTALLATION V11 (Fix Start Schrodinger) ==="
   stop_and_clean
   ensure_paths
   git_update
