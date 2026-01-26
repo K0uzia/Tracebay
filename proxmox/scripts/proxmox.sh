@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
-# Version 7.0 : FIX Schema (deleted_at) + Clean DB Auto
+# Version 8.0 : FIX Schema (user_id on lots) + Clean DB Auto
 # Debian 13 Trixie
 
 set -euo pipefail
@@ -97,12 +97,12 @@ EOF
   ok "Config générée (IP: $ct_ip)"
 }
 
-# =============== SQL Script (FIX: deleted_at + Schema Complet) ===============
+# =============== SQL Script (FIX: user_id on lots) ===============
 prepare_sql_script() {
   cat <<'SQLEOF' > /tmp/proxmox_schema.sql
 \c workspace_db
 
--- 1. Création standard (Schéma Complet)
+-- 1. Création standard
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
@@ -138,6 +138,7 @@ CREATE TABLE IF NOT EXISTS messages (
 
 CREATE TABLE IF NOT EXISTS lots (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   name VARCHAR(255),
   item_count INTEGER NOT NULL DEFAULT 0,
   description TEXT,
@@ -198,8 +199,7 @@ CREATE TABLE IF NOT EXISTS shortcuts (
 
 -- 2. Migrations (Correction des versions précédentes)
 -- Correction Event Time
-DO $$
-BEGIN
+DO $$ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='start') THEN
         ALTER TABLE events RENAME COLUMN "start" TO start_time;
     END IF;
@@ -208,7 +208,7 @@ BEGIN
     END IF;
 END $$;
 
--- Ajout Colonnes manquantes pour Soft Deletes
+-- Ajout Colonnes manquantes
 ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
@@ -219,22 +219,30 @@ ALTER TABLE lot_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE marques ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE modeles ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 
--- Autres Fixes (is_read, lots, shortcuts)
+-- Fix is_read
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;
+
+-- Fix Lots colonnes
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS name VARCHAR(255);
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'received';
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS item_count INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS received_at TIMESTAMP DEFAULT NOW();
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
+
+-- FIX: Ajout user_id sur lots
+ALTER TABLE lots ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
+
+-- Fix Shortcuts
 ALTER TABLE shortcuts ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES shortcut_categories(id) ON DELETE CASCADE;
 
 -- 3. Index
 CREATE INDEX IF NOT EXISTS idx_events_user_id ON events(user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_user_id ON messages(user_id);
-CREATE INDEX IF NOT EXISTS idx_lot_items_lot_id ON lot_items(lot_id);
 CREATE INDEX IF NOT EXISTS idx_shortcuts_user_id ON shortcuts(user_id);
 CREATE INDEX IF NOT EXISTS idx_shortcuts_category_id ON shortcuts(category_id);
+CREATE INDEX IF NOT EXISTS idx_lots_user_id ON lots(user_id);
+CREATE INDEX IF NOT EXISTS idx_lot_items_lot_id ON lot_items(lot_id);
 SQLEOF
 }
 
@@ -297,7 +305,7 @@ EOF
 
 # =============== CLI Installation ===============
 install_cli() {
-  info "Installation CLI (V7 - Fix deleted_at)..."
+  info "Installation CLI (V8 - Fix user_id lots)..."
   cat > "$CLI_SOURCE" <<'CLISCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -553,7 +561,7 @@ CLISCRIPT
 # =============== Main ===============
 cmd_install() {
   require_root
-  log "=== INSTALLATION V7 (Fix deleted_at + Schema Complet) ==="
+  log "=== INSTALLATION V8 (Fix user_id on lots) ==="
   stop_and_clean
   ensure_paths
   git_update
