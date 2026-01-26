@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
-# Version 6.0 : FIX Schema (start_time) + Help Debug + Nettoyage DB Auto
+# Version 7.0 : FIX Schema (deleted_at) + Clean DB Auto
 # Debian 13 Trixie
 
 set -euo pipefail
@@ -97,17 +97,18 @@ EOF
   ok "Config générée (IP: $ct_ip)"
 }
 
-# =============== SQL Script (FIX: start_time / end_time) ===============
+# =============== SQL Script (FIX: deleted_at + Schema Complet) ===============
 prepare_sql_script() {
   cat <<'SQLEOF' > /tmp/proxmox_schema.sql
 \c workspace_db
 
--- 1. Création standard (avec noms corrigés)
+-- 1. Création standard (Schéma Complet)
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
   email VARCHAR(255) UNIQUE,
   password VARCHAR(255),
+  deleted_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -120,6 +121,7 @@ CREATE TABLE IF NOT EXISTS events (
   end_time TIMESTAMP NOT NULL,
   description TEXT,
   location VARCHAR(255),
+  deleted_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -130,6 +132,7 @@ CREATE TABLE IF NOT EXISTS messages (
   text TEXT NOT NULL,
   conversation_id INTEGER,
   is_read BOOLEAN DEFAULT FALSE,
+  deleted_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -141,6 +144,7 @@ CREATE TABLE IF NOT EXISTS lots (
   status VARCHAR(50) NOT NULL DEFAULT 'received',
   received_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW(),
+  deleted_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -153,18 +157,21 @@ CREATE TABLE IF NOT EXISTS lot_items (
   modele_id INTEGER,
   entry_type VARCHAR(50),
   entry_date DATE,
-  entry_time TIME
+  entry_time TIME,
+  deleted_at TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS marques (
   id SERIAL PRIMARY KEY,
-  name VARCHAR(255) UNIQUE NOT NULL
+  name VARCHAR(255) UNIQUE NOT NULL,
+  deleted_at TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS modeles (
   id SERIAL PRIMARY KEY,
   marque_id INTEGER REFERENCES marques(id) ON DELETE CASCADE,
-  name VARCHAR(255) NOT NULL
+  name VARCHAR(255) NOT NULL,
+  deleted_at TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS shortcut_categories (
@@ -172,6 +179,7 @@ CREATE TABLE IF NOT EXISTS shortcut_categories (
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   order_index INTEGER,
+  deleted_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW(),
   UNIQUE(user_id, name)
 );
@@ -184,12 +192,14 @@ CREATE TABLE IF NOT EXISTS shortcuts (
   url VARCHAR(255) NOT NULL,
   category_id INTEGER REFERENCES shortcut_categories(id) ON DELETE SET NULL,
   order_index INTEGER,
+  deleted_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- 2. Migrations (Correction des noms de colonnes pour anciennes versions)
--- Si la table 'events' existe avec 'start', on la renomme
-DO $$ BEGIN
+-- 2. Migrations (Correction des versions précédentes)
+-- Correction Event Time
+DO $$
+BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='start') THEN
         ALTER TABLE events RENAME COLUMN "start" TO start_time;
     END IF;
@@ -198,7 +208,25 @@ DO $$ BEGIN
     END IF;
 END $$;
 
+-- Ajout Colonnes manquantes pour Soft Deletes
+ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+ALTER TABLE events ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+ALTER TABLE shortcuts ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+ALTER TABLE shortcut_categories ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+ALTER TABLE lots ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+ALTER TABLE lot_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+ALTER TABLE marques ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+ALTER TABLE modeles ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+
+-- Autres Fixes (is_read, lots, shortcuts)
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;
+ALTER TABLE lots ADD COLUMN IF NOT EXISTS name VARCHAR(255);
+ALTER TABLE lots ADD COLUMN IF NOT EXISTS status VARCHAR(50) NOT NULL DEFAULT 'received';
+ALTER TABLE lots ADD COLUMN IF NOT EXISTS item_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE lots ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE lots ADD COLUMN IF NOT EXISTS received_at TIMESTAMP DEFAULT NOW();
+ALTER TABLE lots ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
 ALTER TABLE shortcuts ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES shortcut_categories(id) ON DELETE CASCADE;
 
 -- 3. Index
@@ -269,7 +297,7 @@ EOF
 
 # =============== CLI Installation ===============
 install_cli() {
-  info "Installation CLI (V6 - Schema Fix)..."
+  info "Installation CLI (V7 - Fix deleted_at)..."
   cat > "$CLI_SOURCE" <<'CLISCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -525,7 +553,7 @@ CLISCRIPT
 # =============== Main ===============
 cmd_install() {
   require_root
-  log "=== INSTALLATION V6 (Fix start_time + Help) ==="
+  log "=== INSTALLATION V7 (Fix deleted_at + Schema Complet) ==="
   stop_and_clean
   ensure_paths
   git_update
