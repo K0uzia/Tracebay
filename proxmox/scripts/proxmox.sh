@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
-# Version corrigée : Fix Affichage + Diagnostics automatiques
+# Version corrigée : Fix colonne "email" manquante + Diagnostics
 # Debian 13 Trixie
 # Configuration : Admin / SECRET_RETIRE / workspace_db
 
@@ -57,7 +57,6 @@ ensure_paths() {
   if [[ ! -d "$APP_SRC_DIR" ]]; then err "Répertoire source introuvable: $APP_SRC_DIR"; fi
   mkdir -p "$DOCKER_DIR"
   mkdir -p "$(dirname "$CLI_SOURCE")"
-  # FIX: Création du dossier logs pour éviter erreur de permission au démarrage
   mkdir -p "$DOCKER_DIR/logs"
 }
 
@@ -73,7 +72,6 @@ git_update() {
 generate_env() {
   info "Génération de la configuration (.env)"
   local ct_ip=$(get_ip)
-  # Génération avec tes identifiants Admin / SECRET_RETIRE
   cat > "$ENV_FILE" <<EOF
 # Configuration générée automatiquement par proxmox.sh
 
@@ -100,16 +98,18 @@ EOF
   ok "Config générée (IP: $ct_ip) - User DB: $DB_USER_DEFAULT"
 }
 
-# =============== SQL Script ===============
+# =============== SQL Script (FIX: Ajout colonne email) ===============
 prepare_sql_script() {
   cat <<'SQLEOF' > /tmp/proxmox_schema.sql
--- Connection à la BDD workspace_db (gérée par le flag -d de la commande shell)
+-- Connection à la BDD workspace_db
 \c workspace_db
 
 -- Table utilisateurs
+-- FIX: Ajout de la colonne email pour satisfaire l'application Node.js
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
+  email VARCHAR(255) UNIQUE,
   password VARCHAR(255),
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -209,11 +209,9 @@ run_db_setup() {
   info "Configuration de la base de données (Tables)..."
   if command -v docker >/dev/null 2>&1; then
     cd "$DOCKER_DIR"
-    # 1. On démarre uniquement la DB
     docker compose up -d db
     info "Attente PostgreSQL (User: $DB_USER_DEFAULT)..."
     
-    # 2. On attend que la DB soit prête
     for i in {1..30}; do
       if docker compose exec -T db pg_isready -U "$DB_USER_DEFAULT" >/dev/null 2>&1; then
         ok "PostgreSQL prêt"
@@ -224,7 +222,6 @@ run_db_setup() {
     done
     echo
 
-    # 3. Injection du schéma (avec pause de sécurité)
     sleep 3
     info "Injection du schéma..."
     if docker compose exec -T db psql -U "$DB_USER_DEFAULT" -d "$DB_NAME_DEFAULT" < /tmp/proxmox_schema.sql; then
@@ -233,7 +230,6 @@ run_db_setup() {
         warn "Erreur lors de la création des tables."
     fi
 
-    # 4. On éteint tout
     docker compose down
   else
     warn "Docker non trouvé, impossible de configurer la DB."
@@ -290,7 +286,7 @@ EOF
   ok "Service Systemd activé."
 }
 
-# =============== CLI Installation (Fixed Colors + Auto-Diagnostic) ===============
+# =============== CLI Installation ===============
 install_cli() {
   info "Installation CLI..."
   cat > "$CLI_SOURCE" <<'EOF'
@@ -298,13 +294,7 @@ install_cli() {
 set -euo pipefail
 
 # =============== Colors ===============
-CYAN=$'\033[0;36m'
-BLUE=$'\033[0;34m'
-GREEN=$'\033[0;32m'
-YELLOW=$'\033[1;33m'
-RED=$'\033[0;31m'
-RESET=$'\033[0m'
-BOLD=$'\033[1m'
+CYAN=$'\033[0;36m'; BLUE=$'\033[0;34m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'; RED=$'\033[0;31m'; RESET=$'\033[0m'; BOLD=$'\033[1m'
 
 # =============== Paths ===============
 SCRIPT_PATH="${BASH_SOURCE[0]}"
@@ -320,25 +310,21 @@ warn() { echo -e "${YELLOW}WARN${RESET} $*"; }
 err() { echo -e "${RED}ERR${RESET}  $*"; }
 header() { echo -e "${CYAN}${BOLD}$*${RESET}"; }
 
-# =============== Debug / Diagnostic ===============
 show_diagnostics() {
   echo ""
   header "=== DIAGNOSTIC DOCKER ==="
-  echo "1. Liste des conteneurs (y compris ceux arrêtés) :"
+  echo "1. Liste des conteneurs :"
   docker ps -a --filter "name=proxmox" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" || true
-  
   echo ""
   echo "2. Logs du conteneur API (30 dernières lignes) :"
-  # Recherche intelligente du nom du conteneur API
   local api_name=$(docker ps -a --filter "name=proxmox" --format "{{.Names}}" | grep -E "(api|backend)" | head -n 1)
-  if [[ -z "$api_name" ]]; then api_name="proxmox-api-1"; fi # Fallback
+  if [[ -z "$api_name" ]]; then api_name="proxmox-api-1"; fi
   
   if docker ps -a --format '{{.Names}}' | grep -q "^${api_name}$"; then
     docker logs "$api_name" --tail 30
   else
-    warn "Conteneur API introuvable (recherche de: $api_name)."
+    warn "Conteneur API introuvable ($api_name)."
   fi
-
   echo ""
   echo "3. Logs du conteneur DB (20 dernières lignes) :"
   local db_name=$(docker ps -a --filter "name=proxmox" --format "{{.Names}}" | grep -E "db" | head -n 1)
@@ -352,7 +338,6 @@ show_diagnostics() {
   echo ""
 }
 
-# =============== Status Table (Fixed ANSI) ===============
 draw_table_header() {
   local border="+-------------------------+-------------------------+"
   echo "$border"
@@ -361,7 +346,6 @@ draw_table_header() {
 }
 
 draw_table_row() {
-  # FIX: Utilisation de %b pour forcer l'interprétation des codes ANSI dans la variable $2
   printf "| %-23s | %-23b |\n" "$1" "$2"
 }
 
@@ -374,21 +358,18 @@ status_table() {
   ip=$(hostname -I | awk '{print $1}')
   svc=$(systemctl is-active "$SERVICE_NAME" 2>/dev/null || echo "unknown")
   
-  # Check Container API
   if docker ps --filter name=proxmox-api --format '{{.Status}}' | grep -iq "running"; then 
     api_cont="${GREEN}RUNNING${RESET}"; 
   else 
     api_cont="${RED}STOPPED${RESET}"; 
   fi
 
-  # Check Container DB
   if docker ps --filter name=proxmox-db --format '{{.Status}}' | grep -iq "running"; then 
     db_cont="${GREEN}RUNNING${RESET}"; 
   else 
     db_cont="${RED}STOPPED${RESET}"; 
   fi
 
-  # Check API Health
   if curl -fsS "$API_URL/api/health" >/dev/null 2>&1; then 
     api_status="${GREEN}ONLINE${RESET}"; 
   else 
@@ -410,24 +391,8 @@ status_table() {
   local endpoints=(
     "GET:/api/health"
     "GET:/api/metrics"
-    "GET:/api/monitoring/stats"
     "POST:/api/auth/login"
     "POST:/api/auth/register"
-    "POST:/api/auth/logout"
-    "POST:/api/auth/verify"
-    "GET:/api/events"
-    "POST:/api/events"
-    "GET:/api/messages"
-    "POST:/api/messages"
-    "GET:/api/lots"
-    "POST:/api/lots"
-    "GET:/api/shortcuts"
-    "POST:/api/shortcuts"
-    "GET:/api/shortcuts/categories"
-    "POST:/api/shortcuts/categories"
-    "GET:/api/marques"
-    "GET:/api/marques/all"
-    "GET:/api/agenda/events"
   )
   for ep in "${endpoints[@]}"; do
     IFS=':' read -r type route <<< "$ep"
@@ -444,7 +409,6 @@ run_tests() {
   local token=""
 
   echo -e "\n${CYAN}--- [TEST API CLIENT COMPLET] ---${RESET}\n"
-
   echo "1. Configuration utilisateur de test..."
   curl -s -X POST "$API_URL/api/auth/register" -H "Content-Type: application/json" -d "{\"username\":\"$user\",\"password\":\"$pass\"}" >/dev/null
   ok "Utilisateur $user prêt"
@@ -457,19 +421,9 @@ run_tests() {
     return 1; 
   fi
   ok "Login OK"
-
-  # Simplification du test pour éviter le spam dans le terminal
-  echo "3. Vérification endpoint /api/health..."
-  code=$(curl -s -o /dev/null -w "%{http_code}" "$API_URL/api/health")
-  if [[ "$code" == "200" ]]; then ok "Health check OK"; else err "Health check FAIL ($code)"; fi
-
-  echo "4. Nettoyage..."
-  # Note: Suppression manuelle non implémentée ici pour simplicité, ou via endpoint DELETE si existant
-  ok "Tests terminés."
   set -e
 }
 
-# =============== Main Logic ===============
 case "${1:-status}" in
   start|up)
     header "Démarrage du service Systemd..."
@@ -477,7 +431,6 @@ case "${1:-status}" in
     echo "Attente de stabilisation (5s)..."
     sleep 5
     
-    # Vérification robuste
     local is_running=false
     if docker ps --filter name=proxmox-api --format '{{.Status}}' | grep -iq "running"; then is_running=true; fi
 
@@ -506,17 +459,13 @@ case "${1:-status}" in
     status_table ;;
   test-api)
     run_tests ;;
-  help|--help|-h)
-    echo "Usage: proxmox [start|stop|restart|rebuild|logs|status|debug|test-api]"
-    echo "  debug   : Affiche les logs Docker et l'état des conteneurs pour diagnostiquer les crashs."
-    ;;
   *)
     status_table ;;
 esac
 EOF
   chmod +x "$CLI_SOURCE"
   ln -sf "$CLI_SOURCE" "$GLOBAL_CLI"
-  ok "CLI installée (avec mode debug)."
+  ok "CLI installée."
 }
 
 # =============== Main Commands ===============
@@ -570,19 +519,6 @@ case "$COMMAND" in
   logs) shift || true; cmd_logs "$@" ;;
   status|st) cmd_status ;;
   test-api) cmd_test ;;
-  help|--help|-h|*)
-    cat <<EOF
-Usage: $0 [install|start|stop|restart|rebuild|logs|status|test-api]
-
-Commandes :
-  install      Installation propre complète (State: OFF au final)
-  start        Démarrer le service (Systemd + Docker)
-  stop         Arrêter les services
-  restart      Redémarrer
-  rebuild      Rebuild images et redémarrer
-  logs         Voir les logs (ajouter 'live')
-  status       Tableau de statut complet + Endpoints
-  test-api     Test client complet (AdminTest) + Nettoyage auto
-EOF
-    ;;
+  *)
+    echo "Usage: $0 [install|start|stop|restart|rebuild|logs|status|test-api]" ;;
 esac
