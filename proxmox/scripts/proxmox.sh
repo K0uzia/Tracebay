@@ -209,26 +209,10 @@ init_db() {
   if ! docker compose exec -T db pg_isready -U "$dbu" -d "$dbn" >/dev/null 2>&1; then
     warn "PostgreSQL pas prêt, tentative d'initialisation ignorée"
     return 0
-  fi
-  docker compose cp "$SCHEMA_SQL" db:/tmp/schema.sql
-  docker compose exec -T db psql -U "$dbu" -d "$dbn" -f /tmp/schema.sql >/dev/null 2>&1 && ok "Schéma appliqué"
-}
-}
-
-# =============== Docker build/up ===============
-docker_build() {
-  info "Construction des images Docker"
-  cd "$DOCKER_DIR"
-  docker compose down -v || true
-  docker compose build --no-cache
-}
-
-docker_up() {
-  info "Démarrage des services Docker"
-  cd "$DOCKER_DIR"
-  docker compose up -d
-}
-
+      local ip port
+      ip=$(hostname -I | awk '{print $1}')
+      port=${API_PORT:-$API_PORT_DEFAULT}
+      cat > "$ENV_FILE" <<EOF
 # =============== systemd (linked service file) ===============
 install_systemd() {
   info "Préparation service systemd (lien vers dépôt)"
@@ -244,6 +228,7 @@ RemainAfterExit=yes
 WorkingDirectory=$DOCKER_DIR
 ExecStart=/usr/bin/docker compose up -d
 ExecStop=/usr/bin/docker compose down
+      ok ".env créé dans $DOCKER_DIR"
 TimeoutStartSec=0
 Restart=on-failure
 RestartSec=10
