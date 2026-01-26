@@ -356,9 +356,20 @@ case "$COMMAND" in
   test-api)
     test_api
     ;;
-  help|*)
+  help|--help|-h|*)
     cat <<EOF
 Usage: proxmox.sh [install|start|stop|restart|rebuild|logs|status|test-api]
+
+Commandes disponibles :
+  install      Installation complète (dépendances, base, build)
+  start        Démarrer les services
+  stop         Arrêter les services
+  restart      Redémarrer le backend
+  rebuild      Rebuild complet (code + images + base)
+  logs         Afficher les logs
+  status       Statut détaillé
+  test-api     Tester tous les endpoints principaux
+  help         Cette aide
 EOF
     ;;
 esac
