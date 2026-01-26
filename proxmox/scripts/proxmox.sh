@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
-# Version 2.0 : Reset Complet CLI + Détection Logs Crash
+# Version 3.0 : Fix Colonne 'is_read' + Restauration Commandes Complètes (test-api, endpoints)
 # Debian 13 Trixie
 
 set -euo pipefail
@@ -89,7 +89,7 @@ EOF
   ok "Config générée (IP: $ct_ip)"
 }
 
-# =============== SQL Script ===============
+# =============== SQL Script (FIX: Ajout colonne is_read) ===============
 prepare_sql_script() {
   cat <<'SQLEOF' > /tmp/proxmox_schema.sql
 \c workspace_db
@@ -117,6 +117,7 @@ CREATE TABLE IF NOT EXISTS messages (
   username VARCHAR(50),
   text TEXT NOT NULL,
   conversation_id INTEGER,
+  is_read BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT NOW()
 );
 CREATE TABLE IF NOT EXISTS lots (
@@ -230,13 +231,14 @@ EOF
   ok "Service activé."
 }
 
+# =============== CLI Installation (Full Restore) ===============
 install_cli() {
-  info "Installation CLI (V2)..."
-  # On force l'écrasement
+  info "Installation CLI (V3)..."
   cat > "$CLI_SOURCE" <<'CLISCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Colors
 CYAN=$'\033[0;36m'; BLUE=$'\033[0;34m'; GREEN=$'\033[0;32m'; YELLOW=$'\033[1;33m'; RED=$'\033[0;31m'; RESET=$'\033[0m'; BOLD=$'\033[1m'
 
 ok() { echo -e "${GREEN}OK${RESET}   $*"; }
@@ -244,15 +246,23 @@ warn() { echo -e "${YELLOW}WARN${RESET} $*"; }
 err() { echo -e "${RED}ERR${RESET}  $*"; }
 header() { echo -e "${CYAN}${BOLD}$*${RESET}"; }
 
-# Fonction robuste pour trouver l'API
+# Paths
+SCRIPT_PATH="${BASH_SOURCE[0]}"
+if [[ -L "$SCRIPT_PATH" ]]; then SCRIPT_PATH="$(readlink -f "$SCRIPT_PATH")"; fi
+REPO_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
+DOCKER_DIR="$REPO_ROOT/proxmox/docker"
+SERVICE_NAME="proxmox-backend"
+API_URL="http://localhost:4000"
+
+# Smart Detection
 get_api_name() {
   docker ps -a --format "{{.Names}}" | grep -E "workspace-proxmox|proxmox.*api" | head -1
 }
-# Fonction robuste pour trouver la DB
 get_db_name() {
   docker ps -a --format "{{.Names}}" | grep -E "workspace-db|proxmox.*db" | head -1
 }
 
+# Diagnostics
 show_diagnostics() {
   echo ""
   header "=== DIAGNOSTIC DOCKER ==="
@@ -280,6 +290,23 @@ show_diagnostics() {
   echo ""
 }
 
+# Full Status Table with Endpoints
+draw_table_header() {
+  local border="+-------------------------+-------------------------+"
+  echo "$border"
+  printf "| %-23s | %-23s |\n" "$1" "$2"
+  echo "$border"
+}
+
+draw_table_row() {
+  # FIX: %b pour interpréter les codes ANSI
+  printf "| %-23s | %-23b |\n" "$1" "$2"
+}
+
+draw_table_footer() {
+  echo "+-------------------------+-------------------------+"
+}
+
 status_table() {
   api_name=$(get_api_name)
   db_name=$(get_db_name)
@@ -287,45 +314,147 @@ status_table() {
   api_status="${RED}STOPPED${RESET}"
   db_status="${RED}STOPPED${RESET}"
   sys_status=$(systemctl is-active proxmox-backend 2>/dev/null || echo "unknown")
+  ip=$(hostname -I | awk '{print $1}')
   
   if [[ -n "$api_name" ]] && docker inspect "$api_name" --format '{{.State.Status}}' | grep -iq "running"; then api_status="${GREEN}RUNNING${RESET}"; fi
   if [[ -n "$db_name" ]] && docker inspect "$db_name" --format '{{.State.Status}}' | grep -iq "running"; then db_status="${GREEN}RUNNING${RESET}"; fi
+
+  # API Health Check
+  if curl -fsS "$API_URL/api/health" >/dev/null 2>&1; then 
+    web_status="${GREEN}ONLINE${RESET}"; 
+  else 
+    web_status="${RED}OFFLINE${RESET}"; 
+  fi
+
+  echo -e "\n${CYAN}${BOLD}=== Proxmox Backend Status ===${RESET}\n"
+  draw_table_header "Service" "État"
+  draw_table_row "Systemd" "${sys_status^^}"
+  draw_table_row "Container API" "$api_status"
+  draw_table_row "Container DB" "$db_status"
+  draw_table_row "API Health" "$web_status"
+  draw_table_row "Accès" "http://$ip:4000"
+  draw_table_footer
+  echo
   
-  ip=$(hostname -I | awk '{print $1}')
-  echo -e "\n${CYAN}${BOLD}=== Proxmox Status ===${RESET}\n"
-  echo "Systemd: ${sys_status^^}"
-  echo "API:     $api_status ($api_name)"
-  echo "DB:      $db_status ($db_name)"
-  echo "URL:     http://$ip:4000"
-  echo ""
+  echo -e "${BLUE}Endpoints disponibles :${RESET}"
+  draw_table_header "Type" "Route"
+  local endpoints=(
+    "GET:/api/health"
+    "GET:/api/metrics"
+    "GET:/api/monitoring/stats"
+    "POST:/api/auth/login"
+    "POST:/api/auth/register"
+    "POST:/api/auth/logout"
+    "POST:/api/auth/verify"
+    "GET:/api/events"
+    "POST:/api/events"
+    "GET:/api/messages"
+    "POST:/api/messages"
+    "GET:/api/lots"
+    "POST:/api/lots"
+    "GET:/api/shortcuts"
+    "POST:/api/shortcuts"
+    "GET:/api/shortcuts/categories"
+    "POST:/api/shortcuts/categories"
+    "GET:/api/marques"
+    "GET:/api/marques/all"
+    "GET:/api/agenda/events"
+  )
+  for ep in "${endpoints[@]}"; do
+    IFS=':' read -r type route <<< "$ep"
+    draw_table_row "$type" "http://$ip:4000$route"
+  done
+  draw_table_footer
+  echo
 }
 
+# Full Test Suite
 run_tests() {
   set +e
-  header "=== TEST API ==="
-  echo "1. Register Test User..."
-  curl -s -X POST "http://localhost:4000/api/auth/register" -H "Content-Type: application/json" -d '{"username":"AdminTest","password":"SECRET_RETIRE"}' > /dev/null
-  ok "User Ready"
-  
-  echo "2. Login..."
-  resp=$(curl -s -X POST "http://localhost:4000/api/auth/login" -H "Content-Type: application/json" -d '{"username":"AdminTest","password":"SECRET_RETIRE"}')
-  if echo "$resp" | grep -q "token"; then
-    ok "Login SUCCESS"
-  else
-    err "Login FAIL"
+  local user="AdminTest"
+  local pass="SECRET_RETIRE"
+  local token=""
+
+  echo -e "\n${CYAN}--- [TEST API CLIENT COMPLET] ---${RESET}\n"
+
+  echo "1. Configuration utilisateur de test..."
+  curl -s -X POST "$API_URL/api/auth/register" -H "Content-Type: application/json" -d "{\"username\":\"$user\",\"password\":\"$pass\"}" >/dev/null
+  ok "Utilisateur $user prêt"
+
+  echo "2. Authentification..."
+  token=$(curl -s -X POST "$API_URL/api/auth/login" -H "Content-Type: application/json" -d "{\"username\":\"$user\",\"password\":\"$pass\"}" | grep -o '"token":"[^"]*"' | cut -d '"' -f4)
+  if [[ -z "$token" ]]; then 
+    echo -e "${RED}Login FAIL${RESET}"; 
     show_diagnostics
+    return 1; 
   fi
+  ok "Login OK"
+
+  # Définition des endpoints à tester
+  declare -A endpoints
+  endpoints[GET]="/api/health /api/metrics /api/monitoring/stats /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories /api/marques /api/marques/all /api/agenda/events /api/auth/verify"
+  endpoints[POST]="/api/auth/login /api/auth/logout /api/auth/verify /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories /api/marques"
+
+  local protected="/api/metrics /api/monitoring/stats /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories /api/marques /api/marques/all /api/agenda/events /api/auth/logout /api/auth/verify"
+
+  echo "3. Tests des Endpoints..."
+  for method in GET POST; do
+    for ep in ${endpoints[$method]}; do
+      [[ -z "$ep" ]] && continue
+      local url="$API_URL$ep"
+      local http_code="000"
+      
+      local extra_args=()
+      if [[ " $protected " == *" $ep "* && -n "$token" ]]; then
+        extra_args+=(-H "Authorization: Bearer $token")
+      fi
+      
+      if [[ "$ep" == "/api/events" || "$ep" == "/api/messages" || "$ep" == "/api/shortcuts" || "$ep" == "/api/shortcuts/categories" ]]; then
+        url+="?userId=1"
+      fi
+
+      if [[ "$method" == "POST" ]]; then
+        local data="{}"
+        case "$ep" in
+          "/api/auth/login") data="{\"username\":\"$user\",\"password\":\"$pass\"}" ;;
+          "/api/auth/logout") data="{}" ;;
+          "/api/auth/verify") data="{}" ;;
+          "/api/events") data="{\"title\":\"Test Auto\",\"start\":\"2026-01-01T10:00:00Z\",\"end\":\"2026-01-01T11:00:00Z\",\"description\":\"Test\",\"location\":\"Salle Test\"}" ;;
+          "/api/marques") data="{\"name\":\"TestMarque\"}" ;;
+          "/api/messages") data="{\"text\":\"Test cleanup\",\"pseudo\":\"AdminTest\"}" ;;
+          "/api/lots") data="{\"itemCount\":1,\"description\":\"Lot Test API\"}" ;;
+          "/api/shortcuts") data="{\"title\":\"API Test\",\"url\":\"https://test.local\"}" ;;
+          "/api/shortcuts/categories") data="{\"name\":\"Catégorie API\"}" ;;
+        esac
+
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$url" -H "Content-Type: application/json" "${extra_args[@]}" -d "$data")
+      else
+        http_code=$(curl -s -o /dev/null -w "%{http_code}" "$url" "${extra_args[@]}")
+      fi
+      
+      if [[ "$http_code" == "200" || "$http_code" == "201" || "$http_code" == "204" ]]; then
+        echo -e "${GREEN}OK${RESET}   $method $ep"
+      else
+        echo -e "${RED}FAIL${RESET} $method $ep ($http_code)"
+      fi
+    done
+  done
+
+  echo "4. Nettoyage..."
+  # Note: Suppression manuelle non implémentée ici pour simplicité
+  ok "Tests terminés."
   set -e
 }
 
-# Commande principale
+# Main Switch
 cmd="${1:-status}"
 case "$cmd" in
   start)
     header "Démarrage Systemd..."
     systemctl start proxmox-backend
+    echo "Attente de stabilisation (5s)..."
     sleep 5
-    # Vérification sans 'local'
+    # FIX: Retrait de 'local'
     is_running=false
     api_name=$(get_api_name)
     if [[ -n "$api_name" ]] && docker inspect "$api_name" --format '{{.State.Status}}' | grep -iq "running"; then
@@ -333,7 +462,8 @@ case "$cmd" in
     fi
     
     if [[ "$is_running" == "false" ]]; then
-      echo -e "${RED}CRASH OU ÉCHEC AU DÉMARRAGE${RESET}"
+      echo -e "${RED}!!! ERREUR : Le conteneur API ne démarre pas !!!${RESET}"
+      echo -e "${YELLOW}Lancement du diagnostic automatique...${RESET}"
       show_diagnostics
     else
       status_table
@@ -345,26 +475,32 @@ case "$cmd" in
     sleep 5 
     status_table 
     ;;
+  rebuild)
+    cd "$DOCKER_DIR" && docker compose build --no-cache && systemctl restart proxmox-backend && sleep 5 && status_table
+    ;;
+  logs)
+    shift || true
+    if [[ "${1:-}" == "live" ]]; then journalctl -u "$SERVICE_NAME" -f; else journalctl -u "$SERVICE_NAME" -n 50 --no-pager; fi
+    ;;
   status) status_table ;;
   debug) show_diagnostics ;;
   test-api) run_tests ;;
-  *) 
-    echo "Usage: proxmox [start|stop|restart|status|debug|test-api]"
-    echo "  debug : Affiche les logs bruts pour identifier les crashs"
+  help|--help|-h)
+    echo "Usage: proxmox [start|stop|restart|rebuild|logs|status|debug|test-api]"
     ;;
+  *) status_table ;;
 esac
 CLISCRIPT
 
   chmod +x "$CLI_SOURCE"
-  # Force le symlink
   ln -sf "$CLI_SOURCE" "$GLOBAL_CLI"
-  ok "CLI installée."
+  ok "CLI installée (avec test-api complet)."
 }
 
 # =============== Main ===============
 cmd_install() {
   require_root
-  log "=== INSTALLATION V2 ==="
+  log "=== INSTALLATION V3 (FIX is_read + Tests) ==="
   stop_and_clean
   ensure_paths
   git_update
@@ -381,7 +517,7 @@ cmd_start() { /usr/local/bin/proxmox start; }
 cmd_stop() { require_root; systemctl stop "$SERVICE_NAME"; ok "Arrêté."; }
 cmd_restart() { require_root; systemctl restart "$SERVICE_NAME"; sleep 3; /usr/local/bin/proxmox status; }
 cmd_status() { /usr/local/bin/proxmox status; }
-cmd_debug() { /usr/local/bin/proxmox debug; }
+cmd_test() { /usr/local/bin/proxmox test-api; }
 
 COMMAND="${1:-help}"
 case "$COMMAND" in
@@ -390,6 +526,6 @@ case "$COMMAND" in
   stop) cmd_stop ;;
   restart) cmd_restart ;;
   status) cmd_status ;;
-  debug) cmd_debug ;;
-  *) echo "Usage: $0 [install|start|stop|restart|status|debug]" ;;
+  test-api) cmd_test ;;
+  *) echo "Usage: $0 [install|start|stop|restart|status|test-api]" ;;
 esac
