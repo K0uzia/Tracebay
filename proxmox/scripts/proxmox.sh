@@ -1,3 +1,15 @@
+# =============== Native PostgreSQL install (no Docker) ===============
+install_postgres_native() {
+  info "Installation de la base PostgreSQL (mode natif, hors Docker)"
+  local sql_file="$REPO_ROOT/proxmox/app/db/install_postgres.sql"
+  if ! command -v psql >/dev/null 2>&1; then
+    err "psql n'est pas installé. Installez PostgreSQL (apt install postgresql)"
+  fi
+  if [[ ! -f "$sql_file" ]]; then
+    err "Script SQL introuvable: $sql_file"
+  fi
+  sudo -u postgres psql -f "$sql_file" && ok "Base et tables créées (PostgreSQL natif)"
+}
 #!/usr/bin/env bash
 
 # Proxmox Backend Installer & Manager (Debian 13 Trixie)
@@ -274,10 +286,15 @@ cmd_install() {
   git_update
   generate_env
   npm_build
-  docker_build
-  docker_up
-  init_db
-  install_systemd
+  # Si Docker Compose existe, utiliser Docker, sinon installer PostgreSQL natif
+  if command -v docker compose >/dev/null 2>&1; then
+    docker_build
+    docker_up
+    init_db
+    install_systemd
+  else
+    install_postgres_native
+  fi
   install_cli
   ok "Installation terminée. Démarrage manuel: proxmox start"
   print_status
@@ -286,7 +303,44 @@ cmd_install() {
 cmd_start() { require_root; systemctl start "$SERVICE_NAME"; sleep 3; print_status; }
 cmd_stop() { require_root; systemctl stop "$SERVICE_NAME"; ok "Services arrêtés"; }
 cmd_restart() { require_root; systemctl restart "$SERVICE_NAME"; sleep 3; print_status; }
-cmd_rebuild() { require_root; docker_build; docker_up; systemctl restart "$SERVICE_NAME" || true; sleep 3; print_status; }
+cmd_rebuild() {
+  require_root
+  docker_build
+  docker_up
+  # Appliquer le script SQL d'init si Docker
+  if command -v docker compose >/dev/null 2>&1; then
+    init_db
+  else
+    install_postgres_native
+  fi
+  systemctl restart "$SERVICE_NAME" || true
+  sleep 3
+  print_status
+}
+test_api() {
+  local api_url="http://localhost:4000"
+  echo "--- [TEST API] ---"
+  endpoints=(
+    "/api/health"
+    "/api/messages"
+    "/api/events"
+    "/api/lots"
+    "/api/shortcuts"
+    "/api/shortcuts/categories"
+    "/api/marques"
+    "/api/marques/all"
+    "/api/agenda/events"
+  )
+  for ep in "${endpoints[@]}"; do
+    echo -n "GET $ep ... "
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" "$api_url$ep")
+    if [[ "$http_code" == "200" ]]; then echo "OK"; else echo "FAIL ($http_code)"; fi
+  done
+  # Test POST login
+  echo -n "POST /api/auth/login ... "
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$api_url/api/auth/login" -H 'Content-Type: application/json' -d '{"username":"testuser","password":"testpass"}')
+  if [[ "$http_code" == "200" ]]; then echo "OK"; else echo "FAIL ($http_code)"; fi
+}
 cmd_logs() { if [[ "${1:-}" == "live" ]]; then journalctl -u "$SERVICE_NAME" -f; else journalctl -u "$SERVICE_NAME" -n 200 --no-pager; fi }
 cmd_status() { print_status; }
 
@@ -299,9 +353,12 @@ case "$COMMAND" in
   rebuild) cmd_rebuild ;;
   logs) shift || true; cmd_logs "$@" ;;
   status|st) cmd_status ;;
+  test-api)
+    test_api
+    ;;
   help|*)
     cat <<EOF
-Usage: proxmox.sh [install|start|stop|restart|rebuild|logs|status]
+Usage: proxmox.sh [install|start|stop|restart|rebuild|logs|status|test-api]
 EOF
     ;;
 esac

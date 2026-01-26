@@ -146,7 +146,9 @@ Authorization: Bearer <token>
 
 ---
 
-## Events (Agenda)
+
+## Agenda (Events)
+
 
 ### List Events
 Get all events for user.
@@ -213,9 +215,36 @@ Content-Type: application/json
 }
 ```
 
+### Update Event
+Update an existing event.
+
+**Request:**
+```http
+PUT /api/events/:id
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "title": "Updated Meeting",
+  "start": "2026-01-18T14:00:00Z",
+  "end": "2026-01-18T15:00:00Z"
+}
+```
+
+### Delete Event
+Delete an event.
+
+**Request:**
+```http
+DELETE /api/events/:id
+Authorization: Bearer <token>
+```
+
 ---
 
-## Messages (Chat)
+
+## Chat (Messages)
+
 
 ### List Messages
 Get chat messages.
@@ -275,9 +304,20 @@ Content-Type: application/json
 }
 ```
 
+### WebSocket Chat
+The chat module also supports real-time communication via WebSocket at:
+
+```
+ws://<serverUrl>/ws/chat
+```
+
+Authenticate with the same JWT token.
+
 ---
 
+
 ## Shortcuts
+
 
 ### List Shortcuts
 Get user shortcuts.
@@ -333,9 +373,55 @@ Content-Type: application/json
 }
 ```
 
+### Get Shortcut by ID
+**Request:**
+```http
+GET /api/shortcuts/:shortcutId
+Authorization: Bearer <token>
+```
+
+### Update Shortcut
+**Request:**
+```http
+PUT /api/shortcuts/:shortcutId
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+### Delete Shortcut
+**Request:**
+```http
+DELETE /api/shortcuts/:shortcutId
+Authorization: Bearer <token>
+```
+
+### List Shortcut Categories
+**Request:**
+```http
+GET /api/shortcuts/categories
+Authorization: Bearer <token>
+```
+
+### Get Shortcut Category by ID
+**Request:**
+```http
+GET /api/shortcuts/categories/:categoryId
+Authorization: Bearer <token>
+```
+
+### Reorder Shortcuts
+**Request:**
+```http
+POST /api/shortcuts/reorder
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
 ---
 
+
 ## Lots (Réception)
+
 
 ### List Lots
 Get all receiving lots.
@@ -392,6 +478,80 @@ Content-Type: application/json
     "receivedAt": "2026-01-16T10:00:00.000Z"
   }
 }
+```
+
+### Get Lot by ID
+**Request:**
+```http
+GET /api/lots/:lotId
+Authorization: Bearer <token>
+```
+
+### Update Lot
+**Request:**
+```http
+PUT /api/lots/:lotId
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+### Get Lot PDF
+**Request:**
+```http
+GET /api/lots/:lotId/pdf
+Authorization: Bearer <token>
+```
+
+### Get Lot Email
+**Request:**
+```http
+GET /api/lots/:lotId/email
+Authorization: Bearer <token>
+```
+
+### Get Lot Item by ID
+**Request:**
+```http
+GET /api/lots/items/:itemId
+Authorization: Bearer <token>
+```
+
+### Update Lot Item
+**Request:**
+```http
+PUT /api/lots/items/:itemId
+Authorization: Bearer <token>
+Content-Type: application/json
+```
+
+## Marques & Modèles
+
+### List Marques
+**Request:**
+```http
+GET /api/marques
+Authorization: Bearer <token>
+```
+
+### List All Marques
+**Request:**
+```http
+GET /api/marques/all
+Authorization: Bearer <token>
+```
+
+### List Modèles
+**Request:**
+```http
+GET /api/modeles
+Authorization: Bearer <token>
+```
+
+### List Modèles by Marque
+**Request:**
+```http
+GET /api/marques/:marqueId/modeles
+Authorization: Bearer <token>
 ```
 
 ---

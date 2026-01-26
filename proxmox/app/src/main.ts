@@ -40,10 +40,10 @@ const fastify: FastifyInstance = Fastify({
 
 
 // Log every HTTP request (method, url, status, ms, ip)
-fastify.addHook('onResponse', async (request, reply) => {
-  const { method, url, ip } = request;
+fastify.addHook('onResponse', async (request: FastifyRequest, reply: FastifyReply) => {
+  const { method, url, ip } = request as any;
   const statusCode = reply.statusCode;
-  const responseTime = reply.getResponseTime ? reply.getResponseTime() : (reply as any).elapsedTime || '-';
+  const responseTime = (reply as any).getResponseTime ? (reply as any).getResponseTime() : (reply as any).elapsedTime || '-';
   fastify.log.info({ method, url, statusCode, responseTime, ip }, `HTTP ${method} ${url} ${statusCode} (${responseTime}ms) from ${ip}`);
 });
 
@@ -249,32 +249,40 @@ const messageStartTime = Date.now();
 
     // Events routes (Agenda)
     fastify.get('/api/events', async (request: FastifyRequest, reply: FastifyReply) => {
-      // TODO: Charger les événements depuis la base de données
-      return {
-        success: true,
-        events: []
-      };
+      // Récupérer l'userId du token ou query
+      const userId = (request.query as any).userId || (request as any).userId || null;
+      try {
+        const result = await query(
+          'SELECT id, user_id, username, title, start, "end", description, location, created_at FROM events WHERE user_id = $1 ORDER BY start DESC',
+          [userId]
+        );
+        return { success: true, events: result.rows };
+      } catch (error) {
+        console.error('Error fetching events:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
     });
 
     fastify.post('/api/events', async (request: FastifyRequest, reply: FastifyReply) => {
-      const { title, start, end } = request.body as any;
-
+      const userId = (request as any).userId || null;
+      const username = (request as any).username || null;
+      const { title, start, end, description, location } = request.body as any;
       if (!title || !start || !end) {
         reply.statusCode = 400;
         return { error: 'Title, start, and end are required' };
       }
-
-      // TODO: Insérer l'événement dans la base de données
-      return {
-        success: true,
-        event: {
-          id: 1,
-          title,
-          start,
-          end,
-          createdAt: new Date().toISOString()
-        }
-      };
+      try {
+        const result = await query(
+          'INSERT INTO events (user_id, username, title, start, "end", description, location, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) RETURNING id, user_id, username, title, start, "end", description, location, created_at',
+          [userId, username, title, start, end, description || null, location || null]
+        );
+        return { success: true, event: result.rows[0] };
+      } catch (error) {
+        console.error('Error creating event:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
     });
 
     // Messages routes (Chat)
