@@ -260,6 +260,7 @@ status_table() {
 
 
 test_api() {
+  set +e
   local api_url="http://localhost:4000"
   echo "--- [TEST API] ---"
   # Utilisateur de test
@@ -319,6 +320,7 @@ test_api() {
       if [[ "$http_code" == "200" || "$http_code" == "201" ]]; then echo "OK"; else echo "FAIL ($http_code)"; fi
     done
   done
+  set -e
 }
 test_auth() {
   local api_url="http://localhost:4000"
