@@ -1,16 +1,7 @@
-
-
-L'erreur que tu vois (`line 3: $'Cest not\303\251... command not found`) indique que le fichier `proxmox.sh` sur ta machine est **corrompu** ou contient du texte en clair (probablement mon explication "C'est noté...") au lieu du code Bash.
-
-Cela arrive souvent lors d'un copier-coller manuel ou si le fichier sur le dépôt git n'est pas à jour.
-
-On va **écraser** le fichier actuel avec la version propre définitive. Exécute ces commandes dans `/workspace` :
-
-```bash
 cd /workspace
 
-# On écrase le fichier corrompu avec la version propre via 'cat'
-cat > proxmox/scripts/proxmox.sh << 'EOF'
+# 1. On force la réécriture du fichier avec le code propre
+cat > proxmox/scripts/proxmox.sh << 'SCRIPT_EOF'
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
@@ -48,7 +39,7 @@ err() { echo -e "${RED}ERR${RESET}  $*"; exit 1; }
 
 # =============== Helpers ===============
 require_root() {
-  if [[ $EUID -ne 0 ]]; then err "Ce script doit être exécuté en tant que root (ou via sudo)."; fi
+  if [[ $EUID -ne 0 ]]; then err "Ce script doit être exécuté en tant que root."; fi
 }
 
 get_ip() { hostname -I | awk '{print $1}'; }
@@ -382,12 +373,10 @@ Commandes :
 EOF
     ;;
 esac
-EOF
+SCRIPT_EOF
 
-# On rend le script exécutable
+# 2. Rendre exécutable
 chmod +x proxmox/scripts/proxmox.sh
-echo "Script corrigé et sauvegardé."
 
-# Maintenant on relance l'installation
+# 3. Lancer l'installation
 bash proxmox/scripts/proxmox.sh install
-```
