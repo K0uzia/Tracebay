@@ -222,6 +222,31 @@ status_table() {
   docker ps --format '  {{.Names}}  {{.Status}}  {{.Ports}}'
 }
 
+test_api() {
+  local api_url="http://localhost:4000"
+  echo "--- [TEST API] ---"
+  endpoints=(
+    "/api/health"
+    "/api/messages"
+    "/api/events"
+    "/api/lots"
+    "/api/shortcuts"
+    "/api/shortcuts/categories"
+    "/api/marques"
+    "/api/marques/all"
+    "/api/agenda/events"
+  )
+  for ep in "${endpoints[@]}"; do
+    echo -n "GET $ep ... "
+    http_code=$(curl -s -o /dev/null -w "%{http_code}" "$api_url$ep")
+    if [[ "$http_code" == "200" ]]; then echo "OK"; else echo "FAIL ($http_code)"; fi
+  done
+  # Test POST login
+  echo -n "POST /api/auth/login ... "
+  http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$api_url/api/auth/login" -H 'Content-Type: application/json' -d '{"username":"testuser","password":"testpass"}')
+  if [[ "$http_code" == "200" ]]; then echo "OK"; else echo "FAIL ($http_code)"; fi
+}
+
 case "${1:-status}" in
   install)
     echo "Utilisez proxmox.sh install dans le dépôt"; exit 0 ;;
@@ -238,6 +263,8 @@ case "${1:-status}" in
     if [[ "${1:-}" == "live" ]]; then journalctl -u "$SERVICE_NAME" -f; else journalctl -u "$SERVICE_NAME" -n 200 --no-pager; fi ;;
   status|st)
     status_table ;;
+  test-api)
+    test_api ;;
   help|--help|-h)
     cat <<EOT
 Proxmox CLI - Commandes disponibles :
@@ -248,6 +275,7 @@ Proxmox CLI - Commandes disponibles :
   proxmox logs       Afficher les logs
   proxmox logs live  Logs en temps réel
   proxmox status     Statut détaillé
+  proxmox test-api   Tester les endpoints principaux
   proxmox help       Cette aide
 EOT
     ;;
