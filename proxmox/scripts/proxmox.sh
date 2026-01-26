@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
-# Version corrigée : Fix colonne "email" manquante + Diagnostics
+# Version corrigée : Fix Syntax Error + Détection intelligente des conteneurs (Ports/Noms)
 # Debian 13 Trixie
 # Configuration : Admin / SECRET_RETIRE / workspace_db
 
@@ -105,7 +105,7 @@ prepare_sql_script() {
 \c workspace_db
 
 -- Table utilisateurs
--- FIX: Ajout de la colonne email pour satisfaire l'application Node.js
+-- FIX: Ajout de la colonne email
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
@@ -313,24 +313,32 @@ header() { echo -e "${CYAN}${BOLD}$*${RESET}"; }
 show_diagnostics() {
   echo ""
   header "=== DIAGNOSTIC DOCKER ==="
-  echo "1. Liste des conteneurs :"
+  echo "1. Liste des conteneurs (Filtre: proxmox) :"
   docker ps -a --filter "name=proxmox" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" || true
   echo ""
-  echo "2. Logs du conteneur API (30 dernières lignes) :"
-  local api_name=$(docker ps -a --filter "name=proxmox" --format "{{.Names}}" | grep -E "(api|backend)" | head -n 1)
-  if [[ -z "$api_name" ]]; then api_name="proxmox-api-1"; fi
   
-  if docker ps -a --format '{{.Names}}' | grep -q "^${api_name}$"; then
+  echo "2. Logs du conteneur API (Dernières lignes) :"
+  # Détection intelligente : cherche le conteneur qui expose le port 4000
+  local api_name=$(docker ps -a --filter "publish=4000" --format "{{.Names}}" | head -n 1)
+  
+  if [[ -z "$api_name" ]]; then
+      # Fallback : cherche par nom contenant 'proxmox'
+      api_name=$(docker ps -a --filter "name=proxmox" --format "{{.Names}}" | grep -v "db" | head -n 1)
+  fi
+
+  if [[ -n "$api_name" ]]; then
+    echo "   Conteneur trouvé : $api_name"
     docker logs "$api_name" --tail 30
   else
-    warn "Conteneur API introuvable ($api_name)."
+    warn "Conteneur API introuvable."
   fi
   echo ""
-  echo "3. Logs du conteneur DB (20 dernières lignes) :"
-  local db_name=$(docker ps -a --filter "name=proxmox" --format "{{.Names}}" | grep -E "db" | head -n 1)
-  if [[ -z "$db_name" ]]; then db_name="proxmox-db-1"; fi
-
-  if docker ps -a --format '{{.Names}}' | grep -q "^${db_name}$"; then
+  
+  echo "3. Logs du conteneur DB (Dernières lignes) :"
+  # Détection intelligente : cherche le conteneur db
+  local db_name=$(docker ps -a --filter "name=db" --format "{{.Names}}" | head -n 1)
+  if [[ -n "$db_name" ]]; then
+    echo "   Conteneur trouvé : $db_name"
     docker logs "$db_name" --tail 20
   else
     warn "Conteneur DB introuvable."
@@ -358,18 +366,23 @@ status_table() {
   ip=$(hostname -I | awk '{print $1}')
   svc=$(systemctl is-active "$SERVICE_NAME" 2>/dev/null || echo "unknown")
   
-  if docker ps --filter name=proxmox-api --format '{{.Status}}' | grep -iq "running"; then 
+  # Check Container API via Port 4000 (Robuste)
+  if docker ps --filter "publish=4000" --format '{{.Status}}' | grep -iq "running"; then 
     api_cont="${GREEN}RUNNING${RESET}"; 
   else 
     api_cont="${RED}STOPPED${RESET}"; 
   fi
 
-  if docker ps --filter name=proxmox-db --format '{{.Status}}' | grep -iq "running"; then 
+  # Check Container DB via Nom ou Port 5432
+  if docker ps --filter "name=db" --format '{{.Status}}' | grep -iq "running"; then 
+    db_cont="${GREEN}RUNNING${RESET}"; 
+  elif docker ps --filter "publish=5432" --format '{{.Status}}' | grep -iq "running"; then
     db_cont="${GREEN}RUNNING${RESET}"; 
   else 
     db_cont="${RED}STOPPED${RESET}"; 
   fi
 
+  # Check API Health
   if curl -fsS "$API_URL/api/health" >/dev/null 2>&1; then 
     api_status="${GREEN}ONLINE${RESET}"; 
   else 
@@ -431,8 +444,9 @@ case "${1:-status}" in
     echo "Attente de stabilisation (5s)..."
     sleep 5
     
-    local is_running=false
-    if docker ps --filter name=proxmox-api --format '{{.Status}}' | grep -iq "running"; then is_running=true; fi
+    # FIX: Retrait de 'local' (interdit ici)
+    is_running=false
+    if docker ps --filter "publish=4000" --format '{{.Status}}' | grep -iq "running"; then is_running=true; fi
 
     if [ "$is_running" = false ]; then
       echo -e "${RED}!!! ERREUR : Le conteneur API ne démarre pas !!!${RESET}"
