@@ -1,4 +1,3 @@
-
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
@@ -235,7 +234,7 @@ run_db_setup() {
   else
     warn "Docker non trouvé, impossible de configurer la DB."
   fi
-  rm -f /tmp/proxmox_schema.sql
+  rm -f /tmp/proxmox_schema_sql
 }
 
 npm_build() {
@@ -287,7 +286,7 @@ EOF
   ok "Service Systemd activé."
 }
 
-# =============== CLI Installation ===============
+# =============== CLI Installation (FIX SYNTAX ERROR) ===============
 install_cli() {
   info "Installation CLI..."
   cat > "$CLI_SOURCE" <<'EOF'
@@ -379,7 +378,6 @@ run_tests() {
   local user="AdminTest"
   local pass="SECRET_RETIRE"
   local token=""
-  local cleanup_ids=()
 
   echo -e "\n${CYAN}--- [TEST API CLIENT COMPLET] ---${RESET}\n"
 
@@ -395,17 +393,7 @@ run_tests() {
   fi
   ok "Login OK"
 
-  declare -A payloads
-  payloads[/api/auth/login]("{\"username\":\"$user\",\"password\":\"$pass\"}")
-  payloads[/api/auth/logout]("{}")
-  payloads[/api/auth/verify]("{}")
-  payloads[/api/events]("{\"title\":\"Test Auto\",\"start\":\"2026-01-01T10:00:00Z\",\"end\":\"2026-01-01T11:00:00Z\",\"description\":\"Test\",\"location\":\"Salle Test\"}")
-  payloads[/api/marques]("{\"name\":\"TestMarque\"}")
-  payloads[/api/messages]("{\"text\":\"Test cleanup\",\"pseudo\":\"AdminTest\"}")
-  payloads[/api/lots]("{\"itemCount\":1,\"description\":\"Lot Test API\"}")
-  payloads[/api/shortcuts]("{\"title\":\"API Test\",\"url\":\"https://test.local\"}")
-  payloads[/api/shortcuts/categories]("{\"name\":\"Catégorie API\"}")
-
+  # Définition des endpoints
   declare -A endpoints
   endpoints[GET]="/api/health /api/metrics /api/monitoring/stats /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories /api/marques /api/marques/all /api/agenda/events /api/auth/verify"
   endpoints[POST]="/api/auth/login /api/auth/logout /api/auth/verify /api/events /api/messages /api/lots /api/shortcuts /api/shortcuts/categories /api/marques"
@@ -429,7 +417,20 @@ run_tests() {
       fi
 
       if [[ "$method" == "POST" ]]; then
-        local data="${payloads[$ep]:-\"{}}\""
+        local data="{}"
+        # FIX: Utilisation de CASE au lieu de declare -A pour éviter les erreurs de syntaxe avec les guillemets JSON
+        case "$ep" in
+          "/api/auth/login") data="{\"username\":\"$user\",\"password\":\"$pass\"}" ;;
+          "/api/auth/logout") data="{}" ;;
+          "/api/auth/verify") data="{}" ;;
+          "/api/events") data="{\"title\":\"Test Auto\",\"start\":\"2026-01-01T10:00:00Z\",\"end\":\"2026-01-01T11:00:00Z\",\"description\":\"Test\",\"location\":\"Salle Test\"}" ;;
+          "/api/marques") data="{\"name\":\"TestMarque\"}" ;;
+          "/api/messages") data="{\"text\":\"Test cleanup\",\"pseudo\":\"AdminTest\"}" ;;
+          "/api/lots") data="{\"itemCount\":1,\"description\":\"Lot Test API\"}" ;;
+          "/api/shortcuts") data="{\"title\":\"API Test\",\"url\":\"https://test.local\"}" ;;
+          "/api/shortcuts/categories") data="{\"name\":\"Catégorie API\"}" ;;
+        esac
+
         http_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$url" -H "Content-Type: application/json" "${extra_args[@]}" -d "$data")
       else
         http_code=$(curl -s -o /dev/null -w "%{http_code}" "$url" "${extra_args[@]}")
