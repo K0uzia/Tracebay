@@ -1,24 +1,20 @@
 
 
-C'est noté. J'ai intégré toutes les demandes :
+L'erreur que tu vois (`line 3: $'Cest not\303\251... command not found`) indique que le fichier `proxmox.sh` sur ta machine est **corrompu** ou contient du texte en clair (probablement mon explication "C'est noté...") au lieu du code Bash.
 
-1.  **`proxmox start`** : Déclenche bien le démarrage du service `systemctl`.
-2.  **Status propre** : Affichage sous forme de tableau ASCII bien aligné.
-3.  **Commande `test-api`** :
-    *   Utilise l'utilisateur **AdminTest** (mot de passe **SECRET_RETIRE**). Il tente de le créer via l'API s'il n'existe pas (pour gérer le hash du mot de passe correctement).
-    *   Simule un client réel (création de message, événement, etc.).
-    *   **Nettoyage automatique** : Supprime toutes les données créées après les tests pour laisser la BDD propre.
-4.  **SQL** : Je n'ai pas mis l'utilisateur en dur dans le SQL (pour éviter les problèmes de hash bcrypt/argon2), mais le script de test le créera automatiquement via l'endpoint d'inscription.
+Cela arrive souvent lors d'un copier-coller manuel ou si le fichier sur le dépôt git n'est pas à jour.
 
-Voici le script complet et corrigé :
+On va **écraser** le fichier actuel avec la version propre définitive. Exécute ces commandes dans `/workspace` :
 
 ```bash
+cd /workspace
+
+# On écrase le fichier corrompu avec la version propre via 'cat'
+cat > proxmox/scripts/proxmox.sh << 'EOF'
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
 # Debian 13 Trixie
-# Comportement : Nettoyage -> Install -> Config -> ARRET (Service OFF)
-
 set -euo pipefail
 IFS=$'\n\t'
 
@@ -78,7 +74,7 @@ git_update() {
     info "Mise à jour du dépôt Git..."
     cd "$REPO_ROOT"
     git reset --hard HEAD
-    git pull origin main || git pull origin master || warn "Git pull échoué."
+    git pull origin proxmox || git pull origin main || warn "Git pull échoué."
   fi
 }
 
@@ -189,7 +185,7 @@ EOF
   ok "Service Systemd activé."
 }
 
-# =============== CLI Installation (Intègre la commande test-api et le tableau propre) ===============
+# =============== CLI Installation ===============
 install_cli() {
   info "Installation CLI..."
   cat > "$CLI_SOURCE" <<'EOF'
@@ -239,66 +235,50 @@ status_table() {
   echo
 }
 
-# Fonction de test API complète avec nettoyage
 run_tests() {
-  set +e # On ne veut pas que le script s'arrête en cas d'erreur de test
+  set +e
   local user="AdminTest"
   local pass="SECRET_RETIRE"
   local token=""
-  local cleanup_ids=() # Stocke les types:id à supprimer
+  local cleanup_ids=()
 
   echo -e "\n${CYAN}--- [TEST API CLIENT] ---${RESET}\n"
 
-  # 1. Création du profil de test si inexistant
   echo "1. Configuration utilisateur de test..."
   curl -s -X POST "$API_URL/api/auth/register" -H "Content-Type: application/json" -d "{\"username\":\"$user\",\"password\":\"$pass\"}" >/dev/null
   ok "Utilisateur $user prêt"
 
-  # 2. Login
   echo "2. Authentification..."
   token=$(curl -s -X POST "$API_URL/api/auth/login" -H "Content-Type: application/json" -d "{\"username\":\"$user\",\"password\":\"$pass\"}" | grep -o '"token":"[^"]*"' | cut -d '"' -f4)
   if [[ -z "$token" ]]; then echo -e "${RED}Login FAIL${RESET}"; return 1; fi
   ok "Login OK"
 
-  # 3. Tests d'écriture (Simule un client)
   echo "3. Tests d'écriture (DB)..."
-  
-  # Test Event
   echo -n "   - Création Event ... "
-  res_ev=$(curl -s -X POST "$API_URL/api/events" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"title":"Test API Auto","start":"2026-01-01T10:00:00Z","end":"2026-01-01T11:00:00Z","description":"Test automatique","location":"Salle Test"}')
+  res_ev=$(curl -s -X POST "$API_URL/api/events" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"title":"Test API Auto","start":"2026-01-01T10:00:00Z","end":"2026-01-01T11:00:00Z","description":"Test","location":"Salle Test"}')
   ev_id=$(echo "$res_ev" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
   if [[ "$ev_id" =~ ^[0-9]+$ ]]; then 
-    echo -e "${GREEN}OK (ID: $ev_id)${RESET}"
-    cleanup_ids+=("events:$ev_id")
-  else 
-    echo -e "${RED}FAIL${RESET}"; 
-  fi
+    echo -e "${GREEN}OK (ID: $ev_id)${RESET}"; cleanup_ids+=("events:$ev_id"); 
+  else echo -e "${RED}FAIL${RESET}"; fi
 
-  # Test Message
   echo -n "   - Création Message ... "
-  res_msg=$(curl -s -X POST "$API_URL/api/messages" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"text":"Test automatique cleanup","pseudo":"AdminTest"}')
+  res_msg=$(curl -s -X POST "$API_URL/api/messages" -H "Content-Type: application/json" -H "Authorization: Bearer $token" -d '{"text":"Test cleanup","pseudo":"AdminTest"}')
   msg_id=$(echo "$res_msg" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
   if [[ "$msg_id" =~ ^[0-9]+$ ]]; then 
-    echo -e "${GREEN}OK (ID: $msg_id)${RESET}"
-    cleanup_ids+=("messages:$msg_id")
-  else 
-    echo -e "${RED}FAIL${RESET}"; 
-  fi
+    echo -e "${GREEN}OK (ID: $msg_id)${RESET}"; cleanup_ids+=("messages:$msg_id"); 
+  else echo -e "${RED}FAIL${RESET}"; fi
 
-  # 4. Tests de lecture
   echo "4. Tests de lecture..."
   curl -s -X GET "$API_URL/api/health" >/dev/null && echo -n "   GET /health ... " && echo -e "${GREEN}OK${RESET}" || echo -e "${RED}FAIL${RESET}"
   curl -s -X GET "$API_URL/api/messages" -H "Authorization: Bearer $token" >/dev/null && echo -n "   GET /messages ... " && echo -e "${GREEN}OK${RESET}" || echo -e "${RED}FAIL${RESET}"
 
-  # 5. Nettoyage
-  echo "5. Nettoyage des données de test..."
+  echo "5. Nettoyage..."
   for item in "${cleanup_ids[@]}"; do
     IFS=':' read -r type id <<< "$item"
     echo -n "   - Suppression $type id:$id ... "
     code=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE "$API_URL/api/$type/$id" -H "Authorization: Bearer $token")
     if [[ "$code" == "200" || "$code" == "204" ]]; then echo -e "${GREEN}OK${RESET}"; else echo -e "SKIP ($code)"; fi
   done
-
   echo -e "\n${GREEN}--- TESTS TERMINÉS ---${RESET}\n"
   set -e
 }
@@ -402,4 +382,12 @@ Commandes :
 EOF
     ;;
 esac
+EOF
+
+# On rend le script exécutable
+chmod +x proxmox/scripts/proxmox.sh
+echo "Script corrigé et sauvegardé."
+
+# Maintenant on relance l'installation
+bash proxmox/scripts/proxmox.sh install
 ```
