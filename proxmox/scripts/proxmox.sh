@@ -56,6 +56,8 @@ ensure_paths() {
   if [[ ! -d "$APP_SRC_DIR" ]]; then err "Répertoire source introuvable: $APP_SRC_DIR"; fi
   mkdir -p "$DOCKER_DIR"
   mkdir -p "$(dirname "$CLI_SOURCE")"
+  # FIX: Création du dossier logs pour éviter erreur de permission au démarrage
+  mkdir -p "$DOCKER_DIR/logs"
 }
 
 git_update() {
@@ -221,10 +223,8 @@ run_db_setup() {
     done
     echo
 
-    # FIX: Pause de stabilisation pour éviter le "shutting down"
+    # 3. Injection du schéma (avec pause de sécurité)
     sleep 3
-
-    # 3. On injecte les tables dans workspace_db avec l'utilisateur Admin
     info "Injection du schéma..."
     if docker compose exec -T db psql -U "$DB_USER_DEFAULT" -d "$DB_NAME_DEFAULT" < /tmp/proxmox_schema.sql; then
         ok "Tables créées avec succès."
@@ -289,13 +289,20 @@ EOF
   ok "Service Systemd activé."
 }
 
-# =============== CLI Installation (FIX SYNTAX ERROR + RACE CONDITION) ===============
+# =============== CLI Installation (Fix ANSI Codes + Crash Detection) ===============
 install_cli() {
   info "Installation CLI..."
   cat > "$CLI_SOURCE" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
-CYAN="\033[0;36m"; BLUE="\033[0;34m"; GREEN="\033[0;32m"; YELLOW="\033[1;33m"; RED="\033[0;31m"; RESET="\033[0m"; BOLD="\033[1m"
+# FIX: Utilisation de $'...' pour stocker les vrais caractères d'échappement, pas les backslashs
+CYAN=$'\033[0;36m'
+BLUE=$'\033[0;34m'
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[1;33m'
+RED=$'\033[0;31m'
+RESET=$'\033[0m'
+BOLD=$'\033[1m'
 
 # Helpers CLI
 ok() { echo -e "${GREEN}OK${RESET}   $*"; }
@@ -421,7 +428,6 @@ run_tests() {
 
       if [[ "$method" == "POST" ]]; then
         local data="{}"
-        # FIX: Utilisation de CASE au lieu de declare -A pour éviter les erreurs de syntaxe JSON
         case "$ep" in
           "/api/auth/login") data="{\"username\":\"$user\",\"password\":\"$pass\"}" ;;
           "/api/auth/logout") data="{}" ;;
@@ -459,16 +465,29 @@ case "${1:-status}" in
   start|up)
     echo "Démarrage du service Systemd..."
     systemctl start "$SERVICE_NAME"
-    sleep 3
-    status_table ;;
+    echo "Attente de stabilisation (5s)..."
+    sleep 5
+    
+    # FIX: Détection de crash
+    if ! docker ps --filter name=workspace-proxmox --format '{{.Status}}' | grep -iq "running"; then
+      echo -e "${RED}!!! CRASH DÉTECTÉ : Le conteneur API ne démarre pas !!!${RESET}"
+      echo "Affichage des logs Docker pour diagnostic :"
+      echo "---"
+      docker logs workspace-proxmox --tail 50
+      echo "---"
+      echo "Vérifiez les logs ci-dessus pour l'erreur (Variable d'env, Port, etc.)"
+    else
+      status_table
+    fi
+    ;;
   stop|down)
     systemctl stop "$SERVICE_NAME" && echo "Services arrêtés." ;;
   restart)
     systemctl restart "$SERVICE_NAME"
-    sleep 3
+    sleep 5
     status_table ;;
   rebuild)
-    cd "$DOCKER_DIR" && docker compose build --no-cache && systemctl restart "$SERVICE_NAME" && sleep 3 && status_table ;;
+    cd "$DOCKER_DIR" && docker compose build --no-cache && systemctl restart "$SERVICE_NAME" && sleep 5 && status_table ;;
   logs)
     shift || true
     if [[ "${1:-}" == "live" ]]; then journalctl -u "$SERVICE_NAME" -f; else journalctl -u "$SERVICE_NAME" -n 50 --no-pager; fi ;;
@@ -508,7 +527,7 @@ cmd_install() {
   info "Pour tester :  ${GREEN}proxmox test-api${RESET}"
 }
 
-cmd_start() { require_root; systemctl start "$SERVICE_NAME"; sleep 3; /usr/local/bin/proxmox status; }
+cmd_start() { /usr/local/bin/proxmox start; }
 cmd_stop() { require_root; systemctl stop "$SERVICE_NAME"; ok "Arrêté."; }
 cmd_restart() { require_root; systemctl restart "$SERVICE_NAME"; sleep 3; /usr/local/bin/proxmox status; }
 cmd_rebuild() { 
