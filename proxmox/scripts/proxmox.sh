@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
-# Version 8.0 : FIX Schema (user_id on lots) + Clean DB Auto
+# Version 9.0 : FIX Schema (password_hash) + Clean DB Auto
 # Debian 13 Trixie
 
 set -euo pipefail
@@ -97,17 +97,17 @@ EOF
   ok "Config générée (IP: $ct_ip)"
 }
 
-# =============== SQL Script (FIX: user_id on lots) ===============
+# =============== SQL Script (FIX: password_hash) ===============
 prepare_sql_script() {
   cat <<'SQLEOF' > /tmp/proxmox_schema.sql
 \c workspace_db
 
--- 1. Création standard
+-- 1. Création standard (Schéma Complet)
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
   email VARCHAR(255) UNIQUE,
-  password VARCHAR(255),
+  password_hash VARCHAR(255), -- FIX: password -> password_hash
   deleted_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -198,8 +198,17 @@ CREATE TABLE IF NOT EXISTS shortcuts (
 );
 
 -- 2. Migrations (Correction des versions précédentes)
+-- Correction Users password
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='password') THEN
+        ALTER TABLE users RENAME COLUMN "password" TO password_hash;
+    END IF;
+END $$;
+
 -- Correction Event Time
-DO $$ BEGIN
+DO $$
+BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='start') THEN
         ALTER TABLE events RENAME COLUMN "start" TO start_time;
     END IF;
@@ -208,7 +217,7 @@ DO $$ BEGIN
     END IF;
 END $$;
 
--- Ajout Colonnes manquantes
+-- Ajout Colonnes manquantes (deleted_at, etc)
 ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
@@ -229,8 +238,6 @@ ALTER TABLE lots ADD COLUMN IF NOT EXISTS item_count INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS received_at TIMESTAMP DEFAULT NOW();
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
-
--- FIX: Ajout user_id sur lots
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE CASCADE;
 
 -- Fix Shortcuts
@@ -305,7 +312,7 @@ EOF
 
 # =============== CLI Installation ===============
 install_cli() {
-  info "Installation CLI (V8 - Fix user_id lots)..."
+  info "Installation CLI (V9 - Fix password_hash)..."
   cat > "$CLI_SOURCE" <<'CLISCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -561,7 +568,7 @@ CLISCRIPT
 # =============== Main ===============
 cmd_install() {
   require_root
-  log "=== INSTALLATION V8 (Fix user_id on lots) ==="
+  log "=== INSTALLATION V9 (Fix password_hash) ==="
   stop_and_clean
   ensure_paths
   git_update
