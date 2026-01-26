@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
-# Version 9.0 : FIX Schema (password_hash) + Clean DB Auto
+# Version 10.0 : FIX Final (Align DB names to App 'start'/'end')
 # Debian 13 Trixie
 
 set -euo pipefail
@@ -97,17 +97,17 @@ EOF
   ok "Config générée (IP: $ct_ip)"
 }
 
-# =============== SQL Script (FIX: password_hash) ===============
+# =============== SQL Script (FINAL: start/end) ===============
 prepare_sql_script() {
   cat <<'SQLEOF' > /tmp/proxmox_schema.sql
 \c workspace_db
 
--- 1. Création standard (Schéma Complet)
+-- 1. Création standard (Noms corrigés pour matcher l'App)
 CREATE TABLE IF NOT EXISTS users (
   id SERIAL PRIMARY KEY,
   username VARCHAR(50) UNIQUE NOT NULL,
   email VARCHAR(255) UNIQUE,
-  password_hash VARCHAR(255), -- FIX: password -> password_hash
+  password_hash VARCHAR(255),
   deleted_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -117,8 +117,8 @@ CREATE TABLE IF NOT EXISTS events (
   user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
   username VARCHAR(50),
   title VARCHAR(255) NOT NULL,
-  start_time TIMESTAMP NOT NULL,
-  end_time TIMESTAMP NOT NULL,
+  start TIMESTAMP NOT NULL,       -- FIX: Retour à 'start'
+  "end" TIMESTAMP NOT NULL,       -- FIX: Retour à 'end'
   description TEXT,
   location VARCHAR(255),
   deleted_at TIMESTAMP,
@@ -197,23 +197,21 @@ CREATE TABLE IF NOT EXISTS shortcuts (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- 2. Migrations (Correction des versions précédentes)
--- Correction Users password
-DO $$
-BEGIN
+-- 2. Migrations (Alignement Final)
+-- Fix Users password
+DO $$ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='password') THEN
         ALTER TABLE users RENAME COLUMN "password" TO password_hash;
     END IF;
 END $$;
 
--- Correction Event Time
-DO $$
-BEGIN
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='start') THEN
-        ALTER TABLE events RENAME COLUMN "start" TO start_time;
+-- Fix Events Names (Revert to match App)
+DO $$ BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='start_time') THEN
+        ALTER TABLE events RENAME COLUMN start_time TO start;
     END IF;
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='end') THEN
-        ALTER TABLE events RENAME COLUMN "end" TO end_time;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='events' AND column_name='end_time') THEN
+        ALTER TABLE events RENAME COLUMN end_time TO "end";
     END IF;
 END $$;
 
@@ -312,7 +310,7 @@ EOF
 
 # =============== CLI Installation ===============
 install_cli() {
-  info "Installation CLI (V9 - Fix password_hash)..."
+  info "Installation CLI (V10 - Fix start/end)..."
   cat > "$CLI_SOURCE" <<'CLISCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -489,7 +487,8 @@ run_tests() {
           "/api/auth/login") data="{\"username\":\"$user\",\"password\":\"$pass\"}" ;;
           "/api/auth/logout") data="{}" ;;
           "/api/auth/verify") data="{}" ;;
-          "/api/events") data="{\"title\":\"Test Auto\",\"start_time\":\"2026-01-01T10:00:00Z\",\"end_time\":\"2026-01-01T11:00:00Z\",\"description\":\"Test\",\"location\":\"Salle Test\"}" ;;
+          # FIX: Utiliser 'start' et 'end' au lieu de 'start_time'
+          "/api/events") data="{\"title\":\"Test Auto\",\"start\":\"2026-01-01T10:00:00Z\",\"end\":\"2026-01-01T11:00:00Z\",\"description\":\"Test\",\"location\":\"Salle Test\"}" ;;
           "/api/marques") data="{\"name\":\"TestMarque\"}" ;;
           "/api/messages") data="{\"text\":\"Test cleanup\",\"pseudo\":\"AdminTest\"}" ;;
           "/api/lots") data="{\"itemCount\":1,\"description\":\"Lot Test API\"}" ;;
@@ -568,7 +567,7 @@ CLISCRIPT
 # =============== Main ===============
 cmd_install() {
   require_root
-  log "=== INSTALLATION V9 (Fix password_hash) ==="
+  log "=== INSTALLATION V10 (FINAL) ==="
   stop_and_clean
   ensure_paths
   git_update
