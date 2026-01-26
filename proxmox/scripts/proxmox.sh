@@ -18,8 +18,16 @@ install_postgres_native() {
 set -euo pipefail
 IFS=$'\n\t'
 
+
 # =============== Colors (no emojis) ===============
 CYAN="\033[0;36m"; BLUE="\033[0;34m"; GREEN="\033[0;32m"; YELLOW="\033[1;33m"; RED="\033[0;31m"; RESET="\033[0m"; BOLD="\033[1m"
+
+# =============== Default variables (must be set before any function) ===============
+API_PORT_DEFAULT=4000
+DB_NAME_DEFAULT=workspace
+DB_USER_DEFAULT=workspace
+DB_PASS_DEFAULT=SECRET_RETIRE
+DB_PORT_DEFAULT=5432
 
 log() { echo -e "${CYAN}[proxmox]${RESET} $*"; }
 info() { echo -e "${BLUE}INFO${RESET} $*"; }
