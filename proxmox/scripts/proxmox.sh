@@ -1,18 +1,17 @@
-cd /workspace
 
-# 1. On force la réécriture du fichier avec le code propre
-cat > proxmox/scripts/proxmox.sh << 'SCRIPT_EOF'
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
 # Debian 13 Trixie
+# Configuration : Admin / SECRET_RETIRE / workspace_db
+
 set -euo pipefail
 IFS=$'\n\t'
 
-# =============== Configuration ===============
+# =============== Configuration (TA CONFIG) ===============
+DB_NAME_DEFAULT="workspace_db"
 DB_USER_DEFAULT="Admin"
 DB_PASS_DEFAULT="SECRET_RETIRE"
-DB_NAME_DEFAULT="workspace_db"
 DB_PORT_DEFAULT=5432
 API_PORT_DEFAULT=4000
 
@@ -72,7 +71,7 @@ git_update() {
 generate_env() {
   info "Génération de la configuration (.env)"
   local ct_ip=$(get_ip)
-  # On configure les valeurs souhaitées (proxmox_user)
+  # Génération avec tes identifiants Admin / SECRET_RETIRE
   cat > "$ENV_FILE" <<EOF
 # Configuration générée automatiquement par proxmox.sh
 
@@ -82,7 +81,7 @@ API_PORT=${API_PORT_DEFAULT}
 PORT=${API_PORT_DEFAULT}
 LOG_LEVEL=info
 
-# Database Configuration
+# Database Configuration (Utilise Admin / SECRET_RETIRE)
 DB_HOST=db
 DB_PORT=${DB_PORT_DEFAULT}
 DB_NAME=${DB_NAME_DEFAULT}
@@ -99,12 +98,11 @@ EOF
   ok "Config générée (IP: $ct_ip) - User DB: $DB_USER_DEFAULT"
 }
 
-# =============== SQL Script (Création des tables uniquement) ===============
-# Docker gère la création de l'utilisateur 'proxmox_user' et de la base 'proxmox_db'
+# =============== SQL Script ===============
 prepare_sql_script() {
   cat <<'SQLEOF' > /tmp/proxmox_schema.sql
--- Connection à la BDD (gérée par docker exec)
-\c proxmox_db
+-- Connection à la BDD workspace_db (gérée par le flag -d de la commande shell)
+\c workspace_db
 
 -- Table utilisateurs
 CREATE TABLE IF NOT EXISTS users (
@@ -224,7 +222,7 @@ run_db_setup() {
     done
     echo
 
-    # 3. On injecte les tables (Docker a déjà créé l'utilisateur et la DB via le .env)
+    # 3. On injecte les tables dans workspace_db avec l'utilisateur Admin
     info "Injection du schéma..."
     if docker compose exec -T db psql -U "$DB_USER_DEFAULT" -d "$DB_NAME_DEFAULT" < /tmp/proxmox_schema.sql; then
         ok "Tables créées avec succès."
