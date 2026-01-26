@@ -221,6 +221,9 @@ run_db_setup() {
     done
     echo
 
+    # FIX: Pause de stabilisation pour éviter le "shutting down"
+    sleep 3
+
     # 3. On injecte les tables dans workspace_db avec l'utilisateur Admin
     info "Injection du schéma..."
     if docker compose exec -T db psql -U "$DB_USER_DEFAULT" -d "$DB_NAME_DEFAULT" < /tmp/proxmox_schema.sql; then
@@ -286,7 +289,7 @@ EOF
   ok "Service Systemd activé."
 }
 
-# =============== CLI Installation (FIX SYNTAX ERROR) ===============
+# =============== CLI Installation (FIX SYNTAX ERROR + RACE CONDITION) ===============
 install_cli() {
   info "Installation CLI..."
   cat > "$CLI_SOURCE" <<'EOF'
@@ -418,7 +421,7 @@ run_tests() {
 
       if [[ "$method" == "POST" ]]; then
         local data="{}"
-        # FIX: Utilisation de CASE au lieu de declare -A pour éviter les erreurs de syntaxe avec les guillemets JSON
+        # FIX: Utilisation de CASE au lieu de declare -A pour éviter les erreurs de syntaxe JSON
         case "$ep" in
           "/api/auth/login") data="{\"username\":\"$user\",\"password\":\"$pass\"}" ;;
           "/api/auth/logout") data="{}" ;;
