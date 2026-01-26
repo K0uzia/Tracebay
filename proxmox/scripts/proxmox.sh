@@ -204,13 +204,29 @@ status_table() {
   svc_state=$(systemctl is-active "$SERVICE_NAME" 2>/dev/null || echo inactive)
   if curl -fsS "$HEALTH_URL" >/dev/null 2>&1; then api_health="ONLINE"; else api_health="OFFLINE"; fi
   if docker ps --filter name=workspace-proxmox --format '{{.Status}}' | grep -Eqi 'running|up|healthy'; then node_state="RUNNING"; else node_state="STOPPED"; fi
+
   echo -e "${CYAN}${BOLD}Proxmox Backend - Statut${RESET}"
-  printf "%-22s : %s\n" "Systemd" "${svc_state^^}"
-  printf "%-22s : %s\n" "API Health" "$api_health"
-  printf "%-22s : %s\n" "Node/Express" "$node_state"
-  printf "%-22s : %s\n" "IP" "$ct_ip"
-  printf "%-22s : %s\n" "Port" "$port"
+  local border="+----------------------+----------------------+"
+  local fmt="| %-20s | %-20s |\n"
+
+  echo "$border"
+  printf "$fmt" "Clé" "Valeur"
+  echo "$border"
+  printf "$fmt" "Systemd" "${svc_state^^}"
+  printf "$fmt" "API Health" "$api_health"
+  printf "$fmt" "Node/Express" "$node_state"
+  printf "$fmt" "IP" "$ct_ip"
+  printf "$fmt" "Port" "$port"
+  echo "$border"
+  echo
+
   echo "Endpoints documentés/configurés :"
+  border="+-------------------------+--------------------------------------+"
+  fmt="| %-23s | %-36s |\n"
+  echo "$border"
+  printf "$fmt" "Type" "URL"
+  echo "$border"
+
   local endpoints=(
     "/api/health"
     "/api/metrics"
@@ -228,17 +244,20 @@ status_table() {
     "/api/agenda/events"
     "/ws"
   )
+
   for ep in "${endpoints[@]}"; do
     if [[ "$ep" == "/ws" ]]; then
-      printf "  - WebSocket        ws://%s:%s/ws\n" "$ct_ip" "$port"
+      printf "$fmt" "WebSocket" "ws://$ct_ip:$port/ws"
     else
-      printf "  - %-17s http://%s:%s%s\n" "$ep" "$ct_ip" "$port" "$ep"
+      printf "$fmt" "HTTP" "http://$ct_ip:$port$ep"
     fi
   done
+  echo "$border"
   echo
   echo -e "${BLUE}Containers Docker:${RESET}"
   docker ps --format '  {{.Names}}  {{.Status}}  {{.Ports}}'
 }
+
 
 test_api() {
   local api_url="http://localhost:4000"
@@ -281,7 +300,7 @@ test_auth() {
   http_code=$(curl -s -o /dev/null -w "%{http_code}" "$api_url/api/messages" -H "Authorization: Bearer $token")
   if [[ "$http_code" == "200" ]]; then echo "Endpoint protégé OK"; else echo "Endpoint protégé FAIL ($http_code)"; fi
 }
-}
+
 
 case "${1:-status}" in
   install)
