@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # =============== Proxmox Backend Installer & Manager ===============
-# Version 11.0 : FIX "Schroedinger's Schema" (Support start ET start_time)
+# Version 11.1 : FIX Logs (Affichage Docker Logs pour les requêtes)
 # Debian 13 Trixie
 
 set -euo pipefail
@@ -198,7 +198,7 @@ CREATE TABLE IF NOT EXISTS shortcuts (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- 2. Migrations Unifiées (Fix V9 & V10)
+-- 2. Migrations Unifiées
 -- Fix Users password
 DO $$ BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='password') THEN
@@ -313,7 +313,7 @@ EOF
 
 # =============== CLI Installation ===============
 install_cli() {
-  info "Installation CLI (V11 - Fix Start Schrodinger)..."
+  info "Installation CLI (V11.1 - Logs Docker)..."
   cat > "$CLI_SOURCE" <<'CLISCRIPT'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -490,7 +490,6 @@ run_tests() {
           "/api/auth/login") data="{\"username\":\"$user\",\"password\":\"$pass\"}" ;;
           "/api/auth/logout") data="{}" ;;
           "/api/auth/verify") data="{}" ;;
-          # On utilise 'start' et 'end' car ce sont les vraies colonnes
           "/api/events") data="{\"title\":\"Test Auto\",\"start\":\"2026-01-01T10:00:00Z\",\"end\":\"2026-01-01T11:00:00Z\",\"description\":\"Test\",\"location\":\"Salle Test\"}" ;;
           "/api/marques") data="{\"name\":\"TestMarque\"}" ;;
           "/api/messages") data="{\"text\":\"Test cleanup\",\"pseudo\":\"AdminTest\"}" ;;
@@ -547,16 +546,26 @@ case "$cmd" in
   rebuild)
     cd "$DOCKER_DIR" && docker compose build --no-cache && systemctl restart proxmox-backend && sleep 5 && status_table
     ;;
+  # MODIFIE : Affiche les logs Docker (Requêtes / Réponses) au lieu de Systemd
   logs)
     shift || true
-    if [[ "${1:-}" == "live" ]]; then journalctl -u "$SERVICE_NAME" -f; else journalctl -u "$SERVICE_NAME" -n 50 --no-pager; fi
+    api_name=$(get_api_name)
+    if [[ -z "$api_name" ]]; then
+      err "Impossible de trouver le conteneur API."
+    fi
+    if [[ "${1:-}" == "live" ]]; then
+      docker logs -f "$api_name"
+    else
+      docker logs --tail 100 "$api_name"
+    fi
     ;;
   status) status_table ;;
   debug|diag) show_diagnostics ;;
   test-api|api-test) run_tests ;;
   help|--help|-h)
     echo "Usage: proxmox [start|stop|restart|rebuild|logs|status|debug|test-api]"
-    echo "  debug     : Affiche les logs Docker pour diagnostiquer les crashs"
+    echo "  logs     : Affiche les logs Docker (Requêtes HTTP, etc)"
+    echo "  logs live: Affiche les logs Docker en continu"
     ;;
   *) status_table ;;
 esac
@@ -570,7 +579,7 @@ CLISCRIPT
 # =============== Main ===============
 cmd_install() {
   require_root
-  log "=== INSTALLATION V11 (Fix Start Schrodinger) ==="
+  log "=== INSTALLATION V11.1 (FIX LOGS DOCKER) ==="
   stop_and_clean
   ensure_paths
   git_update
