@@ -3,6 +3,9 @@ import CalendarRenderer from './CalendarRenderer.js';
 import ModalManager from './ModalManager.js';
 import ColorManager from './ColorManager.js';
 import { getDateRange } from './DateUtils.js';
+import getLogger from '../../config/Logger.js';
+const logger = getLogger();
+
 
 export default class AgendaController {
     constructor() {
@@ -79,7 +82,7 @@ export default class AgendaController {
                 } else if (this.currentView === 'year') {
                     this.currentDate.setFullYear(this.currentDate.getFullYear() + delta);
                 }
-                this.renderCalendar().catch(err => console.error('❌ Erreur rendu:', err));
+                this.renderCalendar().catch(err => logger.error('❌ Erreur rendu:', err););
             };
             this.addListener(btn, 'click', handler);
         });
@@ -99,7 +102,7 @@ export default class AgendaController {
                 document.querySelectorAll('.calendar-view-btn').forEach(b => b.classList.remove('is-active'));
                 btn.classList.add('is-active');
                 this.currentView = btn.getAttribute('data-calendar-view');
-                this.renderCalendar().catch(err => console.error('❌ Erreur rendu:', err));
+                this.renderCalendar().catch(err => logger.error('❌ Erreur rendu:', err););
             };
             this.addListener(btn, 'click', handler);
         });
@@ -126,7 +129,7 @@ export default class AgendaController {
 
             this.renderer.hideLoading();
         } catch (err) {
-            console.error('❌ Erreur rendu calendrier:', err);
+            logger.error('❌ Erreur rendu calendrier:', err);
             this.renderer.showError('Erreur lors du chargement du calendrier');
         }
     }
@@ -145,7 +148,7 @@ export default class AgendaController {
             await this.renderCalendar();
             this.modalManager.showConfirmation('Succès', `L'événement "${event.title}" a été créé avec succès.`, 'success');
         } catch (error) {
-            console.error('❌ Erreur création événement:', error);
+            logger.error('❌ Erreur création événement:', error);
             this.modalManager.showConfirmation('Erreur', 'Une erreur est survenue lors de la création de l\'événement.', 'error');
         }
     }
@@ -157,7 +160,7 @@ export default class AgendaController {
             await this.renderCalendar();
             this.modalManager.showConfirmation('Succès', `L'événement "${updates.title}" a été modifié avec succès.`, 'success');
         } catch (error) {
-            console.error('❌ Erreur modification événement:', error);
+            logger.error('❌ Erreur modification événement:', error);
             this.modalManager.showConfirmation('Erreur', 'Une erreur est survenue lors de la modification de l\'événement.', 'error');
         }
     }
@@ -175,7 +178,7 @@ export default class AgendaController {
                 this.modalManager.showConfirmation('Erreur', 'L\'événement est introuvable.', 'error');
             }
         } catch (error) {
-            console.error('❌ Erreur suppression:', error);
+            logger.error('❌ Erreur suppression:', error);
             this.modalManager.showConfirmation('Erreur', 'Une erreur est survenue lors de la suppression.', 'error');
         }
     }

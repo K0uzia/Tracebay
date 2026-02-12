@@ -1,0 +1,8 @@
+node_modules/
+dist/
+out/
+build/
+coverage/
+*.min.js
+public/lib/
+apps/client/public/lib/

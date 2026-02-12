@@ -3,6 +3,11 @@
  * Affiche les lots terminés
  */
 
+import api from '../../config/api.js';
+import getLogger from '../../config/Logger.js';
+const logger = getLogger();
+
+
 export default class HistoriqueManager {
     constructor(modalManager) {
         this.modalManager = modalManager;
@@ -11,10 +16,10 @@ export default class HistoriqueManager {
     }
 
     async init() {
-        console.log('🚀 Initialisation HistoriqueManager');
+        logger.debug('🚀 Initialisation HistoriqueManager');
         await this.loadLots();
         this.setupEventListeners();
-        console.log('✅ HistoriqueManager prêt');
+        logger.debug('✅ HistoriqueManager prêt');
     }
 
     /**
@@ -22,8 +27,7 @@ export default class HistoriqueManager {
      */
     async loadLots() {
         try {
-            const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
-            const response = await fetch(`${serverUrl}/api/lots?status=finished`);
+            const response = await api.get('lots.list?status=finished');
             
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
@@ -32,14 +36,14 @@ export default class HistoriqueManager {
                 new Date(b.finished_at) - new Date(a.finished_at)
             );
             
-            console.log(`📦 ${this.lots.length} lot(s) terminé(s) chargé(s)`);
+            logger.debug(`📦 ${this.lots.length} lot(s) terminé(s) chargé(s)`);
             // Debug: vérifier recovered_at
             if (this.lots.length > 0) {
-                console.log('🔍 Premier lot recovered_at:', this.lots[0].recovered_at, 'Type:', typeof this.lots[0].recovered_at);
+                logger.debug('🔍 Premier lot recovered_at:', this.lots[0].recovered_at, 'Type:', typeof this.lots[0].recovered_at);
             }
             this.renderLots();
         } catch (error) {
-            console.error('❌ Erreur chargement lots:', error);
+            logger.error('❌ Erreur chargement lots:', error);
             this.showNotification('Erreur lors du chargement des lots', 'error');
         }
     }
@@ -271,12 +275,8 @@ export default class HistoriqueManager {
         lot.lot_name = newName;
 
         // Faire un appel API pour sauvegarder
-        const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
-        fetch(`${serverUrl}/api/lots/${this.currentEditingLotId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ lot_name: newName })
-        })
+        const endpoint = `lots.update`.replace(':id', this.currentEditingLotId);
+        api.put(endpoint, { lot_name: newName })
         .then(res => {
             if (res.ok) {
                 this.showNotification('Nom du lot mis à jour', 'success');
@@ -287,7 +287,7 @@ export default class HistoriqueManager {
             }
         })
         .catch(err => {
-            console.error('Erreur:', err);
+            logger.error('Erreur:', err);
             this.showNotification('Erreur lors de la mise à jour', 'error');
         });
     }
@@ -308,12 +308,8 @@ export default class HistoriqueManager {
 
         try {
             // Faire un appel API pour sauvegarder
-            const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
-            const response = await fetch(`${serverUrl}/api/lots/${lotId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ recovered_at: true })
-            });
+            const endpoint = `lots.update`.replace(':id', lotId);
+            const response = await api.put(endpoint, { recovered_at: true });
             
             if (!response.ok) throw new Error('Erreur mise à jour');
             
@@ -325,7 +321,7 @@ export default class HistoriqueManager {
             this.showNotification('Lot marqué comme récupéré - PDF régénéré', 'success');
             this.renderLots();
         } catch (err) {
-            console.error('Erreur:', err);
+            logger.error('Erreur:', err);
             this.showNotification('Erreur lors de la mise à jour', 'error');
             
             // Réactiver le bouton en cas d'erreur
@@ -391,7 +387,6 @@ export default class HistoriqueManager {
         const lot = this.lots.find(l => l.id == this.currentEditingLotId);
         if (!lot) return;
 
-        const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
         const updates = [];
 
         // Collecter les mises à jour à partir des selects et inputs
@@ -415,23 +410,20 @@ export default class HistoriqueManager {
         }
 
         // Envoyer les mises à jour
-        Promise.all(updates.map(update =>
-            fetch(`${serverUrl}/api/lots/items/${update.itemId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    state: update.state,
-                    technician: update.technician || null
-                })
-            })
-        ))
+        Promise.all(updates.map(update => {
+            const endpoint = `lots.items.update`.replace(':id', update.itemId);
+            return api.put(endpoint, {
+                state: update.state,
+                technician: update.technician || null
+            });
+        }))
         .then(() => {
             this.showNotification('Matériel mis à jour', 'success');
             this.modalManager.close('modal-edit-lot-items');
             this.loadLots();
         })
         .catch(err => {
-            console.error('Erreur:', err);
+            logger.error('Erreur:', err);
             this.showNotification('Erreur lors de la mise à jour', 'error');
         });
     }
@@ -493,7 +485,7 @@ export default class HistoriqueManager {
      * Afficher une notification
      */
     showNotification(message, type = 'info') {
-        console.log(`[${type.toUpperCase()}] ${message}`);
+        logger.debug(`[${type.toUpperCase()}] ${message}`);
         
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
@@ -513,7 +505,7 @@ export default class HistoriqueManager {
     }
 
     destroy() {
-        console.log('🧹 Destruction HistoriqueManager');
+        logger.debug('🧹 Destruction HistoriqueManager');
         this.lots = [];
     }
 }

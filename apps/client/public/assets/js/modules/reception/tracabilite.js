@@ -3,6 +3,11 @@
  * Affiche tous les lots avec accès aux PDFs et email
  */
 
+import api from '../../config/api.js';
+import getLogger from '../../config/Logger.js';
+const logger = getLogger();
+
+
 export default class TracabiliteManager {
     constructor(modalManager) {
         this.modalManager = modalManager;
@@ -12,10 +17,10 @@ export default class TracabiliteManager {
     }
 
     async init() {
-        console.log('🚀 Initialisation TracabiliteManager');
+        logger.debug('🚀 Initialisation TracabiliteManager');
         await this.loadLots();
         this.setupEventListeners();
-        console.log('✅ TracabiliteManager prêt');
+        logger.debug('✅ TracabiliteManager prêt');
     }
 
     /**
@@ -23,8 +28,7 @@ export default class TracabiliteManager {
      */
     async loadLots() {
         try {
-            const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
-            const response = await fetch(`${serverUrl}/api/lots?status=all`);
+            const response = await api.get('lots.list?status=all');
             
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
@@ -33,10 +37,10 @@ export default class TracabiliteManager {
                 new Date(b.created_at) - new Date(a.created_at)
             );
             
-            console.log(`📦 ${this.lots.length} lot(s) chargé(s)`);
+            logger.debug(`📦 ${this.lots.length} lot(s) chargé(s)`);
             this.renderTable();
         } catch (error) {
-            console.error('❌ Erreur chargement lots:', error);
+            logger.error('❌ Erreur chargement lots:', error);
             this.showNotification('Erreur lors du chargement des lots', 'error');
         }
     }
@@ -178,7 +182,7 @@ export default class TracabiliteManager {
 
                 <div class="lot-card-actions">
                     ${lot.pdf_path ? `
-                        <a href="${(window.APP_CONFIG?.serverUrl || 'http://localhost:8060')}${lot.pdf_path}?v=${Date.now()}" target="_blank" class="btn-action btn-view">
+                        <a href="${api.getServerUrl()}${lot.pdf_path}?v=${Date.now()}" target="_blank" class="btn-action btn-view">
                             <i class="fa-solid fa-eye"></i> Voir le PDF
                         </a>
                         <button type="button" class="btn-action btn-download-pdf" data-lot-id="${lot.id}" data-pdf-path="${lot.pdf_path}">
@@ -243,8 +247,7 @@ export default class TracabiliteManager {
      */
     async downloadPDF(lotId, pdfPath) {
         try {
-            const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
-            const url = `${serverUrl}${pdfPath}?v=${Date.now()}`;
+            const url = `${api.getServerUrl()}${pdfPath}?v=${Date.now()}`;
             
             // Créer un lien temporaire pour le téléchargement
             const response = await fetch(url);
@@ -261,7 +264,7 @@ export default class TracabiliteManager {
             
             this.showNotification('PDF téléchargé avec succès', 'success');
         } catch (error) {
-            console.error('❌ Erreur téléchargement PDF:', error);
+            logger.error('❌ Erreur téléchargement PDF:', error);
             this.showNotification('Erreur lors du téléchargement du PDF', 'error');
         }
     }
@@ -273,10 +276,8 @@ export default class TracabiliteManager {
         try {
             this.showNotification('Génération du PDF...', 'info');
             
-            const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
-            const response = await fetch(`${serverUrl}/api/lots/${lotId}/pdf`, {
-                method: 'POST'
-            });
+            const endpoint = `lots.pdf`.replace(':id', lotId);
+            const response = await api.post(endpoint);
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
@@ -286,7 +287,7 @@ export default class TracabiliteManager {
             // Recharger les lots
             await this.loadLots();
         } catch (error) {
-            console.error('❌ Erreur génération PDF:', error);
+            logger.error('❌ Erreur génération PDF:', error);
             this.showNotification('Erreur lors de la génération du PDF', 'error');
         }
     }
@@ -369,14 +370,10 @@ export default class TracabiliteManager {
 
             this.showNotification('Envoi en cours...', 'info');
 
-            const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
-            const response = await fetch(`${serverUrl}/api/lots/${this.currentEmailLotId}/email`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    recipient: recipient,
-                    message: message || null
-                })
+            const endpoint = `lots.email`.replace(':id', this.currentEmailLotId);
+            const response = await api.post(endpoint, {
+                recipient: recipient,
+                message: message || null
             });
 
             if (!response.ok) {
@@ -386,7 +383,7 @@ export default class TracabiliteManager {
                     errorMessage = data.message || errorMessage;
                 } catch (parseError) {
                     // Si on ne peut pas parser la réponse, utiliser l'erreur HTTP
-                    console.warn('Impossible de parser la réponse d\'erreur:', parseError);
+                    logger.warn('Impossible de parser la réponse d\'erreur:', parseError);
                 }
                 throw new Error(errorMessage);
             }
@@ -396,7 +393,7 @@ export default class TracabiliteManager {
             this.modalManager.close('modal-send-email');
 
         } catch (error) {
-            console.error('❌ Erreur envoi email:', error);
+            logger.error('❌ Erreur envoi email:', error);
             this.showNotification(error.message || 'Erreur lors de l\'envoi de l\'email', 'error');
             // Fermer le modal même en cas d'erreur après un délai
             setTimeout(() => {
@@ -437,7 +434,7 @@ export default class TracabiliteManager {
      * Afficher une notification
      */
     showNotification(message, type = 'info') {
-        console.log(`[${type.toUpperCase()}] ${message}`);
+        logger.debug(`[${type.toUpperCase()}] ${message}`);
         
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
@@ -457,7 +454,7 @@ export default class TracabiliteManager {
     }
 
     destroy() {
-        console.log('🧹 Destruction TracabiliteManager');
+        logger.debug('🧹 Destruction TracabiliteManager');
         this.lots = [];
         this.currentEmailLotId = null;
     }

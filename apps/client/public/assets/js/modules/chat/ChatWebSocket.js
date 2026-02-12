@@ -3,6 +3,12 @@
  * Remplace le polling HTTP par WebSocket pour plus de réactivité
  */
 
+import getLogger from '../../config/Logger.js';
+import getErrorHandler from '../../config/ErrorHandler.js';
+
+const logger = getLogger();
+const errorHandler = getErrorHandler();
+
 class ChatWebSocket {
     constructor(options = {}) {
         // Utiliser l'URL WebSocket depuis APP_CONFIG si disponible
@@ -15,7 +21,7 @@ class ChatWebSocket {
         this.reconnectDelay = 3000;
         this.authToken = null;
         
-        console.log('🔌 ChatWebSocket initialisé avec:', this.wsUrl);
+        logger.info(`ChatWebSocket initialisé avec: ${this.wsUrl}`);
         this.connect();
     }
 
@@ -36,7 +42,7 @@ class ChatWebSocket {
             this.ws = new WebSocket(this.wsUrl);
             
             this.ws.addEventListener('open', () => {
-                console.log('✅ WebSocket connecté');
+                logger.info('WebSocket connecté');
                 this.reconnectAttempts = 0;
                 // Si on a déjà un token, l'envoyer pour authentifier
                 if (this.authToken) {
@@ -49,21 +55,21 @@ class ChatWebSocket {
                     const data = JSON.parse(event.data);
                     this.handleMessage(data);
                 } catch (err) {
-                    console.error('❌ Erreur parsing WebSocket:', err);
+                    logger.error('Erreur parsing WebSocket', err);
                 }
             });
             
             this.ws.addEventListener('close', () => {
-                console.warn('⚠️ WebSocket fermé, reconnexion...');
+                logger.warn('WebSocket fermé, reconnexion...');
                 this.reconnect();
             });
             
             this.ws.addEventListener('error', (err) => {
-                console.error('❌ Erreur WebSocket:', err);
+                errorHandler.handleWebSocketError(err);
                 this.errorHandlers.forEach(handler => handler(err));
             });
         } catch (err) {
-            console.error('❌ Erreur connexion WebSocket:', err);
+            logger.error('Erreur connexion WebSocket', err);
             this.reconnect();
         }
     }
@@ -73,12 +79,12 @@ class ChatWebSocket {
      */
     reconnect() {
         if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-            console.error('❌ Impossible de se reconnecter');
+            logger.error('Impossible de se reconnecter');
             return;
         }
         
         this.reconnectAttempts++;
-        console.log(`🔄 Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+        logger.info(`Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
         
         setTimeout(() => {
             this.connect();
@@ -95,7 +101,7 @@ class ChatWebSocket {
         try {
             this.ws.send(JSON.stringify({ type: 'auth', token }));
         } catch (err) {
-            console.error('❌ Erreur envoi auth WS:', err);
+            logger.error('Erreur envoi auth WS', err);
         }
     }
 
@@ -143,7 +149,7 @@ class ChatWebSocket {
             this.errorHandlers.forEach(handler => handler(msg));
         } else if (data.type === 'success') {
             // Message de succès du serveur
-            console.log('✅ Succès serveur:', data.message || data.text);
+            logger.info(`Succès serveur: ${data.message || data.text}`);
         }
     }
 
@@ -152,7 +158,7 @@ class ChatWebSocket {
      */
     sendMessage(pseudo, message) {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-            console.error('❌ WebSocket non connecté');
+            logger.error('WebSocket non connecté');
             return Promise.reject(new Error('WebSocket non connecté'));
         }
         
@@ -174,7 +180,7 @@ class ChatWebSocket {
      */
     setPseudo(pseudo) {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-            console.error('❌ WebSocket non connecté, impossible d\'envoyer le pseudo');
+            logger.error('WebSocket non connecté, impossible d\'envoyer le pseudo');
             return Promise.reject(new Error('WebSocket non connecté'));
         }
         

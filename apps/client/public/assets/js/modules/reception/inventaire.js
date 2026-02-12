@@ -3,6 +3,11 @@
  * Affiche les lots en cours et permet d'éditer l'état des PC
  */
 
+import api from '../../config/api.js';
+import getLogger from '../../config/Logger.js';
+const logger = getLogger();
+
+
 export default class InventaireManager {
     constructor(modalManager) {
         this.modalManager = modalManager;
@@ -12,10 +17,10 @@ export default class InventaireManager {
     }
 
     async init() {
-        console.log('🚀 Initialisation InventaireManager');
+        logger.debug('🚀 Initialisation InventaireManager');
         await this.loadLots();
         this.setupEventListeners();
-        console.log('✅ InventaireManager prêt');
+        logger.debug('✅ InventaireManager prêt');
     }
 
     /**
@@ -23,18 +28,17 @@ export default class InventaireManager {
      */
     async loadLots() {
         try {
-            const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
-            const response = await fetch(`${serverUrl}/api/lots?status=active`);
+            const response = await api.get('lots.list?status=active');
             
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
             const data = await response.json();
             this.lots = data.items || [];
             
-            console.log(`📦 ${this.lots.length} lot(s) chargé(s)`);
+            logger.debug(`📦 ${this.lots.length} lot(s) chargé(s)`);
             this.renderLots();
         } catch (error) {
-            console.error('❌ Erreur chargement lots:', error);
+            logger.error('❌ Erreur chargement lots:', error);
             this.showNotification('Erreur lors du chargement des lots', 'error');
         }
     }
@@ -246,14 +250,10 @@ export default class InventaireManager {
                 return;
             }
 
-            const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
-            const response = await fetch(`${serverUrl}/api/lots/items/${this.currentEditingItemId}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    state: state,
-                    technician: technician || null
-                })
+            const endpoint = `lots.items.update`.replace(':id', this.currentEditingItemId);
+            const response = await api.put(endpoint, {
+                state: state,
+                technician: technician || null
             });
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -273,7 +273,7 @@ export default class InventaireManager {
             }
 
         } catch (error) {
-            console.error('❌ Erreur sauvegarde PC:', error);
+            logger.error('❌ Erreur sauvegarde PC:', error);
             this.showNotification('Erreur lors de la mise à jour', 'error');
         }
     }
@@ -326,7 +326,7 @@ export default class InventaireManager {
      * Afficher une notification
      */
     showNotification(message, type = 'info') {
-        console.log(`[${type.toUpperCase()}] ${message}`);
+        logger.debug(`[${type.toUpperCase()}] ${message}`);
         
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
@@ -346,7 +346,7 @@ export default class InventaireManager {
     }
 
     destroy() {
-        console.log('🧹 Destruction InventaireManager');
+        logger.debug('🧹 Destruction InventaireManager');
         this.lots = [];
         this.currentEditingItemId = null;
     }
