@@ -1,8 +1,10 @@
 /**
  * ConnectionConfig.js
- * Gestion centralisée de la connexion client au serveur
- * Supporte la découverte automatique via beacon UDP ou scan réseau
+ * Wrapper simplifié pour la configuration de connexion
+ * Utilise le module api.js centralisé
  */
+
+import api from './api.js';
 
 class ConnectionConfig {
     constructor() {
@@ -10,82 +12,27 @@ class ConnectionConfig {
         this.serverWsUrl = null;
         this.serverConnected = false;
         this.discovered = false;
-        this.config = {
-            mode: 'local', // 'local', 'proxmox', 'production', 'auto'
-            local: {
-                url: 'http://localhost:8060',
-                ws: 'ws://localhost:8060'
-            },
-            proxmox: {
-                url: 'http://192.168.1.141:8060',
-                ws: 'ws://192.168.1.141:8060',
-                host: 'proxmox-ws.local'
-            },
-            production: {
-                url: 'https://workspace.example.com',
-                ws: 'wss://workspace.example.com',
-                host: 'workspace.example.com'
-            },
-            healthCheckInterval: 30000,
-            reconnectDelay: 3000,
-            maxReconnectAttempts: 5,
-            beaconTimeout: 5000,
-            healthEndpoint: '/api/health'
-        };
     }
 
     /**
      * Initialiser la configuration
      */
     async initialize() {
-        try {
-            // Charger la config depuis le fichier config.json local
-            const response = await fetch('./config/connection-config.json');
-            if (response.ok) {
-                const userConfig = await response.json();
-                this.config = { ...this.config, ...userConfig };
-                console.log('✅ Configuration de connexion chargée');
-            }
-        } catch (error) {
-            console.warn('⚠️ Impossible de charger connection-config.json, utilisation des valeurs par défaut');
-        }
-
-        // Déterminer le mode
-        const mode = this.config.mode || 'local';
+        // Initialiser le module API (charge la config automatiquement)
+        await api.init();
         
-        if (mode === 'auto') {
-            console.log('🔍 Mode auto: tentative de découverte du serveur...');
-            const discovered = await this.discoverServer();
-            if (discovered) {
-                this.serverUrl = discovered.url;
-                this.serverWsUrl = discovered.ws;
-                this.discovered = true;
-                console.log(`✅ Serveur découvert: ${this.serverUrl}`);
-                return;
-            }
-            console.warn('⚠️ Découverte échouée, utilisation de la config par défaut (localhost)');
-        }
+        // Récupérer les URLs depuis la config
+        this.serverUrl = api.getServerUrl();
+        this.serverWsUrl = api.getWsUrl();
+        
+        console.log(`🔗 Configuration: URL="${this.serverUrl}"`);
 
-        // Utiliser la config du mode spécifié
-        if (this.config[mode]) {
-            this.serverUrl = this.config[mode].url;
-            this.serverWsUrl = this.config[mode].ws;
-        } else {
-            // Fallback à localhost
-            this.serverUrl = 'http://localhost:8060';
-            this.serverWsUrl = 'ws://localhost:8060';
-        }
-
-        console.log(`🔗 Configuration: Mode="${mode}", URL="${this.serverUrl}"`);
-
-        // Exposer globalement
+        // Exposer globalement (déjà fait par api.js)
         window.APP_CONFIG = {
+            ...window.APP_CONFIG,
             serverUrl: this.serverUrl,
             serverWsUrl: this.serverWsUrl,
-            serverConnected: this.serverConnected,
-            healthCheckInterval: this.config.healthCheckInterval,
-            reconnectDelay: this.config.reconnectDelay,
-            maxReconnectAttempts: this.config.maxReconnectAttempts
+            serverConnected: this.serverConnected
         };
     }
 
@@ -106,10 +53,10 @@ class ConnectionConfig {
 
             // Scanner les adresses locales courantes
             const commonIPs = [
-                'http://192.168.1.1:8060',
-                'http://192.168.1.141:8060',
-                'http://192.168.0.1:8060',
-                'http://10.0.0.1:8060'
+                'http://192.168.1.1:4000',
+                'http://192.168.1.62:4000',
+                'http://192.168.0.1:4000',
+                'http://10.0.0.1:4000'
             ];
 
             for (const url of commonIPs) {
@@ -134,7 +81,8 @@ class ConnectionConfig {
      */
     async testServerHealth(baseUrl) {
         try {
-            const response = await fetch(`${baseUrl}${this.config.healthEndpoint}`, {
+            const healthEndpoint = '/api/health';
+            const response = await fetch(`${baseUrl}${healthEndpoint}`, {
                 method: 'GET',
                 timeout: 2000
             });
@@ -165,14 +113,14 @@ class ConnectionConfig {
      * Obtenir l'URL du serveur
      */
     getServerUrl() {
-        return this.serverUrl || 'http://localhost:8060';
+        return this.serverUrl || (this.serverConfig?.getServerUrl()) || 'http://localhost:8060';
     }
 
     /**
      * Obtenir l'URL WebSocket
      */
     getServerWsUrl() {
-        return this.serverWsUrl || 'ws://localhost:8060';
+        return this.serverWsUrl || (this.serverConfig?.getServerWsUrl()) || 'ws://localhost:8060';
     }
 }
 

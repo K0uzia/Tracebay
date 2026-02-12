@@ -23,6 +23,10 @@ class PageManager {
     }
 
     async init() {
+        // Initialiser le module API (configuration centralisée)
+        const apiModule = await import('./assets/js/config/api.js');
+        await apiModule.default.init();
+        
         // Initialiser la configuration de connexion
         const module = await import('./assets/js/config/ConnectionConfig.js');
         const ConnectionConfig = module.default;
@@ -528,6 +532,7 @@ class PageManager {
                 const securityConfig = configModule.default;
                 
                 window.chatManager = new ChatManager({
+                    serverUrl: this.serverUrl || window.APP_CONFIG?.serverUrl || 'http://localhost:8060',
                     messagesContainerId: 'chat-messages',
                     inputId: 'chat-input',
                     sendButtonId: 'chat-send',
