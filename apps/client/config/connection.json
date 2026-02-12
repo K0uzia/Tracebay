@@ -1,0 +1,83 @@
+{
+  "mode": "proxmox",
+  "environments": {
+    "local": {
+      "url": "http://localhost:8060",
+      "ws": "ws://localhost:8060",
+      "host": "localhost"
+    },
+    "proxmox": {
+      "url": "http://192.168.1.62:4000",
+      "ws": "ws://192.168.1.62:4000",
+      "host": "proxmox-ws.local"
+    },
+    "production": {
+      "url": "https://workspace.example.com",
+      "ws": "wss://workspace.example.com",
+      "host": "workspace.example.com"
+    }
+  },
+  "connection": {
+    "healthCheckInterval": 30000,
+    "reconnectDelay": 3000,
+    "maxReconnectAttempts": 5,
+    "beaconTimeout": 5000
+  },
+  "endpoints": {
+    "health": "/api/health",
+    "metrics": "/api/metrics",
+    "monitoring": {
+      "stats": "/api/monitoring/stats"
+    },
+    "auth": {
+      "login": "/api/auth/login",
+      "register": "/api/auth/register",
+      "logout": "/api/auth/logout",
+      "verify": "/api/auth/verify"
+    },
+    "events": {
+      "list": "/api/events",
+      "create": "/api/events"
+    },
+    "messages": {
+      "list": "/api/messages",
+      "create": "/api/messages"
+    },
+    "lots": {
+      "list": "/api/lots",
+      "create": "/api/lots",
+      "get": "/api/lots/:id",
+      "update": "/api/lots/:id",
+      "pdf": "/api/lots/:id/pdf",
+      "email": "/api/lots/:id/email",
+      "items": {
+        "get": "/api/lots/items/:id",
+        "update": "/api/lots/items/:id"
+      },
+      "reorder": "/api/lots/reorder"
+    },
+    "shortcuts": {
+      "list": "/api/shortcuts",
+      "create": "/api/shortcuts",
+      "get": "/api/shortcuts/:id",
+      "update": "/api/shortcuts/:id",
+      "delete": "/api/shortcuts/:id",
+      "reorder": "/api/shortcuts/reorder",
+      "categories": {
+        "list": "/api/shortcuts/categories",
+        "create": "/api/shortcuts/categories",
+        "get": "/api/shortcuts/categories/:id",
+        "update": "/api/shortcuts/categories/:id",
+        "delete": "/api/shortcuts/categories/:id"
+      }
+    },
+    "marques": {
+      "list": "/api/marques",
+      "all": "/api/marques/all",
+      "modeles": "/api/marques/:id/modeles"
+    },
+    "agenda": {
+      "events": "/api/agenda/events"
+    }
+  }
+}

@@ -42,19 +42,36 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initialiser ChatWidgetManager (widget flottant)
-    try {
-        const serverUrl = window.APP_CONFIG?.serverUrl || 'http://localhost:8060';
-        window.chatWidgetManager = new ChatWidgetManager({
-            wrapperId: 'chat-widget-wrapper',
-            buttonId: 'chat-widget-btn',
-            panelId: 'chat-widget-panel',
-            closeButtonId: 'chat-widget-close',
-            pseudoModalId: 'chat-widget-pseudo-modal',
-            notificationBadgeId: 'chat-notification-badge',
-            serverUrl: serverUrl
-        });
-    } catch (error) {
-        console.error('❌ Erreur initialisation ChatWidgetManager:', error);
+    // Attendre que api soit disponible (initialisé par app.js)
+    const initChatWidget = async () => {
+        try {
+            // Importer api pour obtenir l'URL
+            const api = await import('./config/api.js');
+            await api.default.init();
+            const serverUrl = api.default.getServerUrl();
+            console.log('🔌 ChatWidgetManager: Utilisation de serverUrl:', serverUrl);
+            window.chatWidgetManager = new ChatWidgetManager({
+                wrapperId: 'chat-widget-wrapper',
+                buttonId: 'chat-widget-btn',
+                panelId: 'chat-widget-panel',
+                closeButtonId: 'chat-widget-close',
+                pseudoModalId: 'chat-widget-pseudo-modal',
+                notificationBadgeId: 'chat-notification-badge',
+                serverUrl: serverUrl
+            });
+        } catch (error) {
+            console.error('❌ Erreur initialisation ChatWidgetManager:', error);
+        }
+    };
+    
+    // Attendre que api soit disponible
+    if (window.SERVER_CONFIG?.serverUrl) {
+        initChatWidget();
+    } else {
+        // Attendre un peu pour que app.js initialise api
+        setTimeout(() => {
+            initChatWidget();
+        }, 500);
     }
     
     // NOTE: ChatManager sera initialisé par app.js après le chargement de la page

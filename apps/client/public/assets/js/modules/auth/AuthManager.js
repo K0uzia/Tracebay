@@ -1,8 +1,9 @@
+import api from '../../config/api.js';
+
 class AuthManager {
     constructor() {
         this.user = null;
         this.listeners = [];
-        this.serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
         this.tokenKey = 'workspace_jwt';
         this.init();
     }
@@ -23,7 +24,7 @@ class AuthManager {
 
     async verifySession(token) {
         try {
-            const response = await fetch(`${this.serverUrl}/api/auth/verify`, {
+            const response = await api.get('auth.verify', {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
@@ -44,14 +45,7 @@ class AuthManager {
 
     async register(username, password) {
         try {
-            const response = await fetch(`${this.serverUrl}/api/auth/register`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ username, password })
-            });
-
+            const response = await api.post('auth.register', { username, password });
             const data = await response.json();
 
             if (data.success) {
@@ -70,13 +64,7 @@ class AuthManager {
 
     async login(username, password) {
         try {
-            const response = await fetch(`${this.serverUrl}/api/auth/login`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ username, password })
-            });
+            const response = await api.post('auth.login', { username, password });
 
             const data = await response.json();
 
