@@ -8,7 +8,8 @@
   "license": "MIT",
   "dependencies": {
     "@electron-forge/plugin-webpack": "^7.11.1",
-    "electron-squirrel-startup": "^1.0.1"
+    "electron-squirrel-startup": "^1.0.1",
+    "electron-updater": "^6.6.2"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.8.3",
@@ -17,51 +18,163 @@
     "@electron-forge/maker-zip": "^7.10.2",
     "@electron-forge/publisher-github": "^7.10.2",
     "electron": "^39.2.4",
-    "electron-builder": "^26.0.12",
-    "electron-updater": "^6.6.2"
+    "electron-builder": "^26.0.12"
   },
   "scripts": {
     "start": "electron .",
+    "start:dev": "NODE_ENV=development electron .",
+    "start:prod": "NODE_ENV=production electron .",
     "dev": "electron-forge start",
     "dev:debug": "ELECTRON_ENABLE_LOGGING=1 electron-forge start",
     "build": "electron-forge make",
+    "build:dev": "NODE_ENV=development electron-builder --dir",
+    "build:dev:win": "NODE_ENV=development electron-builder --dir --win",
+    "build:dev:mac": "NODE_ENV=development electron-builder --dir --mac",
+    "build:dev:linux": "NODE_ENV=development electron-builder --dir --linux",
+    "build:prod": "NODE_ENV=production electron-builder --publish=always",
+    "build:prod:win": "NODE_ENV=production electron-builder --win --publish=always",
+    "build:prod:mac": "NODE_ENV=production electron-builder --mac --publish=always",
+    "build:prod:linux": "NODE_ENV=production electron-builder --linux --publish=always",
     "build:win": "electron-forge make --platform win32",
     "build:mac": "electron-forge make --platform darwin",
     "build:linux": "electron-builder --linux",
-    "test": "jest",
-    "test:watch": "jest --watch",
     "lint": "eslint . --ext .js"
   },
   "build": {
     "appId": "com.workspace.client",
     "productName": "Workspace Client",
+    "copyright": "Copyright © 2026 Sandersonn",
     "publish": {
       "provider": "github",
       "owner": "SandersonnDev",
       "repo": "Workspace",
-      "releaseType": "draft"
+      "releaseType": "release"
     },
     "files": [
       "main.js",
       "preload.js",
       "lib/**/*",
-      "public/**/*"
+      "public/**/*",
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/*/{test,__tests__,tests,powered-test,example,examples}",
+      "!**/node_modules/*.d.ts",
+      "!**/node_modules/.bin",
+      "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*",
+      "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+      "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+      "!**/{appveyor.yml,.travis.yml,circle.yml}",
+      "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
     ],
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
     "win": {
       "target": [
-        "portable",
-        "nsis"
-      ]
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "publisherName": "Sandersonn"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Workspace Client",
+      "include": "build/installer.nsh",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable.${ext}"
     },
     "mac": {
       "target": [
-        "dmg"
-      ]
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.productivity",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "dmg": {
+      "title": "${productName} ${version}",
+      "icon": "build/icon.icns",
+      "background": "build/dmg-background.png",
+      "contents": [
+        {
+          "x": 410,
+          "y": 150,
+          "type": "link",
+          "path": "/Applications"
+        },
+        {
+          "x": 130,
+          "y": 150,
+          "type": "file"
+        }
+      ],
+      "window": {
+        "width": 540,
+        "height": 380
+      }
     },
     "linux": {
       "target": [
-        "AppImage"
-      ]
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "Utility",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "desktop": {
+        "Name": "Workspace Client",
+        "Comment": "Workspace Client - Interface utilisateur collaborative",
+        "Categories": "Utility;"
+      }
+    },
+    "appImage": {
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "deb": {
+      "depends": [],
+      "priority": "optional"
     }
   },
   "repository": {

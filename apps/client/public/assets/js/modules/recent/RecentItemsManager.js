@@ -1,3 +1,6 @@
+import getLogger from '../../config/Logger.js';
+const logger = getLogger();
+
 /**
  * RecentItemsManager - Gestion des éléments récemment visités
  */
@@ -18,7 +21,7 @@ class RecentItemsManager {
             const userId = localStorage.getItem('workspace_user_id');
             return userId ? parseInt(userId) : null;
         } catch (error) {
-            console.error('❌ Erreur récupération user ID:', error);
+            logger.error('❌ Erreur récupération user ID:', error);
             return null;
         }
     }
@@ -52,12 +55,12 @@ class RecentItemsManager {
                 items = JSON.parse(oldData);
                 // Sauvegarder dans le nouveau format
                 this.saveRecentItems();
-                console.log('🔄 Données récentes migrées depuis format global');
+                logger.debug('🔄 Données récentes migrées depuis format global');
             }
             
             return items;
         } catch (error) {
-            console.error('❌ Erreur chargement éléments récents:', error);
+            logger.error('❌ Erreur chargement éléments récents:', error);
             return [];
         }
     }
@@ -71,7 +74,7 @@ class RecentItemsManager {
             const userInfo = this.userId ? ` (Profil: ${this.userId})` : ' (Anonyme)';
             console.log('💾 Éléments récents sauvegardés' + userInfo);
         } catch (error) {
-            console.error('❌ Erreur sauvegarde éléments récents:', error);
+            logger.error('❌ Erreur sauvegarde éléments récents:', error);
         }
     }
 
@@ -147,7 +150,7 @@ class RecentItemsManager {
                 }
             });
         } catch (error) {
-            console.error('❌ Erreur affichage éléments récents:', error);
+            logger.error('❌ Erreur affichage éléments récents:', error);
         }
     }
 
@@ -165,13 +168,13 @@ class RecentItemsManager {
                     const name = item.querySelector('.recent-item-name').textContent;
 
                     if (action === 'navigate' && path) {
-                        console.log('🔗 Navigation vers:', path);
+                        logger.debug('🔗 Navigation vers:', path);
                         // Naviguer vers la page
                         if (window.app) {
                             window.app.loadPage(path);
                         }
                     } else if (action === 'open-url' && url) {
-                        console.log('🌐 Ouverture URL:', url);
+                        logger.debug('🌐 Ouverture URL:', url);
                         // Ouvrir l'URL dans le navigateur par défaut
                         if (window.electronAPI && window.electronAPI.openExternal) {
                             window.electronAPI.openExternal(url);
@@ -179,7 +182,7 @@ class RecentItemsManager {
                             window.open(url, '_blank');
                         }
                     } else if (action === 'open-folder' && path) {
-                        console.log('📁 Ouverture dossier:', path);
+                        logger.debug('📁 Ouverture dossier:', path);
                         // Ouvrir le dossier
                         if (window.electronAPI && window.electronAPI.openPath) {
                             window.electronAPI.openPath(path);
@@ -188,7 +191,7 @@ class RecentItemsManager {
                 });
             });
         } catch (error) {
-            console.error('❌ Erreur attache listeners:', error);
+            logger.error('❌ Erreur attache listeners:', error);
         }
     }
 
@@ -239,7 +242,7 @@ class RecentItemsManager {
         
         // Ouvrir l'URL dans le navigateur par défaut
         if (window.electronAPI && window.electronAPI.openExternal) {
-            console.log('🌐 Ouverture raccourci dans navigateur par défaut:', shortcutUrl);
+            logger.debug('🌐 Ouverture raccourci dans navigateur par défaut:', shortcutUrl);
             window.electronAPI.openExternal(shortcutUrl);
         } else {
             window.open(shortcutUrl, '_blank');
@@ -325,7 +328,7 @@ class RecentItemsManager {
         this.recentItems = [];
         this.saveRecentItems();
         this.display();
-        console.log('🗑️ Éléments récents effacés');
+        logger.debug('🗑️ Éléments récents effacés');
     }
 
     /**
@@ -336,7 +339,7 @@ class RecentItemsManager {
         this.storageKey = this.getStorageKey();
         this.recentItems = this.loadRecentItems();
         this.display();
-        console.log('🔄 Récents mis à jour pour nouvel utilisateur (ID: ' + (this.userId || 'anonyme') + ')');
+        logger.debug('🔄 Récents mis à jour pour nouvel utilisateur (ID: ' + (this.userId || 'anonyme'); + ')');
     }
 }
 

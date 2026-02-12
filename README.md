@@ -1,38 +1,32 @@
 # Workspace v2.0
 
-Application de gestion de workspace avec deux applications Electron distinctes : un serveur backend (Fastify + TypeScript + Dashboard) et un client interface utilisateur.
+Application Electron client pour la gestion de workspace. Se connecte à un serveur backend déployé séparément (sur Proxmox).
 
 ## 🎯 Architecture
 
 - **Monorepo** avec npm workspaces
-- **Serveur (Electron)**: Application Electron avec backend Fastify + TypeScript + SQLite3 + Dashboard monitoring
 - **Client (Electron)**: Application Electron avec interface utilisateur Vanilla JS + Web Components
-- **Communication**: HTTP REST API + WebSocket temps réel
-- **Déploiement**: Deux applications séparées (via Proxmox)
+- **Communication**: HTTP REST API + WebSocket temps réel via module API centralisé
+- **Déploiement**: Client déployé localement, serveur sur Proxmox (192.168.1.62:4000)
 
 ### Vue d'ensemble
 
 ```
 ┌─────────────────────────────┐         HTTP/WS         ┌─────────────────────────────┐
-│  apps/client (Electron)     │  ◄──────────────────►   │  apps/server (Electron)     │
-│                             │                          │                             │
-│  ┌───────────────────────┐  │                          │  ┌───────────────────────┐  │
-│  │  Interface            │  │                          │  │  Dashboard            │  │
-│  │  Utilisateur          │  │                          │  │  Monitoring           │  │
+│  apps/client (Electron)     │  ◄──────────────────►   │  Serveur Backend            │
+│                             │                          │  (Proxmox - 192.168.1.62)  │
+│  ┌───────────────────────┐  │                          │                             │
+│  │  Interface            │  │                          │  ┌───────────────────────┐  │
+│  │  Utilisateur          │  │                          │  │  API REST + WebSocket │  │
 │  └───────────────────────┘  │                          │  └───────────────────────┘  │
 │                             │                          │                             │
-│  ┌───────────────────────┐  │                          │  ┌───────────────────────┐  │
-│  │  API Client           │  │    REST API (8060)       │  │  Fastify Server       │  │
-│  │  (fetch/WebSocket)    │──┼──────────────────────────┼─►│  TypeScript           │  │
-│  └───────────────────────┘  │                          │  └───────────────────────┘  │
-│                             │                          │           │                 │
-│                             │                          │           ▼                 │
-│                             │                          │  ┌───────────────────────┐  │
-│                             │                          │  │  SQLite3 + Pool       │  │
-│                             │                          │  │  (5 connexions)       │  │
-│                             │                          │  └───────────────────────┘  │
+│  ┌───────────────────────┐  │    REST API (4000)       │                             │
+│  │  Module API           │──┼──────────────────────────┼─►                           │
+│  │  (api.js centralisé)  │  │                          │                             │
+│  └───────────────────────┘  │                          │                             │
+│                             │                          │                             │
 └─────────────────────────────┘                          └─────────────────────────────┘
-      Machine Cliente                                           Machine Serveur
+      Machine Cliente                                           Serveur Proxmox
 ```
 
 ## 🚀 Démarrage rapide
@@ -55,18 +49,17 @@ cp .env.example .env
 ### Développement
 
 ```bash
-# Démarrer les deux applications Electron en parallèle
+# Démarrer l'application client Electron
 npm run dev
 
-# Ou séparément:
-npm run dev:server  # Application Electron serveur (Backend Fastify + Dashboard)
-npm run dev:client  # Application Electron client (Interface utilisateur)
+# Ou directement:
+npm start --workspace=apps/client
 ```
 
 ### Mode production
 
 ```bash
-# Build du backend TypeScript
+# Build de l'application client
 npm run build
 
 # Démarrer
@@ -78,48 +71,48 @@ npm start
 ```
 workspace/
 ├── apps/
-│   ├── server/               # Application Electron Serveur
-│   │   ├── src/              # Backend TypeScript + Fastify
-│   │   │   ├── config/       # Configuration
-│   │   │   ├── db/           # Couche base de données + pool
-│   │   │   ├── lib/          # JWT, Password, Errors
-│   │   │   ├── middleware/   # Auth, Logger, ErrorHandler
-│   │   │   ├── models/       # User, Event, Message (CRUD)
-│   │   │   ├── types/        # Types TypeScript
-│   │   │   └── main.ts       # Entry point Fastify
-│   │   ├── public/           # Dashboard Electron + monitoring
-│   │   ├── main.js           # Entry point Electron
-│   │   ├── preload.js        # Preload Electron
-│   │   └── package.json
-│   │
 │   └── client/               # Application Electron Client
 │       ├── public/
 │       │   ├── pages/        # Pages HTML
 │       │   ├── components/   # Composants HTML
 │       │   ├── assets/       # CSS, JS
+│       │   │   └── js/
+│       │   │       ├── config/
+│       │   │       │   └── api.js  # Module API centralisé
+│       │   │       └── modules/    # Modules fonctionnels
 │       │   └── index.html    # Page principale
-│       ├── config/           # Configuration serveur
+│       ├── config/
+│       │   └── connection.json  # Configuration serveur centralisée
 │       ├── main.js           # Entry point Electron
 │       ├── preload.js        # Preload Electron
 │       └── package.json
 │
-├── data/                     # Base de données SQLite (gitignored)
 ├── Jarvis/                   # Standards AI + patterns
-├── .env                      # Variables d'environnement
 ├── package.json              # Root + workspaces
-├── tsconfig.json             # TypeScript root
 └── README.md                 # Cette documentation
 ```
 
 ## 🔧 Configuration
 
-Voir `.env.example` pour toutes les variables disponibles.
+La configuration du serveur est centralisée dans `apps/client/config/connection.json`.
 
-Variables principales:
-- `PORT`: Port du serveur (défaut: 8060)
-- `DATABASE_PATH`: Chemin de la base SQLite
-- `JWT_SECRET`: Secret pour JWT ⚠️ **CHANGER EN PRODUCTION**
-- `DB_POOL_SIZE`: Taille du pool de connexions (défaut: 5)
+### Configuration de connexion
+
+Modifier le fichier `apps/client/config/connection.json` pour changer l'environnement :
+
+```json
+{
+  "mode": "proxmox",  // "local", "proxmox", ou "production"
+  "environments": {
+    "proxmox": {
+      "url": "http://192.168.1.62:4000",
+      "ws": "ws://192.168.1.62:4000"
+    }
+  }
+}
+```
+
+Tous les endpoints API sont également définis dans ce fichier.
 
 ## 🧪 Tests
 
@@ -158,21 +151,22 @@ MIT
 
 ## ✨ Avantages de cette architecture
 
-### Séparation des préoccupations
-- **Serveur**: Gestion des données, logique métier, monitoring
-- **Client**: Interface utilisateur, expérience utilisateur
+### Architecture simplifiée
+- **API centralisée**: Un seul module `api.js` pour toutes les requêtes HTTP
+- **Configuration unique**: Un seul fichier `connection.json` pour toute la config
+- **Code modulaire**: Modules ES6 bien organisés
 
 ### Déploiement flexible
-- Serveur déployé sur une machine/VM dédiée
-- Clients déployés sur différentes machines
-- Scalabilité: Plusieurs clients se connectent au même serveur
+- Client déployé localement sur chaque machine
+- Serveur déployé sur Proxmox (192.168.1.62:4000)
+- Configuration facile via `connection.json`
 
 ### Sécurité
-- Backend isolé dans l'application serveur
+- Content Security Policy (CSP) configurée
 - Authentification JWT pour chaque client
-- Base de données non accessible directement
+- Module API centralisé avec authentification automatique
 
 ### Maintenance
-- Mise à jour du serveur sans toucher aux clients
-- Mise à jour des clients sans redémarrer le serveur
-- Monitoring centralisé sur le dashboard serveur
+- Configuration centralisée facile à modifier
+- Code simplifié et modulaire
+- Migration progressive vers le module API centralisé

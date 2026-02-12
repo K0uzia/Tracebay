@@ -4,6 +4,11 @@
  * Vanilla JS ES6+ - Pas de frameworks
  */
 
+import api from '../../config/api.js';
+import getLogger from '../../config/Logger.js';
+const logger = getLogger();
+
+
 export default class GestionLotsManager {
     constructor(modalManager) {
         this.modalManager = modalManager;
@@ -20,7 +25,7 @@ export default class GestionLotsManager {
      * Initialisation
      */
     async init() {
-        console.log('🚀 Initialisation GestionLotsManager');
+        logger.debug('🚀 Initialisation GestionLotsManager');
         
         await this.loadReferenceData();
         this.setupEventListeners();
@@ -31,18 +36,18 @@ export default class GestionLotsManager {
             if (tbody) {
                 const row = this.createRow('', 'scan');
                 tbody.appendChild(row);
-                console.log('➕ Ligne SCAN initiale ajoutée');
+                logger.debug('➕ Ligne SCAN initiale ajoutée');
                 
                 // AutoFocus sur le S/N de la première ligne
                 const snInput = row.querySelector('input[name="serial_number"]');
                 if (snInput) {
                     snInput.focus();
-                    console.log('✅ AutoFocus sur S/N de la première ligne');
+                    logger.debug('✅ AutoFocus sur S/N de la première ligne');
                 }
             }
         }, 400);
         
-        console.log('✅ GestionLotsManager prêt');
+        logger.debug('✅ GestionLotsManager prêt');
     }
 
     /**
@@ -50,16 +55,14 @@ export default class GestionLotsManager {
      */
     async loadReferenceData() {
         try {
-            const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
-            
             // Charger les marques
-            const marquesRes = await fetch(`${serverUrl}/api/marques`);
+            const marquesRes = await api.get('marques.list');
             if (!marquesRes.ok) throw new Error('Erreur chargement marques');
             const marquesData = await marquesRes.json();
             this.marques = marquesData.items || [];
             
             // Charger tous les modèles
-            const modelesRes = await fetch(`${serverUrl}/api/marques/all`);
+            const modelesRes = await api.get('marques.all');
             if (!modelesRes.ok) {
                 // Endpoint alternatif si /all n'existe pas
                 throw new Error('Endpoint modèles non trouvé');
@@ -67,12 +70,12 @@ export default class GestionLotsManager {
             const modelesData = await modelesRes.json();
             this.modeles = modelesData.items || [];
             
-            console.log('📦 Données chargées:', this.marques.length, 'marques', this.modeles.length, 'modèles');
+            logger.debug('📦 Données chargées:', this.marques.length, 'marques', this.modeles.length, 'modèles');
             
             // Remplir les selects de marques
             this.updateMarqueSelects();
         } catch (error) {
-            console.error('❌ Erreur chargement données:', error);
+            logger.error('❌ Erreur chargement données:', error);
             // Charger données par défaut en cas d'erreur
             this.loadDefaultData();
         }
@@ -92,7 +95,7 @@ export default class GestionLotsManager {
             { id: 2, name: 'ProBook 450', marque_id: 2 },
             { id: 3, name: 'ThinkPad T14', marque_id: 3 }
         ];
-        console.log('ℹ️ Données par défaut chargées');
+        logger.debug('ℹ️ Données par défaut chargées');
         this.updateMarqueSelects();
     }
 
@@ -132,11 +135,11 @@ export default class GestionLotsManager {
      * Configuration des événements avec délégation
      */
     setupEventListeners() {
-        console.log('🔧 Configuration événements');
+        logger.debug('🔧 Configuration événements');
         
         // Vérifier qu'on n'attache pas les événements en double (flag global)
         if (window.__gestionLotsEventsAttached) {
-            console.log('ℹ️ Événements déjà attachés globalement, skip');
+            logger.debug('ℹ️ Événements déjà attachés globalement, skip');
             return;
         }
         window.__gestionLotsEventsAttached = true;
@@ -149,12 +152,12 @@ export default class GestionLotsManager {
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    console.log(`🖱️ Clic sur ${id}`);
+                    logger.debug(`🖱️ Clic sur ${id}`);
                     handler();
                 });
-                console.log(`✅ ${id} attaché`);
+                logger.debug(`✅ ${id} attaché`);
             } else {
-                console.warn(`⚠️ ${id} non trouvé`);
+                logger.warn(`⚠️ ${id} non trouvé`);
             }
         };
 
@@ -170,7 +173,7 @@ export default class GestionLotsManager {
             const selectMarque = document.getElementById('select-marque-for-modele');
             if (selectMarque) {
                 selectMarque.addEventListener('change', (e) => {
-                    console.log('📦 Marque sélectionnée pour modèle:', e.target.value);
+                    logger.debug('📦 Marque sélectionnée pour modèle:', e.target.value);
                 });
             }
             
@@ -198,7 +201,7 @@ export default class GestionLotsManager {
                     const checkboxes = document.querySelectorAll('.row-checkbox');
                     checkboxes.forEach(cb => cb.checked = e.target.checked);
                 });
-                console.log('✅ select-all attaché');
+                logger.debug('✅ select-all attaché');
             }
             
             // Populer les selects de masse
@@ -214,7 +217,7 @@ export default class GestionLotsManager {
                 btnAddModele.addEventListener('click', () => {
                     setTimeout(() => this.populateMarqueSelect(), 150);
                 });
-                console.log('✅ btn-add-modele attaché');
+                logger.debug('✅ btn-add-modele attaché');
             }
         }, 300);
 
@@ -238,18 +241,18 @@ export default class GestionLotsManager {
             }
         });
 
-        console.log('✅ Événements configurés');
+        logger.debug('✅ Événements configurés');
     }
 
     /**
      * Ajouter une ligne depuis un scan
      */
     addRowFromScan(serialNumber) {
-        console.log('📷 Scan détecté:', serialNumber);
+        logger.debug('📷 Scan détecté:', serialNumber);
         
         // Vérifier que le S/N n'est pas vide
         if (!serialNumber || serialNumber.trim() === '') {
-            console.warn('⚠️ S/N vide');
+            logger.warn('⚠️ S/N vide');
             return;
         }
         
@@ -264,7 +267,7 @@ export default class GestionLotsManager {
         });
 
         if (snExists) {
-            console.warn('⚠️ Doublon détecté:', serialNumber);
+            logger.warn('⚠️ Doublon détecté:', serialNumber);
             this.showNotification(`S/N déjà scanné: ${serialNumber}`, 'warning');
             return;
         }
@@ -291,7 +294,7 @@ export default class GestionLotsManager {
      * Ajouter une ligne manuellement
      */
     addManualRow() {
-        console.log('➕ Ajout manuel');
+        logger.debug('➕ Ajout manuel');
         
         const tbody = document.getElementById('lot-table-body');
         if (!tbody) return;
@@ -385,7 +388,7 @@ export default class GestionLotsManager {
      * Enregistrer le lot
      */
     async saveLot() {
-        console.log('💾 Enregistrement du lot');
+        logger.debug('💾 Enregistrement du lot');
         
         const tbody = document.getElementById('lot-table-body');
         if (!tbody) return;
@@ -436,13 +439,8 @@ export default class GestionLotsManager {
         const lotName = document.getElementById('input-lot-name')?.value?.trim() || null;
 
         try {
-            console.log('📤 Envoi des données:', { items: lotData, lotName });
-            const serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
-            const response = await fetch(`${serverUrl}/api/lots`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items: lotData, lotName })
-            });
+            logger.debug('📤 Envoi des données:', { items: lotData, lotName });
+            const response = await api.post('lots.create', { items: lotData, lotName });
 
             if (!response.ok) {
                 const msg = `HTTP ${response.status}`;
@@ -456,12 +454,13 @@ export default class GestionLotsManager {
             // Générer le PDF du lot
             setTimeout(async () => {
                 try {
-                    const pdfResponse = await fetch(`${serverUrl}/api/lots/${lotId}/pdf`, { method: 'POST' });
+                    const endpoint = `lots.pdf`.replace(':id', lotId);
+                    const pdfResponse = await api.post(endpoint);
                     if (pdfResponse.ok) {
-                        console.log('✅ PDF généré');
+                        logger.debug('✅ PDF généré');
                     }
                 } catch (pdfError) {
-                    console.warn('⚠️ Erreur génération PDF:', pdfError);
+                    logger.warn('⚠️ Erreur génération PDF:', pdfError);
                 }
                 
                 // Rediriger vers l'inventaire
@@ -470,15 +469,15 @@ export default class GestionLotsManager {
                     const receptionNav = document.querySelector('[data-page="inventaire"][data-reception-page="true"]');
                     if (receptionNav) {
                         receptionNav.click();
-                        console.log('✅ Navigation vers Inventaire');
+                        logger.debug('✅ Navigation vers Inventaire');
                     } else {
-                        console.log('⚠️ Bouton inventaire non trouvé, redirection URL');
+                        logger.debug('⚠️ Bouton inventaire non trouvé, redirection URL');
                         window.location.href = '/pages/reception.html?section=inventaire';
                     }
                 }, 500);
             }, 500);
         } catch (error) {
-            console.error('❌ Erreur sauvegarde:', error);
+            logger.error('❌ Erreur sauvegarde:', error);
             this.showNotification('Erreur lors de l\'enregistrement', 'error');
         }
     }
@@ -487,7 +486,7 @@ export default class GestionLotsManager {
      * Annuler / Réinitialiser
      */
     cancelLot() {
-        console.log('🔄 Réinitialisation');
+        logger.debug('🔄 Réinitialisation');
         
         // Ouvrir la modale de confirmation
         this.modalManager.open('modal-clear-lot');
@@ -520,7 +519,7 @@ export default class GestionLotsManager {
      * Soumettre une nouvelle marque
      */
     async submitNewMarque() {
-        console.log('📋 Soumission marque');
+        logger.debug('📋 Soumission marque');
         
         const input = document.getElementById('input-new-marque');
         if (!input || !input.value.trim()) {
@@ -532,11 +531,7 @@ export default class GestionLotsManager {
 
         try {
             // Appel API réel
-            const response = await fetch(`${window.APP_CONFIG?.serverUrl || 'http://localhost:8060'}/api/marques`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newMarque })
-            });
+            const response = await api.post('marques.list', { name: newMarque });
             
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
@@ -553,7 +548,7 @@ export default class GestionLotsManager {
             input.value = '';
             this.updateMarqueSelects();
         } catch (error) {
-            console.error('❌ Erreur ajout marque:', error);
+            logger.error('❌ Erreur ajout marque:', error);
             this.showNotification('Erreur lors de l\'ajout de la marque', 'error');
         }
     }
@@ -562,7 +557,7 @@ export default class GestionLotsManager {
      * Soumettre un nouveau modèle
      */
     async submitNewModele() {
-        console.log('📋 Soumission modèle');
+        logger.debug('📋 Soumission modèle');
         
         const selectMarque = document.getElementById('select-marque-for-modele');
         const inputModele = document.getElementById('input-new-modele');
@@ -577,11 +572,8 @@ export default class GestionLotsManager {
 
         try {
             // Appel API réel
-            const response = await fetch(`${window.APP_CONFIG?.serverUrl || 'http://localhost:8060'}/api/marques/${marqueId}/modeles`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: newModele })
-            });
+            const endpoint = `marques.modeles`.replace(':id', marqueId);
+            const response = await api.post(endpoint, { name: newModele });
             
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
@@ -601,7 +593,7 @@ export default class GestionLotsManager {
             this.populateMassSelects();
             
         } catch (error) {
-            console.error('❌ Erreur ajout modèle:', error);
+            logger.error('❌ Erreur ajout modèle:', error);
             this.showNotification('Erreur lors de l\'ajout du modèle', 'error');
         }
     }
@@ -752,7 +744,7 @@ export default class GestionLotsManager {
      * Afficher une notification
      */
     showNotification(message, type = 'info') {
-        console.log(`[${type.toUpperCase()}] ${message}`);
+        logger.debug(`[${type.toUpperCase()}] ${message}`);
         
         // Créer la notification visuelle
         const notification = document.createElement('div');
@@ -777,7 +769,7 @@ export default class GestionLotsManager {
      * Nettoyer/Détruire le manager
      */
     destroy() {
-        console.log('🧹 Destruction GestionLotsManager');
+        logger.debug('🧹 Destruction GestionLotsManager');
         
         // Réinitialiser les flags pour permettre la réattachement des événements
         this.eventsAttached = false;
@@ -791,6 +783,6 @@ export default class GestionLotsManager {
         const tbody = document.getElementById('lot-table-body');
         if (tbody) tbody.innerHTML = '';
         
-        console.log('✅ GestionLotsManager nettoyé');
+        logger.debug('✅ GestionLotsManager nettoyé');
     }
 }

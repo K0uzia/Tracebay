@@ -13,16 +13,25 @@
     "build:production": "node build-production.js",
     "start": "npm start --workspace=apps/client",
     "start:client": "npm start --workspace=apps/client",
-    "test": "npm run test --workspace=apps/client",
     "lint": "eslint \"apps/**/*.{ts,js}\" --fix",
-    "format": "prettier --write \"apps/**/*.{ts,js,css,json}\""
+    "lint:check": "eslint \"apps/**/*.{ts,js}\"",
+    "format": "prettier --write \"apps/**/*.{ts,js,css,json}\"",
+    "format:check": "prettier --check \"apps/**/*.{ts,js,css,json}\"",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
   },
   "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.0",
     "@types/node": "^18.19.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
+    "babel-jest": "^29.7.0",
     "concurrently": "^8.2.2",
     "eslint": "^8.57.0",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "prettier": "^3.2.5",
     "typescript": "^5.3.3"
   },

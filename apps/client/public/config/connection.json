@@ -27,7 +27,8 @@
     "health": "/api/health",
     "metrics": "/api/metrics",
     "monitoring": {
-      "stats": "/api/monitoring/stats"
+      "stats": "/api/monitoring/stats",
+      "errors": "/api/monitoring/errors"
     },
     "auth": {
       "login": "/api/auth/login",

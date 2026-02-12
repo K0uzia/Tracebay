@@ -1,11 +1,13 @@
-import { getServerUrl, getEndpointUrl } from '../../config/ServerHelper.js';
+import api from '../../config/api.js';
+import getLogger from '../../config/Logger.js';
+const logger = getLogger();
+
 
 export default class ShortcutManager {
     constructor() {
         this.categories = [];
         this.searchQuery = '';
         this.listeners = [];
-        this.serverUrl = getServerUrl();
     }
 
     async init() {
@@ -74,12 +76,8 @@ export default class ShortcutManager {
 
         try {
             const [categoriesRes, shortcutsRes] = await Promise.all([
-                fetch(getEndpointUrl('shortcuts.categories.list'), {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                }),
-                fetch(getEndpointUrl('shortcuts.list'), {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                })
+                api.get('shortcuts.categories.list'),
+                api.get('shortcuts.list')
             ]);
 
             const categoriesData = await categoriesRes.json();
@@ -97,7 +95,7 @@ export default class ShortcutManager {
                 this.categories = [];
             }
         } catch (error) {
-            console.error('❌ Erreur chargement raccourcis:', error);
+            logger.error('❌ Erreur chargement raccourcis:', error);
             this.categories = [];
         }
     }
@@ -239,7 +237,7 @@ export default class ShortcutManager {
                 } else if (url) {
                     // Try Electron API first
                     if (window.electronAPI?.openExternal) {
-                        console.log('🌐 Ouverture raccourci:', url);
+                        logger.debug('🌐 Ouverture raccourci:', url);
                         window.electronAPI.openExternal(url);
                     } else if (window.electron?.openExternal) {
                         window.electron.openExternal(url);
@@ -260,21 +258,21 @@ export default class ShortcutManager {
             // Chercher le wrapper qui contient l'image et l'icône fallback
             const button = img.closest('.shortcut-link');
             if (!button) {
-                console.warn('⚠️ Could not find .shortcut-link parent for:', originalSrc);
+                logger.warn('⚠️ Could not find .shortcut-link parent for:', originalSrc);
                 return;
             }
 
             const showFallback = () => {
                 if (!isProcessed) {
                     isProcessed = true;
-                    console.log('✅ Showing fallback for:', originalSrc);
+                    logger.debug('✅ Showing fallback for:', originalSrc);
                     img.style.display = 'none';
                     const fallback = button.querySelector('.shortcut-fallback-icon');
                     if (fallback) {
-                        console.log('✅ Fallback element found and shown');
+                        logger.debug('✅ Fallback element found and shown');
                         fallback.style.display = 'inline';
                     } else {
-                        console.warn('⚠️ Fallback element NOT found in button');
+                        logger.warn('⚠️ Fallback element NOT found in button');
                     }
                 }
             };
@@ -282,7 +280,7 @@ export default class ShortcutManager {
             const showFavicon = () => {
                 if (!isProcessed) {
                     isProcessed = true;
-                    console.log('✅ Showing favicon for:', originalSrc);
+                    logger.debug('✅ Showing favicon for:', originalSrc);
                     img.style.display = 'inline-block';
                     const fallback = button.querySelector('.shortcut-fallback-icon');
                     if (fallback) {
@@ -295,7 +293,7 @@ export default class ShortcutManager {
             const isGooglePlaceholder = () => {
                 const result = img.naturalWidth <= 1 || img.naturalHeight <= 1 || 
                        (img.naturalWidth === img.naturalHeight && img.naturalWidth <= 16 && img.naturalHeight <= 16);
-                console.log(`📊 Placeholder check for ${originalSrc}: naturalW=${img.naturalWidth}, naturalH=${img.naturalHeight}, isPlaceholder=${result}`);
+                logger.debug(`📊 Placeholder check for ${originalSrc}: naturalW=${img.naturalWidth}, naturalH=${img.naturalHeight}, isPlaceholder=${result}`);
                 return result;
             };
 
@@ -304,38 +302,38 @@ export default class ShortcutManager {
             // Timeout de 1500ms
             timeout = setTimeout(() => {
                 if (!isProcessed) {
-                    console.log('⏱️ Favicon timeout for:', originalSrc);
+                    logger.debug('⏱️ Favicon timeout for:', originalSrc);
                     showFallback();
                 }
             }, 1500);
 
             img.addEventListener('load', () => {
                 clearTimeout(timeout);
-                console.log('📥 Load event for:', originalSrc, `naturalW=${img.naturalWidth}, naturalH=${img.naturalHeight}, displayW=${img.width}`);
+                logger.debug('📥 Load event for:', originalSrc, `naturalW=${img.naturalWidth}, naturalH=${img.naturalHeight}, displayW=${img.width}`);
                 // Vérifier que l'image a du contenu réel
                 if (img.naturalWidth > 0 && img.naturalHeight > 0 && img.width > 0) {
                     // Vérifier que ce n'est pas un placeholder Google
                     if (!isGooglePlaceholder()) {
                         showFavicon();
                     } else {
-                        console.log('🔍 Google placeholder detected for:', originalSrc);
+                        logger.debug('🔍 Google placeholder detected for:', originalSrc);
                         showFallback();
                     }
                 } else {
-                    console.log('⚠️ Image dimensions invalid:', originalSrc);
+                    logger.debug('⚠️ Image dimensions invalid:', originalSrc);
                     showFallback();
                 }
             }, { once: true });
 
             img.addEventListener('error', () => {
                 clearTimeout(timeout);
-                console.log('❌ Error loading favicon:', originalSrc);
+                logger.debug('❌ Error loading favicon:', originalSrc);
                 showFallback();
             }, { once: true });
 
             // Vérifier aussi avec loadstart au cas où
             img.addEventListener('loadstart', () => {
-                console.log('🚀 Loadstart event for:', originalSrc);
+                logger.debug('🚀 Loadstart event for:', originalSrc);
                 clearTimeout(timeout);
             }, { once: true });
         });
@@ -517,7 +515,7 @@ export default class ShortcutManager {
 
         shortcutsList.addEventListener('drop', () => {
             // On ne fait rien ici - l'ordre visuel est déjà mis à jour
-            console.log('📌 Raccourci déplacé (pas encore sauvegardé)');
+            logger.debug('📌 Raccourci déplacé (pas encore sauvegardé)');
         });
 
         modal.querySelector('[data-delete-category]').addEventListener('click', () => {
@@ -532,7 +530,7 @@ export default class ShortcutManager {
         modal.querySelector('[data-close]').addEventListener('click', async () => {
             // Sauvegarder l'ordre si quelque chose a changé
             if (hasReordered) {
-                console.log('💾 Sauvegarde de l\'ordre avant fermeture');
+                logger.debug('💾 Sauvegarde de l\'ordre avant fermeture');
                 const items = [...shortcutsList.querySelectorAll('.shortcut-item')];
                 const shortcutIds = items.map(item => parseInt(item.dataset.shortcutId));
                 await this.reorderShortcuts(categoryId, shortcutIds);
@@ -585,14 +583,7 @@ export default class ShortcutManager {
         }
 
         try {
-            const response = await fetch(`${this.serverUrl}/api/shortcuts/categories`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ name })
-            });
+            const response = await api.post('shortcuts.categories.create', { name });
 
             const data = await response.json();
 
@@ -603,7 +594,7 @@ export default class ShortcutManager {
                 alert(data.message);
             }
         } catch (error) {
-            console.error('❌ Erreur création catégorie:', error);
+            logger.error('❌ Erreur création catégorie:', error);
             alert('Erreur lors de la création de la catégorie');
         }
     }
@@ -614,10 +605,8 @@ export default class ShortcutManager {
         if (!token) return;
 
         try {
-            const response = await fetch(`${this.serverUrl}/api/shortcuts/categories/${categoryId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const endpoint = `shortcuts.categories.delete`.replace(':id', categoryId);
+            const response = await api.delete(endpoint);
 
             const data = await response.json();
 
@@ -626,7 +615,7 @@ export default class ShortcutManager {
                 this.render();
             }
         } catch (error) {
-            console.error('❌ Erreur suppression catégorie:', error);
+            logger.error('❌ Erreur suppression catégorie:', error);
         }
     }
 
@@ -639,14 +628,7 @@ export default class ShortcutManager {
         }
 
         try {
-            const response = await fetch(`${this.serverUrl}/api/shortcuts`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ category_id: categoryId, name, url })
-            });
+            const response = await api.post('shortcuts.create', { category_id: categoryId, name, url });
 
             const data = await response.json();
 
@@ -657,7 +639,7 @@ export default class ShortcutManager {
                 alert(data.message);
             }
         } catch (error) {
-            console.error('❌ Erreur création raccourci:', error);
+            logger.error('❌ Erreur création raccourci:', error);
             alert('Erreur lors de la création du raccourci');
         }
     }
@@ -668,10 +650,8 @@ export default class ShortcutManager {
         if (!token) return;
 
         try {
-            const response = await fetch(`${this.serverUrl}/api/shortcuts/${shortcutId}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
+            const endpoint = `shortcuts.delete`.replace(':id', shortcutId);
+            const response = await api.delete(endpoint);
 
             const data = await response.json();
 
@@ -680,7 +660,7 @@ export default class ShortcutManager {
                 this.render();
             }
         } catch (error) {
-            console.error('❌ Erreur suppression raccourci:', error);
+            logger.error('❌ Erreur suppression raccourci:', error);
         }
     }
 
@@ -776,14 +756,8 @@ export default class ShortcutManager {
         }
 
         try {
-            const response = await fetch(`${this.serverUrl}/api/shortcuts/categories/${categoryId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ name: newName })
-            });
+            const endpoint = `shortcuts.categories.update`.replace(':id', categoryId);
+            const response = await api.put(endpoint, { name: newName });
 
             const data = await response.json();
 
@@ -794,7 +768,7 @@ export default class ShortcutManager {
                 alert(data.message || 'Erreur lors du renommage');
             }
         } catch (error) {
-            console.error('❌ Erreur renommage catégorie:', error);
+            logger.error('❌ Erreur renommage catégorie:', error);
             alert('Erreur lors du renommage de la catégorie');
         }
     }
@@ -808,14 +782,8 @@ export default class ShortcutManager {
         }
 
         try {
-            const response = await fetch(`${this.serverUrl}/api/shortcuts/${shortcutId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ name, url })
-            });
+            const endpoint = `shortcuts.update`.replace(':id', shortcutId);
+            const response = await api.put(endpoint, { name, url });
 
             const data = await response.json();
 
@@ -826,7 +794,7 @@ export default class ShortcutManager {
                 alert(data.message || 'Erreur lors de la modification');
             }
         } catch (error) {
-            console.error('❌ Erreur modification raccourci:', error);
+            logger.error('❌ Erreur modification raccourci:', error);
             alert('Erreur lors de la modification du raccourci');
         }
     }
@@ -835,31 +803,23 @@ export default class ShortcutManager {
         const token = this.getToken();
         
         if (!token) {
-            console.warn('❌ Pas de token disponible pour reorder');
+            logger.warn('❌ Pas de token disponible pour reorder');
             return;
         }
 
         try {
-            console.log('🔄 Envoi reorder request:', { categoryId, shortcutIds, serverUrl: this.serverUrl });
-            const response = await fetch(`${this.serverUrl}/api/shortcuts/reorder`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ category_id: categoryId, shortcut_ids: shortcutIds })
-            });
+            const response = await api.put('shortcuts.reorder', { category_id: categoryId, shortcut_ids: shortcutIds });
 
-            console.log('📥 Réponse reorder:', { status: response.status, statusText: response.statusText });
+            logger.debug('📥 Réponse reorder:', { status: response.status, statusText: response.statusText });
             const data = await response.json();
-            console.log('📦 Data reorder:', data);
+            logger.debug('📦 Data reorder:', data);
 
             if (data.success) {
                 await this.loadShortcuts();
                 this.render();
             }
         } catch (error) {
-            console.error('❌ Erreur réorganisation raccourcis:', error);
+            logger.error('❌ Erreur réorganisation raccourcis:', error);
         }
     }
 

@@ -10,10 +10,16 @@
 
 import ChatSecurityManager from './ChatSecurityManager.js';
 import ChatWebSocket from './ChatWebSocket.js';
+import api from '../../config/api.js';
+import getLogger from '../../config/Logger.js';
+import getErrorHandler from '../../config/ErrorHandler.js';
+
+const logger = getLogger();
+const errorHandler = getErrorHandler();
 
 class ChatManager {
     constructor(options = {}) {
-        console.log('🔧 ChatManager: Construction en cours...');
+        logger.debug('ChatManager: Construction en cours...');
         // IDs des éléments
         this.pseudoWrapperId = options.pseudoWrapperId || 'chat-widget-pseudo-area';
         this.pseudoDisplayId = options.pseudoDisplayId || 'chat-widget-pseudo-display';
@@ -25,9 +31,8 @@ class ChatManager {
         this.sendButtonId = options.sendButtonId || 'chat-widget-send';
         this.clearChatBtnId = options.clearChatBtnId || 'chat-widget-clear';
         
-        // WebSocket avec serverUrl
-        const serverUrl = options.serverUrl || 'http://localhost:8060';
-        const wsUrl = serverUrl.replace('http://', 'ws://').replace('https://', 'wss://');
+        // WebSocket avec serverUrl depuis api.js
+        const wsUrl = options.wsUrl || api.getWsUrl();
         this.webSocket = new ChatWebSocket({ wsUrl });
         
         // État
@@ -40,7 +45,7 @@ class ChatManager {
         // Initialiser ChatSecurityManager
         this.securityManager = new ChatSecurityManager(this.securityConfig);
         
-        console.log('🔧 ChatManager: Construction finie, init()...');
+        logger.debug('ChatManager: Construction finie, init()...');
         this.init();
     }
 
@@ -48,13 +53,13 @@ class ChatManager {
      * Initialiser le ChatManager
      */
     async init() {
-        console.log('🚀 ChatManager: init() appelé');
+        logger.debug('ChatManager: init() appelé');
         
         // Écouter les changements d'authentification
         window.addEventListener('auth-change', (e) => {
             const user = e.detail?.user;
             const token = e.detail?.token;
-            console.log('🔄 ChatManager: Auth changed:', user);
+            logger.debug('ChatManager: Auth changed', { user: user?.username });
             this.pseudo = user ? user.username : null;
             this.displayPseudo();
             if (token) {
@@ -70,7 +75,10 @@ class ChatManager {
         this.displayPseudo();
         
         // Afficher les messages
-        console.log('📊 Avant renderMessages:', { container: !!document.getElementById(this.messagesContainerId), messages: this.messages.length });
+        logger.debug('Avant renderMessages', { 
+            container: !!document.getElementById(this.messagesContainerId), 
+            messages: this.messages.length 
+        });
         this.renderMessages();
         
         // Attacher les écouteurs d'événements
@@ -84,9 +92,9 @@ class ChatManager {
                     this.webSocket.authenticate(token);
                 }
                 if (this.pseudo) {
-                    console.log('✨ Reconnexion automatique avec pseudo:', this.pseudo);
+                    logger.info(`Reconnexion automatique avec pseudo: ${this.pseudo}`);
                     this.webSocket.setPseudo(this.pseudo).catch(err => {
-                        console.error('❌ Erreur reconnexion:', err);
+                        logger.error('Erreur reconnexion', err);
                     });
                 }
             } else {
@@ -100,9 +108,9 @@ class ChatManager {
         
         // Écouter les messages WebSocket
         this.webSocket.onMessage((data) => {
-            console.log('📨 Message WebSocket reçu:', data.type, data);
+            logger.debug('Message WebSocket reçu', { type: data.type });
             if (data.type === 'history') {
-                console.log('📜 Historique reçu:', data.messages?.length || 0, 'messages');
+                logger.debug(`Historique reçu: ${data.messages?.length || 0} messages`);
                 this.messages = data.messages.map(msg => ({
                     id: msg.id,
                     pseudo: msg.pseudo,
@@ -115,10 +123,10 @@ class ChatManager {
                 this.scrollToBottom();
             } else if (data.type === 'newMessage') {
                 const msg = data.message;
-                console.log('💬 Nouveau message complet data:', JSON.stringify(data, null, 2));
-                console.log('💬 msg.message:', msg.message, 'Type:', typeof msg.message);
-                console.log('💬 msg.pseudo:', msg.pseudo);
-                console.log('💬 msg.created_at:', msg.created_at);
+                logger.debug('Nouveau message reçu', { 
+                    pseudo: msg.pseudo, 
+                    messageType: typeof msg.message 
+                });
                 
                 // Extraire le texte correctement
                 const messageText = typeof msg.message === 'string' ? msg.message : (msg.text || '');
@@ -131,17 +139,17 @@ class ChatManager {
                     own: msg.pseudo === this.pseudo,
                     created_at: msg.created_at
                 });
-                console.log('📝 Message ajouté:', this.messages[this.messages.length - 1]);
+                logger.debug('Message ajouté', { id: this.messages[this.messages.length - 1].id });
                 this.renderMessages();
                 this.scrollToBottom();
             } else if (data.type === 'userCount') {
-                console.log('👥 Mise à jour utilisateurs:', data.count, data.users);
+                logger.debug(`Mise à jour utilisateurs: ${data.count}`, { users: data.users });
                 this.userCount = data.count;
                 this.connectedUsers = data.users;
                 // Mettre à jour l'affichage du compteur d'utilisateurs
                 this.displayPseudo();
             } else if (data.type === 'chatCleared') {
-                console.log('🗑️ Chat supprimé par:', data.clearedBy);
+                logger.info(`Chat supprimé par: ${data.clearedBy}`);
                 this.messages = [];
                 this.renderMessages();
                 // Afficher un message de notification
@@ -158,7 +166,7 @@ class ChatManager {
         });
         
         this.webSocket.onError((err) => {
-            console.error('❌ Erreur chat:', err);
+            logger.error('Erreur chat', err);
         });
     }
 
@@ -216,7 +224,7 @@ class ChatManager {
     confirmPseudo() {
         const username = localStorage.getItem('workspace_username');
         if (!username) {
-            console.warn('⚠️ Aucun utilisateur connecté');
+            logger.warn('Aucun utilisateur connecté');
             return;
         }
         
@@ -224,7 +232,7 @@ class ChatManager {
         
         if (this.webSocket.isConnected()) {
             this.webSocket.setPseudo(username).catch(err => {
-                console.error('❌ Erreur lors de l\'envoi du pseudo:', err);
+                logger.error('Erreur lors de l\'envoi du pseudo', err);
             });
         }
         
@@ -285,20 +293,20 @@ class ChatManager {
         }
         
         if (text.length > 5000) {
-            console.warn('⚠️ Message trop long');
+            logger.warn('Message trop long');
             return;
         }
         
         try {
             if (!this.webSocket.isConnected()) {
-                console.error('❌ WebSocket non connecté');
+                logger.error('WebSocket non connecté');
                 return;
             }
             
             await this.webSocket.sendMessage(this.pseudo, text);
             input.value = '';
         } catch (error) {
-            console.error('❌ Erreur envoi message:', error);
+            logger.error('Erreur envoi message', error);
         }
     }
 
@@ -310,9 +318,13 @@ class ChatManager {
      */
     renderMessages() {
         const container = document.getElementById(this.messagesContainerId);
-        console.log('🎨 renderMessages appelé', { container: !!container, messagesCount: this.messages.length, containerId: this.messagesContainerId });
+        logger.debug('renderMessages appelé', { 
+            container: !!container, 
+            messagesCount: this.messages.length, 
+            containerId: this.messagesContainerId 
+        });
         if (!container) {
-            console.error('❌ Container pas trouvé:', this.messagesContainerId);
+            logger.error(`Container pas trouvé: ${this.messagesContainerId}`);
             return;
         }
         
@@ -339,7 +351,7 @@ class ChatManager {
             `;
         }).join('');
         
-        console.log('✅ Messages rendus:', this.messages.length);
+        logger.debug(`Messages rendus: ${this.messages.length}`);
         // Scroll vers le bas
         this.scrollToBottom();
     }
@@ -377,11 +389,10 @@ class ChatManager {
                 pseudo: pseudo
             }));
             
-            logger.info(`✅ Demande de suppression du chat envoyée`);
+            logger.info('Demande de suppression du chat envoyée');
             this.hideClearModal();
         } catch (error) {
-            console.error('❌ Erreur suppression chat:', error);
-            logger.error(`❌ Erreur lors de la suppression: ${error.message}`);
+            logger.error('Erreur suppression chat', error);
         }
     }
 

@@ -12,6 +12,12 @@ const { exec } = require('child_process');
 // Import ClientDiscovery
 const ClientDiscovery = require('./lib/ClientDiscovery.js');
 
+// Import AutoUpdater
+const getAutoUpdater = require('./lib/AutoUpdater.js');
+
+// Détection environnement (production vs développement)
+const isProduction = process.env.NODE_ENV === 'production' || app.isPackaged;
+
 /**
  * Obtenir toutes les IPs locales du réseau
  */
@@ -267,8 +273,8 @@ function createWindow() {
     mainWindow.loadURL(`file://${path.join(__dirname, 'public', 'index.html')}`);
     mainWindow.show();
 
-    // DevTools en développement
-    if (process.env.NODE_ENV === 'development') {
+    // DevTools uniquement en développement
+    if (!isProduction) {
         mainWindow.webContents.openDevTools();
     }
 
@@ -298,6 +304,7 @@ app.on('ready', async () => {
     console.log('🚀 Démarrage Workspace Client...');
     console.log(`📍 Configuration depuis: ${MODE} (connexion-config.json)`);
     console.log(`🔗 Serveur par défaut: ${SERVER_URL}`);
+    console.log(`🌍 Environnement: ${isProduction ? 'PRODUCTION' : 'DÉVELOPPEMENT'}`);
     console.log('ℹ️  La config réelle sera chargée par le client web');
     
     // Tenter la connexion au serveur (non-bloquant)
@@ -307,7 +314,19 @@ app.on('ready', async () => {
         console.log('🔌 Mode hors-ligne: Le client démarre sans connexion serveur');
     }
     
+    // Créer la fenêtre principale
     createWindow();
+    
+    // Initialiser l'auto-updater APRÈS la création de la fenêtre (si production)
+    if (isProduction) {
+        const autoUpdater = getAutoUpdater({
+            enabled: true,
+            owner: 'SandersonnDev',
+            repo: 'Workspace'
+        });
+        autoUpdater.init(isProduction, mainWindow);
+    }
+    
     console.log('✅ Interface graphique lancée');
     console.log('✨ Application prête');
 });
@@ -679,9 +698,72 @@ ipcMain.handle('get-app-config', async () => {
         serverWsUrl: SERVER_WS_URL,
         serverConnected: serverConnected,
         serverMode: MODE,
-        nodeEnv: process.env.NODE_ENV || 'production',
+        nodeEnv: isProduction ? 'production' : 'development',
+        isProduction: isProduction,
         appVersion: app.getVersion()
     };
+});
+
+/**
+ * Vérifier manuellement les mises à jour
+ */
+ipcMain.handle('check-for-updates', async () => {
+    if (!isProduction) {
+        return { success: false, message: 'Auto-updater désactivé en développement' };
+    }
+    
+    try {
+        const autoUpdater = getAutoUpdater();
+        await autoUpdater.checkForUpdates();
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+/**
+ * Installer la mise à jour téléchargée
+ */
+ipcMain.handle('install-update', async () => {
+    if (!isProduction) {
+        return { success: false, message: 'Auto-updater désactivé en développement' };
+    }
+    
+    try {
+        const autoUpdater = getAutoUpdater();
+        await autoUpdater.installUpdate();
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+/**
+ * Obtenir les informations sur les mises à jour
+ */
+ipcMain.handle('get-update-info', async () => {
+    if (!isProduction) {
+        return {
+            enabled: false,
+            currentVersion: app.getVersion(),
+            updateAvailable: false,
+            updateDownloaded: false
+        };
+    }
+    
+    try {
+        const autoUpdater = getAutoUpdater();
+        const info = autoUpdater.getUpdateInfo();
+        return {
+            enabled: true,
+            ...info
+        };
+    } catch (error) {
+        return {
+            enabled: true,
+            error: error.message
+        };
+    }
 });
 
 /**
