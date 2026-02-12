@@ -2,6 +2,8 @@
  * SystemInfoManager - Gère l'affichage des informations système dans le footer
  */
 
+import api from '../../config/api.js';
+
 export default class SystemInfoManager {
     constructor(config = {}) {
         this.ipElementId = config.ipElementId || 'footer-ip-value';
@@ -11,9 +13,7 @@ export default class SystemInfoManager {
         this.serverElementId = config.serverElementId || 'footer-server-value';
         this.serverIconId = config.serverIconId || 'footer-server-icon';
         this.updateInterval = config.updateInterval || 5000; // 5 secondes par défaut
-        this.serverUrl = config.serverUrl || window.APP_CONFIG?.serverUrl || 'http://localhost:8060';
         this.serverErrorCount = 0;
-        this.healthEndpoint = `${this.serverUrl}/api/health`;
         
         this.intervalId = null;
         this.init();
@@ -205,7 +205,7 @@ export default class SystemInfoManager {
      */
     async fetchSystemInfo() {
         try {
-            const response = await fetch(this.healthEndpoint);
+            const response = await api.get('health');
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);

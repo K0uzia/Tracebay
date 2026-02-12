@@ -136,10 +136,10 @@ async function discoverServer(port = 8060) {
     return null;
 }
 
-// Charger la configuration serveur
+// Charger la configuration serveur centralisée
 let serverConfig = {};
 try {
-    const configPath = path.join(__dirname, 'config', 'server-config.json');
+    const configPath = path.join(__dirname, 'config', 'connection.json');
     const configData = fs.readFileSync(configPath, 'utf8');
     serverConfig = JSON.parse(configData);
     console.log('✅ Configuration serveur chargée:', serverConfig.mode);
@@ -148,16 +148,22 @@ try {
     // Fallback to default local config
     serverConfig = {
         mode: 'local',
-        local: {
-            url: 'http://localhost:8060',
-            ws: 'ws://localhost:8060'
+        environments: {
+            local: {
+                url: 'http://localhost:8060',
+                ws: 'ws://localhost:8060'
+            }
+        },
+        endpoints: {
+            health: '/api/health'
         }
     };
 }
 
 // Configuration initiale (fallback) - La vraie config vient du client web via ConnectionConfig.js
 const MODE = process.env.SERVER_MODE || serverConfig.mode || 'local';
-let currentConfig = serverConfig[MODE] || serverConfig.local;
+const environments = serverConfig.environments || {};
+let currentConfig = environments[MODE] || environments.local;
 
 // Utiliser la config locale par défaut
 if (!currentConfig || !currentConfig.url) {
@@ -166,7 +172,8 @@ if (!currentConfig || !currentConfig.url) {
 
 let SERVER_URL = currentConfig.url;
 let SERVER_WS_URL = currentConfig.ws;
-let SERVER_HEALTH_ENDPOINT = `${SERVER_URL}/api/health`;
+const healthEndpoint = serverConfig.endpoints?.health || '/api/health';
+let SERVER_HEALTH_ENDPOINT = `${SERVER_URL}${healthEndpoint}`;
 const MAX_RETRY_ATTEMPTS = 10;
 const RETRY_INTERVAL = 500;
 

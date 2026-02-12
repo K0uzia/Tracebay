@@ -3,6 +3,8 @@
  * Ping /health, gestion de reconnexion, affichage d'état
  */
 
+import api from '../../config/api.js';
+
 class ServerConnectionManager {
     constructor(config) {
         this.config = config;
@@ -45,12 +47,8 @@ class ServerConnectionManager {
             const controller = new AbortController();
             const timeout = setTimeout(() => controller.abort(), 5000);
 
-            const response = await fetch(`${this.config.url}/api/health`, {
-                method: 'GET',
-                signal: controller.signal,
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+            const response = await api.get('health', {
+                signal: controller.signal
             });
 
             clearTimeout(timeout);

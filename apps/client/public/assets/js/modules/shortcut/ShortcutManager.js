@@ -1,9 +1,11 @@
+import { getServerUrl, getEndpointUrl } from '../../config/ServerHelper.js';
+
 export default class ShortcutManager {
     constructor() {
         this.categories = [];
         this.searchQuery = '';
         this.listeners = [];
-        this.serverUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || 'http://localhost:8060';
+        this.serverUrl = getServerUrl();
     }
 
     async init() {
@@ -72,10 +74,10 @@ export default class ShortcutManager {
 
         try {
             const [categoriesRes, shortcutsRes] = await Promise.all([
-                fetch(`${this.serverUrl}/api/shortcuts/categories`, {
+                fetch(getEndpointUrl('shortcuts.categories.list'), {
                     headers: { 'Authorization': `Bearer ${token}` }
                 }),
-                fetch(`${this.serverUrl}/api/shortcuts`, {
+                fetch(getEndpointUrl('shortcuts.list'), {
                     headers: { 'Authorization': `Bearer ${token}` }
                 })
             ]);
