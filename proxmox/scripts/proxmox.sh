@@ -251,6 +251,32 @@ CREATE INDEX IF NOT EXISTS idx_shortcuts_user_id ON shortcuts(user_id);
 CREATE INDEX IF NOT EXISTS idx_shortcuts_category_id ON shortcuts(category_id);
 CREATE INDEX IF NOT EXISTS idx_lots_user_id ON lots(user_id);
 CREATE INDEX IF NOT EXISTS idx_lot_items_lot_id ON lot_items(lot_id);
+
+-- 4. Table pour le monitoring des erreurs clients Electron
+CREATE TABLE IF NOT EXISTS client_errors (
+    id SERIAL PRIMARY KEY,
+    client_id TEXT NOT NULL,
+    client_version TEXT,
+    platform TEXT,
+    error_type TEXT NOT NULL,
+    error_message TEXT NOT NULL,
+    error_stack TEXT,
+    context TEXT,
+    user_message TEXT,
+    url TEXT,
+    user_agent TEXT,
+    timestamp TIMESTAMP DEFAULT NOW(),
+    resolved BOOLEAN DEFAULT FALSE,
+    resolved_at TIMESTAMP,
+    resolved_by TEXT,
+    notes TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_client_errors_timestamp ON client_errors(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_client_errors_client_id ON client_errors(client_id);
+CREATE INDEX IF NOT EXISTS idx_client_errors_error_type ON client_errors(error_type);
+CREATE INDEX IF NOT EXISTS idx_client_errors_resolved ON client_errors(resolved);
+CREATE INDEX IF NOT EXISTS idx_client_errors_type_timestamp ON client_errors(error_type, timestamp DESC);
 SQLEOF
 }
 

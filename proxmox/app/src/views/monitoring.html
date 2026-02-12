@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitoring - Erreurs Clients</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f7fa;
+            color: #333;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card h3 {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .stat-card.error .value {
+            color: #e74c3c;
+        }
+        
+        .stat-card.warning .value {
+            color: #f39c12;
+        }
+        
+        .stat-card.success .value {
+            color: #27ae60;
+        }
+        
+        .filters {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .filters h2 {
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+        
+        .filter-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-group label {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        
+        .filter-group input,
+        .filter-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .filter-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+        
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+        
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+        
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #229954;
+        }
+        
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        
+        .errors-table-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .table-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        thead {
+            background: #f8f9fa;
+        }
+        
+        th {
+            padding: 12px;
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            color: #7f8c8d;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 12px;
+            border-top: 1px solid #eee;
+            font-size: 14px;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .badge-error {
+            background: #fee;
+            color: #c33;
+        }
+        
+        .badge-warning {
+            background: #ffeaa7;
+            color: #d63031;
+        }
+        
+        .badge-info {
+            background: #dfe6e9;
+            color: #2d3436;
+        }
+        
+        .badge-resolved {
+            background: #d5f4e6;
+            color: #27ae60;
+        }
+        
+        .badge-unresolved {
+            background: #ffeaa7;
+            color: #d63031;
+        }
+        
+        .actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+        
+        .pagination {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #eee;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            overflow-y: auto;
+        }
+        
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 20px;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 800px;
+            width: 100%;
+            margin-top: 50px;
+            margin-bottom: 50px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .modal-header h2 {
+            margin: 0;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #7f8c8d;
+        }
+        
+        .error-detail {
+            margin-bottom: 15px;
+        }
+        
+        .error-detail label {
+            display: block;
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+        }
+        
+        .error-detail .value {
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            word-break: break-word;
+        }
+        
+        .error-detail .value.stack {
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        
+        .error-message {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🔍 Monitoring - Erreurs Clients Electron</h1>
+            <p>Surveillance des erreurs des applications clientes</p>
+        </header>
+        
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <h3>Total Erreurs</h3>
+                <div class="value" id="statTotal">-</div>
+            </div>
+            <div class="stat-card error">
+                <h3>Non Résolues</h3>
+                <div class="value" id="statUnresolved">-</div>
+            </div>
+            <div class="stat-card warning">
+                <h3>Dernières 24h</h3>
+                <div class="value" id="statLast24h">-</div>
+            </div>
+            <div class="stat-card">
+                <h3>Dernières 7 jours</h3>
+                <div class="value" id="statLast7d">-</div>
+            </div>
+        </div>
+        
+        <div class="filters">
+            <h2>Filtres</h2>
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label>Statut</label>
+                    <select id="filterResolved">
+                        <option value="">Tous</option>
+                        <option value="false">Non résolues</option>
+                        <option value="true">Résolues</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Type d'erreur</label>
+                    <input type="text" id="filterErrorType" placeholder="Ex: TypeError">
+                </div>
+                <div class="filter-group">
+                    <label>Client ID</label>
+                    <input type="text" id="filterClientId" placeholder="ID du client">
+                </div>
+                <div class="filter-group">
+                    <label>Date début</label>
+                    <input type="date" id="filterStartDate">
+                </div>
+                <div class="filter-group">
+                    <label>Date fin</label>
+                    <input type="date" id="filterEndDate">
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button class="btn-primary" onclick="applyFilters()">Appliquer</button>
+                <button class="btn-secondary" onclick="resetFilters()">Réinitialiser</button>
+            </div>
+        </div>
+        
+        <div class="errors-table-container">
+            <div class="table-header">
+                <h2>Erreurs</h2>
+                <button class="btn-primary" onclick="loadErrors()">🔄 Actualiser</button>
+            </div>
+            <div id="errorsTableContainer">
+                <div class="loading">Chargement...</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal pour les détails d'erreur -->
+    <div class="modal" id="errorModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Détails de l'erreur</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="errorDetails"></div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = '/api/monitoring';
+        let currentPage = 0;
+        const pageSize = 50;
+        let currentFilters = {};
+        
+        // Récupérer le token depuis l'URL ou les cookies
+        function getAuthToken() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('token') || '';
+        }
+        
+        // Headers avec authentification
+        function getAuthHeaders() {
+            const token = getAuthToken();
+            return {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            };
+        }
+        
+        // Charger les statistiques
+        async function loadStats() {
+            try {
+                const response = await fetch(`${API_BASE}/stats`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.stats) {
+                    document.getElementById('statTotal').textContent = data.stats.total;
+                    document.getElementById('statUnresolved').textContent = data.stats.unresolved;
+                    document.getElementById('statLast24h').textContent = data.stats.last24h;
+                    document.getElementById('statLast7d').textContent = data.stats.last7d;
+                }
+            } catch (error) {
+                console.error('Erreur lors du chargement des stats:', error);
+            }
+        }
+        
+        // Charger les erreurs
+        async function loadErrors() {
+            const container = document.getElementById('errorsTableContainer');
+            container.innerHTML = '<div class="loading">Chargement...</div>';
+            
+            try {
+                const params = new URLSearchParams({
+                    limit: pageSize.toString(),
+                    offset: (currentPage * pageSize).toString(),
+                    ...currentFilters
+                });
+                
+                const response = await fetch(`${API_BASE}/errors?${params}`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success && data.data) {
+                    renderErrorsTable(data.data, data.pagination);
+                } else {
+                    throw new Error(data.error || 'Erreur inconnue');
+                }
+            } catch (error) {
+                container.innerHTML = `<div class="error-message">Erreur: ${error.message}</div>`;
+            }
+        }
+        
+        // Afficher le tableau d'erreurs
+        function renderErrorsTable(errors, pagination) {
+            const container = document.getElementById('errorsTableContainer');
+            
+            if (errors.length === 0) {
+                container.innerHTML = '<div class="loading">Aucune erreur trouvée</div>';
+                return;
+            }
+            
+            let html = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Timestamp</th>
+                            <th>Client</th>
+                            <th>Type</th>
+                            <th>Message</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            errors.forEach(error => {
+                const date = new Date(error.timestamp);
+                const dateStr = date.toLocaleString('fr-FR');
+                const badgeClass = error.resolved ? 'badge-resolved' : 'badge-unresolved';
+                const statusText = error.resolved ? 'Résolue' : 'Non résolue';
+                
+                html += `
+                    <tr>
+                        <td>${error.id}</td>
+                        <td>${dateStr}</td>
+                        <td>${error.client_id || '-'}<br><small>${error.client_version || ''}</small></td>
+                        <td><span class="badge badge-error">${error.error_type || '-'}</span></td>
+                        <td>${(error.error_message || '').substring(0, 100)}${(error.error_message || '').length > 100 ? '...' : ''}</td>
+                        <td><span class="badge ${badgeClass}">${statusText}</span></td>
+                        <td class="actions">
+                            <button class="btn-primary btn-sm" onclick="showErrorDetails(${error.id})">Voir</button>
+                            ${!error.resolved ? `<button class="btn-success btn-sm" onclick="resolveError(${error.id})">Résoudre</button>` : ''}
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                </table>
+            `;
+            
+            // Pagination
+            if (pagination && pagination.total > pageSize) {
+                html += `
+                    <div class="pagination">
+                        <div>
+                            Page ${currentPage + 1} sur ${Math.ceil(pagination.total / pageSize)}
+                            (${pagination.total} erreurs au total)
+                        </div>
+                        <div>
+                            ${currentPage > 0 ? `<button class="btn-secondary" onclick="changePage(${currentPage - 1})">Précédent</button>` : ''}
+                            ${pagination.hasMore ? `<button class="btn-secondary" onclick="changePage(${currentPage + 1})">Suivant</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+        
+        // Changer de page
+        function changePage(page) {
+            currentPage = page;
+            loadErrors();
+        }
+        
+        // Appliquer les filtres
+        function applyFilters() {
+            currentFilters = {};
+            currentPage = 0;
+            
+            const resolved = document.getElementById('filterResolved').value;
+            if (resolved) currentFilters.resolved = resolved;
+            
+            const errorType = document.getElementById('filterErrorType').value.trim();
+            if (errorType) currentFilters.errorType = errorType;
+            
+            const clientId = document.getElementById('filterClientId').value.trim();
+            if (clientId) currentFilters.clientId = clientId;
+            
+            const startDate = document.getElementById('filterStartDate').value;
+            if (startDate) currentFilters.startDate = startDate;
+            
+            const endDate = document.getElementById('filterEndDate').value;
+            if (endDate) currentFilters.endDate = endDate;
+            
+            loadErrors();
+        }
+        
+        // Réinitialiser les filtres
+        function resetFilters() {
+            document.getElementById('filterResolved').value = '';
+            document.getElementById('filterErrorType').value = '';
+            document.getElementById('filterClientId').value = '';
+            document.getElementById('filterStartDate').value = '';
+            document.getElementById('filterEndDate').value = '';
+            currentFilters = {};
+            currentPage = 0;
+            loadErrors();
+        }
+        
+        // Afficher les détails d'une erreur
+        async function showErrorDetails(errorId) {
+            try {
+                const response = await fetch(`${API_BASE}/errors?limit=1&offset=0`, {
+                    headers: getAuthHeaders()
+                });
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                const error = data.data.find(e => e.id === errorId);
+                
+                if (!error) {
+                    alert('Erreur non trouvée');
+                    return;
+                }
+                
+                const modal = document.getElementById('errorModal');
+                const details = document.getElementById('errorDetails');
+                
+                details.innerHTML = `
+                    <div class="error-detail">
+                        <label>ID</label>
+                        <div class="value">${error.id}</div>
+                    </div>
+                    <div class="error-detail">
+                        <label>Timestamp</label>
+                        <div class="value">${new Date(error.timestamp).toLocaleString('fr-FR')}</div>
+                    </div>
+                    <div class="error-detail">
+                        <label>Client ID</label>
+                        <div class="value">${error.client_id || '-'}</div>
+                    </div>
+                    <div class="error-detail">
+                        <label>Version Client</label>
+                        <div class="value">${error.client_version || '-'}</div>
+                    </div>
+                    <div class="error-detail">
+                        <label>Plateforme</label>
+                        <div class="value">${error.platform || '-'}</div>
+                    </div>
+                    <div class="error-detail">
+                        <label>Type d'erreur</label>
+                        <div class="value">${error.error_type || '-'}</div>
+                    </div>
+                    <div class="error-detail">
+                        <label>Message</label>
+                        <div class="value">${error.error_message || '-'}</div>
+                    </div>
+                    ${error.error_stack ? `
+                    <div class="error-detail">
+                        <label>Stack Trace</label>
+                        <div class="value stack">${error.error_stack}</div>
+                    </div>
+                    ` : ''}
+                    <div class="error-detail">
+                        <label>Contexte</label>
+                        <div class="value">${error.context || '-'}</div>
+                    </div>
+                    <div class="error-detail">
+                        <label>Message utilisateur</label>
+                        <div class="value">${error.user_message || '-'}</div>
+                    </div>
+                    <div class="error-detail">
+                        <label>URL</label>
+                        <div class="value">${error.url || '-'}</div>
+                    </div>
+                    <div class="error-detail">
+                        <label>User Agent</label>
+                        <div class="value">${error.user_agent || '-'}</div>
+                    </div>
+                    <div class="error-detail">
+                        <label>Statut</label>
+                        <div class="value">
+                            <span class="badge ${error.resolved ? 'badge-resolved' : 'badge-unresolved'}">
+                                ${error.resolved ? 'Résolue' : 'Non résolue'}
+                            </span>
+                        </div>
+                    </div>
+                    ${error.resolved ? `
+                    <div class="error-detail">
+                        <label>Résolue le</label>
+                        <div class="value">${error.resolved_at ? new Date(error.resolved_at).toLocaleString('fr-FR') : '-'}</div>
+                    </div>
+                    ` : ''}
+                    ${error.notes ? `
+                    <div class="error-detail">
+                        <label>Notes</label>
+                        <div class="value">${error.notes}</div>
+                    </div>
+                    ` : ''}
+                    <div style="margin-top: 20px;">
+                        ${!error.resolved ? `
+                            <button class="btn-success" onclick="resolveError(${error.id}); closeModal();">Marquer comme résolue</button>
+                        ` : `
+                            <button class="btn-secondary" onclick="unresolveError(${error.id}); closeModal();">Marquer comme non résolue</button>
+                        `}
+                    </div>
+                `;
+                
+                modal.classList.add('active');
+            } catch (error) {
+                alert(`Erreur: ${error.message}`);
+            }
+        }
+        
+        // Fermer le modal
+        function closeModal() {
+            document.getElementById('errorModal').classList.remove('active');
+        }
+        
+        // Résoudre une erreur
+        async function resolveError(errorId) {
+            try {
+                const response = await fetch(`${API_BASE}/errors/${errorId}/resolve`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ resolved: true })
+                });
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                if (data.success) {
+                    loadErrors();
+                    loadStats();
+                }
+            } catch (error) {
+                alert(`Erreur: ${error.message}`);
+            }
+        }
+        
+        // Marquer comme non résolue
+        async function unresolveError(errorId) {
+            try {
+                const response = await fetch(`${API_BASE}/errors/${errorId}/resolve`, {
+                    method: 'PATCH',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({ resolved: false })
+                });
+                
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                if (data.success) {
+                    loadErrors();
+                    loadStats();
+                }
+            } catch (error) {
+                alert(`Erreur: ${error.message}`);
+            }
+        }
+        
+        // Fermer le modal en cliquant à l'extérieur
+        document.getElementById('errorModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeModal();
+            }
+        });
+        
+        // Initialisation
+        loadStats();
+        loadErrors();
+        
+        // Actualiser toutes les 30 secondes
+        setInterval(() => {
+            loadStats();
+            loadErrors();
+        }, 30000);
+    </script>
+</body>
+</html>

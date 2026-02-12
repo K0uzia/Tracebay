@@ -4,6 +4,7 @@ import helmet from '@fastify/helmet';
 import websocket from '@fastify/websocket';
 import dotenv from 'dotenv';
 import { registerMonitoringRoutes, incrementMessageCount } from './api/monitoring';
+import { registerClientErrorsRoutes } from './api/client-errors';
 import { registerCompression } from './middleware/compression';
 import { registerRateLimit } from './middleware/rate-limit';
 import { registerMonitoring } from './middleware/monitoring';
@@ -99,6 +100,9 @@ const messageStartTime = Date.now();
 
     // Register monitoring routes
     await registerMonitoringRoutes(fastify, connectedUsers);
+    
+    // Register client errors monitoring routes
+    await registerClientErrorsRoutes(fastify);
 
     // Health check endpoint
     fastify.get('/api/health', async (request: FastifyRequest, reply: FastifyReply) => {
