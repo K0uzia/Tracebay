@@ -10,6 +10,10 @@
  */
 
 import ChatManager from './ChatManager.js';
+import api from '../../config/api.js';
+import getLogger from '../../config/Logger.js';
+const logger = getLogger();
+
 
 class ChatWidgetManager {
     constructor(options = {}) {
@@ -25,10 +29,12 @@ class ChatWidgetManager {
         this.isOpen = false;
         this.unreadCount = 0;
         this.lastReadCount = 0;  // Nombre de messages lus la dernière fois qu'on a ouvert le panel
+        this.badgeUpdateInterval = null; // Stocker l'intervalle pour le nettoyage
         
-        // Initialiser ChatManager
+        // Initialiser ChatManager avec wsUrl depuis api.js
+        const wsUrl = options.wsUrl || api.getWsUrl();
         this.chatManager = new ChatManager({
-            serverUrl: options.serverUrl || 'http://localhost:8060',
+            wsUrl: wsUrl,
             pseudoWrapperId: 'chat-widget-pseudo-area',
             pseudoDisplayId: 'chat-widget-pseudo-display',
             pseudoInputId: 'chat-widget-pseudo-input',
@@ -50,7 +56,7 @@ class ChatWidgetManager {
     init() {
         // Vérifier que les éléments existent
         if (!this.buttonElement || !this.panelElement) {
-            console.error('❌ Éléments widget introuvables');
+            logger.error('❌ Éléments widget introuvables');
             return;
         }
 
@@ -179,10 +185,26 @@ class ChatWidgetManager {
         // Le ChatManager gère déjà la synchronisation
         // On peut ajouter une logique de notification ici si besoin
         
+        // Nettoyer l'intervalle précédent s'il existe
+        if (this.badgeUpdateInterval) {
+            clearInterval(this.badgeUpdateInterval);
+        }
+        
         // Rappeler la synchro régulièrement
-        setInterval(() => {
+        this.badgeUpdateInterval = setInterval(() => {
             this.updateNotificationBadge();
         }, 1000);
+    }
+
+    /**
+     * Nettoie les ressources et arrête les timers
+     * @returns {void}
+     */
+    destroy() {
+        if (this.badgeUpdateInterval) {
+            clearInterval(this.badgeUpdateInterval);
+            this.badgeUpdateInterval = null;
+        }
     }
 
     /**
@@ -238,6 +260,17 @@ class ChatWidgetManager {
      */
     showNotification(message, type = 'info') {
         // A implementer si besoin
+    }
+
+    /**
+     * Nettoie les ressources et arrête les timers
+     * @returns {void}
+     */
+    destroy() {
+        if (this.badgeUpdateInterval) {
+            clearInterval(this.badgeUpdateInterval);
+            this.badgeUpdateInterval = null;
+        }
     }
 }
 

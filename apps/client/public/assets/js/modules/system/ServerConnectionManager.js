@@ -4,6 +4,9 @@
  */
 
 import api from '../../config/api.js';
+import getLogger from '../../config/Logger.js';
+
+const logger = getLogger();
 
 class ServerConnectionManager {
     constructor(config) {
@@ -22,7 +25,7 @@ class ServerConnectionManager {
      * Démarre la surveillance de connexion
      */
     start() {
-        console.log('🔌 ServerConnectionManager démarré');
+        logger.info('ServerConnectionManager démarré');
         this.checkConnection();
         this.pingInterval = setInterval(() => {
             this.checkConnection();
@@ -74,7 +77,7 @@ class ServerConnectionManager {
         this.reconnectAttempts = 0;
 
         if (wasDisconnected) {
-            console.log('✅ Connecté au serveur:', this.config.url);
+            logger.info(`Connecté au serveur: ${this.config.url}`, { url: this.config.url, data });
             this.notifyListeners('connected', { 
                 url: this.config.url,
                 data 
@@ -90,7 +93,7 @@ class ServerConnectionManager {
         this.isConnected = false;
 
         if (wasConnected) {
-            console.warn('❌ Déconnecté du serveur:', error.message);
+            logger.warn(`Déconnecté du serveur: ${error.message}`, { error: error.message });
             this.notifyListeners('disconnected', { 
                 error: error.message 
             });
@@ -99,13 +102,13 @@ class ServerConnectionManager {
         // Tentative de reconnexion
         if (this.reconnectAttempts < this.maxReconnectAttempts) {
             this.reconnectAttempts++;
-            console.log(`🔄 Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+            logger.info(`Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
             
             setTimeout(() => {
                 this.checkConnection();
             }, this.reconnectDelay);
         } else {
-            console.error('❌ Échec de reconnexion après', this.maxReconnectAttempts, 'tentatives');
+            logger.error(`Échec de reconnexion après ${this.maxReconnectAttempts} tentatives`);
             this.notifyListeners('failed', { 
                 error: 'Max reconnection attempts reached' 
             });
@@ -127,7 +130,7 @@ class ServerConnectionManager {
             try {
                 callback(status, data);
             } catch (error) {
-                console.error('Erreur listener:', error);
+                logger.error('Erreur listener', error);
             }
         });
     }

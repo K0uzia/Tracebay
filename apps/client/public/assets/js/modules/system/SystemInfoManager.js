@@ -3,6 +3,15 @@
  */
 
 import api from '../../config/api.js';
+import getLogger from '../../config/Logger.js';
+const logger = getLogger();
+
+
+/**
+ * @fileoverview Gestionnaire d'informations système
+ * Affiche les informations système locales et serveur
+ * @module SystemInfoManager
+ */
 
 export default class SystemInfoManager {
     constructor(config = {}) {
@@ -49,7 +58,7 @@ export default class SystemInfoManager {
                 try {
                     systemInfo = await window.ipcRenderer.invoke('get-system-info');
                 } catch (err) {
-                    console.warn('Impossible d\'obtenir les infos système locales:', err);
+                    logger.warn('Impossible d\'obtenir les infos système locales:', err);
                 }
             }
 
@@ -62,7 +71,7 @@ export default class SystemInfoManager {
                         ipElement.textContent = localIp;
                     }
                 } catch (err) {
-                    console.warn('Impossible d\'obtenir l\'IP locale:', err);
+                    logger.warn('Impossible d\'obtenir l\'IP locale:', err);
                 }
             }
             
@@ -152,7 +161,7 @@ export default class SystemInfoManager {
                 }
             }
         } catch (error) {
-            console.error('❌ Erreur récupération infos locales:', error);
+            logger.error('❌ Erreur récupération infos locales:', error);
         }
     }
     /**
@@ -196,12 +205,25 @@ export default class SystemInfoManager {
                 ipElement.style.color = originalColor;
             }, 1000);
         } catch (error) {
-            console.error('❌ Erreur copie IP:', error);
+            logger.error('❌ Erreur copie IP:', error);
         }
     }
 
     /**
-     * Récupérer les informations système depuis l'API
+     * Arrête le polling et nettoie les ressources
+     * @returns {void}
+     */
+    destroy() {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+    }
+
+    /**
+     * Récupère les informations système depuis l'API
+     * @async
+     * @returns {Promise<void>}
      */
     async fetchSystemInfo() {
         try {
@@ -223,13 +245,13 @@ export default class SystemInfoManager {
             this.serverErrorCount += 1;
             this.showOffline();
             if (this.serverErrorCount === 1 || this.serverErrorCount % 5 === 0) {
-                console.warn(`⚠️  Impossible de joindre /api/health (${this.serverErrorCount} tentative${this.serverErrorCount > 1 ? 's' : ''})`);
+                logger.warn(`⚠️  Impossible de joindre /api/health (${this.serverErrorCount} tentative${this.serverErrorCount > 1 ? 's' : ''})`);
             }
             // Après plusieurs échecs, arrêter le polling pour éviter le spam
             if (this.serverErrorCount >= 10 && this.intervalId) {
                 clearInterval(this.intervalId);
                 this.intervalId = null;
-                console.warn('⏸️ Arrêt du polling /api/health après 10 échecs');
+                logger.warn('⏸️ Arrêt du polling /api/health après 10 échecs');
             }
         }
     }

@@ -3,6 +3,9 @@
  */
 
 import appConfig from '../../config/AppConfig.js';
+import getLogger from '../../config/Logger.js';
+const logger = getLogger();
+
 
 export default class AppManager {
     constructor(options = {}) {
@@ -22,8 +25,8 @@ export default class AppManager {
             return;
         }
 
-        console.log('✅ AppManager init:', this.config?.apps?.length, 'apps');
-        this.render().catch(err => console.error('Erreur render:', err));
+        logger.debug('✅ AppManager init:', this.config?.apps?.length, 'apps');
+        this.render().catch(err => logger.error('Erreur render:', err););
     }
 
     async render() {
@@ -68,7 +71,7 @@ export default class AppManager {
                             iconElement.appendChild(icon);
                         };
                         iconElement.appendChild(img);
-                        console.log('✅ Icône chargée:', app.name, result.icon);
+                        logger.debug('✅ Icône chargée:', app.name, result.icon);
                     } else {
                         // Fallback vers Font Awesome
                         const icon = document.createElement('i');
@@ -76,7 +79,7 @@ export default class AppManager {
                         iconElement.appendChild(icon);
                     }
                 } catch (error) {
-                    console.warn('⚠️ Erreur chargement icône:', app.command, error.message);
+                    logger.warn('⚠️ Erreur chargement icône:', app.command, error.message);
                     const icon = document.createElement('i');
                     icon.className = `fa-solid ${app.icon || 'fa-rocket'}`;
                     iconElement.appendChild(icon);
@@ -105,7 +108,7 @@ export default class AppManager {
 
     async launchApp(btn, app) {
         if (this.isLaunching) {
-            console.log('⏳ Lancement en cours');
+            logger.debug('⏳ Lancement en cours');
             return;
         }
 
@@ -121,7 +124,7 @@ export default class AppManager {
             if (app.requiresInput) {
                 const userInput = await this.promptUserInput(app);
                 if (!userInput) {
-                    console.log('❌ Lancement annulé');
+                    logger.debug('❌ Lancement annulé');
                     return;
                 }
                 args.push(userInput);
@@ -134,13 +137,13 @@ export default class AppManager {
                 });
 
                 if (result?.success) {
-                    console.log('✅ Application lancée:', app.name);
+                    logger.debug('✅ Application lancée:', app.name);
                 } else {
-                    console.error('❌ Échec lancement:', result?.error);
+                    logger.error('❌ Échec lancement:', result?.error);
                 }
             }
         } catch (error) {
-            console.error('Erreur lancement:', error.message);
+            logger.error('Erreur lancement:', error.message);
         } finally {
             btn.disabled = false;
             btn.classList.remove('is-loading');

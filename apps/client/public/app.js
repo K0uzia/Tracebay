@@ -27,6 +27,16 @@ class PageManager {
         const apiModule = await import('./assets/js/config/api.js');
         await apiModule.default.init();
         
+        // Initialiser le Logger
+        const loggerModule = await import('./assets/js/config/Logger.js');
+        this.logger = loggerModule.default();
+        window.logger = this.logger; // Exposer globalement
+        
+        // Initialiser le logger avec la config de l'app (pour détecter production)
+        if (typeof this.logger.initializeFromAppConfig === 'function') {
+            await this.logger.initializeFromAppConfig();
+        }
+        
         // Initialiser la configuration de connexion
         const module = await import('./assets/js/config/ConnectionConfig.js');
         const ConnectionConfig = module.default;
@@ -38,8 +48,8 @@ class PageManager {
         this.serverWsUrl = this.connectionConfig.getServerWsUrl();
         this.serverConnected = this.connectionConfig.serverConnected;
         
-        console.log(`📡 Serveur: ${this.serverUrl}`);
-        console.log(`🔌 WebSocket: ${this.serverWsUrl}`);
+        this.logger.info(`Serveur: ${this.serverUrl}`);
+        this.logger.info(`WebSocket: ${this.serverWsUrl}`);
 
         // Exposer l'instance App globalement
         window.app = this;
@@ -51,10 +61,28 @@ class PageManager {
         await this.loadComponent('header', './components/header.html', () => this.initializeAuth());
         await this.loadComponent('footer', './components/footer.html', () => this.initializeSystemInfo());
         
+        // Initialiser le gestionnaire de notifications de mise à jour
+        await this.initializeUpdateNotifier();
+        
         // Charger la page sauvegardée ou home
         const lastPage = this.getLastPage();
         const pageToLoad = lastPage && this.pagesConfig[lastPage] ? lastPage : 'home';
         this.loadPage(pageToLoad);
+    }
+
+    async initializeUpdateNotifier() {
+        try {
+            if (typeof window !== 'undefined' && window.electron) {
+                const config = await window.electron.invoke('get-app-config');
+                if (config && config.isProduction) {
+                    const UpdateNotifierModule = await import('./assets/js/modules/system/UpdateNotifier.js');
+                    window.updateNotifier = new UpdateNotifierModule.default();
+                    this.logger.info('UpdateNotifier initialisé');
+                }
+            }
+        } catch (error) {
+            this.logger.warn('Impossible d\'initialiser UpdateNotifier:', error);
+        }
     }
 
     async initializeServerConnection() {
@@ -74,16 +102,16 @@ class PageManager {
             });
 
             this.serverConnectionManager.onStatusChange((status, data) => {
-                console.log(`📡 Statut serveur: ${status}`, data);
+                this.logger.debug(`Statut serveur: ${status}`, data);
                 this.serverConnected = (status === 'connected');
                 window.APP_CONFIG.serverConnected = this.serverConnected;
                 this.updateServerStatus(status, data);
             });
 
             this.serverConnectionManager.start();
-            console.log('✅ ServerConnectionManager initialisé');
+            this.logger.info('ServerConnectionManager initialisé');
         } catch (error) {
-            console.error('❌ Erreur init ServerConnectionManager:', error);
+            this.logger.error('Erreur init ServerConnectionManager', error);
         }
     }
 
@@ -119,7 +147,7 @@ class PageManager {
             this.authManager = new AuthManager();
             
             this.authManager.on('auth-change', (user) => {
-                console.log('🔄 Auth change event:', user);
+                this.logger.debug('Auth change event', { user: user?.username });
                 this.updateProfileUI(user);
                 // Mettre à jour les récents pour le nouvel utilisateur
                 if (this.recentItemsManager) {
@@ -132,14 +160,14 @@ class PageManager {
             // Attendre que le DOM soit complètement chargé
             setTimeout(() => {
                 const currentUser = this.authManager.getCurrentUser();
-                console.log('👤 Current user at init:', currentUser);
+                this.logger.debug('Current user at init', { user: currentUser?.username });
                 this.updateProfileUI(currentUser);
             }, 100);
             
             this.attachListeners();
             this.attachProfileListeners();
         } catch (error) {
-            console.error('❌ Erreur import AuthManager:', error);
+            this.logger.error('Erreur import AuthManager', error);
         }
     }
 
@@ -151,7 +179,7 @@ class PageManager {
             document.getElementById('authModalContainer').innerHTML = html;
             this.attachAuthModalListeners();
         } catch (error) {
-            console.error('❌ Erreur chargement auth modal:', error);
+            this.logger.error('Erreur chargement auth modal', error);
         }
     }
 
@@ -236,30 +264,24 @@ class PageManager {
         const profileUser = document.getElementById('profileUser');
         const profileUsername = document.getElementById('profileUsername');
 
-        console.log('🎨 updateProfileUI called:', { 
-            user, 
+        this.logger.debug('updateProfileUI called', { 
+            user: user?.username, 
             profileAuth: !!profileAuth, 
-            profileUser: !!profileUser,
-            profileAuthClasses: profileAuth?.className,
-            profileUserClasses: profileUser?.className
+            profileUser: !!profileUser
         });
 
         if (!profileAuth || !profileUser || !profileUsername) {
-            console.warn('⚠️ Profile elements not found');
+            this.logger.warn('Profile elements not found');
             return;
         }
 
         if (user) {
-            console.log('✅ Showing user profile for:', user.username);
+            this.logger.debug(`Showing user profile for: ${user.username}`);
             profileAuth.style.display = 'none';
             profileUser.style.display = 'flex';
             profileUsername.textContent = user.username;
-            console.log('After update:', {
-                profileAuthDisplay: profileAuth.style.display,
-                profileUserDisplay: profileUser.style.display
-            });
         } else {
-            console.log('❌ Showing login buttons');
+            this.logger.debug('Showing login buttons');
             profileAuth.style.display = 'flex';
             profileUser.style.display = 'none';
             profileUsername.textContent = '';
@@ -331,7 +353,7 @@ class PageManager {
         try {
             return localStorage.getItem(this.storageKey);
         } catch (error) {
-            console.warn('⚠️ Impossible d\'accéder au localStorage:', error);
+            logger.warn('⚠️ Impossible d\'accéder au localStorage:', error);
             return null;
         }
     }
@@ -340,7 +362,7 @@ class PageManager {
         try {
             localStorage.setItem(this.storageKey, pageName);
         } catch (error) {
-            console.warn('⚠️ Impossible de sauvegarder la page:', error);
+            logger.warn('⚠️ Impossible de sauvegarder la page:', error);
         }
     }
 
@@ -358,14 +380,14 @@ class PageManager {
                         window.recentItemsManager.trackPageVisit(pageName);
                     })
                     .catch(error => {
-                        console.error('❌ Erreur import RecentItemsManager:', error);
+                        logger.error('❌ Erreur import RecentItemsManager:', error);
                     });
             } else {
                 // Tracker la visite si le gestionnaire existe
                 window.recentItemsManager.trackPageVisit(pageName);
             }
         } catch (error) {
-            console.warn('⚠️ Impossible de tracker la visite:', error);
+            logger.warn('⚠️ Impossible de tracker la visite:', error);
         }
     }
 
@@ -373,13 +395,13 @@ class PageManager {
         try {
             const element = document.getElementById(elementId);
             if (!element) {
-                console.error(`❌ Element ${elementId} not found`);
+                logger.error(`❌ Element ${elementId} not found`);
                 return;
             }
             element.innerHTML = html;
             if (onLoad) onLoad();
         } catch (error) {
-            console.error(`❌ Erreur chargement ${elementId}:`, error);
+            logger.error(`❌ Erreur chargement ${elementId}:`, error);
         }
     }
 
@@ -391,7 +413,7 @@ class PageManager {
             document.getElementById(elementId).innerHTML = html;
             if (onLoad) onLoad();
         } catch (error) {
-            console.error(`❌ Erreur chargement ${elementId}:`, error);
+            logger.error(`❌ Erreur chargement ${elementId}:`, error);
         }
     }
 
@@ -410,7 +432,7 @@ class PageManager {
                 });
             })
             .catch(error => {
-                console.error('❌ Erreur import SystemInfoManager:', error);
+                logger.error('❌ Erreur import SystemInfoManager:', error);
             });
     }
 
@@ -468,7 +490,7 @@ class PageManager {
             this.initializeFileManagers();
             this.initializeAppManagers();
         } catch (error) {
-            console.error(`❌ Erreur lors du chargement de ${pageName}:`, error);
+            logger.error(`❌ Erreur lors du chargement de ${pageName}:`, error);
             this.showError(pageName);
         }
     }
@@ -510,7 +532,7 @@ class PageManager {
                     });
                 })
                 .catch(error => {
-                    console.error('❌ Erreur import TimeManager:', error);
+                    logger.error('❌ Erreur import TimeManager:', error);
                 });
         } else {
             if (window.timeManager) {
@@ -545,7 +567,7 @@ class PageManager {
                     securityConfig: securityConfig
                 });
             }).catch(error => {
-                console.error('❌ Erreur import ChatManager:', error);
+                logger.error('❌ Erreur import ChatManager:', error);
             });
         }
     }
@@ -567,20 +589,20 @@ class PageManager {
                 // Initialiser le gestionnaire des éléments récents
                 if (!window.recentItemsManager) {
                     window.recentItemsManager = new RecentItemsManager({ maxItems: 5 });
-                    console.log('✅ RecentItemsManager créé');
+                    logger.debug('✅ RecentItemsManager créé');
                 } else {
-                    console.log('♻️ RecentItemsManager réutilisé');
+                    logger.debug('♻️ RecentItemsManager réutilisé');
                 }
                 
                 // Afficher les éléments récents après un court délai pour laisser le DOM se stabiliser
                 requestAnimationFrame(() => {
                     if (window.recentItemsManager) {
                         window.recentItemsManager.display();
-                        console.log('✅ RecentItemsManager affiché');
+                        logger.debug('✅ RecentItemsManager affiché');
                     }
                 });
             }).catch(error => {
-                console.error('❌ Erreur import modules home:', error);
+                logger.error('❌ Erreur import modules home:', error);
             });
 
             import('./assets/js/modules/agenda/AgendaStore.js')
@@ -589,7 +611,7 @@ class PageManager {
                     this.loadTodayEvents(AgendaStore);
                 })
                 .catch(error => {
-                    console.error('❌ Erreur import AgendaStore:', error);
+                    logger.error('❌ Erreur import AgendaStore:', error);
                 });
         } else if (pageName === 'agenda') {
             import('./assets/js/modules/agenda/AgendaInit.js')
@@ -600,7 +622,7 @@ class PageManager {
                     });
                 })
                 .catch(error => {
-                    console.error('❌ Erreur import AgendaInit:', error);
+                    logger.error('❌ Erreur import AgendaInit:', error);
                 });
         } else if (pageName === 'shortcut') {
             import('./assets/js/modules/shortcut/ShortcutManager.js')
@@ -613,12 +635,12 @@ class PageManager {
                     await window.shortcutManager.init();
                 })
                 .catch(error => {
-                    console.error('❌ Erreur import ShortcutManager:', error);
+                    logger.error('❌ Erreur import ShortcutManager:', error);
                 });
         } else if (pageName === 'entrer') {
             // Empêcher la double initialisation
             if (window.gestionLotsManagerInitializing) {
-                console.log('⏳ GestionLotsManager déjà en cours d\'initialisation, skip');
+                logger.debug('⏳ GestionLotsManager déjà en cours d\'initialisation, skip');
                 return;
             }
             
@@ -626,7 +648,7 @@ class PageManager {
             if (window.gestionLotsManager) {
                 window.gestionLotsManager.destroy();
                 window.gestionLotsManager = null;
-                console.log('ℹ️ Ancien GestionLotsManager détruit');
+                logger.debug('ℹ️ Ancien GestionLotsManager détruit');
             }
             
             // Marquer comme en cours d'initialisation
@@ -637,14 +659,14 @@ class PageManager {
                 .then(module => {
                     const GestionLotsManager = module.default;
                     window.gestionLotsManager = new GestionLotsManager(window.modalManager);
-                    console.log('✅ GestionLotsManager initialisé depuis app.js');
+                    logger.debug('✅ GestionLotsManager initialisé depuis app.js');
                     // Libérer le flag après un court délai
                     setTimeout(() => {
                         window.gestionLotsManagerInitializing = false;
                     }, 500);
                 })
                 .catch(error => {
-                    console.error('❌ Erreur import GestionLotsManager:', error);
+                    logger.error('❌ Erreur import GestionLotsManager:', error);
                     window.gestionLotsManagerInitializing = false;
                 });
         } else if (pageName === 'inventaire') {
@@ -659,10 +681,10 @@ class PageManager {
                 .then(module => {
                     const InventaireManager = module.default;
                     window.inventaireManager = new InventaireManager(window.modalManager);
-                    console.log('✅ InventaireManager initialisé depuis app.js');
+                    logger.debug('✅ InventaireManager initialisé depuis app.js');
                 })
                 .catch(error => {
-                    console.error('❌ Erreur import InventaireManager:', error);
+                    logger.error('❌ Erreur import InventaireManager:', error);
                 });
         } else if (pageName === 'historique') {
             // Détruire l'ancien manager s'il existe
@@ -676,10 +698,10 @@ class PageManager {
                 .then(module => {
                     const HistoriqueManager = module.default;
                     window.historiqueManager = new HistoriqueManager(window.modalManager);
-                    console.log('✅ HistoriqueManager initialisé depuis app.js');
+                    logger.debug('✅ HistoriqueManager initialisé depuis app.js');
                 })
                 .catch(error => {
-                    console.error('❌ Erreur import HistoriqueManager:', error);
+                    logger.error('❌ Erreur import HistoriqueManager:', error);
                 });
         } else if (pageName === 'tracabiliter') {
             // Détruire l'ancien manager s'il existe
@@ -693,10 +715,10 @@ class PageManager {
                 .then(module => {
                     const TracabiliteManager = module.default;
                     window.tracabiliteManager = new TracabiliteManager(window.modalManager);
-                    console.log('✅ TracabiliteManager initialisé depuis app.js');
+                    logger.debug('✅ TracabiliteManager initialisé depuis app.js');
                 })
                 .catch(error => {
-                    console.error('❌ Erreur import TracabiliteManager:', error);
+                    logger.error('❌ Erreur import TracabiliteManager:', error);
                 });
         }
     }
@@ -735,7 +757,7 @@ class PageManager {
                 window.folderManagers.push(manager);
             });
         } catch (error) {
-            console.error('❌ Erreur initialisation FileManagers:', error);
+            logger.error('❌ Erreur initialisation FileManagers:', error);
         }
     }
 
@@ -757,7 +779,7 @@ class PageManager {
 
             appContainers.forEach(container => {
                 const preset = container.dataset.app?.toLowerCase();
-                console.log('🔧 Initialisation AppManager:', preset, container);
+                logger.debug('🔧 Initialisation AppManager:', preset, container);
                 const manager = new AppManager({
                     scope: container,
                     preset: preset
@@ -765,7 +787,7 @@ class PageManager {
                 window.appManagers.push(manager);
             });
         } catch (error) {
-            console.error('❌ Erreur initialisation AppManagers:', error);
+            logger.error('❌ Erreur initialisation AppManagers:', error);
         }
     }
 
@@ -818,7 +840,7 @@ class PageManager {
                 }
             }
         } catch (error) {
-            console.error('❌ Erreur chargement événements du jour:', error);
+            logger.error('❌ Erreur chargement événements du jour:', error);
             const calendarContent = document.querySelector('.calendar-content');
             if (calendarContent) {
                 calendarContent.innerHTML = '<p class="home-event-item-empty">Erreur lors du chargement des événements</p>';
@@ -840,7 +862,7 @@ class PageManager {
         const config = this.pagesConfig[pageName];
         
         if (!config) {
-            console.warn(`⚠️ Configuration manquante pour : ${pageName}`);
+            logger.warn(`⚠️ Configuration manquante pour : ${pageName}`);
             return;
         }
         
