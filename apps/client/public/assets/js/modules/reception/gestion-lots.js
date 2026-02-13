@@ -59,18 +59,36 @@ export default class GestionLotsManager {
             const marquesRes = await api.get('marques.list');
             if (!marquesRes.ok) throw new Error('Erreur chargement marques');
             const marquesData = await marquesRes.json();
-            this.marques = marquesData.items || [];
+            // Gérer les deux formats : tableau direct ou avec wrapper
+            this.marques = Array.isArray(marquesData) ? marquesData : (marquesData.items || marquesData.marques || []);
+            logger.debug('Marques chargées:', this.marques);
             
-            // Charger tous les modèles
+            // Charger tous les modèles avec leurs marques
             const modelesRes = await api.get('marques.all');
             if (!modelesRes.ok) {
                 // Endpoint alternatif si /all n'existe pas
                 throw new Error('Endpoint modèles non trouvé');
             }
             const modelesData = await modelesRes.json();
-            this.modeles = modelesData.items || [];
+            
+            // Parser la structure imbriquée : [{id, name, modeles: [{id, name}]}]
+            // Pour créer un tableau plat avec marque_id
+            const marquesAvecModeles = Array.isArray(modelesData) ? modelesData : (modelesData.items || []);
+            this.modeles = [];
+            marquesAvecModeles.forEach(marque => {
+                if (marque.modeles && Array.isArray(marque.modeles)) {
+                    marque.modeles.forEach(modele => {
+                        this.modeles.push({
+                            id: modele.id,
+                            name: modele.name,
+                            marque_id: marque.id
+                        });
+                    });
+                }
+            });
             
             logger.debug('📦 Données chargées:', this.marques.length, 'marques', this.modeles.length, 'modèles');
+            logger.debug('Modèles avec marque_id:', this.modeles);
             
             // Remplir les selects de marques
             this.updateMarqueSelects();
@@ -121,7 +139,12 @@ export default class GestionLotsManager {
      * Mettre à jour les modèles basé sur la marque sélectionnée
      */
     updateModeleSelect(marqueId, selectElement) {
+        if (!marqueId || !selectElement) return;
+        
+        logger.debug('Filtrage modèles pour marque:', { marqueId, totalModeles: this.modeles.length });
         const filteredModeles = this.modeles.filter(m => m.marque_id == marqueId);
+        logger.debug('Modèles filtrés:', { count: filteredModeles.length, modeles: filteredModeles });
+        
         selectElement.innerHTML = '<option value="">-- Sélectionner un modèle --</option>';
         filteredModeles.forEach(modele => {
             const option = document.createElement('option');
@@ -129,6 +152,10 @@ export default class GestionLotsManager {
             option.textContent = modele.name;
             selectElement.appendChild(option);
         });
+        
+        if (filteredModeles.length === 0) {
+            logger.warn('Aucun modèle trouvé pour la marque:', marqueId);
+        }
     }
 
     /**
@@ -183,8 +210,16 @@ export default class GestionLotsManager {
                     const row = e.target.closest('tr');
                     if (row) {
                         const modeleSelect = row.querySelector('select[name="modele"]');
-                        if (modeleSelect && e.target.value) {
-                            this.updateModeleSelect(e.target.value, modeleSelect);
+                        const selectedMarqueId = e.target.value;
+                        if (modeleSelect) {
+                            if (selectedMarqueId) {
+                                logger.debug('Marque changée dans ligne existante:', selectedMarqueId);
+                                this.updateModeleSelect(selectedMarqueId, modeleSelect);
+                            } else {
+                                // Aucune marque sélectionnée, vider le select de modèles
+                                modeleSelect.innerHTML = '<option value="">Modèle...</option>';
+                                modeleSelect.value = '';
+                            }
                         }
                     }
                 }
@@ -344,7 +379,7 @@ export default class GestionLotsManager {
             <td>
                 <select name="modele" required>
                     <option value="">Modèle...</option>
-                    ${this.modeles.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
+                    <!-- Les modèles seront remplis dynamiquement selon la marque sélectionnée -->
                 </select>
             </td>
             <td>
@@ -368,10 +403,14 @@ export default class GestionLotsManager {
         // Événement changement de marque - FILTRE LES MODÈLES
         if (marqueSelect) {
             marqueSelect.addEventListener('change', (e) => {
-                if (e.target.value) {
-                    this.updateModeleSelect(e.target.value, modeleSelect);
+                const selectedMarqueId = e.target.value;
+                if (selectedMarqueId) {
+                    logger.debug('Marque sélectionnée dans ligne:', selectedMarqueId);
+                    this.updateModeleSelect(selectedMarqueId, modeleSelect);
                 } else {
+                    // Aucune marque sélectionnée, vider le select de modèles
                     modeleSelect.innerHTML = '<option value="">Modèle...</option>';
+                    modeleSelect.value = '';
                 }
             });
         }
@@ -454,8 +493,16 @@ export default class GestionLotsManager {
             // Générer le PDF du lot
             setTimeout(async () => {
                 try {
-                    const endpoint = `lots.pdf`.replace(':id', lotId);
-                    const pdfResponse = await api.post(endpoint);
+                    const serverUrl = api.getServerUrl();
+                    const endpointPath = '/api/lots/:id/pdf'.replace(':id', lotId);
+                    const fullUrl = `${serverUrl}${endpointPath}`;
+                    const pdfResponse = await fetch(fullUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                        }
+                    });
                     if (pdfResponse.ok) {
                         logger.debug('✅ PDF généré');
                     }
@@ -546,7 +593,10 @@ export default class GestionLotsManager {
             this.showNotification(`Marque "${newMarque}" ajoutée`, 'success');
             this.modalManager.close('modal-add-marque');
             input.value = '';
-            this.updateMarqueSelects();
+            
+            // Recharger les données de référence depuis l'API pour avoir la nouvelle marque
+            await this.loadReferenceData();
+            this.populateMassSelects();
         } catch (error) {
             logger.error('❌ Erreur ajout marque:', error);
             this.showNotification('Erreur lors de l\'ajout de la marque', 'error');
@@ -571,13 +621,36 @@ export default class GestionLotsManager {
         const newModele = inputModele.value.trim();
 
         try {
-            // Appel API réel
-            const endpoint = `marques.modeles`.replace(':id', marqueId);
-            const response = await api.post(endpoint, { name: newModele });
+            // Appel API réel - construire l'URL complète avec l'ID remplacé
+            const serverUrl = api.getServerUrl();
+            const endpointPath = '/api/marques/:id/modeles'.replace(':id', marqueId);
+            const fullUrl = `${serverUrl}${endpointPath}`;
             
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            logger.debug('Ajout modèle:', { marqueId, newModele, fullUrl });
+            
+            const response = await fetch(fullUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                },
+                body: JSON.stringify({ name: newModele })
+            });
+            
+            if (!response.ok) {
+                let errorMessage = `Erreur ${response.status}`;
+                try {
+                    const errorData = await response.json();
+                    logger.error('Erreur serveur:', errorData);
+                    errorMessage = errorData.message || errorData.error || errorMessage;
+                } catch (e) {
+                    errorMessage = `Erreur ${response.status}: ${response.statusText}`;
+                }
+                throw new Error(errorMessage);
+            }
             
             const data = await response.json();
+            logger.debug('Modèle ajouté:', data);
             
             // Ajouter à la liste locale
             this.modeles.push({
@@ -590,6 +663,9 @@ export default class GestionLotsManager {
             this.modalManager.close('modal-add-modele');
             inputModele.value = '';
             selectMarque.value = '';
+            
+            // Recharger les données de référence depuis l'API pour avoir le nouveau modèle
+            await this.loadReferenceData();
             this.populateMassSelects();
             
         } catch (error) {

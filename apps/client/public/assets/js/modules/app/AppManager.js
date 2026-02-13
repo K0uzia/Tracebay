@@ -26,7 +26,7 @@ export default class AppManager {
         }
 
         logger.debug('✅ AppManager init:', this.config?.apps?.length, 'apps');
-        this.render().catch(err => logger.error('Erreur render:', err););
+        this.render().catch(err => logger.error('Erreur render:', err));
     }
 
     async render() {

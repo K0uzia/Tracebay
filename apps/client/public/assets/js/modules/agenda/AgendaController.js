@@ -82,7 +82,7 @@ export default class AgendaController {
                 } else if (this.currentView === 'year') {
                     this.currentDate.setFullYear(this.currentDate.getFullYear() + delta);
                 }
-                this.renderCalendar().catch(err => logger.error('❌ Erreur rendu:', err););
+                this.renderCalendar().catch(err => logger.error('❌ Erreur rendu:', err));
             };
             this.addListener(btn, 'click', handler);
         });
@@ -102,7 +102,7 @@ export default class AgendaController {
                 document.querySelectorAll('.calendar-view-btn').forEach(b => b.classList.remove('is-active'));
                 btn.classList.add('is-active');
                 this.currentView = btn.getAttribute('data-calendar-view');
-                this.renderCalendar().catch(err => logger.error('❌ Erreur rendu:', err););
+                this.renderCalendar().catch(err => logger.error('❌ Erreur rendu:', err));
             };
             this.addListener(btn, 'click', handler);
         });

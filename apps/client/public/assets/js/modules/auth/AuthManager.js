@@ -36,12 +36,20 @@ class AuthManager {
         const username = localStorage.getItem('workspace_username');
         const token = localStorage.getItem(this.tokenKey);
 
+        logger.debug('AuthManager init:', { hasUserId: !!userId, hasUsername: !!username, hasToken: !!token });
+
         if (userId && username && token) {
             this.user = {
                 id: parseInt(userId),
                 username: username
             };
-            this.verifySession(token);
+            logger.debug('Session trouvée, vérification...', { userId: this.user.id, username: this.user.username });
+            // Ne pas bloquer l'initialisation si la vérification échoue (erreur réseau)
+            this.verifySession(token).catch(err => {
+                logger.warn('Erreur vérification session (non bloquante):', err);
+            });
+        } else {
+            logger.debug('Aucune session trouvée');
         }
     }
 
@@ -60,16 +68,46 @@ class AuthManager {
                 }
             });
 
-            const data = await response.json();
+            if (!response.ok) {
+                // Si erreur 401 (non autorisé), déconnecter
+                if (response.status === 401) {
+                    logger.warn('Session expirée, déconnexion');
+                    this.clearSession();
+                } else {
+                    // Autres erreurs : garder la session mais logger l'erreur
+                    logger.warn('Erreur vérification session (non critique):', response.status);
+                }
+                return;
+            }
 
-            if (!data.success) {
+            const data = await response.json();
+            logger.debug('Réponse vérification session:', data);
+
+            // Le serveur peut retourner success: false même si le token est valide
+            // Vérifier aussi si on a des informations utilisateur
+            if (data.success === false && !data.user && !data.id) {
+                logger.warn('Session invalide (success=false et pas de user), déconnexion');
                 this.clearSession();
+            } else if (data.success === false && (data.user || data.id)) {
+                // Le serveur dit success=false mais retourne des infos utilisateur
+                // C'est peut-être juste un format de réponse différent
+                logger.debug('Session valide malgré success=false, conservation de la session');
+                this.emit('auth-change', this.user);
+            } else if (data.success !== false) {
+                this.emit('auth-change', this.user);
             } else {
+                // Par défaut, conserver la session si on a un token valide
+                logger.debug('Conservation de la session par défaut');
                 this.emit('auth-change', this.user);
             }
         } catch (error) {
-            errorHandler.handleApiError(error, 'vérification session');
-            this.clearSession();
+            // En cas d'erreur réseau, ne pas déconnecter l'utilisateur
+            // Le token pourrait être valide mais le serveur temporairement inaccessible
+            logger.warn('Erreur réseau lors de la vérification de session (non critique):', error.message);
+            // Garder la session active si le token existe toujours
+            if (this.user && token) {
+                this.emit('auth-change', this.user);
+            }
         }
     }
 
