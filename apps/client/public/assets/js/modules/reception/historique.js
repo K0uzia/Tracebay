@@ -146,8 +146,16 @@ export default class HistoriqueManager {
         const recoveryBadgeText = isRecovered 
             ? `Récupéré le ${this.formatDateTime(lot.recovered_at)}` 
             : 'À récupérer';
-        const recoveryButtonClass = isRecovered ? 'btn-recovered' : 'btn-to-recover';
-        const recoveryButtonText = isRecovered ? '✓ Récupéré' : 'Récupérer';
+        
+        // Vérifier si le lot peut être récupéré (tous les items doivent avoir un état et un technicien)
+        const items = Array.isArray(lot.items) ? lot.items : [];
+        const canRecover = items.length > 0 && items.every(item => 
+            item.state && item.state.trim() !== '' && 
+            item.technician && item.technician.trim() !== ''
+        );
+        const recoveryButtonClass = isRecovered ? 'btn-recovered' : (canRecover ? 'btn-to-recover' : 'btn-to-recover disabled');
+        const recoveryButtonText = isRecovered ? '✓ Récupéré' : (canRecover ? 'Récupérer' : 'Récupérer (incomplet)');
+        const recoveryButtonDisabled = isRecovered || !canRecover;
 
         return `
             <div class="historique-lot-card" data-lot-id="${lot.id}">
@@ -180,7 +188,7 @@ export default class HistoriqueManager {
                         <button type="button" class="btn-edit-items" data-lot-id="${lot.id}">
                             <i class="fa-solid fa-list-check"></i> Éditer matériel
                         </button>
-                        <button type="button" class="${recoveryButtonClass}" data-lot-id="${lot.id}" ${isRecovered ? 'disabled' : ''}>
+                        <button type="button" class="${recoveryButtonClass}" data-lot-id="${lot.id}" ${recoveryButtonDisabled ? 'disabled' : ''} title="${!canRecover && !isRecovered ? 'Tous les items doivent avoir un état et un technicien' : ''}">
                             ${recoveryButtonText}
                         </button>
                     </div>
@@ -490,7 +498,7 @@ export default class HistoriqueManager {
         const itemsContainer = document.getElementById('modal-edit-items-body');
         if (itemsContainer) {
             itemsContainer.innerHTML = items.map((item, idx) => {
-                const itemState = item.state || 'Reconditionnés';
+                const itemState = item.state || '';
                 return `
                 <tr data-item-id="${item.id}">
                     <td><span class="item-number">${idx + 1}</span></td>
@@ -500,6 +508,7 @@ export default class HistoriqueManager {
                     <td><span class="item-text">${item.modele_name || '-'}</span></td>
                     <td>
                         <select class="item-state-select" data-item-id="${item.id}">
+                            <option value="">-- Sélectionner --</option>
                             <option value="Reconditionnés" ${itemState === 'Reconditionnés' ? 'selected' : ''}>Reconditionnés</option>
                             <option value="Pour pièces" ${itemState === 'Pour pièces' ? 'selected' : ''}>Pour pièces</option>
                             <option value="HS" ${itemState === 'HS' ? 'selected' : ''}>HS</option>
@@ -535,10 +544,19 @@ export default class HistoriqueManager {
             const technicianInput = row.querySelector('.item-technician-input');
 
             if (itemId && technicianInput) {
+                const state = stateSelect.value.trim();
+                const technician = technicianInput.value.trim();
+                
+                // Valider que l'état est défini
+                if (!state || state === '') {
+                    this.showNotification('Veuillez sélectionner un état pour tous les items', 'warning');
+                    return;
+                }
+                
                 updates.push({
                     itemId,
-                    state: stateSelect.value,
-                    technician: technicianInput.value.trim()
+                    state: state,
+                    technician: technician || null
                 });
             }
         });
@@ -548,11 +566,19 @@ export default class HistoriqueManager {
             return;
         }
 
+        // Valider que tous les items ont un état et un technicien
+        const invalidUpdates = updates.filter(u => !u.state || u.state.trim() === '' || !u.technician || u.technician.trim() === '');
+        if (invalidUpdates.length > 0) {
+            this.showNotification('Tous les items doivent avoir un état et un technicien', 'warning');
+            return;
+        }
+
         // Envoyer les mises à jour
         Promise.all(updates.map(async update => {
             const serverUrl = api.getServerUrl();
             const endpointPath = '/api/lots/items/:id'.replace(':id', update.itemId);
             const fullUrl = `${serverUrl}${endpointPath}`;
+            logger.info('💾 Mise à jour item:', JSON.stringify({ itemId: update.itemId, state: update.state, technician: update.technician, fullUrl }, null, 2));
             const response = await fetch(fullUrl, {
                 method: 'PUT',
                 headers: {
@@ -564,7 +590,39 @@ export default class HistoriqueManager {
                     technician: update.technician || null
                 })
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                let errorText = '';
+                try {
+                    errorText = await response.text();
+                    // Essayer de parser comme JSON pour un meilleur affichage
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        logger.error('❌ Erreur mise à jour item:', JSON.stringify({ 
+                            status: response.status, 
+                            error: errorJson,
+                            itemId: update.itemId 
+                        }, null, 2));
+                        const errorMessage = errorJson.message || errorJson.error || errorText;
+                        throw new Error(`HTTP ${response.status}: ${errorMessage}`);
+                    } catch (e) {
+                        if (e.message && e.message.startsWith('HTTP')) {
+                            throw e; // Re-throw si c'est déjà notre erreur formatée
+                        }
+                        logger.error('❌ Erreur mise à jour item (texte):', JSON.stringify({ 
+                            status: response.status, 
+                            errorText,
+                            itemId: update.itemId 
+                        }, null, 2));
+                        throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 200)}`);
+                    }
+                } catch (e) {
+                    if (e.message && e.message.startsWith('HTTP')) {
+                        throw e; // Re-throw si c'est déjà notre erreur formatée
+                    }
+                    logger.error('❌ Erreur lors de la lecture de la réponse:', e);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            }
             return response.json();
         }))
         .then(() => {
