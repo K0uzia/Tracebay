@@ -31,6 +31,8 @@ export default class InventaireManager {
             // Séparer l'endpoint des query params
             const serverUrl = api.getServerUrl();
             const endpoint = '/api/lots';
+            // Charger uniquement les lots actifs (non terminés)
+            // Les lots terminés doivent avoir status='finished' et finished_at non null
             const url = `${serverUrl}${endpoint}?status=active`;
             const response = await fetch(url, {
                 method: 'GET',
@@ -83,12 +85,40 @@ export default class InventaireManager {
                     if (lotResponse.ok) {
                         const lotData = await lotResponse.json();
                         const items = Array.isArray(lotData.items) ? lotData.items : (lotData.item?.items || []);
-                        logger.info(`📦 Lot ${lot.id} - Items chargés:`, JSON.stringify({ lotId: lot.id, itemsCount: items.length }, null, 2));
-                        return {
+                        
+                        // Calculer pending depuis les items
+                        const calculatedPending = items.filter(item => 
+                            !item.state || item.state.trim() === '' || 
+                            !item.technician || item.technician.trim() === ''
+                        ).length;
+                        
+                        const isFinished = items.length > 0 && calculatedPending === 0 && items.every(item => 
+                            item.state && item.state.trim() !== '' && 
+                            item.technician && item.technician.trim() !== ''
+                        );
+                        
+                        logger.info(`📦 Lot ${lot.id} - Items chargés:`, JSON.stringify({ 
+                            lotId: lot.id, 
+                            itemsCount: items.length,
+                            calculatedPending,
+                            isFinished,
+                            finished_at: lotData.item?.finished_at,
+                            status: lotData.item?.status,
+                            items: items.map(item => ({ id: item.id, state: item.state, technician: item.technician }))
+                        }, null, 2));
+                        
+                        const lotWithItems = {
                             ...lot,
                             ...lotData.item,
                             items: items
                         };
+                        
+                        // Si le lot est terminé mais toujours dans les lots actifs, le logger
+                        if (isFinished && lotWithItems.status !== 'finished') {
+                            logger.warn(`⚠️ Lot ${lot.id} est terminé mais status=${lotWithItems.status}, finished_at=${lotWithItems.finished_at}`);
+                        }
+                        
+                        return lotWithItems;
                     } else {
                         const errorText = await lotResponse.text();
                         logger.error(`❌ Erreur chargement items lot ${lot.id}:`, JSON.stringify({ 
@@ -152,11 +182,42 @@ export default class InventaireManager {
     createLotElement(lot) {
         // S'assurer que lot.items est un tableau
         const items = Array.isArray(lot.items) ? lot.items : [];
-        const total = lot.total || items.length || 0;
-        const pending = lot.pending || 0;
-        const recond = lot.recond || 0;
-        const hs = lot.hs || 0;
+        
+        // Calculer les statistiques à partir des items si elles ne sont pas fournies par le serveur
+        const total = lot.total !== undefined ? lot.total : items.length;
+        let recond = lot.recond !== undefined ? lot.recond : 0;
+        let hs = lot.hs !== undefined ? lot.hs : 0;
+        let pending = lot.pending !== undefined ? lot.pending : 0;
+        
+        // Si les stats ne sont pas fournies, les calculer depuis les items
+        if (lot.total === undefined && items.length > 0) {
+            recond = items.filter(item => item.state === 'Reconditionnés').length;
+            hs = items.filter(item => item.state === 'HS').length;
+            // Un item est "pending" s'il n'a pas d'état défini OU pas de technicien
+            pending = items.filter(item => 
+                !item.state || item.state.trim() === '' || 
+                !item.technician || item.technician.trim() === ''
+            ).length;
+        } else if (items.length > 0) {
+            // Recalculer pending depuis les items pour être sûr
+            const calculatedPending = items.filter(item => 
+                !item.state || item.state.trim() === '' || 
+                !item.technician || item.technician.trim() === ''
+            ).length;
+            // Utiliser le calcul si différent du serveur (pour déboguer)
+            if (calculatedPending !== pending) {
+                logger.warn(`⚠️ Lot ${lot.id}: pending serveur (${pending}) != calculé (${calculatedPending}), utilisation du calculé`);
+                pending = calculatedPending;
+            }
+        }
+        
         const progress = total > 0 ? ((total - pending) / total * 100).toFixed(0) : 0;
+        
+        // Vérifier si le lot est terminé (tous les items ont un état et un technicien)
+        const isFinished = total > 0 && pending === 0 && items.length > 0 && items.every(item => 
+            item.state && item.state.trim() !== '' && 
+            item.technician && item.technician.trim() !== ''
+        );
         
         logger.info('📦 Création élément lot:', JSON.stringify({
             lotId: lot.id,
@@ -165,8 +226,11 @@ export default class InventaireManager {
             pending,
             recond,
             hs,
+            isFinished,
+            finished_at: lot.finished_at,
+            status: lot.status,
             hasItems: items.length > 0,
-            items: items.length > 0 ? items.slice(0, 3) : [],
+            items: items.length > 0 ? items.map(item => ({ id: item.id, state: item.state, technician: item.technician })) : [],
             lotItemsRaw: lot.items,
             lotItemsType: Array.isArray(lot.items) ? 'array' : typeof lot.items
         }, null, 2));
