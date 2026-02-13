@@ -209,7 +209,8 @@ ALTER TABLE IF EXISTS lot_items
   ALTER COLUMN serial_number DROP NOT NULL,
   ADD COLUMN IF NOT EXISTS state VARCHAR(50),
   ADD COLUMN IF NOT EXISTS technician VARCHAR(255),
-  ADD COLUMN IF NOT EXISTS state_changed_at TIMESTAMP;
+  ADD COLUMN IF NOT EXISTS state_changed_at TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
 
 -- Add category_id to shortcuts if missing (for existing deployments)
 ALTER TABLE IF EXISTS shortcuts

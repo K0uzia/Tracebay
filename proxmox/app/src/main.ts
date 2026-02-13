@@ -843,7 +843,7 @@ const messageStartTime = Date.now();
         // Always update updated_at
         updates.push(`updated_at = NOW()`);
 
-        // Valider que nous avons des mises à jour (après avoir ajouté updated_at)
+        // Valider que nous avons des mises à jour
         if (updates.length === 0) {
           reply.statusCode = 400;
           return { error: 'No fields to update' };
