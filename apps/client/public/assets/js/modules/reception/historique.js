@@ -149,7 +149,7 @@ export default class HistoriqueManager {
         
         // Vérifier si le lot peut être récupéré (tous les items doivent avoir un état et un technicien)
         const items = Array.isArray(lot.items) ? lot.items : [];
-        const total = lot.total !== undefined ? lot.total : items.length;
+        const totalItems = lot.total !== undefined ? lot.total : items.length;
         
         // Calculer pending si non fourni
         let pending = lot.pending !== undefined ? lot.pending : 0;
