@@ -141,17 +141,26 @@ export default class GestionLotsManager {
     updateModeleSelect(marqueId, selectElement) {
         if (!marqueId || !selectElement) return;
         
-        logger.debug('Filtrage modèles pour marque:', { marqueId, totalModeles: this.modeles.length });
+        const currentValue = selectElement.value;
+        logger.debug('Filtrage modèles pour marque:', { marqueId, totalModeles: this.modeles.length, currentValue });
         const filteredModeles = this.modeles.filter(m => m.marque_id == marqueId);
         logger.debug('Modèles filtrés:', { count: filteredModeles.length, modeles: filteredModeles });
         
-        selectElement.innerHTML = '<option value="">-- Sélectionner un modèle --</option>';
+        selectElement.innerHTML = '<option value="">Modèle...</option>';
         filteredModeles.forEach(modele => {
             const option = document.createElement('option');
             option.value = modele.id;
             option.textContent = modele.name;
+            if (modele.id == currentValue) {
+                option.selected = true;
+            }
             selectElement.appendChild(option);
         });
+        
+        // Restaurer la valeur si elle existe toujours
+        if (currentValue && Array.from(selectElement.options).some(opt => opt.value == currentValue)) {
+            selectElement.value = currentValue;
+        }
         
         if (filteredModeles.length === 0) {
             logger.warn('Aucun modèle trouvé pour la marque:', marqueId);
@@ -599,7 +608,10 @@ export default class GestionLotsManager {
             this.populateMassSelects();
             // Mettre à jour tous les selects de marque dans les lignes existantes
             logger.info('🔄 Mise à jour des selects de marque après ajout');
-            this.updateAllMarqueSelects();
+            // Forcer la mise à jour avec un petit délai pour s'assurer que le DOM est prêt
+            setTimeout(() => {
+                this.updateAllMarqueSelects();
+            }, 50);
         } catch (error) {
             logger.error('❌ Erreur ajout marque:', error);
             this.showNotification('Erreur lors de l\'ajout de la marque', 'error');
@@ -672,7 +684,10 @@ export default class GestionLotsManager {
             this.populateMassSelects();
             // Mettre à jour tous les selects de modèle dans les lignes existantes
             logger.info('🔄 Mise à jour des selects de modèle après ajout');
-            this.updateAllModeleSelects();
+            // Forcer la mise à jour avec un petit délai pour s'assurer que le DOM est prêt
+            setTimeout(() => {
+                this.updateAllModeleSelects();
+            }, 50);
             
         } catch (error) {
             logger.error('❌ Erreur ajout modèle:', error);
@@ -728,22 +743,60 @@ export default class GestionLotsManager {
                 if (retryTbody) {
                     logger.info('🔄 Réessai de mise à jour des selects de marque');
                     this.updateAllMarqueSelects();
+                } else {
+                    logger.error('❌ tbody toujours introuvable après réessai');
                 }
-            }, 100);
+            }, 200);
             return;
         }
         
         const marqueSelects = tbody.querySelectorAll('select[name="marque"]');
         logger.info(`🔄 Mise à jour de ${marqueSelects.length} select(s) de marque (${this.marques.length} marques disponibles)`);
         
+        if (marqueSelects.length === 0) {
+            logger.warn('⚠️ Aucun select de marque trouvé dans le tbody');
+        }
+        
         marqueSelects.forEach((select, index) => {
             const currentValue = select.value;
             const oldOptionsCount = select.options.length;
-            select.innerHTML = `
-                <option value="">Marque...</option>
-                ${this.marques.map(m => `<option value="${m.id}" ${m.id == currentValue ? 'selected' : ''}>${m.name}</option>`).join('')}
-            `;
-            logger.debug(`Select marque ${index + 1}: ${oldOptionsCount} -> ${select.options.length} options, valeur conservée: ${currentValue || 'aucune'}`);
+            
+            // Sauvegarder les événements si nécessaire
+            const wasDisabled = select.disabled;
+            
+            // Vider le select d'abord
+            select.innerHTML = '';
+            
+            // Ajouter l'option par défaut
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Marque...';
+            select.appendChild(defaultOption);
+            
+            // Ajouter toutes les marques
+            this.marques.forEach(m => {
+                const option = document.createElement('option');
+                option.value = m.id;
+                option.textContent = m.name;
+                if (m.id == currentValue) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+            
+            // Restaurer la valeur sélectionnée explicitement
+            if (currentValue) {
+                select.value = currentValue;
+                // Vérifier que la valeur a bien été définie
+                if (select.value != currentValue) {
+                    logger.warn(`⚠️ Impossible de restaurer la valeur ${currentValue} pour le select marque ${index + 1}`);
+                }
+            }
+            
+            // Restaurer l'état disabled
+            select.disabled = wasDisabled;
+            
+            logger.info(`Select marque ${index + 1}: ${oldOptionsCount} -> ${select.options.length} options, valeur conservée: ${currentValue || 'aucune'}, valeur actuelle: ${select.value}, options: [${Array.from(select.options).map(opt => `${opt.value}:${opt.text}`).join(', ')}]`);
             
             // Si une marque était sélectionnée, mettre à jour le select de modèle correspondant
             if (currentValue) {
@@ -753,6 +806,12 @@ export default class GestionLotsManager {
                     this.updateModeleSelect(currentValue, modeleSelect);
                 }
             }
+            
+            // Forcer le reflow pour s'assurer que le navigateur met à jour l'affichage
+            select.offsetHeight;
+            
+            // Déclencher un événement change pour forcer la mise à jour visuelle
+            select.dispatchEvent(new Event('change', { bubbles: true }));
         });
     }
     
@@ -769,13 +828,19 @@ export default class GestionLotsManager {
                 if (retryTbody) {
                     logger.info('🔄 Réessai de mise à jour des selects de modèle');
                     this.updateAllModeleSelects();
+                } else {
+                    logger.error('❌ tbody toujours introuvable après réessai');
                 }
-            }, 100);
+            }, 200);
             return;
         }
         
         const rows = tbody.querySelectorAll('tr');
         logger.info(`🔄 Mise à jour des selects de modèle pour ${rows.length} ligne(s) (${this.modeles.length} modèles disponibles)`);
+        
+        if (rows.length === 0) {
+            logger.warn('⚠️ Aucune ligne trouvée dans le tbody');
+        }
         
         rows.forEach((row, index) => {
             const marqueSelect = row.querySelector('select[name="marque"]');
@@ -783,14 +848,22 @@ export default class GestionLotsManager {
             if (marqueSelect && modeleSelect && marqueSelect.value) {
                 const currentModeleValue = modeleSelect.value;
                 const oldOptionsCount = modeleSelect.options.length;
+                const wasDisabled = modeleSelect.disabled;
+                
                 this.updateModeleSelect(marqueSelect.value, modeleSelect);
-                logger.debug(`Ligne ${index + 1}: Select modèle ${oldOptionsCount} -> ${modeleSelect.options.length} options`);
+                logger.info(`Ligne ${index + 1}: Select modèle ${oldOptionsCount} -> ${modeleSelect.options.length} options`);
                 
                 // Restaurer la valeur sélectionnée si elle existe toujours
                 if (currentModeleValue && Array.from(modeleSelect.options).some(opt => opt.value === currentModeleValue)) {
                     modeleSelect.value = currentModeleValue;
-                    logger.debug(`Ligne ${index + 1}: Valeur restaurée: ${currentModeleValue}`);
+                    logger.info(`Ligne ${index + 1}: Valeur restaurée: ${currentModeleValue}, valeur actuelle: ${modeleSelect.value}`);
                 }
+                
+                // Restaurer l'état disabled
+                modeleSelect.disabled = wasDisabled;
+                
+                // Déclencher un événement change pour forcer la mise à jour visuelle
+                modeleSelect.dispatchEvent(new Event('change', { bubbles: true }));
             }
         });
     }

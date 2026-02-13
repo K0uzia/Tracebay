@@ -396,7 +396,12 @@ export default class InventaireManager {
                             itemId: this.currentEditingItemId 
                         }, null, 2));
                         const errorMessage = errorJson.message || errorJson.error || errorText;
-                        this.showNotification(`Erreur serveur: ${errorMessage}`, 'error');
+                        const fullError = errorJson.detail ? `${errorMessage} (${errorJson.detail})` : errorMessage;
+                        logger.error('❌ Erreur SQL complète:', JSON.stringify(errorJson, null, 2));
+                        logger.error('❌ Code erreur:', errorJson.code);
+                        logger.error('❌ Détail erreur:', errorJson.detail);
+                        console.error('❌ Erreur SQL complète (console):', errorJson);
+                        this.showNotification(`Erreur serveur: ${fullError.substring(0, 200)}`, 'error');
                     } catch (e) {
                         logger.error('❌ Erreur sauvegarde item (texte):', JSON.stringify({ 
                             status: response.status, 
