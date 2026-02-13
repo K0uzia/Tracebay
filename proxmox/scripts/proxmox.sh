@@ -61,6 +61,25 @@ stop_and_clean() {
   docker image prune -a -f 2>/dev/null || true
   docker builder prune -a -f 2>/dev/null || true
   
+  # Nettoyer les conteneurs arrêtés
+  docker container prune -f 2>/dev/null || true
+  
+  # Nettoyer les volumes non utilisés
+  docker volume prune -f 2>/dev/null || true
+  
+  # Nettoyer les logs Docker (peuvent prendre beaucoup d'espace)
+  info "Nettoyage des logs Docker..."
+  find /var/lib/docker/containers/ -type f -name "*.log" -exec truncate -s 0 {} \; 2>/dev/null || true
+  
+  # Nettoyer les fichiers temporaires système
+  info "Nettoyage des fichiers temporaires..."
+  apt-get clean 2>/dev/null || true
+  rm -rf /tmp/* 2>/dev/null || true
+  rm -rf /var/tmp/* 2>/dev/null || true
+  
+  # Nettoyer les logs système anciens
+  journalctl --vacuum-time=7d 2>/dev/null || true
+  
   ok "Nettoyage terminé."
 }
 
