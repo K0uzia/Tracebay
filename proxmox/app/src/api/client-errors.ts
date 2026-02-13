@@ -65,33 +65,6 @@ async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promis
     : cookieMatch ? cookieMatch[1] : (request.query as any)?.token;
   
   if (!token) {
-    if (request.url === '/monitoring' && request.method === 'GET') {
-      reply.type('text/html');
-      return reply.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>Monitoring - Authentification</title>
-          <style>
-            body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f5f5f5; }
-            .login-box { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box; }
-            button { width: 100%; padding: 10px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; }
-            button:hover { background: #2980b9; }
-          </style>
-        </head>
-        <body>
-          <div class="login-box">
-            <h2>Accès Monitoring</h2>
-            <form method="POST" action="/monitoring/auth">
-              <input type="password" name="password" placeholder="Mot de passe admin" required>
-              <button type="submit">Connexion</button>
-            </form>
-          </div>
-        </body>
-        </html>
-      `);
-    }
     reply.statusCode = 401;
     reply.send({ success: false, error: 'Authentification requise' });
     return false;
@@ -420,36 +393,10 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
     }
   });
 
-  // POST /monitoring/auth - Authentification pour le dashboard
-  fastify.post('/monitoring/auth', async (request: FastifyRequest, reply: FastifyReply) => {
-    const password = (request.body as { password?: string })?.password;
-    const adminToken = process.env.MONITORING_ADMIN_TOKEN || 'SECRET_RETIRE';
-    
-    if (password === adminToken || password === 'SECRET_RETIRE') {
-      const token = adminToken;
-      // Utiliser Set-Cookie header directement (Fastify sans plugin cookie)
-      reply.header('Set-Cookie', `workspace_jwt=${token}; HttpOnly; Max-Age=86400; Path=/`);
-      return reply.redirect(`/monitoring?token=${token}`);
-    } else {
-      reply.statusCode = 401;
-      return reply.send('Mot de passe incorrect');
-    }
-  });
-
   // GET /monitoring - Page HTML du dashboard
   fastify.get('/monitoring', async (request: FastifyRequest, reply: FastifyReply) => {
-    const authenticated = await requireAuth(request, reply);
-    if (!authenticated) return;
 
     try {
-      // #region agent log
-      const logData = {
-        __dirname,
-        cwd: process.cwd(),
-        paths: [] as string[]
-      };
-      // #endregion
-
       // Essayer plusieurs chemins possibles selon la structure du serveur
       // Après compilation, __dirname pointe vers dist/api/, donc dist/views/ pour le fichier copié
       const possiblePaths = [
@@ -468,28 +415,16 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
       let lastError: Error | null = null;
       
       for (const dashboardPath of possiblePaths) {
-        // #region agent log
-        logData.paths.push(dashboardPath);
-        // #endregion
         try {
           html = await fs.readFile(dashboardPath, 'utf8');
-          // #region agent log
-          fastify.log.info({ msg: '[Monitoring] Fichier trouvé', path: dashboardPath });
-          // #endregion
           break;
         } catch (error) {
-          // #region agent log
-          fastify.log.debug({ msg: '[Monitoring] Chemin testé (non trouvé)', path: dashboardPath, error: error instanceof Error ? error.message : String(error) });
-          // #endregion
           lastError = error instanceof Error ? error : new Error(String(error));
           continue;
         }
       }
       
       if (!html) {
-        // #region agent log
-        fastify.log.error({ msg: '[Monitoring] Aucun fichier trouvé', triedPaths: logData.paths, __dirname, cwd: process.cwd() });
-        // #endregion
         throw lastError || new Error('Fichier monitoring.html introuvable');
       }
       
