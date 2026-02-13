@@ -721,12 +721,20 @@ export default class GestionLotsManager {
     updateAllMarqueSelects() {
         const tbody = document.getElementById('lot-table-body');
         if (!tbody) {
-            logger.warn('⚠️ tbody non trouvé pour updateAllMarqueSelects');
+            logger.warn('⚠️ tbody non trouvé pour updateAllMarqueSelects - peut-être que la page n\'est pas encore chargée');
+            // Réessayer après un court délai
+            setTimeout(() => {
+                const retryTbody = document.getElementById('lot-table-body');
+                if (retryTbody) {
+                    logger.info('🔄 Réessai de mise à jour des selects de marque');
+                    this.updateAllMarqueSelects();
+                }
+            }, 100);
             return;
         }
         
         const marqueSelects = tbody.querySelectorAll('select[name="marque"]');
-        logger.info(`🔄 Mise à jour de ${marqueSelects.length} select(s) de marque`);
+        logger.info(`🔄 Mise à jour de ${marqueSelects.length} select(s) de marque (${this.marques.length} marques disponibles)`);
         
         marqueSelects.forEach((select, index) => {
             const currentValue = select.value;
@@ -754,12 +762,20 @@ export default class GestionLotsManager {
     updateAllModeleSelects() {
         const tbody = document.getElementById('lot-table-body');
         if (!tbody) {
-            logger.warn('⚠️ tbody non trouvé pour updateAllModeleSelects');
+            logger.warn('⚠️ tbody non trouvé pour updateAllModeleSelects - peut-être que la page n\'est pas encore chargée');
+            // Réessayer après un court délai
+            setTimeout(() => {
+                const retryTbody = document.getElementById('lot-table-body');
+                if (retryTbody) {
+                    logger.info('🔄 Réessai de mise à jour des selects de modèle');
+                    this.updateAllModeleSelects();
+                }
+            }, 100);
             return;
         }
         
         const rows = tbody.querySelectorAll('tr');
-        logger.info(`🔄 Mise à jour des selects de modèle pour ${rows.length} ligne(s)`);
+        logger.info(`🔄 Mise à jour des selects de modèle pour ${rows.length} ligne(s) (${this.modeles.length} modèles disponibles)`);
         
         rows.forEach((row, index) => {
             const marqueSelect = row.querySelector('select[name="marque"]');
