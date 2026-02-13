@@ -86,11 +86,15 @@ export default class InventaireManager {
                         logger.info(`📦 Lot ${lot.id} - Items chargés:`, JSON.stringify({ lotId: lot.id, itemsCount: items.length }, null, 2));
                         return {
                             ...lot,
-                            ...lotData,
+                            ...lotData.item,
                             items: items
                         };
                     } else {
-                        logger.warn(`⚠️ Impossible de charger les items du lot ${lot.id}`);
+                        const errorText = await lotResponse.text();
+                        logger.error(`❌ Erreur chargement items lot ${lot.id}:`, JSON.stringify({ 
+                            status: lotResponse.status, 
+                            errorText 
+                        }, null, 2));
                         return {
                             ...lot,
                             items: []
