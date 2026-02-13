@@ -28,14 +28,35 @@ export default class TracabiliteManager {
      */
     async loadLots() {
         try {
-            const response = await api.get('lots.list?status=all');
+            // Séparer l'endpoint des query params
+            const serverUrl = api.getServerUrl();
+            const endpoint = '/api/lots';
+            const url = `${serverUrl}${endpoint}?status=all`;
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                }
+            });
             
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
             const data = await response.json();
-            this.lots = (data.items || []).sort((a, b) => 
+            logger.debug('Données lots reçues:', data);
+            
+            // Gérer les deux formats : tableau direct ou avec wrapper
+            const lots = Array.isArray(data) ? data : (data.items || data.lots || []);
+            
+            // S'assurer que chaque lot a un tableau items
+            this.lots = lots.map(lot => ({
+                ...lot,
+                items: Array.isArray(lot.items) ? lot.items : []
+            })).sort((a, b) => 
                 new Date(b.created_at) - new Date(a.created_at)
             );
+            
+            logger.info('📦 Lots traçabilité chargés:', { count: this.lots.length });
             
             logger.debug(`📦 ${this.lots.length} lot(s) chargé(s)`);
             this.renderTable();
@@ -276,8 +297,16 @@ export default class TracabiliteManager {
         try {
             this.showNotification('Génération du PDF...', 'info');
             
-            const endpoint = `lots.pdf`.replace(':id', lotId);
-            const response = await api.post(endpoint);
+            const serverUrl = api.getServerUrl();
+            const endpointPath = '/api/lots/:id/pdf'.replace(':id', lotId);
+            const fullUrl = `${serverUrl}${endpointPath}`;
+            const response = await fetch(fullUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                }
+            });
 
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
 

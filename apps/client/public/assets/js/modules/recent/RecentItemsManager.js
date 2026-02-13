@@ -286,7 +286,9 @@ class RecentItemsManager {
             action: 'open-folder'
         });
         // NE PAS appeler openPath ici - le FolderManager s'en charge déjà
-    }    /**
+    }
+
+    /**
      * Formater le nom de la page
      */
     formatPageName(pageName) {
@@ -339,7 +341,7 @@ class RecentItemsManager {
         this.storageKey = this.getStorageKey();
         this.recentItems = this.loadRecentItems();
         this.display();
-        logger.debug('🔄 Récents mis à jour pour nouvel utilisateur (ID: ' + (this.userId || 'anonyme'); + ')');
+        logger.debug('🔄 Récents mis à jour pour nouvel utilisateur (ID: ' + (this.userId || 'anonyme') + ')');
     }
 }
 

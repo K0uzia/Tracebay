@@ -27,14 +27,71 @@ export default class HistoriqueManager {
      */
     async loadLots() {
         try {
-            const response = await api.get('lots.list?status=finished');
+            // Séparer l'endpoint des query params
+            const serverUrl = api.getServerUrl();
+            const endpoint = '/api/lots';
+            const url = `${serverUrl}${endpoint}?status=finished`;
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                }
+            });
             
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
             const data = await response.json();
-            this.lots = (data.items || []).sort((a, b) => 
-                new Date(b.finished_at) - new Date(a.finished_at)
+            logger.debug('Données lots reçues:', data);
+            
+            // Gérer les deux formats : tableau direct ou avec wrapper
+            const rawLots = Array.isArray(data) ? data : (data.items || data.lots || []);
+            
+            // Charger les items pour chaque lot (l'API ne les inclut pas dans la liste)
+            this.lots = await Promise.all(rawLots.map(async (lot) => {
+                try {
+                    // Récupérer les détails complets du lot avec ses items
+                    const serverUrl = api.getServerUrl();
+                    const lotUrl = `${serverUrl}/api/lots/${lot.id}`;
+                    const lotResponse = await fetch(lotUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                        }
+                    });
+                    
+                    if (lotResponse.ok) {
+                        const lotData = await lotResponse.json();
+                        const items = Array.isArray(lotData.items) ? lotData.items : (lotData.item?.items || []);
+                        logger.info(`📦 Lot historique ${lot.id} - Items chargés:`, JSON.stringify({ lotId: lot.id, itemsCount: items.length }, null, 2));
+                        return {
+                            ...lot,
+                            ...lotData,
+                            items: items
+                        };
+                    } else {
+                        logger.warn(`⚠️ Impossible de charger les items du lot historique ${lot.id}`);
+                        return {
+                            ...lot,
+                            items: []
+                        };
+                    }
+                } catch (error) {
+                    logger.error(`❌ Erreur chargement items lot historique ${lot.id}:`, error);
+                    return {
+                        ...lot,
+                        items: []
+                    };
+                }
+            }));
+            
+            // Trier par date de fin
+            this.lots.sort((a, b) => 
+                new Date(b.finished_at || b.created_at) - new Date(a.finished_at || a.created_at)
             );
+            
+            logger.info('📦 Lots historiques chargés:', JSON.stringify({ count: this.lots.length }, null, 2));
             
             logger.debug(`📦 ${this.lots.length} lot(s) terminé(s) chargé(s)`);
             // Debug: vérifier recovered_at
@@ -186,7 +243,22 @@ export default class HistoriqueManager {
 
         // Items
         const itemsContainer = document.getElementById('modal-lot-items');
-        itemsContainer.innerHTML = lot.items.map((item, idx) => `
+        if (!itemsContainer) {
+            logger.error('modal-lot-items non trouvé');
+            return;
+        }
+        
+        // S'assurer que lot.items est un tableau
+        const items = Array.isArray(lot.items) ? lot.items : [];
+        logger.info('Items du lot:', JSON.stringify({ 
+            lotId, 
+            itemsCount: items.length, 
+            lotItemsRaw: lot.items,
+            lotItemsType: Array.isArray(lot.items) ? 'array' : typeof lot.items,
+            items: items.slice(0, 5)
+        }, null, 2));
+        
+        itemsContainer.innerHTML = items.map((item, idx) => `
             <tr>
                 <td>${idx + 1}</td>
                 <td>${item.serial_number || '-'}</td>
@@ -275,19 +347,43 @@ export default class HistoriqueManager {
         lot.lot_name = newName;
 
         // Faire un appel API pour sauvegarder
-        const endpoint = `lots.update`.replace(':id', this.currentEditingLotId);
-        api.put(endpoint, { lot_name: newName })
-        .then(res => {
+        const serverUrl = api.getServerUrl();
+        const endpointPath = '/api/lots/:id'.replace(':id', this.currentEditingLotId);
+        const fullUrl = `${serverUrl}${endpointPath}`;
+        logger.info('💾 Sauvegarde nom lot:', JSON.stringify({ lotId: this.currentEditingLotId, newName, fullUrl }, null, 2));
+        fetch(fullUrl, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+            },
+            body: JSON.stringify({ lot_name: newName })
+        })
+        .then(async res => {
+            logger.info('📡 Réponse sauvegarde nom:', JSON.stringify({ 
+                status: res.status, 
+                statusText: res.statusText,
+                ok: res.ok 
+            }, null, 2));
+            
             if (res.ok) {
+                const data = await res.json();
+                logger.info('✅ Nom du lot mis à jour:', JSON.stringify(data, null, 2));
                 this.showNotification('Nom du lot mis à jour', 'success');
                 this.modalManager.close('modal-edit-lot-name');
                 this.renderLots();
             } else {
-                throw new Error('Erreur mise à jour');
+                const errorText = await res.text();
+                logger.error('❌ Erreur réponse:', JSON.stringify({ 
+                    status: res.status, 
+                    errorText 
+                }, null, 2));
+                const errorData = JSON.parse(errorText).catch(() => ({}));
+                throw new Error(errorData.message || `Erreur ${res.status}: ${errorText}`);
             }
         })
         .catch(err => {
-            logger.error('Erreur:', err);
+            logger.error('❌ Erreur sauvegarde nom:', JSON.stringify({ error: err.message, stack: err.stack }, null, 2));
             this.showNotification('Erreur lors de la mise à jour', 'error');
         });
     }
@@ -308,15 +404,37 @@ export default class HistoriqueManager {
 
         try {
             // Faire un appel API pour sauvegarder
-            const endpoint = `lots.update`.replace(':id', lotId);
-            const response = await api.put(endpoint, { recovered_at: true });
+            const serverUrl = api.getServerUrl();
+            const endpointPath = '/api/lots/:id'.replace(':id', lotId);
+            const fullUrl = `${serverUrl}${endpointPath}`;
+            logger.info('🔄 Récupération lot:', JSON.stringify({ lotId, fullUrl, endpointPath }, null, 2));
+            const response = await fetch(fullUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                },
+                body: JSON.stringify({ recovered_at: new Date().toISOString() })
+            });
             
-            if (!response.ok) throw new Error('Erreur mise à jour');
+            logger.info('📡 Réponse récupération:', JSON.stringify({ 
+                status: response.status, 
+                statusText: response.statusText,
+                ok: response.ok 
+            }, null, 2));
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                logger.error('❌ Erreur réponse:', JSON.stringify({ status: response.status, errorText }, null, 2));
+                throw new Error(`Erreur ${response.status}: ${errorText}`);
+            }
             
             const data = await response.json();
+            logger.info('📡 Données récupération reçues:', JSON.stringify(data, null, 2));
             
             // Mettre à jour localement
-            lot.recovered_at = data.item.recovered_at;
+            lot.recovered_at = data.item?.recovered_at || data.recovered_at || new Date().toISOString();
+            logger.info('✅ Lot mis à jour localement:', JSON.stringify({ lotId, recovered_at: lot.recovered_at }, null, 2));
             
             this.showNotification('Lot marqué comme récupéré - PDF régénéré', 'success');
             this.renderLots();
@@ -337,7 +455,10 @@ export default class HistoriqueManager {
      */
     editLotItems(lotId) {
         const lot = this.lots.find(l => l.id == lotId);
-        if (!lot || !lot.items) return;
+        if (!lot) {
+            logger.error('Lot non trouvé:', lotId);
+            return;
+        }
 
         // Utiliser la modale d'édition des items (similaire à inventaire)
         const modal = document.getElementById('modal-edit-lot-items');
@@ -346,11 +467,21 @@ export default class HistoriqueManager {
             return;
         }
 
+        // S'assurer que lot.items est un tableau
+        const items = Array.isArray(lot.items) ? lot.items : [];
+        logger.info('Items du lot pour édition:', JSON.stringify({ 
+            lotId, 
+            itemsCount: items.length, 
+            lotItemsRaw: lot.items,
+            lotItemsType: Array.isArray(lot.items) ? 'array' : typeof lot.items,
+            items: items.slice(0, 5)
+        }, null, 2));
+
         // Remplir la modale avec les items du lot
         this.currentEditingLotId = lotId;
         const itemsContainer = document.getElementById('modal-edit-items-body');
         if (itemsContainer) {
-            itemsContainer.innerHTML = lot.items.map((item, idx) => {
+            itemsContainer.innerHTML = items.map((item, idx) => {
                 const itemState = item.state || 'Reconditionnés';
                 return `
                 <tr data-item-id="${item.id}">
@@ -410,12 +541,23 @@ export default class HistoriqueManager {
         }
 
         // Envoyer les mises à jour
-        Promise.all(updates.map(update => {
-            const endpoint = `lots.items.update`.replace(':id', update.itemId);
-            return api.put(endpoint, {
-                state: update.state,
-                technician: update.technician || null
+        Promise.all(updates.map(async update => {
+            const serverUrl = api.getServerUrl();
+            const endpointPath = '/api/lots/items/:id'.replace(':id', update.itemId);
+            const fullUrl = `${serverUrl}${endpointPath}`;
+            const response = await fetch(fullUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                },
+                body: JSON.stringify({
+                    state: update.state,
+                    technician: update.technician || null
+                })
             });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.json();
         }))
         .then(() => {
             this.showNotification('Matériel mis à jour', 'success');
