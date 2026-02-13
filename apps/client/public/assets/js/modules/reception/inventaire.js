@@ -183,6 +183,10 @@ export default class InventaireManager {
         // S'assurer que lot.items est un tableau
         const items = Array.isArray(lot.items) ? lot.items : [];
         
+        if (lotData.isFinished && lotData.status === 'received') {
+            console.log('🚫 Lot client-finished, skip affichage');
+            return null; // Ne pas créer l'élément DOM
+          }
         // Calculer les statistiques à partir des items si elles ne sont pas fournies par le serveur
         const total = lot.total !== undefined ? lot.total : items.length;
         let recond = lot.recond !== undefined ? lot.recond : 0;
@@ -309,7 +313,7 @@ export default class InventaireManager {
             </div>
         `;
     }
-
+    
     /**
      * Attacher les événements aux lots
      */
@@ -486,8 +490,15 @@ export default class InventaireManager {
 
             this.modalManager.close('modal-edit-pc');
 
+            // Après savePCEdit, reload complet
+            const lotData = await Promise.all([
+                api.get(`/api/lots/${this.currentEditingItemId}`),  // Lot complet
+                api.get(`/api/lots/${this.currentEditingItemId}/items`)  // Items séparés
+            ]);
+
             // Recharger les lots
-            await this.loadLots();
+            this.lots = lotData[0];
+            this.renderLots();
 
             // Afficher une seule notification en fonction du résultat
             if (data.lotFinished) {
@@ -501,7 +512,7 @@ export default class InventaireManager {
             this.showNotification('Erreur lors de la mise à jour', 'error');
         }
     }
-
+    
     /**
      * Appliquer les filtres
      */
