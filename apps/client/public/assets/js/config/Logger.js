@@ -44,7 +44,7 @@ class Logger {
         
         // Pour le renderer process, on utilisera une méthode d'initialisation
         // qui sera appelée après que window.electron soit disponible
-        const envLevel = process.env.LOG_LEVEL || defaultLevel;
+        const envLevel = (typeof process !== 'undefined' && process.env && process.env.LOG_LEVEL) || defaultLevel;
         this.level = this.getLevelFromString(envLevel);
         this.enabled = true;
         this._initialized = false;

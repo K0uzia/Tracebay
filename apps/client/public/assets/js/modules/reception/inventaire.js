@@ -28,17 +28,88 @@ export default class InventaireManager {
      */
     async loadLots() {
         try {
-            const response = await api.get('lots.list?status=active');
+            // Séparer l'endpoint des query params
+            const serverUrl = api.getServerUrl();
+            const endpoint = '/api/lots';
+            const url = `${serverUrl}${endpoint}?status=active`;
+            const response = await fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                }
+            });
             
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             
             const data = await response.json();
-            this.lots = data.items || [];
+            logger.info('📦 Données lots reçues (brutes):', JSON.stringify(data, null, 2));
             
-            logger.debug(`📦 ${this.lots.length} lot(s) chargé(s)`);
+            // Gérer les deux formats : tableau direct ou avec wrapper
+            const rawLots = Array.isArray(data) ? data : (data.items || data.lots || []);
+            logger.info('📦 Lots extraits:', JSON.stringify({
+                count: rawLots.length,
+                firstLot: rawLots.length > 0 ? {
+                    id: rawLots[0].id,
+                    hasItems: 'items' in rawLots[0],
+                    itemsType: typeof rawLots[0].items,
+                    itemsIsArray: Array.isArray(rawLots[0].items),
+                    itemsCount: Array.isArray(rawLots[0].items) ? rawLots[0].items.length : 'N/A',
+                    itemsRaw: rawLots[0].items
+                } : null
+            }, null, 2));
+            
+            // S'assurer que this.lots est toujours un tableau
+            if (!Array.isArray(rawLots)) {
+                logger.warn('Données lots invalides, utilisation tableau vide:', rawLots);
+                this.lots = [];
+                return;
+            }
+            
+            // Charger les items pour chaque lot (l'API ne les inclut pas dans la liste)
+            this.lots = await Promise.all(rawLots.map(async (lot) => {
+                try {
+                    // Récupérer les détails complets du lot avec ses items
+                    const serverUrl = api.getServerUrl();
+                    const lotUrl = `${serverUrl}/api/lots/${lot.id}`;
+                    const lotResponse = await fetch(lotUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                        }
+                    });
+                    
+                    if (lotResponse.ok) {
+                        const lotData = await lotResponse.json();
+                        const items = Array.isArray(lotData.items) ? lotData.items : (lotData.item?.items || []);
+                        logger.info(`📦 Lot ${lot.id} - Items chargés:`, JSON.stringify({ lotId: lot.id, itemsCount: items.length }, null, 2));
+                        return {
+                            ...lot,
+                            ...lotData,
+                            items: items
+                        };
+                    } else {
+                        logger.warn(`⚠️ Impossible de charger les items du lot ${lot.id}`);
+                        return {
+                            ...lot,
+                            items: []
+                        };
+                    }
+                } catch (error) {
+                    logger.error(`❌ Erreur chargement items lot ${lot.id}:`, error);
+                    return {
+                        ...lot,
+                        items: []
+                    };
+                }
+            }));
+            
+            logger.info(`📦 ${this.lots.length} lot(s) chargé(s) avec items`, this.lots);
             this.renderLots();
         } catch (error) {
             logger.error('❌ Erreur chargement lots:', error);
+            this.lots = []; // S'assurer que this.lots est toujours défini
             this.showNotification('Erreur lors du chargement des lots', 'error');
         }
     }
@@ -49,6 +120,12 @@ export default class InventaireManager {
     renderLots() {
         const container = document.getElementById('lots-list');
         if (!container) return;
+
+        // S'assurer que this.lots est défini et est un tableau
+        if (!this.lots || !Array.isArray(this.lots)) {
+            logger.warn('this.lots invalide dans renderLots:', this.lots);
+            this.lots = [];
+        }
 
         if (this.lots.length === 0) {
             container.innerHTML = `
@@ -69,11 +146,26 @@ export default class InventaireManager {
      * Créer un élément de lot pliable
      */
     createLotElement(lot) {
-        const total = lot.total || 0;
+        // S'assurer que lot.items est un tableau
+        const items = Array.isArray(lot.items) ? lot.items : [];
+        const total = lot.total || items.length || 0;
         const pending = lot.pending || 0;
         const recond = lot.recond || 0;
         const hs = lot.hs || 0;
         const progress = total > 0 ? ((total - pending) / total * 100).toFixed(0) : 0;
+        
+        logger.info('📦 Création élément lot:', JSON.stringify({
+            lotId: lot.id,
+            itemsCount: items.length,
+            total,
+            pending,
+            recond,
+            hs,
+            hasItems: items.length > 0,
+            items: items.length > 0 ? items.slice(0, 3) : [],
+            lotItemsRaw: lot.items,
+            lotItemsType: Array.isArray(lot.items) ? 'array' : typeof lot.items
+        }, null, 2));
 
         return `
             <div class="inventaire-lot-card" data-lot-id="${lot.id}">
@@ -121,7 +213,7 @@ export default class InventaireManager {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${lot.items.map((item, idx) => `
+                                ${items.map((item, idx) => `
                                     <tr class="item-row item-${item.state?.replace(/\s+/g, '-')}">
                                         <td>${idx + 1}</td>
                                         <td>${item.serial_number || '-'}</td>
