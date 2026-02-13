@@ -131,6 +131,8 @@ CREATE TABLE IF NOT EXISTS lots (
   item_count INTEGER NOT NULL,
   description TEXT,
   received_at TIMESTAMP DEFAULT NOW(),
+  finished_at TIMESTAMP,
+  recovered_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -150,6 +152,9 @@ CREATE TABLE IF NOT EXISTS lot_items (
   entry_type VARCHAR(50) DEFAULT 'manual',
   entry_date DATE,
   entry_time TIME,
+  state VARCHAR(50) DEFAULT 'Reconditionnés',
+  technician VARCHAR(255),
+  state_changed_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -196,10 +201,15 @@ ALTER TABLE IF EXISTS lots
   ADD COLUMN IF NOT EXISTS item_count INTEGER NOT NULL DEFAULT 0,
   ADD COLUMN IF NOT EXISTS description TEXT,
   ADD COLUMN IF NOT EXISTS received_at TIMESTAMP DEFAULT NOW(),
+  ADD COLUMN IF NOT EXISTS finished_at TIMESTAMP,
+  ADD COLUMN IF NOT EXISTS recovered_at TIMESTAMP,
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
 
 ALTER TABLE IF EXISTS lot_items
-  ALTER COLUMN serial_number DROP NOT NULL;
+  ALTER COLUMN serial_number DROP NOT NULL,
+  ADD COLUMN IF NOT EXISTS state VARCHAR(50) DEFAULT 'Reconditionnés',
+  ADD COLUMN IF NOT EXISTS technician VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS state_changed_at TIMESTAMP;
 
 -- Add category_id to shortcuts if missing (for existing deployments)
 ALTER TABLE IF EXISTS shortcuts

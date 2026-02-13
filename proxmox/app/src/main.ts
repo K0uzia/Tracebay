@@ -682,7 +682,7 @@ const messageStartTime = Date.now();
         const lotResult = await query(`
           SELECT 
             l.id, l.name, l.status, l.item_count, l.description, 
-            l.received_at, l.created_at, l.finished_at, l.recovered_at
+            l.received_at, l.created_at, l.updated_at, l.finished_at, l.recovered_at
           FROM lots l
           WHERE l.id = $1
         `, [id]);
@@ -694,17 +694,17 @@ const messageStartTime = Date.now();
 
         const lot = lotResult.rows[0];
 
-        // Get lot items
+        // Get lot items with all columns
         const itemsResult = await query(`
           SELECT 
             li.id, li.serial_number, li.type, li.entry_type, li.entry_date, li.entry_time,
-            li.state, li.technician, li.state_changed_at,
+            li.marque_id, li.modele_id, li.state, li.technician, li.state_changed_at,
             m.name as marque_name,
             mo.name as modele_name
           FROM lot_items li
           LEFT JOIN marques m ON li.marque_id = m.id
           LEFT JOIN modeles mo ON li.modele_id = mo.id
-          WHERE li.lot_id = $1
+          WHERE li.lot_id = $1 AND (li.deleted_at IS NULL)
           ORDER BY li.id ASC
         `, [id]);
 
@@ -714,16 +714,18 @@ const messageStartTime = Date.now();
           type: item.type,
           marque_name: item.marque_name,
           modele_name: item.modele_name,
+          marque_id: item.marque_id,
+          modele_id: item.modele_id,
           state: item.state || 'Reconditionnés',
-          technician: item.technician,
-          state_changed_at: item.state_changed_at,
+          technician: item.technician || null,
+          state_changed_at: item.state_changed_at || null,
           entry_type: item.entry_type,
           entry_date: item.entry_date,
           entry_time: item.entry_time
         }));
 
-        // Calculate totals
-        const total = items.length;
+        // Calculate totals based on item states
+        const total = items.length || lot.item_count || 0;
         const recond = items.filter((item: any) => item.state === 'Reconditionnés').length;
         const hs = items.filter((item: any) => item.state === 'HS').length;
         const pending = items.filter((item: any) => !item.state || item.state === 'Reconditionnés').length;
@@ -739,10 +741,14 @@ const messageStartTime = Date.now();
             pending
           }
         };
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching lot:', error);
         reply.statusCode = 500;
-        return { error: 'Database error' };
+        return { 
+          error: 'Database error', 
+          message: error.message,
+          details: error.stack 
+        };
       }
     });
 
@@ -770,6 +776,9 @@ const messageStartTime = Date.now();
           values.push(recoveredDate);
         }
 
+        // Always update updated_at timestamp
+        updates.push(`updated_at = NOW()`);
+
         if (updates.length === 0) {
           reply.statusCode = 400;
           return { error: 'No fields to update' };
@@ -790,10 +799,69 @@ const messageStartTime = Date.now();
           success: true,
           item: result.rows[0]
         };
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error updating lot:', error);
         reply.statusCode = 500;
-        return { error: 'Database error' };
+        return { 
+          error: 'Database error', 
+          message: error.message,
+          details: error.stack 
+        };
+      }
+    });
+
+    // Update a lot item
+    fastify.put('/api/lots/items/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const { state, technician, recovered_at } = request.body as any;
+
+      try {
+        const updates: string[] = [];
+        const values: any[] = [];
+        let paramIndex = 1;
+
+        if (state !== undefined) {
+          updates.push(`state = $${paramIndex++}`);
+          values.push(state);
+          updates.push(`state_changed_at = NOW()`);
+        }
+
+        if (technician !== undefined) {
+          updates.push(`technician = $${paramIndex++}`);
+          values.push(technician || null);
+        }
+
+        if (updates.length === 0) {
+          reply.statusCode = 400;
+          return { error: 'No fields to update' };
+        }
+
+        // Always update updated_at
+        updates.push(`updated_at = NOW()`);
+
+        values.push(id);
+        const result = await query(
+          `UPDATE lot_items SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+          values
+        );
+
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Lot item not found' };
+        }
+
+        return {
+          success: true,
+          item: result.rows[0]
+        };
+      } catch (error: any) {
+        console.error('Error updating lot item:', error);
+        reply.statusCode = 500;
+        return { 
+          error: 'Database error', 
+          message: error.message,
+          details: error.stack 
+        };
       }
     });
 
