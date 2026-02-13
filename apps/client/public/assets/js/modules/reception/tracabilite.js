@@ -46,13 +46,77 @@ export default class TracabiliteManager {
             logger.debug('Données lots reçues:', data);
             
             // Gérer les deux formats : tableau direct ou avec wrapper
-            const lots = Array.isArray(data) ? data : (data.items || data.lots || []);
+            const rawLots = Array.isArray(data) ? data : (data.items || data.lots || []);
             
-            // S'assurer que chaque lot a un tableau items
-            this.lots = lots.map(lot => ({
-                ...lot,
-                items: Array.isArray(lot.items) ? lot.items : []
-            })).sort((a, b) => 
+            // Charger les items et détails pour chaque lot (comme dans inventaire.js et historique.js)
+            this.lots = await Promise.all(rawLots.map(async (lot) => {
+                try {
+                    // Récupérer les détails complets du lot avec ses items
+                    const serverUrl = api.getServerUrl();
+                    const lotUrl = `${serverUrl}/api/lots/${lot.id}`;
+                    const lotResponse = await fetch(lotUrl, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                        }
+                    });
+                    
+                    if (lotResponse.ok) {
+                        const lotData = await lotResponse.json();
+                        const items = Array.isArray(lotData.items) ? lotData.items : (lotData.item?.items || []);
+                        
+                        // Calculer pending depuis les items
+                        const calculatedPending = items.filter(item => 
+                            !item.state || item.state.trim() === '' || 
+                            !item.technician || item.technician.trim() === ''
+                        ).length;
+                        
+                        const isFinished = items.length > 0 && calculatedPending === 0 && items.every(item => 
+                            item.state && item.state.trim() !== '' && 
+                            item.technician && item.technician.trim() !== ''
+                        );
+                        
+                        logger.debug(`📦 Lot traçabilité ${lot.id} - Items chargés:`, { 
+                            lotId: lot.id, 
+                            itemsCount: items.length,
+                            calculatedPending,
+                            isFinished,
+                            finished_at: lotData.item?.finished_at,
+                            status: lotData.item?.status
+                        });
+                        
+                        return {
+                            ...lot,
+                            ...lotData.item,
+                            items: items
+                        };
+                    } else {
+                        logger.warn(`⚠️ Impossible de charger les détails du lot ${lot.id}`);
+                        return {
+                            ...lot,
+                            items: [],
+                            total: lot.item_count || 0,
+                            pending: lot.item_count || 0,
+                            recond: 0,
+                            hs: 0
+                        };
+                    }
+                } catch (error) {
+                    logger.error(`❌ Erreur chargement lot traçabilité ${lot.id}:`, error);
+                    return {
+                        ...lot,
+                        items: [],
+                        total: lot.item_count || 0,
+                        pending: lot.item_count || 0,
+                        recond: 0,
+                        hs: 0
+                    };
+                }
+            }));
+            
+            // Trier par date de création
+            this.lots.sort((a, b) => 
                 new Date(b.created_at) - new Date(a.created_at)
             );
             
@@ -75,10 +139,38 @@ export default class TracabiliteManager {
 
         // Filtrer pour les lots terminés uniquement
         const finishedLots = this.lots.filter(lot => {
-            const total = lot.total || 0;
-            const pending = lot.pending || 0;
-            return pending === 0 && total > 0;
+            const items = Array.isArray(lot.items) ? lot.items : [];
+            const total = lot.total !== undefined ? lot.total : items.length;
+            
+            // Calculer pending si non fourni
+            let pending = lot.pending !== undefined ? lot.pending : 0;
+            if (pending === 0 && items.length > 0) {
+                // Un item est "pending" s'il n'a pas d'état défini OU pas de technicien
+                pending = items.filter(item => 
+                    !item.state || item.state.trim() === '' || 
+                    !item.technician || item.technician.trim() === ''
+                ).length;
+            }
+            
+            // Un lot est terminé si tous les items ont un état et un technicien
+            const isFinished = total > 0 && pending === 0 && items.length > 0 && items.every(item => 
+                item.state && item.state.trim() !== '' && 
+                item.technician && item.technician.trim() !== ''
+            );
+            
+            logger.debug(`Lot ${lot.id} - isFinished:`, { 
+                isFinished, 
+                total, 
+                pending, 
+                itemsCount: items.length, 
+                finished_at: lot.finished_at,
+                status: lot.status,
+                items: items.map(item => ({ id: item.id, state: item.state, technician: item.technician }))
+            });
+            return isFinished;
         });
+        
+        logger.info(`📦 Traçabilité: ${this.lots.length} lots chargés, ${finishedLots.length} lots terminés trouvés`);
 
         if (finishedLots.length === 0) {
             container.innerHTML = `

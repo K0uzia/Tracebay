@@ -149,10 +149,38 @@ export default class HistoriqueManager {
         
         // Vérifier si le lot peut être récupéré (tous les items doivent avoir un état et un technicien)
         const items = Array.isArray(lot.items) ? lot.items : [];
-        const canRecover = items.length > 0 && items.every(item => 
+        const total = lot.total !== undefined ? lot.total : items.length;
+        
+        // Calculer pending si non fourni
+        let pending = lot.pending !== undefined ? lot.pending : 0;
+        if (pending === 0 && items.length > 0) {
+            // Un item est "pending" s'il n'a pas d'état défini OU pas de technicien
+            pending = items.filter(item => 
+                !item.state || item.state.trim() === '' || 
+                !item.technician || item.technician.trim() === ''
+            ).length;
+        }
+        
+        // Le lot peut être récupéré seulement s'il est terminé (pending === 0) ET tous les items ont un état et un technicien
+        const isFinished = total > 0 && pending === 0 && items.length > 0 && items.every(item => 
             item.state && item.state.trim() !== '' && 
             item.technician && item.technician.trim() !== ''
         );
+        const canRecover = isFinished && items.length > 0 && items.every(item => 
+            item.state && item.state.trim() !== '' && 
+            item.technician && item.technician.trim() !== ''
+        );
+        
+        logger.debug(`Lot ${lot.id} - canRecover:`, { 
+            isFinished, 
+            canRecover, 
+            total, 
+            pending, 
+            itemsCount: items.length,
+            finished_at: lot.finished_at,
+            status: lot.status,
+            items: items.map(item => ({ id: item.id, state: item.state, technician: item.technician }))
+        });
         const recoveryButtonClass = isRecovered ? 'btn-recovered' : (canRecover ? 'btn-to-recover' : 'btn-to-recover disabled');
         const recoveryButtonText = isRecovered ? '✓ Récupéré' : (canRecover ? 'Récupérer' : 'Récupérer (incomplet)');
         const recoveryButtonDisabled = isRecovered || !canRecover;
