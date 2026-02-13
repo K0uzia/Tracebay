@@ -597,6 +597,9 @@ export default class GestionLotsManager {
             // Recharger les données de référence depuis l'API pour avoir la nouvelle marque
             await this.loadReferenceData();
             this.populateMassSelects();
+            // Mettre à jour tous les selects de marque dans les lignes existantes
+            logger.info('🔄 Mise à jour des selects de marque après ajout');
+            this.updateAllMarqueSelects();
         } catch (error) {
             logger.error('❌ Erreur ajout marque:', error);
             this.showNotification('Erreur lors de l\'ajout de la marque', 'error');
@@ -667,6 +670,9 @@ export default class GestionLotsManager {
             // Recharger les données de référence depuis l'API pour avoir le nouveau modèle
             await this.loadReferenceData();
             this.populateMassSelects();
+            // Mettre à jour tous les selects de modèle dans les lignes existantes
+            logger.info('🔄 Mise à jour des selects de modèle après ajout');
+            this.updateAllModeleSelects();
             
         } catch (error) {
             logger.error('❌ Erreur ajout modèle:', error);
@@ -707,6 +713,70 @@ export default class GestionLotsManager {
                 ${this.modeles.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
             `;
         }
+    }
+    
+    /**
+     * Mettre à jour tous les selects de marque dans les lignes existantes
+     */
+    updateAllMarqueSelects() {
+        const tbody = document.getElementById('lot-table-body');
+        if (!tbody) {
+            logger.warn('⚠️ tbody non trouvé pour updateAllMarqueSelects');
+            return;
+        }
+        
+        const marqueSelects = tbody.querySelectorAll('select[name="marque"]');
+        logger.info(`🔄 Mise à jour de ${marqueSelects.length} select(s) de marque`);
+        
+        marqueSelects.forEach((select, index) => {
+            const currentValue = select.value;
+            const oldOptionsCount = select.options.length;
+            select.innerHTML = `
+                <option value="">Marque...</option>
+                ${this.marques.map(m => `<option value="${m.id}" ${m.id == currentValue ? 'selected' : ''}>${m.name}</option>`).join('')}
+            `;
+            logger.debug(`Select marque ${index + 1}: ${oldOptionsCount} -> ${select.options.length} options, valeur conservée: ${currentValue || 'aucune'}`);
+            
+            // Si une marque était sélectionnée, mettre à jour le select de modèle correspondant
+            if (currentValue) {
+                const row = select.closest('tr');
+                const modeleSelect = row?.querySelector('select[name="modele"]');
+                if (modeleSelect) {
+                    this.updateModeleSelect(currentValue, modeleSelect);
+                }
+            }
+        });
+    }
+    
+    /**
+     * Mettre à jour tous les selects de modèle dans les lignes existantes
+     */
+    updateAllModeleSelects() {
+        const tbody = document.getElementById('lot-table-body');
+        if (!tbody) {
+            logger.warn('⚠️ tbody non trouvé pour updateAllModeleSelects');
+            return;
+        }
+        
+        const rows = tbody.querySelectorAll('tr');
+        logger.info(`🔄 Mise à jour des selects de modèle pour ${rows.length} ligne(s)`);
+        
+        rows.forEach((row, index) => {
+            const marqueSelect = row.querySelector('select[name="marque"]');
+            const modeleSelect = row.querySelector('select[name="modele"]');
+            if (marqueSelect && modeleSelect && marqueSelect.value) {
+                const currentModeleValue = modeleSelect.value;
+                const oldOptionsCount = modeleSelect.options.length;
+                this.updateModeleSelect(marqueSelect.value, modeleSelect);
+                logger.debug(`Ligne ${index + 1}: Select modèle ${oldOptionsCount} -> ${modeleSelect.options.length} options`);
+                
+                // Restaurer la valeur sélectionnée si elle existe toujours
+                if (currentModeleValue && Array.from(modeleSelect.options).some(opt => opt.value === currentModeleValue)) {
+                    modeleSelect.value = currentModeleValue;
+                    logger.debug(`Ligne ${index + 1}: Valeur restaurée: ${currentModeleValue}`);
+                }
+            }
+        });
     }
     
     /**

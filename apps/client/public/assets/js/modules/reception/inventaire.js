@@ -225,8 +225,8 @@ export default class InventaireManager {
                                         <td>${item.marque_name || '-'}</td>
                                         <td>${item.modele_name || '-'}</td>
                                         <td>
-                                            <span class="state-badge state-${item.state?.replace(/\s+/g, '-')}">
-                                                ${item.state || 'Reconditionnés'}
+                                            <span class="state-badge state-${item.state ? item.state.replace(/\s+/g, '-') : 'non-defini'}">
+                                                ${item.state || 'Non défini'}
                                             </span>
                                         </td>
                                         <td>${this.formatDateTime(item.state_changed_at) || '-'}</td>
@@ -338,23 +338,75 @@ export default class InventaireManager {
      */
     async savePCEdit() {
         try {
-            const state = document.getElementById('modal-pc-state').value;
-            const technician = document.getElementById('modal-pc-technician').value.trim();
-
-            if (!state) {
-                this.showNotification('Veuillez sélectionner un état', 'error');
+            // Vérifier que l'itemId est défini
+            if (!this.currentEditingItemId) {
+                this.showNotification('Erreur : ID de l\'item non défini', 'error');
+                logger.error('❌ currentEditingItemId est null');
                 return;
             }
 
-            const endpoint = `lots.items.update`.replace(':id', this.currentEditingItemId);
-            const response = await api.put(endpoint, {
-                state: state,
-                technician: technician || null
+            const state = document.getElementById('modal-pc-state').value;
+            const technician = document.getElementById('modal-pc-technician').value.trim();
+
+            if (!state || state.trim() === '') {
+                this.showNotification('Veuillez sélectionner un état', 'error');
+                return;
+            }
+            
+            if (!technician || technician.trim() === '') {
+                this.showNotification('Veuillez saisir un technicien', 'error');
+                return;
+            }
+
+            // Construire l'URL manuellement car api.put ne remplace pas correctement :id
+            const serverUrl = api.getServerUrl();
+            const endpointPath = '/api/lots/items/:id'.replace(':id', this.currentEditingItemId);
+            const fullUrl = `${serverUrl}${endpointPath}`;
+            logger.info('💾 Sauvegarde item:', JSON.stringify({ itemId: this.currentEditingItemId, state, technician, fullUrl }, null, 2));
+            
+            const response = await fetch(fullUrl, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                },
+                body: JSON.stringify({
+                    state: state,
+                    technician: technician || null
+                })
             });
 
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                let errorText = '';
+                try {
+                    errorText = await response.text();
+                    // Essayer de parser comme JSON pour un meilleur affichage
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        logger.error('❌ Erreur sauvegarde item:', JSON.stringify({ 
+                            status: response.status, 
+                            error: errorJson,
+                            itemId: this.currentEditingItemId 
+                        }, null, 2));
+                        const errorMessage = errorJson.message || errorJson.error || errorText;
+                        this.showNotification(`Erreur serveur: ${errorMessage}`, 'error');
+                    } catch (e) {
+                        logger.error('❌ Erreur sauvegarde item (texte):', JSON.stringify({ 
+                            status: response.status, 
+                            errorText,
+                            itemId: this.currentEditingItemId 
+                        }, null, 2));
+                        this.showNotification(`Erreur serveur: ${errorText.substring(0, 100)}`, 'error');
+                    }
+                } catch (e) {
+                    logger.error('❌ Erreur lors de la lecture de la réponse:', e);
+                    this.showNotification(`Erreur ${response.status}: ${response.statusText}`, 'error');
+                }
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
 
             const data = await response.json();
+            logger.info('✅ Item mis à jour:', JSON.stringify(data, null, 2));
 
             this.modalManager.close('modal-edit-pc');
 
