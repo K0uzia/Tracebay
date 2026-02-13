@@ -673,6 +673,130 @@ const messageStartTime = Date.now();
       }
     });
 
+    // Get a specific lot with its items
+    fastify.get('/api/lots/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+
+      try {
+        // Get lot details
+        const lotResult = await query(`
+          SELECT 
+            l.id, l.name, l.status, l.item_count, l.description, 
+            l.received_at, l.created_at, l.finished_at, l.recovered_at
+          FROM lots l
+          WHERE l.id = $1
+        `, [id]);
+
+        if (lotResult.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Lot not found' };
+        }
+
+        const lot = lotResult.rows[0];
+
+        // Get lot items
+        const itemsResult = await query(`
+          SELECT 
+            li.id, li.serial_number, li.type, li.entry_type, li.entry_date, li.entry_time,
+            li.state, li.technician, li.state_changed_at,
+            m.name as marque_name,
+            mo.name as modele_name
+          FROM lot_items li
+          LEFT JOIN marques m ON li.marque_id = m.id
+          LEFT JOIN modeles mo ON li.modele_id = mo.id
+          WHERE li.lot_id = $1
+          ORDER BY li.id ASC
+        `, [id]);
+
+        const items = itemsResult.rows.map((item: any) => ({
+          id: item.id,
+          serial_number: item.serial_number,
+          type: item.type,
+          marque_name: item.marque_name,
+          modele_name: item.modele_name,
+          state: item.state || 'Reconditionnés',
+          technician: item.technician,
+          state_changed_at: item.state_changed_at,
+          entry_type: item.entry_type,
+          entry_date: item.entry_date,
+          entry_time: item.entry_time
+        }));
+
+        // Calculate totals
+        const total = items.length;
+        const recond = items.filter((item: any) => item.state === 'Reconditionnés').length;
+        const hs = items.filter((item: any) => item.state === 'HS').length;
+        const pending = items.filter((item: any) => !item.state || item.state === 'Reconditionnés').length;
+
+        return {
+          success: true,
+          item: {
+            ...lot,
+            items: items,
+            total,
+            recond,
+            hs,
+            pending
+          }
+        };
+      } catch (error) {
+        console.error('Error fetching lot:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    // Update a lot
+    fastify.put('/api/lots/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const { lot_name, recovered_at } = request.body as any;
+
+      try {
+        const updates: string[] = [];
+        const values: any[] = [];
+        let paramIndex = 1;
+
+        if (lot_name !== undefined) {
+          updates.push(`name = $${paramIndex++}`);
+          values.push(lot_name);
+        }
+
+        if (recovered_at !== undefined) {
+          updates.push(`recovered_at = $${paramIndex++}`);
+          // If recovered_at is true or a date string, set it, otherwise set to current timestamp
+          const recoveredDate = recovered_at === true || recovered_at === 'true' 
+            ? new Date().toISOString() 
+            : (recovered_at || new Date().toISOString());
+          values.push(recoveredDate);
+        }
+
+        if (updates.length === 0) {
+          reply.statusCode = 400;
+          return { error: 'No fields to update' };
+        }
+
+        values.push(id);
+        const result = await query(
+          `UPDATE lots SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
+          values
+        );
+
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Lot not found' };
+        }
+
+        return {
+          success: true,
+          item: result.rows[0]
+        };
+      } catch (error) {
+        console.error('Error updating lot:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
     // PDF generation stub
     fastify.post('/api/lots/:id/pdf', async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
@@ -915,8 +1039,11 @@ const messageStartTime = Date.now();
     });
 
     fastify.post('/api/shortcuts', async (request: FastifyRequest, reply: FastifyReply) => {
-      const { title, description, url, categoryId } = request.body as any;
+      const { title, description, url, category_id, categoryId } = request.body as any;
       const userId = (request.query as any).userId || 1; // Default user if not provided
+
+      // Support both category_id and categoryId for compatibility
+      const finalCategoryId = category_id || categoryId;
 
       if (!title || !title.trim() || !url || !url.trim()) {
         reply.statusCode = 400;
@@ -925,10 +1052,10 @@ const messageStartTime = Date.now();
 
       try {
         // Validate category ownership if provided
-        if (categoryId) {
+        if (finalCategoryId) {
           const categoryCheck = await query(
             'SELECT 1 FROM shortcut_categories WHERE id = $1 AND user_id = $2',
-            [categoryId, userId]
+            [finalCategoryId, userId]
           );
 
           if (categoryCheck.rowCount === 0) {
@@ -941,7 +1068,7 @@ const messageStartTime = Date.now();
           `INSERT INTO shortcuts (user_id, title, description, url, category_id, order_index)
            VALUES ($1, $2, $3, $4, $5, (SELECT COALESCE(MAX(order_index) + 1, 0) FROM shortcuts WHERE user_id = $1 AND (category_id = $5 OR (category_id IS NULL AND $5 IS NULL))))
            RETURNING id, title, description, url, category_id, order_index, created_at`,
-          [userId, title.trim(), description || null, url.trim(), categoryId || null]
+          [userId, title.trim(), description || null, url.trim(), finalCategoryId || null]
         );
 
         const shortcut = result.rows[0];
