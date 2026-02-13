@@ -442,6 +442,14 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
     if (!authenticated) return;
 
     try {
+      // #region agent log
+      const logData = {
+        __dirname,
+        cwd: process.cwd(),
+        paths: [] as string[]
+      };
+      // #endregion
+
       // Essayer plusieurs chemins possibles selon la structure du serveur
       // Après compilation, __dirname pointe vers dist/api/, donc dist/views/ pour le fichier copié
       const possiblePaths = [
@@ -460,16 +468,28 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
       let lastError: Error | null = null;
       
       for (const dashboardPath of possiblePaths) {
+        // #region agent log
+        logData.paths.push(dashboardPath);
+        // #endregion
         try {
           html = await fs.readFile(dashboardPath, 'utf8');
+          // #region agent log
+          fastify.log.info({ msg: '[Monitoring] Fichier trouvé', path: dashboardPath });
+          // #endregion
           break;
         } catch (error) {
+          // #region agent log
+          fastify.log.debug({ msg: '[Monitoring] Chemin testé (non trouvé)', path: dashboardPath, error: error instanceof Error ? error.message : String(error) });
+          // #endregion
           lastError = error instanceof Error ? error : new Error(String(error));
           continue;
         }
       }
       
       if (!html) {
+        // #region agent log
+        fastify.log.error({ msg: '[Monitoring] Aucun fichier trouvé', triedPaths: logData.paths, __dirname, cwd: process.cwd() });
+        // #endregion
         throw lastError || new Error('Fichier monitoring.html introuvable');
       }
       

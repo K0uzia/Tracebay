@@ -354,11 +354,36 @@ header() { echo -e "${CYAN}${BOLD}$*${RESET}"; }
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 if [[ -L "$SCRIPT_PATH" ]]; then SCRIPT_PATH="$(readlink -f "$SCRIPT_PATH")"; fi
 
+# #region agent log
+LOG_FILE="/home/goupil/Bureau/workspace/.cursor/debug.log"
+debug_log() {
+  local run_id="${1:-run1}"
+  local hypothesis_id="${2:-}"
+  local location="${3:-}"
+  local message="${4:-}"
+  local data="${5:-{}}"
+  local timestamp=$(date +%s000)
+  local log_entry="{\"runId\":\"$run_id\",\"hypothesisId\":\"$hypothesis_id\",\"location\":\"$location\",\"message\":\"$message\",\"data\":$data,\"timestamp\":$timestamp}"
+  echo "$log_entry" >> "$LOG_FILE" 2>/dev/null || true
+}
+debug_log "run1" "A" "proxmox-cli:start" "CLI script started" "{\"script_path\":\"$SCRIPT_PATH\",\"user\":\"$(whoami)\",\"home\":\"$HOME\"}"
+# #endregion
+
 # Trouver le répertoire workspace (chercher proxmox/docker depuis plusieurs chemins possibles)
 REPO_ROOT=""
+# #region agent log
+debug_log "run1" "A" "proxmox-cli:search_repo" "Searching for REPO_ROOT" "{\"possible_roots\":[\"/root/workspace\",\"$HOME/workspace\",\"/home/$(whoami)/workspace\",\"$(dirname "$SCRIPT_PATH")/../..\"]}"
+# #endregion
+
 for possible_root in "/root/workspace" "$HOME/workspace" "/home/$(whoami)/workspace" "$(dirname "$SCRIPT_PATH")/../.."; do
+  # #region agent log
+  debug_log "run1" "A" "proxmox-cli:check_path" "Checking path" "{\"path\":\"$possible_root\",\"exists\":\"$([ -d "$possible_root" ] && echo 'yes' || echo 'no')\",\"has_docker\":\"$([ -d "$possible_root/proxmox/docker" ] && echo 'yes' || echo 'no')\"}"
+  # #endregion
   if [[ -d "$possible_root/proxmox/docker" ]]; then
     REPO_ROOT="$(cd "$possible_root" && pwd)"
+    # #region agent log
+    debug_log "run1" "A" "proxmox-cli:found_repo" "REPO_ROOT found" "{\"repo_root\":\"$REPO_ROOT\"}"
+    # #endregion
     break
   fi
 done
@@ -366,6 +391,9 @@ done
 # Si toujours pas trouvé, essayer de remonter depuis le script
 if [[ -z "$REPO_ROOT" ]]; then
   REPO_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
+  # #region agent log
+  debug_log "run1" "A" "proxmox-cli:fallback_repo" "Using fallback REPO_ROOT" "{\"repo_root\":\"$REPO_ROOT\",\"has_docker\":\"$([ -d "$REPO_ROOT/proxmox/docker" ] && echo 'yes' || echo 'no')\"}"
+  # #endregion
   # Vérifier que c'est bien le bon répertoire
   if [[ ! -d "$REPO_ROOT/proxmox/docker" ]]; then
     REPO_ROOT=""
@@ -375,14 +403,24 @@ fi
 # Si toujours pas trouvé, utiliser le chemin par défaut
 if [[ -z "$REPO_ROOT" ]]; then
   REPO_ROOT="/root/workspace"
+  # #region agent log
+  debug_log "run1" "A" "proxmox-cli:default_repo" "Using default REPO_ROOT" "{\"repo_root\":\"$REPO_ROOT\"}"
+  # #endregion
 fi
 
 DOCKER_DIR="$REPO_ROOT/proxmox/docker"
 SERVICE_NAME="proxmox-backend"
 API_URL="http://localhost:4000"
 
+# #region agent log
+debug_log "run1" "A" "proxmox-cli:final_check" "Final configuration check" "{\"repo_root\":\"$REPO_ROOT\",\"docker_dir\":\"$DOCKER_DIR\",\"docker_dir_exists\":\"$([ -d "$DOCKER_DIR" ] && echo 'yes' || echo 'no')\"}"
+# #endregion
+
 # Vérifier que le répertoire Docker existe
 if [[ ! -d "$DOCKER_DIR" ]]; then
+  # #region agent log
+  debug_log "run1" "A" "proxmox-cli:error" "DOCKER_DIR not found" "{\"docker_dir\":\"$DOCKER_DIR\",\"repo_root\":\"$REPO_ROOT\"}"
+  # #endregion
   err "Répertoire Docker introuvable: $DOCKER_DIR. REPO_ROOT=$REPO_ROOT"
 fi
 
