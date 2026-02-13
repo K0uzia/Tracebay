@@ -354,38 +354,11 @@ header() { echo -e "${CYAN}${BOLD}$*${RESET}"; }
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 if [[ -L "$SCRIPT_PATH" ]]; then SCRIPT_PATH="$(readlink -f "$SCRIPT_PATH")"; fi
 
-# #region agent log
-# Log file path - utiliser le workspace trouvé dynamiquement ou désactiver si non disponible
-LOG_FILE=""
-debug_log() {
-  # Ne rien faire si LOG_FILE n'est pas défini ou si le répertoire n'existe pas
-  [[ -z "$LOG_FILE" ]] && return 0
-  local run_id="${1:-run1}"
-  local hypothesis_id="${2:-}"
-  local location="${3:-}"
-  local message="${4:-}"
-  local data="${5:-{}}"
-  local timestamp=$(date +%s000)
-  local log_entry="{\"runId\":\"$run_id\",\"hypothesisId\":\"$hypothesis_id\",\"location\":\"$location\",\"message\":\"$message\",\"data\":$data,\"timestamp\":$timestamp}"
-  # Écrire silencieusement, ne pas faire échouer le script si ça échoue
-  echo "$log_entry" >> "$LOG_FILE" 2>/dev/null || true
-}
-# #endregion
-
 # Trouver le répertoire workspace (chercher proxmox/docker depuis plusieurs chemins possibles)
 REPO_ROOT=""
 for possible_root in "/root/workspace" "$HOME/workspace" "/home/$(whoami)/workspace" "$(dirname "$SCRIPT_PATH")/../.."; do
   if [[ -d "$possible_root/proxmox/docker" ]]; then
     REPO_ROOT="$(cd "$possible_root" && pwd)"
-    # #region agent log
-    # Initialiser LOG_FILE une fois que REPO_ROOT est trouvé
-    if [[ -z "$LOG_FILE" && -n "$REPO_ROOT" ]]; then
-      LOG_FILE="$REPO_ROOT/.cursor/debug.log"
-      # Créer le répertoire s'il n'existe pas
-      mkdir -p "$(dirname "$LOG_FILE")" 2>/dev/null || LOG_FILE=""
-    fi
-    debug_log "run1" "A" "proxmox-cli:found_repo" "REPO_ROOT found" "{\"repo_root\":\"$REPO_ROOT\"}"
-    # #endregion
     break
   fi
 done
