@@ -29,17 +29,6 @@ CLI_SOURCE="/usr/local/lib/proxmox-cli.sh"
 ENV_FILE="$DOCKER_DIR/.env"
 
 # =============== Logging ===============
-LOG_FILE="/home/goupil/Bureau/workspace/.cursor/debug.log"
-debug_log() {
-  local run_id="${1:-run1}"
-  local hypothesis_id="${2:-}"
-  local location="${3:-}"
-  local message="${4:-}"
-  local data="${5:-{}}"
-  local timestamp=$(date +%s000)
-  local log_entry="{\"runId\":\"$run_id\",\"hypothesisId\":\"$hypothesis_id\",\"location\":\"$location\",\"message\":\"$message\",\"data\":$data,\"timestamp\":$timestamp}"
-  echo "$log_entry" >> "$LOG_FILE" 2>/dev/null || true
-}
 log() { echo -e "${CYAN}[proxmox]${RESET} $*"; }
 info() { echo -e "${BLUE}INFO${RESET} $*"; }
 ok() { echo -e "${GREEN}OK${RESET}   $*"; }
@@ -314,54 +303,9 @@ run_db_setup() {
 
 npm_build() {
   info "Build Node.js..."
-  # #region agent log
-  debug_log "run1" "A" "proxmox.sh:npm_build:entry" "npm_build started" "{\"app_src_dir\":\"$APP_SRC_DIR\",\"repo_root\":\"$REPO_ROOT\"}"
-  # #endregion
-  
-  # #region agent log
-  if [[ ! -d "$APP_SRC_DIR" ]]; then
-    debug_log "run1" "A" "proxmox.sh:npm_build:dir_check" "APP_SRC_DIR does not exist" "{\"app_src_dir\":\"$APP_SRC_DIR\"}"
-    err "Répertoire source introuvable: $APP_SRC_DIR"
-  fi
-  debug_log "run1" "A" "proxmox.sh:npm_build:dir_check" "APP_SRC_DIR exists" "{\"app_src_dir\":\"$APP_SRC_DIR\",\"permissions\":\"$(ls -ld \"$APP_SRC_DIR\" 2>/dev/null | awk '{print $1}' || echo 'unknown')\"}"
-  # #endregion
-  
-  # #region agent log
-  debug_log "run1" "B" "proxmox.sh:npm_build:before_cd" "Before cd to APP_SRC_DIR" "{\"current_dir\":\"$(pwd)\",\"app_src_dir\":\"$APP_SRC_DIR\"}"
   cd "$APP_SRC_DIR"
-  debug_log "run1" "B" "proxmox.sh:npm_build:after_cd" "After cd to APP_SRC_DIR" "{\"current_dir\":\"$(pwd)\",\"package_json_exists\":\"$([ -f package.json ] && echo 'yes' || echo 'no')\"}"
-  # #endregion
-  
-  # #region agent log
-  debug_log "run1" "C" "proxmox.sh:npm_build:before_npm_install" "Before npm install" "{\"node_version\":\"$(node --version 2>/dev/null || echo 'not_found')\",\"npm_version\":\"$(npm --version 2>/dev/null || echo 'not_found')\",\"package_json_exists\":\"$([ -f package.json ] && echo 'yes' || echo 'no')\"}"
-  # #endregion
-  
-  # #region agent log
-  if npm install --legacy-peer-deps; then
-    debug_log "run1" "C" "proxmox.sh:npm_build:after_npm_install" "npm install completed successfully" "{\"node_modules_exists\":\"$([ -d node_modules ] && echo 'yes' || echo 'no')\"}"
-  else
-    debug_log "run1" "C" "proxmox.sh:npm_build:npm_install_failed" "npm install failed" "{\"exit_code\":\"$?\"}"
-    err "npm install a échoué"
-  fi
-  # #endregion
-  
-  # #region agent log
-  debug_log "run1" "D" "proxmox.sh:npm_build:before_npm_build" "Before npm run build" "{\"dist_exists\":\"$([ -d dist ] && echo 'yes' || echo 'no')\",\"tsconfig_exists\":\"$([ -f tsconfig.json ] && echo 'yes' || echo 'no')\"}"
-  # #endregion
-  
-  # #region agent log
-  if npm run build; then
-    debug_log "run1" "D" "proxmox.sh:npm_build:after_npm_build" "npm run build completed successfully" "{\"dist_exists\":\"$([ -d dist ] && echo 'yes' || echo 'no')\",\"dist_files\":\"$(ls -1 dist 2>/dev/null | wc -l || echo '0')\"}"
-  else
-    debug_log "run1" "D" "proxmox.sh:npm_build:npm_build_failed" "npm run build failed" "{\"exit_code\":\"$?\"}"
-    err "npm run build a échoué"
-  fi
-  # #endregion
-  
+  npm install --legacy-peer-deps && npm run build
   ok "Build terminé."
-  # #region agent log
-  debug_log "run1" "E" "proxmox.sh:npm_build:exit" "npm_build completed successfully" "{\"dist_files_count\":\"$(find dist -type f 2>/dev/null | wc -l || echo '0')\"}"
-  # #endregion
 }
 
 docker_build_images() {
@@ -409,10 +353,38 @@ header() { echo -e "${CYAN}${BOLD}$*${RESET}"; }
 
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 if [[ -L "$SCRIPT_PATH" ]]; then SCRIPT_PATH="$(readlink -f "$SCRIPT_PATH")"; fi
-REPO_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
+
+# Trouver le répertoire workspace (chercher proxmox/docker depuis plusieurs chemins possibles)
+REPO_ROOT=""
+for possible_root in "/root/workspace" "$HOME/workspace" "/home/$(whoami)/workspace" "$(dirname "$SCRIPT_PATH")/../.."; do
+  if [[ -d "$possible_root/proxmox/docker" ]]; then
+    REPO_ROOT="$(cd "$possible_root" && pwd)"
+    break
+  fi
+done
+
+# Si toujours pas trouvé, essayer de remonter depuis le script
+if [[ -z "$REPO_ROOT" ]]; then
+  REPO_ROOT="$(cd "$(dirname "$SCRIPT_PATH")/../.." && pwd)"
+  # Vérifier que c'est bien le bon répertoire
+  if [[ ! -d "$REPO_ROOT/proxmox/docker" ]]; then
+    REPO_ROOT=""
+  fi
+fi
+
+# Si toujours pas trouvé, utiliser le chemin par défaut
+if [[ -z "$REPO_ROOT" ]]; then
+  REPO_ROOT="/root/workspace"
+fi
+
 DOCKER_DIR="$REPO_ROOT/proxmox/docker"
 SERVICE_NAME="proxmox-backend"
 API_URL="http://localhost:4000"
+
+# Vérifier que le répertoire Docker existe
+if [[ ! -d "$DOCKER_DIR" ]]; then
+  err "Répertoire Docker introuvable: $DOCKER_DIR. REPO_ROOT=$REPO_ROOT"
+fi
 
 get_api_name() {
   docker ps -a --format "{{.Names}}" | grep -E "workspace-proxmox|proxmox.*api" | head -1

@@ -443,11 +443,17 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
 
     try {
       // Essayer plusieurs chemins possibles selon la structure du serveur
+      // Après compilation, __dirname pointe vers dist/api/, donc dist/views/ pour le fichier copié
       const possiblePaths = [
-        path.join(__dirname, '..', 'views', 'monitoring.html'),
-        path.join(__dirname, 'views', 'monitoring.html'),
+        path.join(__dirname, '..', 'views', 'monitoring.html'), // dist/views/monitoring.html (après build)
+        path.join(__dirname, '..', '..', 'src', 'views', 'monitoring.html'), // src/views/monitoring.html (dev)
+        path.join(process.cwd(), 'dist', 'views', 'monitoring.html'),
+        path.join(process.cwd(), 'src', 'views', 'monitoring.html'),
         path.join(process.cwd(), 'proxmox', 'app', 'src', 'views', 'monitoring.html'),
-        path.join(process.cwd(), 'views', 'monitoring.html')
+        path.join(process.cwd(), 'proxmox', 'app', 'dist', 'views', 'monitoring.html'),
+        path.join(process.cwd(), 'views', 'monitoring.html'),
+        '/app/dist/views/monitoring.html', // Dans Docker
+        '/app/src/views/monitoring.html' // Dans Docker (dev)
       ];
       
       let html: string | null = null;
