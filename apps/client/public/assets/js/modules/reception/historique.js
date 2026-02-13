@@ -67,11 +67,15 @@ export default class HistoriqueManager {
                         logger.info(`📦 Lot historique ${lot.id} - Items chargés:`, JSON.stringify({ lotId: lot.id, itemsCount: items.length }, null, 2));
                         return {
                             ...lot,
-                            ...lotData,
+                            ...lotData.item,
                             items: items
                         };
                     } else {
-                        logger.warn(`⚠️ Impossible de charger les items du lot historique ${lot.id}`);
+                        const errorText = await lotResponse.text();
+                        logger.error(`❌ Erreur chargement items lot historique ${lot.id}:`, JSON.stringify({ 
+                            status: lotResponse.status, 
+                            errorText 
+                        }, null, 2));
                         return {
                             ...lot,
                             items: []
@@ -425,7 +429,11 @@ export default class HistoriqueManager {
             
             if (!response.ok) {
                 const errorText = await response.text();
-                logger.error('❌ Erreur réponse:', JSON.stringify({ status: response.status, errorText }, null, 2));
+                logger.error('❌ Erreur réponse récupération:', JSON.stringify({ 
+                    status: response.status, 
+                    errorText,
+                    lotId 
+                }, null, 2));
                 throw new Error(`Erreur ${response.status}: ${errorText}`);
             }
             
