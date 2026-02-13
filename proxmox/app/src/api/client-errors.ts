@@ -155,7 +155,7 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
         }
       }
     }
-  }, async (request: FastifyRequest<{ Body: ClientErrorBody }>, reply: FastifyReply) => {
+  }, async (request: FastifyRequest, reply: FastifyReply) => {
     try {
       // Limiter la taille du body (max 10KB)
       const contentLength = parseInt(request.headers['content-length'] || '0');
@@ -178,7 +178,7 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
         userMessage,
         url,
         userAgent
-      } = request.body;
+      } = request.body as ClientErrorBody;
 
       // Sanitizer les données (limiter la longueur)
       const sanitized = {
@@ -234,7 +234,7 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
   });
 
   // GET /api/monitoring/errors - Récupérer la liste des erreurs
-  fastify.get('/api/monitoring/errors', async (request: FastifyRequest<{ Querystring: ErrorQuery }>, reply: FastifyReply) => {
+  fastify.get('/api/monitoring/errors', async (request: FastifyRequest, reply: FastifyReply) => {
     const authenticated = await requireAuth(request, reply);
     if (!authenticated) return;
 
@@ -247,7 +247,7 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
         clientId,
         startDate,
         endDate
-      } = request.query;
+      } = request.query as ErrorQuery;
 
       let sql = 'SELECT * FROM client_errors WHERE 1=1';
       const params: any[] = [];
@@ -386,13 +386,13 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
   });
 
   // PATCH /api/monitoring/errors/:id/resolve - Marquer une erreur comme résolue
-  fastify.patch('/api/monitoring/errors/:id/resolve', async (request: FastifyRequest<{ Params: { id: string }; Body: { resolved?: boolean; notes?: string } }>, reply: FastifyReply) => {
+  fastify.patch('/api/monitoring/errors/:id/resolve', async (request: FastifyRequest, reply: FastifyReply) => {
     const authenticated = await requireAuth(request, reply);
     if (!authenticated) return;
 
     try {
-      const { id } = request.params;
-      const { resolved = true, notes } = request.body;
+      const { id } = request.params as { id: string };
+      const { resolved = true, notes } = request.body as { resolved?: boolean; notes?: string };
 
       await query(
         `UPDATE client_errors SET resolved = $1, resolved_at = $2, notes = $3 WHERE id = $4`,
@@ -421,8 +421,8 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
   });
 
   // POST /monitoring/auth - Authentification pour le dashboard
-  fastify.post('/monitoring/auth', async (request: FastifyRequest<{ Body: { password?: string } }>, reply: FastifyReply) => {
-    const password = request.body?.password;
+  fastify.post('/monitoring/auth', async (request: FastifyRequest, reply: FastifyReply) => {
+    const password = (request.body as { password?: string })?.password;
     const adminToken = process.env.MONITORING_ADMIN_TOKEN || 'SECRET_RETIRE';
     
     if (password === adminToken || password === 'SECRET_RETIRE') {
