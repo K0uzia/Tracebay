@@ -840,18 +840,28 @@ const messageStartTime = Date.now();
           values.push(technician || null);
         }
 
+        // Always update updated_at
+        updates.push(`updated_at = NOW()`);
+
+        // Valider que nous avons des mises à jour (après avoir ajouté updated_at)
         if (updates.length === 0) {
           reply.statusCode = 400;
           return { error: 'No fields to update' };
         }
 
-        // Always update updated_at
-        updates.push(`updated_at = NOW()`);
-
+        // Construire la requête SQL de manière sécurisée
+        const setClause = updates.join(', ');
+        // Ajouter l'ID à la fin des valeurs et utiliser le bon index pour la clause WHERE
         values.push(id);
-        const sqlQuery = `UPDATE lot_items SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
+        const whereParamIndex = values.length; // L'index du paramètre WHERE est la longueur du tableau après avoir ajouté id
+        const sqlQuery = `UPDATE lot_items SET ${setClause} WHERE id = $${whereParamIndex} RETURNING *`;
+        
         console.log(`[PUT /api/lots/items/:id] SQL Query:`, sqlQuery);
-        console.log(`[PUT /api/lots/items/:id] Values:`, values);
+        console.log(`[PUT /api/lots/items/:id] Values:`, JSON.stringify(values));
+        console.log(`[PUT /api/lots/items/:id] Updates array:`, updates);
+        console.log(`[PUT /api/lots/items/:id] Set clause:`, setClause);
+        console.log(`[PUT /api/lots/items/:id] Where param index:`, whereParamIndex);
+        console.log(`[PUT /api/lots/items/:id] Values length:`, values.length);
         
         const result = await query(sqlQuery, values);
 
