@@ -304,7 +304,7 @@ export default class InventaireManager {
         document.getElementById('modal-pc-type').textContent = item.type || '-';
         document.getElementById('modal-pc-entry').textContent = item.entry_type || '-';
         document.getElementById('modal-pc-date-changed').textContent = this.formatDateTime(item.state_changed_at) || '-';
-        document.getElementById('modal-pc-state').value = item.state || 'Reconditionnés';
+        document.getElementById('modal-pc-state').value = item.state || '';
         document.getElementById('modal-pc-technician').value = item.technician || '';
 
         this.modalManager.open('modal-edit-pc');
@@ -326,10 +326,17 @@ export default class InventaireManager {
             filterState.addEventListener('change', () => this.applyFilters());
         }
 
-        // Sauvegarder l'édition PC
+        // Sauvegarder l'édition PC - retirer les anciens listeners pour éviter les doublons
         const savePcBtn = document.getElementById('btn-save-pc-edit');
         if (savePcBtn) {
-            savePcBtn.addEventListener('click', () => this.savePCEdit());
+            // Cloner le bouton pour retirer tous les listeners
+            const newSavePcBtn = savePcBtn.cloneNode(true);
+            savePcBtn.parentNode.replaceChild(newSavePcBtn, savePcBtn);
+            newSavePcBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.savePCEdit();
+            });
         }
     }
 
