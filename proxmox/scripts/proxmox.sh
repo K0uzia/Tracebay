@@ -56,6 +56,11 @@ stop_and_clean() {
     docker volume rm proxmox_postgres_data 2>/dev/null || true
   fi
   
+  # Nettoyer les images Docker inutilisées pour libérer de l'espace
+  info "Nettoyage des images Docker inutilisées..."
+  docker image prune -a -f 2>/dev/null || true
+  docker builder prune -a -f 2>/dev/null || true
+  
   ok "Nettoyage terminé."
 }
 
