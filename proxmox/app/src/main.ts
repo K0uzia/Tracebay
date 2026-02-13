@@ -716,7 +716,7 @@ const messageStartTime = Date.now();
           modele_name: item.modele_name,
           marque_id: item.marque_id,
           modele_id: item.modele_id,
-          state: item.state || 'Reconditionnés',
+          state: item.state || null,
           technician: item.technician || null,
           state_changed_at: item.state_changed_at || null,
           entry_type: item.entry_type,
@@ -728,7 +728,7 @@ const messageStartTime = Date.now();
         const total = items.length || lot.item_count || 0;
         const recond = items.filter((item: any) => item.state === 'Reconditionnés').length;
         const hs = items.filter((item: any) => item.state === 'HS').length;
-        const pending = items.filter((item: any) => !item.state || item.state === 'Reconditionnés').length;
+        const pending = items.filter((item: any) => !item.state || item.state === null || item.state === 'Reconditionnés').length;
 
         return {
           success: true,
@@ -820,10 +820,19 @@ const messageStartTime = Date.now();
         const values: any[] = [];
         let paramIndex = 1;
 
+        console.log(`[PUT /api/lots/items/:id] Request body:`, { id, state, technician, recovered_at });
+
         if (state !== undefined) {
-          updates.push(`state = $${paramIndex++}`);
-          values.push(state);
-          updates.push(`state_changed_at = NOW()`);
+          if (state === null || (typeof state === 'string' && state.trim() === '')) {
+            // Permettre de définir state à null explicitement
+            updates.push(`state = NULL`);
+            updates.push(`state_changed_at = NOW()`);
+          } else {
+            // state a une valeur valide
+            updates.push(`state = $${paramIndex++}`);
+            values.push(typeof state === 'string' ? state.trim() : state);
+            updates.push(`state_changed_at = NOW()`);
+          }
         }
 
         if (technician !== undefined) {
@@ -840,10 +849,11 @@ const messageStartTime = Date.now();
         updates.push(`updated_at = NOW()`);
 
         values.push(id);
-        const result = await query(
-          `UPDATE lot_items SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`,
-          values
-        );
+        const sqlQuery = `UPDATE lot_items SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
+        console.log(`[PUT /api/lots/items/:id] SQL Query:`, sqlQuery);
+        console.log(`[PUT /api/lots/items/:id] Values:`, values);
+        
+        const result = await query(sqlQuery, values);
 
         if (result.rowCount === 0) {
           reply.statusCode = 404;
@@ -855,12 +865,17 @@ const messageStartTime = Date.now();
           item: result.rows[0]
         };
       } catch (error: any) {
-        console.error('Error updating lot item:', error);
+        console.error('[PUT /api/lots/items/:id] Error updating lot item:', error);
+        console.error('[PUT /api/lots/items/:id] Error message:', error.message);
+        console.error('[PUT /api/lots/items/:id] Error code:', error.code);
+        console.error('[PUT /api/lots/items/:id] Error detail:', error.detail);
         reply.statusCode = 500;
         return { 
           error: 'Database error', 
-          message: error.message,
-          details: error.stack 
+          message: error.message || 'Unknown error',
+          code: error.code,
+          detail: error.detail,
+          stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         };
       }
     });

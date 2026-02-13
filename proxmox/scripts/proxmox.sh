@@ -162,7 +162,7 @@ CREATE TABLE IF NOT EXISTS lot_items (
   entry_type VARCHAR(50),
   entry_date DATE,
   entry_time TIME,
-  state VARCHAR(50) DEFAULT 'Reconditionnés',
+  state VARCHAR(50),
   technician VARCHAR(255),
   state_changed_at TIMESTAMP,
   deleted_at TIMESTAMP
@@ -235,7 +235,7 @@ ALTER TABLE shortcuts ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE shortcut_categories ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE lot_items ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
-ALTER TABLE lot_items ADD COLUMN IF NOT EXISTS state VARCHAR(50) DEFAULT 'Reconditionnés';
+ALTER TABLE lot_items ADD COLUMN IF NOT EXISTS state VARCHAR(50);
 ALTER TABLE lot_items ADD COLUMN IF NOT EXISTS technician VARCHAR(255);
 ALTER TABLE lot_items ADD COLUMN IF NOT EXISTS state_changed_at TIMESTAMP;
 ALTER TABLE marques ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;

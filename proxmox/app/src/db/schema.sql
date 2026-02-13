@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS lot_items (
   entry_type VARCHAR(50) DEFAULT 'manual',
   entry_date DATE,
   entry_time TIME,
-  state VARCHAR(50) DEFAULT 'Reconditionnés',
+  state VARCHAR(50),
   technician VARCHAR(255),
   state_changed_at TIMESTAMP,
   created_at TIMESTAMP DEFAULT NOW(),
@@ -207,7 +207,7 @@ ALTER TABLE IF EXISTS lots
 
 ALTER TABLE IF EXISTS lot_items
   ALTER COLUMN serial_number DROP NOT NULL,
-  ADD COLUMN IF NOT EXISTS state VARCHAR(50) DEFAULT 'Reconditionnés',
+  ADD COLUMN IF NOT EXISTS state VARCHAR(50),
   ADD COLUMN IF NOT EXISTS technician VARCHAR(255),
   ADD COLUMN IF NOT EXISTS state_changed_at TIMESTAMP;
 
