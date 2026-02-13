@@ -436,6 +436,7 @@ draw_table_footer() {
 }
 
 status_table() {
+  set +e  # Désactiver erreur immédiate pour cette fonction
   api_name=$(get_api_name)
   db_name=$(get_db_name)
   
@@ -444,14 +445,15 @@ status_table() {
   sys_status=$(systemctl is-active proxmox-backend 2>/dev/null || echo "unknown")
   ip=$(hostname -I | awk '{print $1}')
   
-  if [[ -n "$api_name" ]] && docker inspect "$api_name" --format '{{.State.Status}}' | grep -iq "running"; then api_status="${GREEN}RUNNING${RESET}"; fi
-  if [[ -n "$db_name" ]] && docker inspect "$db_name" --format '{{.State.Status}}' | grep -iq "running"; then db_status="${GREEN}RUNNING${RESET}"; fi
+  if [[ -n "$api_name" ]] && docker inspect "$api_name" --format '{{.State.Status}}' 2>/dev/null | grep -iq "running"; then api_status="${GREEN}RUNNING${RESET}"; fi
+  if [[ -n "$db_name" ]] && docker inspect "$db_name" --format '{{.State.Status}}' 2>/dev/null | grep -iq "running"; then db_status="${GREEN}RUNNING${RESET}"; fi
 
   if curl -fsS "$API_URL/api/health" >/dev/null 2>&1; then 
     web_status="${GREEN}ONLINE${RESET}"; 
   else 
     web_status="${RED}OFFLINE${RESET}"; 
   fi
+  set -e  # Réactiver erreur immédiate
 
   echo -e "\n${CYAN}${BOLD}=== Proxmox Backend Status ===${RESET}\n"
   draw_table_header "Service" "État"
@@ -579,7 +581,7 @@ case "$cmd" in
     sleep 5
     is_running=false
     api_name=$(get_api_name)
-    if [[ -n "$api_name" ]] && docker inspect "$api_name" --format '{{.State.Status}}' | grep -iq "running"; then
+    if [[ -n "$api_name" ]] && docker inspect "$api_name" --format '{{.State.Status}}' 2>/dev/null | grep -iq "running"; then
       is_running=true
     fi
     
@@ -613,7 +615,9 @@ case "$cmd" in
       docker logs --tail 100 "$api_name"
     fi
     ;;
-  status) status_table ;;
+  status) 
+    status_table || true
+    ;;
   debug|diag) show_diagnostics ;;
   test-api|api-test) run_tests ;;
   help|--help|-h)
@@ -621,7 +625,9 @@ case "$cmd" in
     echo "  logs     : Affiche les logs Docker (Requêtes HTTP, etc)"
     echo "  logs live: Affiche les logs Docker en continu"
     ;;
-  *) status_table ;;
+  *) 
+    status_table || true
+    ;;
 esac
 CLISCRIPT
 

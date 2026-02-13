@@ -334,8 +334,8 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
     }
   });
 
-  // GET /api/monitoring/stats - Statistiques des erreurs
-  fastify.get('/api/monitoring/stats', async (request: FastifyRequest, reply: FastifyReply) => {
+  // GET /api/monitoring/errors/stats - Statistiques des erreurs clients
+  fastify.get('/api/monitoring/errors/stats', async (request: FastifyRequest, reply: FastifyReply) => {
     const authenticated = await requireAuth(request, reply);
     if (!authenticated) return;
 
