@@ -224,9 +224,26 @@ Met à jour un lot.
 #### `POST /api/lots/:id/pdf`
 Génère le PDF d'un lot.
 
-**Réponse**: Blob PDF
+**Body** (optionnel, envoyé par le frontend pour nommage et rangement) :
+```json
+{
+  "lot_name": "string",
+  "date": "YYYY-MM-DD",
+  "save_path_hint": "/mnt/team/#TEAM/#TRAÇABILITÉ"
+}
+```
 
-**Utilisé dans**: `TracabiliteManager.downloadPDF()`
+**Rangement côté serveur** (à implémenter sur le backend) :
+- Dossier de base : `/mnt/team/#TEAM/#TRAÇABILITÉ`
+- Créer le dossier de l’**année en cours** si absent : `2026`, `2025`, etc.
+- Dans le dossier année, créer le dossier du **mois** (01 à 12) si absent.
+- Enregistrer le PDF dans ce dossier avec le nom : **`NOMDULOT_DATE.pdf`** (ex. `Lot_reception_2026-02-16.pdf`). Sanitiser le nom du lot (supprimer `/ \ : * ? " < > |`, remplacer espaces par `_`).
+
+Exemple : `/mnt/team/#TEAM/#TRAÇABILITÉ/2026/02/Lot_reception_2026-02-16.pdf`
+
+**Réponse** : Blob PDF ou JSON avec `pdf_path` / `path` pour l’affichage « Voir le PDF ».
+
+**Utilisé dans** : `TracabiliteManager.generatePDF()`, `GestionLotsManager` (après création lot).
 
 ---
 
