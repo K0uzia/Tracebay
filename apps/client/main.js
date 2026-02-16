@@ -8,6 +8,7 @@ const http = require('http');
 const fs = require('fs');
 const os = require('os');
 const { exec } = require('child_process');
+const PDFDocument = require('pdfkit');
 
 // Import ClientDiscovery
 const ClientDiscovery = require('./lib/ClientDiscovery.js');
@@ -349,7 +350,7 @@ ipcMain.handle('list-folders', async (_event, payload) => {
     }
 });
 
-// IPC: ouvrir un chemin local (dossier/fichier) via shell.openPath
+// IPC: ouvrir un chemin local (fichier ou dossier) avec l'app par défaut
 ipcMain.handle('open-path', async (_event, payload) => {
     const targetPath = typeof payload === 'string' ? payload : payload?.path;
     if (!targetPath) throw new Error('path is required');
@@ -357,39 +358,39 @@ ipcMain.handle('open-path', async (_event, payload) => {
     try {
         const resolved = path.resolve(targetPath);
         
-        // Vérifier si le chemin existe
         if (!fs.existsSync(resolved)) {
             return { success: false, error: 'Path does not exist' };
         }
         
-        // Throttle: attendre avant d'ouvrir si nécessaire
         const now = Date.now();
         const elapsed = now - lastOpenTime;
         if (elapsed < MIN_OPEN_INTERVAL) {
-            const waitTime = MIN_OPEN_INTERVAL - elapsed;
-            await new Promise(resolve => setTimeout(resolve, waitTime));
+            await new Promise(resolve => setTimeout(resolve, MIN_OPEN_INTERVAL - elapsed));
         }
         lastOpenTime = Date.now();
         
-        // Ouvrir avec le gestionnaire de fichiers natif
+        const stat = fs.statSync(resolved);
+        if (stat.isFile()) {
+            const err = await shell.openPath(resolved);
+            if (err) {
+                console.error('❌ open-path (fichier):', err);
+                return { success: false, error: err };
+            }
+            return { success: true, path: resolved };
+        }
+        
         const platform = process.platform;
         let cmd;
-        
         if (platform === 'win32') {
             cmd = `explorer "${resolved}"`;
         } else if (platform === 'darwin') {
             cmd = `open "${resolved}"`;
         } else {
-            // Linux - utiliser xdg-open ou nautilus
             cmd = `xdg-open "${resolved}" || nautilus "${resolved}" || dolphin "${resolved}"`;
         }
-        
         exec(cmd, (error) => {
-            if (error) {
-                console.error('❌ Erreur ouverture explorateur:', error.message);
-            }
+            if (error) console.error('❌ Erreur ouverture dossier:', error.message);
         });
-        
         return { success: true, path: resolved };
     } catch (error) {
         console.error('❌ Erreur open-path:', error);
@@ -686,6 +687,195 @@ ipcMain.handle('open-pdf-window', async (event, data) => {
     } catch (error) {
         console.error('❌ Erreur ouverture PDF:', error.message);
         return { success: false, error: error.message };
+    }
+});
+
+/** Dossier de backup PDF traçabilité : /mnt/team/#TEAM/#TRAÇABILITÉ (exactement comme demandé) */
+const TRACABILITE_PDF_BASE = '/mnt/team/#TEAM/#TRAÇABILITÉ';
+
+/**
+ * Formater une date ISO en "jj/mm/aaaa HH:mm" pour le PDF
+ */
+function formatDateForPdf(iso) {
+    if (!iso || typeof iso !== 'string') return '-';
+    try {
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '-';
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const h = String(d.getHours()).padStart(2, '0');
+        const m = String(d.getMinutes()).padStart(2, '0');
+        return `${day}/${month}/${year} ${h}:${m}`;
+    } catch (_) {
+        return '-';
+    }
+}
+
+/**
+ * Générer le PDF d'un lot et l'enregistrer localement dans le dossier traçabilité.
+ * Payload: { lotId, lotName, date, items, created_at?, finished_at?, recovered_at?, basePath? }
+ */
+ipcMain.handle('generate-lot-pdf', async (_event, payload) => {
+    const {
+        lotId,
+        lotName,
+        date,
+        items = [],
+        created_at,
+        finished_at,
+        recovered_at,
+        basePath = TRACABILITE_PDF_BASE
+    } = payload || {};
+    if (!lotId) {
+        return { success: false, error: 'lotId requis' };
+    }
+    const rawDate = date ? String(date).trim() : (finished_at ? String(finished_at).slice(0, 10) : '');
+    const dateStr = /^\d{4}-\d{2}-\d{2}/.test(rawDate) ? rawDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const year = dateStr.slice(0, 4);
+    const monthNum = parseInt(dateStr.slice(5, 7), 10) || 1;
+    const MOIS_TRACABILITE = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    const nomMois = MOIS_TRACABILITE[Math.max(0, monthNum - 1)];
+    const dirPath = path.join(basePath, year, nomMois);
+    try {
+        fs.mkdirSync(dirPath, { recursive: true });
+    } catch (e) {
+        console.error('❌ generate-lot-pdf mkdir:', e.message);
+        return { success: false, error: 'Impossible de créer le dossier: ' + e.message };
+    }
+    let sanitizedName = (lotName || '').replace(/[\s]+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim();
+    if (!sanitizedName) sanitizedName = `Lot_${lotId}`;
+    const fileName = `${sanitizedName}_${dateStr}.pdf`;
+    const fullPath = path.join(dirPath, fileName);
+
+    const totalItems = items.length;
+    const stateCounts = {};
+    items.forEach((it) => {
+        const s = (it.state && String(it.state).trim()) || 'Non défini';
+        stateCounts[s] = (stateCounts[s] || 0) + 1;
+    });
+    const stateEntries = Object.entries(stateCounts).sort((a, b) => b[1] - a[1]);
+
+    const margin = 50;
+    const pageWidth = 595;
+    const contentWidth = pageWidth - margin * 2;
+
+    return new Promise((resolve) => {
+        const doc = new PDFDocument({ margin, size: 'A4' });
+        const stream = fs.createWriteStream(fullPath);
+        doc.pipe(stream);
+
+        let y = margin;
+
+        // ---- En-tête ----
+        doc.fontSize(22).font('Helvetica-Bold').text(`Lot #${lotId}`, margin, y);
+        y = doc.y + 4;
+        doc.fontSize(11).font('Helvetica').fillColor('#333333').text(lotName || '-', margin, y);
+        y = doc.y + 16;
+
+        // ---- Bloc Infos (créé / terminé / récupéré) - style type icônes (symboles Unicode) ----
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#1a1a1a').text('Informations du lot', margin, y);
+        y += 18;
+        const lineH = 16;
+        const bulletX = margin;
+        const labelX = margin + 14;
+        const valueX = labelX + 82;
+        doc.font('Helvetica').fontSize(10);
+        doc.fillColor('#2e7d32').text('\u2022', bulletX, y); doc.fillColor('#444444').text('Créé le', labelX, y); doc.fillColor('#1a1a1a').text(formatDateForPdf(created_at), valueX, y);
+        y += lineH;
+        doc.fillColor('#2e7d32').text('\u2022', bulletX, y); doc.fillColor('#444444').text('Terminé le', labelX, y); doc.fillColor('#1a1a1a').text(formatDateForPdf(finished_at), valueX, y);
+        y += lineH;
+        doc.fillColor('#2e7d32').text('\u2022', bulletX, y); doc.fillColor('#444444').text('Récupéré le', labelX, y); doc.fillColor(recovered_at ? '#1a1a1a' : '#888888').text(recovered_at ? formatDateForPdf(recovered_at) : '-', valueX, y);
+        y += lineH + 8;
+
+        // ---- Résumé (total + par état) ----
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#1a1a1a').text('Résumé', margin, y);
+        y += 18;
+        doc.font('Helvetica').fontSize(10);
+        doc.fillColor('#1565c0').text('\u2022', bulletX, y); doc.fillColor('#444444').text(`Total : ${totalItems} machine${totalItems !== 1 ? 's' : ''}`, labelX, y);
+        y += lineH;
+        stateEntries.forEach(([stateName, count]) => {
+            doc.fillColor('#1565c0').text('\u2022', bulletX, y); doc.fillColor('#444444').text(`${stateName} : ${count}`, labelX, y);
+            y += lineH;
+        });
+        y += 12;
+
+        // ---- Tableau détail ----
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#1a1a1a').text('Détail des articles', margin, y);
+        y += 16;
+        const colN = 38;
+        const colSn = 38;
+        const colType = 70;
+        const colMarque = 75;
+        const colModele = 85;
+        const colState = 75;
+        const colTech = 90;
+        const tableLeft = margin;
+        const headerY = y;
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#333333');
+        doc.text('N°', tableLeft, headerY);
+        doc.text('S/N', tableLeft + colN, headerY);
+        doc.text('Type', tableLeft + colN + colSn, headerY);
+        doc.text('Marque', tableLeft + colN + colSn + colType, headerY);
+        doc.text('Modèle', tableLeft + colN + colSn + colType + colMarque, headerY);
+        doc.text('État', tableLeft + colN + colSn + colType + colMarque + colModele, headerY);
+        doc.text('Technicien', tableLeft + colN + colSn + colType + colMarque + colModele + colState, headerY);
+        y += 14;
+        doc.moveTo(tableLeft, y).lineTo(tableLeft + contentWidth, y).strokeColor('#cccccc').stroke();
+        y += 10;
+        doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
+        let rowNum = 1;
+        for (const it of items) {
+            const num = String(it.numero != null ? it.numero : rowNum);
+            rowNum += 1;
+            const sn = String(it.serial_number || '-').slice(0, 18);
+            const type = String(it.type || '-').slice(0, 10);
+            const marque = String(it.marque_name || '-').slice(0, 12);
+            const modele = String(it.modele_name || '-').slice(0, 14);
+            const state = String(it.state || '-').slice(0, 12);
+            const tech = String(it.technician || '-').slice(0, 14);
+            doc.text(num, tableLeft, y);
+            doc.text(sn, tableLeft + colN, y);
+            doc.text(type, tableLeft + colN + colSn, y);
+            doc.text(marque, tableLeft + colN + colSn + colType, y);
+            doc.text(modele, tableLeft + colN + colSn + colType + colMarque, y);
+            doc.text(state, tableLeft + colN + colSn + colType + colMarque + colModele, y);
+            doc.text(tech, tableLeft + colN + colSn + colType + colMarque + colModele + colState, y);
+            y += 15;
+        }
+
+        doc.end();
+        stream.on('finish', () => resolve({ success: true, pdf_path: path.resolve(fullPath) }));
+        stream.on('error', (err) => {
+            console.error('❌ generate-lot-pdf stream:', err.message);
+            resolve({ success: false, error: err.message });
+        });
+        doc.on('error', (err) => {
+            console.error('❌ generate-lot-pdf doc:', err.message);
+            resolve({ success: false, error: err.message });
+        });
+    });
+});
+
+/**
+ * Lire un fichier et retourner son contenu en base64 (pour envoi du PDF au serveur).
+ */
+ipcMain.handle('read-file-as-base64', async (_event, payload) => {
+    const filePath = typeof payload === 'string' ? payload : payload?.path;
+    if (!filePath || typeof filePath !== 'string') {
+        return { success: false, error: 'path requis' };
+    }
+    try {
+        const resolved = path.resolve(filePath);
+        if (!fs.existsSync(resolved)) {
+            return { success: false, error: 'Fichier introuvable' };
+        }
+        const buffer = fs.readFileSync(resolved);
+        const base64 = buffer.toString('base64');
+        return { success: true, base64 };
+    } catch (err) {
+        console.error('❌ read-file-as-base64:', err.message);
+        return { success: false, error: err.message };
     }
 });
 

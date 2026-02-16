@@ -347,6 +347,160 @@
     font-weight: 700;
 }
 
+/* ======= MODALES AJOUT / ÉDITION ÉVÉNEMENT ======= */
+
+.agenda-event-modal .modal-content {
+    width: 100%;
+    max-width: 520px;
+    min-width: 0;
+}
+
+.agenda-event-modal .modal-header {
+    padding: var(--unit-3) var(--unit-4);
+    border-bottom: 2px solid rgba(62, 59, 140, 0.12);
+}
+
+.agenda-event-modal .modal-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+}
+
+.agenda-event-modal .modal-header h2 i {
+    color: var(--bleu1);
+    font-size: 1.1rem;
+}
+
+.agenda-event-modal .modal-body {
+    padding: var(--unit-3) var(--unit-4);
+}
+
+.agenda-event-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-3);
+}
+
+.agenda-event-form .form-group {
+    margin-bottom: 0;
+}
+
+.agenda-event-form .form-group label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--h2);
+    margin-bottom: 4px;
+}
+
+.agenda-event-form .form-group input[type="text"],
+.agenda-event-form .form-group input[type="date"],
+.agenda-event-form .form-group input[type="time"],
+.agenda-event-form .form-group input[type="color"] {
+    padding: var(--unit-2) var(--unit-2);
+    font-size: 1rem;
+    min-height: 44px;
+    border-radius: var(--radius-medium);
+    border: 1px solid rgba(13, 13, 13, 0.15);
+}
+
+.agenda-event-form .form-group input:focus {
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 3px rgba(62, 59, 140, 0.12);
+}
+
+.agenda-event-form .row-group {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--unit-3);
+}
+
+.agenda-event-form .checkbox-group {
+    margin: 0;
+}
+
+.agenda-event-form .checkbox-label {
+    font-size: 0.95rem;
+    padding: var(--unit-1) 0;
+    cursor: pointer;
+}
+
+.agenda-event-form .checkbox-label input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-right: var(--unit-2);
+    cursor: pointer;
+}
+
+/* Bloc couleur */
+.agenda-event-form .color-picker-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-2);
+}
+
+.agenda-event-form .color-picker-favorites {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-2);
+}
+
+.agenda-event-form .color-picker-controls {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+}
+
+.agenda-event-form .color-picker-controls input[type="color"] {
+    width: 48px;
+    height: 44px;
+    padding: 4px;
+    cursor: pointer;
+    border-radius: var(--radius-medium);
+}
+
+.agenda-event-form .color-picker-controls .btn.btn-sm {
+    padding: var(--unit-2);
+    min-height: 44px;
+    min-width: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Footer modale agenda */
+.agenda-event-modal .modal-footer {
+    padding: var(--unit-3) var(--unit-4);
+    border-top: 2px solid rgba(13, 13, 13, 0.08);
+    gap: var(--unit-2);
+}
+
+.agenda-modal-footer-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--unit-2);
+}
+
+.agenda-modal-footer-right {
+    display: flex;
+    gap: var(--unit-2);
+    align-items: center;
+}
+
+.agenda-event-modal .modal-footer .btn {
+    min-height: 44px;
+    padding: var(--unit-2) var(--unit-4);
+    font-size: 0.95rem;
+    min-width: 7rem;
+}
+
+.agenda-event-modal .modal-footer .btn i {
+    margin-right: 6px;
+}
+
 
 /* ======= RESPONSIVE DESIGN ======= */
 
@@ -357,9 +511,13 @@
         grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     }
 
-    .modal-content {
-        width: 95%;
-        padding: 1.5rem;
+    .agenda-event-modal .modal-content {
+        max-width: calc(100vw - var(--unit-4));
+    }
+
+    .agenda-event-modal .modal-body,
+    .agenda-event-modal .modal-header {
+        padding: var(--unit-3);
     }
 
     .form-actions {
@@ -389,30 +547,47 @@
         grid-template-columns: repeat(2, minmax(140px, 1fr));
     }
 
-    .modal-content {
-        width: 98%;
-        padding: 1.2rem;
-        border-radius: 8px;
+    .agenda-event-modal .modal-content {
+        max-width: calc(100vw - var(--unit-2));
     }
 
-    .modal-header h2 {
-        font-size: 1.2rem;
+    .agenda-event-modal .modal-header,
+    .agenda-event-modal .modal-body,
+    .agenda-event-modal .modal-footer {
+        padding: var(--unit-2);
+    }
+
+    .agenda-event-modal .modal-header h2 {
+        font-size: 1.1rem;
+    }
+
+    .agenda-event-form .row-group {
+        grid-template-columns: 1fr;
+    }
+
+    .agenda-event-form .form-group input[type="text"],
+    .agenda-event-form .form-group input[type="date"],
+    .agenda-event-form .form-group input[type="time"] {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .agenda-modal-footer-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .agenda-modal-footer-right {
+        flex-direction: column;
+    }
+
+    .agenda-event-modal .modal-footer .btn {
+        width: 100%;
+        min-width: 0;
     }
 
     .form-group {
         margin-bottom: 1rem;
-    }
-
-    .form-group input,
-    .form-group textarea,
-    .form-group select {
-        padding: 0.6rem;
-        font-size: 0.9rem;
-    }
-
-    .btn {
-        padding: 0.6rem 1rem;
-        font-size: 0.9rem;
     }
 
     .color-selector {

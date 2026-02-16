@@ -436,6 +436,22 @@ class PageManager {
             });
     }
 
+    /**
+     * Ferme tous les <dialog> dans un conteneur (évite que les modales s'ouvrent automatiquement après injection HTML).
+     */
+    closeAllDialogsIn(container) {
+        if (!container || !container.querySelectorAll) return;
+        const dialogs = container.querySelectorAll('dialog');
+        dialogs.forEach(dialog => {
+            if (typeof dialog.close === 'function') dialog.close();
+            dialog.removeAttribute('open');
+            const id = dialog.id;
+            if (id && window.modalManager && typeof window.modalManager.forget === 'function') {
+                window.modalManager.forget(id);
+            }
+        });
+    }
+
     async loadPage(pageName) {
         try {
             const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite'].includes(pageName);
@@ -447,8 +463,10 @@ class PageManager {
                 let receptionHtml = await receptionResponse.text();
                 receptionHtml = this.transformFileManagers(receptionHtml);
                 receptionHtml = this.transformAppManagers(receptionHtml);
-                document.getElementById(this.contentContainer).innerHTML = receptionHtml;
-                
+                const contentEl = document.getElementById(this.contentContainer);
+                contentEl.innerHTML = receptionHtml;
+                this.closeAllDialogsIn(contentEl);
+
                 // Puis charger la sous-page dans recep-section
                 const pagePath = `./pages/reception-pages/${pageName}.html`;
                 const response = await fetch(pagePath);
@@ -459,6 +477,7 @@ class PageManager {
                 const recepSection = document.querySelector('.recep-section');
                 if (recepSection) {
                     recepSection.innerHTML = html;
+                    this.closeAllDialogsIn(recepSection);
                 }
                 this.setReceptionNavActive(pageName);
             } else {
@@ -475,9 +494,14 @@ class PageManager {
                 let html = await response.text();
                 html = this.transformFileManagers(html);
                 html = this.transformAppManagers(html);
-                document.getElementById(this.contentContainer).innerHTML = html;
+                const contentEl = document.getElementById(this.contentContainer);
+                contentEl.innerHTML = html;
+                this.closeAllDialogsIn(contentEl);
             }
-            
+
+            /* Fermer tout dialog restant dans le document (sécurité) */
+            this.closeAllDialogsIn(document.body);
+
             this.saveCurrentPage(pageName);
             this.trackPageVisit(pageName);
             // Pour les sous-pages reception, utiliser la config 'reception'

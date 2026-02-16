@@ -70,7 +70,8 @@ class AgendaStore {
     async getAllEvents() {
         if (this.useApi) {
             try {
-                const response = await fetch(`${this.apiUrl}/events?start=1900-01-01&end=2100-12-31`);
+                const url = `${this.apiUrl}/events?start=1900-01-01&end=2100-12-31&_t=${Date.now()}`;
+                const response = await fetch(url, { cache: 'no-store' });
                 const data = await response.json();
                 return data.success ? data.data : [];
             } catch (error) {
@@ -78,7 +79,7 @@ class AgendaStore {
                 return [];
             }
         }
-        
+
         const stored = localStorage.getItem(this.storageKey);
         return stored ? JSON.parse(stored) : [];
     }
@@ -89,9 +90,8 @@ class AgendaStore {
     async getEventsByRange(startDate, endDate) {
         if (this.useApi) {
             try {
-                const response = await fetch(
-                    `${this.apiUrl}/events?start=${startDate}&end=${endDate}`
-                );
+                const url = `${this.apiUrl}/events?start=${startDate}&end=${endDate}&_t=${Date.now()}`;
+                const response = await fetch(url, { cache: 'no-store' });
                 const data = await response.json();
                 return data.success ? data.data : [];
             } catch (error) {
