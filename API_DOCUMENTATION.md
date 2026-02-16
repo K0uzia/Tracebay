@@ -211,11 +211,13 @@ Met à jour un lot.
 **Body**:
 ```json
 {
-  "lot_name": "string"  // Optionnel
+  "lot_name": "string",    // Optionnel
+  "status": "finished",    // Optionnel – pour marquer le lot comme terminé (Historique, Traçabilité, PDF)
+  "finished_at": "ISO8601" // Optionnel – date/heure de fin (requis pour afficher « Terminé le », bouton Récupérer, PDF)
 }
 ```
 
-**Utilisé dans**: `HistoriqueManager.updateLotName()`
+**Utilisé dans**: `HistoriqueManager.updateLotName()`, `InventaireManager.savePCEdit()` (finalisation du lot quand tous les items ont état + technicien).
 
 ---
 
@@ -262,17 +264,20 @@ Récupère un item spécifique d'un lot.
 #### `PUT /api/lots/items/:id`
 Met à jour un item d'un lot.
 
-**Body**:
+**Body** (frontend envoie `state` et `technician`):
 ```json
 {
-  "etat": "string",
-  "recovered_at": "boolean"  // Pour historique
+  "state": "string",       // État (ex. Reconditionnés, HS, Pour pièces)
+  "technician": "string",   // Nom du technicien
+  "recovered_at": "boolean"  // Optionnel – pour historique « Récupéré »
 }
 ```
 
+**Réponse** (recommandée): inclure `lotFinished: true` lorsque, après cette mise à jour, tous les items du lot ont un `state` et un `technician`. Le backend peut aussi mettre à jour le lot (`status='finished'`, `finished_at=NOW()`) à ce moment ; sinon le client appellera `PUT /api/lots/:id` avec `status` et `finished_at`.
+
 **Utilisé dans**: 
-- `InventaireManager.updateItemState()`
-- `HistoriqueManager.updateItemState()`
+- `InventaireManager.savePCEdit()`
+- `HistoriqueManager.applyItemEdits()`
 - `HistoriqueManager.markAsRecovered()`
 
 ---
