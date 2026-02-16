@@ -602,13 +602,11 @@ export default class GestionLotsManager {
             this.showNotification(`Marque "${newMarque}" ajoutée`, 'success');
             this.modalManager.close('modal-add-marque');
             input.value = '';
-            
-            // Recharger les données de référence depuis l'API pour avoir la nouvelle marque
-            await this.loadReferenceData();
+
+            // Mise à jour UI sans recharger l'API (évite que la liste écrasée n'ait pas encore la nouvelle marque)
+            this.updateMarqueSelects();
             this.populateMassSelects();
-            // Mettre à jour tous les selects de marque dans les lignes existantes
-            logger.info('🔄 Mise à jour des selects de marque après ajout');
-            // Forcer la mise à jour avec un petit délai pour s'assurer que le DOM est prêt
+            this.populateMarqueSelect();
             setTimeout(() => {
                 this.updateAllMarqueSelects();
             }, 50);
@@ -678,17 +676,14 @@ export default class GestionLotsManager {
             this.modalManager.close('modal-add-modele');
             inputModele.value = '';
             selectMarque.value = '';
-            
-            // Recharger les données de référence depuis l'API pour avoir le nouveau modèle
-            await this.loadReferenceData();
+
+            // Mise à jour UI sans recharger l'API (évite que la liste écrasée n'ait pas encore le nouveau modèle)
             this.populateMassSelects();
-            // Mettre à jour tous les selects de modèle dans les lignes existantes
-            logger.info('🔄 Mise à jour des selects de modèle après ajout');
-            // Forcer la mise à jour avec un petit délai pour s'assurer que le DOM est prêt
+            this.updateMarqueSelects();
             setTimeout(() => {
                 this.updateAllModeleSelects();
             }, 50);
-            
+
         } catch (error) {
             logger.error('❌ Erreur ajout modèle:', error);
             this.showNotification('Erreur lors de l\'ajout du modèle', 'error');
