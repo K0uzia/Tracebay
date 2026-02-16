@@ -1,12 +1,4 @@
 /* Container principal */
-/* .gestion-lots-container {
-        padding: var(--unit-2);
-        background-color: var(--blanc);
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        min-height: 100%;
-    } */
 
 .gestion-lots-header h1 {
     font: var(--font-title);

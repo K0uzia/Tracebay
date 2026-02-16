@@ -101,3 +101,10 @@ aside h2 {
 .reception-nav button i {
     margin-right: var(--unit-1);
 }
+
+.reception-nav button.active,
+.reception-nav button[aria-current="page"] {
+    background-color: var(--orange);
+    color: var(--blanc);
+    font-weight: 700;
+}
