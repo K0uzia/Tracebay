@@ -595,13 +595,22 @@ const messageStartTime = Date.now();
     // Lots routes (Réception)
     fastify.get('/api/lots', async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const result = await query(`
+        const { status: statusFilter } = request.query as { status?: string };
+        const selectSql = `
           SELECT 
             l.id, l.name, l.status, l.item_count, l.description, 
-            l.received_at, l.created_at
+            l.received_at, l.created_at, l.updated_at, l.finished_at, l.recovered_at
           FROM lots l
-          ORDER BY l.received_at DESC
-        `);
+        `;
+        let whereClause = '';
+        const queryParams: any[] = [];
+        if (statusFilter === 'active') {
+          whereClause = " WHERE (l.status IS NULL OR l.status != 'finished')";
+        } else if (statusFilter === 'finished') {
+          whereClause = " WHERE l.status = 'finished'";
+        }
+        const orderSql = ' ORDER BY l.received_at DESC';
+        const result = await query(selectSql + whereClause + orderSql, queryParams);
         return {
           success: true,
           lots: result.rows
@@ -755,7 +764,7 @@ const messageStartTime = Date.now();
     // Update a lot
     fastify.put('/api/lots/:id', async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      const { lot_name, recovered_at } = request.body as any;
+      const { lot_name, recovered_at, status, finished_at } = request.body as any;
 
       try {
         const updates: string[] = [];
@@ -769,17 +778,26 @@ const messageStartTime = Date.now();
 
         if (recovered_at !== undefined) {
           updates.push(`recovered_at = $${paramIndex++}`);
-          // If recovered_at is true or a date string, set it, otherwise set to current timestamp
-          const recoveredDate = recovered_at === true || recovered_at === 'true' 
-            ? new Date().toISOString() 
+          const recoveredDate = recovered_at === true || recovered_at === 'true'
+            ? new Date().toISOString()
             : (recovered_at || new Date().toISOString());
           values.push(recoveredDate);
+        }
+
+        if (status !== undefined) {
+          updates.push(`status = $${paramIndex++}`);
+          values.push(status);
+        }
+
+        if (finished_at !== undefined) {
+          updates.push(`finished_at = $${paramIndex++}`);
+          values.push(typeof finished_at === 'string' ? finished_at : new Date().toISOString());
         }
 
         // Always update updated_at timestamp
         updates.push(`updated_at = NOW()`);
 
-        if (updates.length === 0) {
+        if (updates.length <= 1) {
           reply.statusCode = 400;
           return { error: 'No fields to update' };
         }
@@ -870,9 +888,33 @@ const messageStartTime = Date.now();
           return { error: 'Lot item not found' };
         }
 
+        const updatedItem = result.rows[0];
+        const lotId = updatedItem.lot_id;
+        let lotFinished = false;
+
+        if (lotId != null && (state !== undefined || technician !== undefined)) {
+          const itemsResult = await query(
+            `SELECT id, state, technician FROM lot_items WHERE lot_id = $1 AND (deleted_at IS NULL)`,
+            [lotId]
+          );
+          const allComplete = itemsResult.rows.length > 0 && itemsResult.rows.every(
+            (row: any) =>
+              row.state != null && String(row.state).trim() !== '' &&
+              row.technician != null && String(row.technician).trim() !== ''
+          );
+          if (allComplete) {
+            await query(
+              `UPDATE lots SET status = 'finished', finished_at = NOW(), updated_at = NOW() WHERE id = $1`,
+              [lotId]
+            );
+            lotFinished = true;
+          }
+        }
+
         return {
           success: true,
-          item: result.rows[0]
+          item: updatedItem,
+          lotFinished
         };
       } catch (error: any) {
         console.error('[PUT /api/lots/items/:id] Error updating lot item:', error);
