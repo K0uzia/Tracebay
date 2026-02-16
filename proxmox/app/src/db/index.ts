@@ -91,14 +91,28 @@ export async function transaction<T>(
 export async function initializeDatabase(): Promise<void> {
   const fs = await import('fs/promises');
   const path = await import('path');
-  
+
   try {
     const schemaPath = path.join(__dirname, 'schema.sql');
     const schema = await fs.readFile(schemaPath, 'utf-8');
-    
+
     console.log('🔄 Initializing database schema...');
     await query(schema);
     console.log('✅ Database schema initialized');
+
+    // Migrations pour colonnes ajoutées après coup (bases existantes)
+    const migrations = [
+      'ALTER TABLE lots ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(1024)'
+    ];
+    for (const sql of migrations) {
+      try {
+        await query(sql);
+      } catch (migErr: any) {
+        if (migErr?.code !== '42701') {
+          console.warn('Migration (non bloquante):', (migErr as Error).message);
+        }
+      }
+    }
   } catch (error) {
     console.error('❌ Failed to initialize database:', error);
     throw error;

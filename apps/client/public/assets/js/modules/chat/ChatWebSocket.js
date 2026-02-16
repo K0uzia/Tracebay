@@ -5,8 +5,9 @@
 
 class ChatWebSocket {
   constructor(options = {}) {
-    // Utiliser l'URL WebSocket depuis APP_CONFIG si disponible
-    this.wsUrl = options.wsUrl || (window.APP_CONFIG && window.APP_CONFIG.serverWsUrl) || this.getWebSocketUrl();
+    // Utiliser l'URL WebSocket depuis APP_CONFIG si disponible (le backend expose la route /ws)
+    let base = options.wsUrl || (window.APP_CONFIG && window.APP_CONFIG.serverWsUrl) || this.getWebSocketUrl();
+    this.wsUrl = this.normalizeWsUrl(base);
     this.ws = null;
     this.messageHandlers = [];
     this.errorHandlers = [];
@@ -23,8 +24,17 @@ class ChatWebSocket {
   }
 
   /**
-     * Déterminer l'URL WebSocket à partir de l'URL actuelle (fallback)
-     */
+   * S'assurer que l'URL WebSocket pointe vers la route /ws (backend Fastify)
+   */
+  normalizeWsUrl(url) {
+    if (!url || typeof url !== 'string') return this.getWebSocketUrl();
+    const u = url.trim().replace(/\/+$/, '');
+    return u.endsWith('/ws') ? u : `${u}/ws`;
+  }
+
+  /**
+   * Déterminer l'URL WebSocket à partir de l'URL actuelle (fallback)
+   */
   getWebSocketUrl() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const host = window.location.host;
