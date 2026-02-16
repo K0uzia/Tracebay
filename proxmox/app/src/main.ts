@@ -1030,10 +1030,12 @@ const messageStartTime = Date.now();
           'UPDATE lots SET pdf_path = $1, updated_at = NOW() WHERE id = $2',
           [resolvedPath, id]
         );
+        reply.statusCode = 200;
         return {
           success: true,
           pdf_path: resolvedPath,
-          generatedAt: new Date().toISOString()
+          generatedAt: new Date().toISOString(),
+          message: 'PDF enregistré ; « Voir le PDF » affichera cette version.'
         };
       } catch (err: any) {
         fastify.log.error({ err }, 'POST /api/lots/:id/pdf error');
@@ -1068,6 +1070,7 @@ const messageStartTime = Date.now();
         }
         reply.header('Content-Type', 'application/pdf');
         reply.header('Content-Disposition', 'inline; filename="lot-' + id + '.pdf"');
+        reply.header('Cache-Control', 'no-store, no-cache, must-revalidate');
         return reply.send(fs.createReadStream(filePath));
       } catch (err: any) {
         fastify.log.error({ err }, 'GET /api/lots/:id/pdf error');
