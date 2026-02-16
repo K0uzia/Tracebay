@@ -175,3 +175,112 @@
         order: -1;
     }
 }
+
+/* ========== MODALE LISTE ADHÉRENTS ========== */
+
+.members-list-content {
+    min-height: 120px;
+}
+
+.members-list-loading,
+.members-list-empty {
+    margin: 0;
+    padding: var(--unit-2);
+    color: var(--h2);
+    font: var(--font-text2);
+}
+
+.members-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.members-list-item {
+    padding: var(--unit-2);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+
+.members-list-name {
+    font-weight: 600;
+    color: var(--h2);
+}
+
+.members-list-email {
+    font-size: 0.9rem;
+    color: var(--text);
+}
+
+/* ========== MODALE FEEDBACK ========== */
+
+.feedback-form .form-group {
+    margin-bottom: var(--unit-2);
+}
+
+.feedback-form label {
+    display: block;
+    margin-bottom: var(--unit-1);
+    font-weight: 500;
+    color: var(--h2);
+}
+
+.feedback-form textarea {
+    width: 100%;
+    padding: var(--unit-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    font: inherit;
+    resize: vertical;
+    min-height: 100px;
+}
+
+.feedback-type-group {
+    margin-top: var(--unit-2);
+}
+
+.feedback-type-group label {
+    display: block;
+    margin-bottom: var(--unit-1);
+    font-weight: 500;
+    color: var(--h2);
+}
+
+.feedback-type-group select {
+    width: 100%;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    font: inherit;
+}
+
+.form-help {
+    display: block;
+    margin-top: var(--unit-1);
+    font-size: 0.85rem;
+    color: var(--text);
+}
+
+/* Bouton action-block (Faire un retour) */
+.action-block .action-block-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--unit-1);
+    padding: var(--unit-2);
+    background-color: var(--btn);
+    color: var(--btn-text);
+    border: 1px solid var(--btn-text);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: var(--transition);
+}
+
+.action-block .action-block-btn:hover {
+    background-color: var(--btn-hover);
+}

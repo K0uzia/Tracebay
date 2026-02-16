@@ -614,6 +614,8 @@ class PageManager {
                 .catch(error => {
                     logger.error('❌ Erreur import AgendaStore:', error);
                 });
+
+            this.initializeHomeModals();
         } else if (pageName === 'agenda') {
             import('./assets/js/modules/agenda/AgendaInit.js')
                 .then(module => {
@@ -854,6 +856,91 @@ class PageManager {
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
+    }
+
+    /**
+     * Initialise les modales de la page d'accueil (liste adhérents, feedback)
+     */
+    initializeHomeModals() {
+        const feedbackSubmit = document.getElementById('feedback-submit-btn');
+        const feedbackMessage = document.getElementById('feedback-message');
+        const feedbackType = document.getElementById('feedback-type');
+        const feedbackCharCount = document.getElementById('feedback-char-count');
+        if (feedbackMessage && feedbackCharCount) {
+            feedbackMessage.addEventListener('input', () => {
+                feedbackCharCount.textContent = feedbackMessage.value.length;
+            });
+            feedbackMessage.dispatchEvent(new Event('input'));
+        }
+        if (feedbackSubmit) {
+            feedbackSubmit.addEventListener('click', () => this.submitFeedback());
+        }
+    }
+
+    /**
+     * Envoie le formulaire de feedback vers le système de monitoring
+     */
+    async submitFeedback() {
+        const messageEl = document.getElementById('feedback-message');
+        const typeEl = document.getElementById('feedback-type');
+        if (!messageEl || !typeEl) return;
+        const message = messageEl.value.trim();
+        if (!message) return;
+        const feedbackType = typeEl.value || 'feedback';
+        const serverUrl = this.connectionConfig?.getServerUrl?.() || this.serverUrl || '';
+        const endpoint = `${serverUrl}/api/monitoring/errors`;
+        const submitBtn = document.getElementById('feedback-submit-btn');
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+            const payload = {
+                clientId: window.app?.connectionConfig?.clientId || 'web-' + (navigator.userAgent || '').slice(0, 50),
+                clientVersion: typeof window.app?.getAppVersion === 'function' ? window.app.getAppVersion() : '1.0',
+                platform: navigator.platform || '',
+                errorType: feedbackType,
+                errorMessage: message.substring(0, 1000),
+                context: 'Formulaire « Faire un retour »',
+                userMessage: message.substring(0, 500)
+            };
+            const res = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                window.modalManager?.close('modal-feedback');
+                messageEl.value = '';
+                document.getElementById('feedback-char-count').textContent = '0';
+                this.showNotification?.('Merci, votre retour a bien été envoyé.', 'success');
+            } else {
+                const err = await res.text();
+                this.showNotification?.(`Envoi impossible : ${res.status}. Réessayez plus tard.`, 'error');
+                logger.warn('Feedback non enregistré:', res.status, err);
+            }
+        } catch (e) {
+            this.showNotification?.('Envoi impossible. Vérifiez la connexion au serveur.', 'error');
+            logger.error('Erreur envoi feedback:', e);
+        } finally {
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    }
+
+    /**
+     * Affiche une notification toast (feedback, erreur, succès)
+     */
+    showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.setAttribute('role', 'status');
+        let icon = '<i class="fa-solid fa-circle-info"></i>';
+        if (type === 'success') icon = '<i class="fa-solid fa-check-circle"></i>';
+        else if (type === 'error') icon = '<i class="fa-solid fa-exclamation-circle"></i>';
+        notification.innerHTML = `${icon}<span>${String(message).replace(/</g, '&lt;')}</span>`;
+        document.body.appendChild(notification);
+        requestAnimationFrame(() => notification.classList.add('show'));
+        setTimeout(() => {
+            notification.classList.add('hide');
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
     }
 
     updateLayout(pageName) {

@@ -229,10 +229,10 @@ export default class TracabiliteManager {
 
                 <div class="lot-card-actions">
                     ${pdfPath ? `
-                        <a href="${pdfPath.startsWith('http') ? pdfPath : api.getServerUrl() + (pdfPath.startsWith('/') ? pdfPath : '/' + pdfPath)}?v=${Date.now()}" target="_blank" class="btn-action btn-view">
+                        <a href="${api.getServerUrl()}/api/lots/${lot.id}/pdf?v=${Date.now()}" target="_blank" class="btn-action btn-view">
                             <i class="fa-solid fa-eye"></i> Voir le PDF
                         </a>
-                        <button type="button" class="btn-action btn-download-pdf" data-lot-id="${lot.id}" data-pdf-path="${pdfPath}">
+                        <button type="button" class="btn-action btn-download-pdf" data-lot-id="${lot.id}" data-pdf-path="/api/lots/${lot.id}/pdf">
                             <i class="fa-solid fa-download"></i> Télécharger PDF
                         </button>
                         <button type="button" class="btn-action btn-send-email" data-lot-id="${lot.id}">
@@ -461,6 +461,11 @@ export default class TracabiliteManager {
      */
     async sendEmailPDF() {
         try {
+            if (!this.currentEmailLotId) {
+                this.showNotification('Erreur: lot non identifié. Fermez la fenêtre et réessayez.', 'error');
+                return;
+            }
+
             const recipient = document.getElementById('email-recipient').value.trim();
             const message = document.getElementById('email-message').value.trim();
 
@@ -477,7 +482,7 @@ export default class TracabiliteManager {
             this.showNotification('Envoi en cours...', 'info');
 
             const serverUrl = api.getServerUrl();
-            const endpointPath = '/api/lots/:id/email'.replace(':id', this.currentEmailLotId);
+            const endpointPath = '/api/lots/:id/email'.replace(':id', String(this.currentEmailLotId));
             const fullUrl = `${serverUrl}${endpointPath}`;
             const response = await fetch(fullUrl, {
                 method: 'POST',
