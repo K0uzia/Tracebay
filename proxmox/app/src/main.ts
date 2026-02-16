@@ -5,7 +5,6 @@ import websocket from '@fastify/websocket';
 import dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
-import PDFDocument from 'pdfkit';
 import nodemailer from 'nodemailer';
 import { registerMonitoringRoutes, incrementMessageCount } from './api/monitoring';
 import { registerClientErrorsRoutes } from './api/client-errors';
@@ -979,101 +978,91 @@ const messageStartTime = Date.now();
       }
     });
 
-    // PDF generation: save to /mnt/team/#TEAM/#TRAÇABILITÉ/YYYY/MM/NOMDULOT_DATE.pdf
+    // Réception du PDF : le client envoie le contenu (base64) pour stockage côté serveur + backup local côté client
+    const pdfStorageDir = process.env.PDF_STORAGE_PATH || path.join(process.cwd(), 'data', 'pdfs');
     fastify.post('/api/lots/:id/pdf', async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
       const body = (request.body as any) || {};
-      const lotName = (body.lot_name && String(body.lot_name).trim()) || '';
+      const pdfBase64 = body.pdf_base64;
+      const lotName = (body.lot_name && String(body.lot_name).trim()) || `Lot_${id}`;
       const dateStr = body.date && /^\d{4}-\d{2}-\d{2}$/.test(String(body.date))
         ? String(body.date)
         : new Date().toISOString().slice(0, 10);
-      const basePath = (body.save_path_hint && String(body.save_path_hint).trim()) || '/mnt/team/#TEAM/#TRAÇABILITÉ';
+
+      if (!id || id === 'null' || id === 'undefined') {
+        reply.statusCode = 400;
+        return { error: 'Invalid lot id' };
+      }
+      if (!pdfBase64 || typeof pdfBase64 !== 'string') {
+        reply.statusCode = 400;
+        return { error: 'pdf_base64 is required', message: 'Le client doit envoyer le contenu du PDF en base64.' };
+      }
+
+      let buffer: Buffer;
+      try {
+        buffer = Buffer.from(pdfBase64, 'base64');
+      } catch (_) {
+        reply.statusCode = 400;
+        return { error: 'Invalid base64', message: 'Contenu PDF invalide.' };
+      }
+      if (buffer.length === 0) {
+        reply.statusCode = 400;
+        return { error: 'Empty PDF', message: 'Le PDF est vide.' };
+      }
 
       try {
-        const lotResult = await query(
-          'SELECT id, name, status, finished_at FROM lots WHERE id = $1',
-          [id]
-        );
+        const lotResult = await query('SELECT id FROM lots WHERE id = $1', [id]);
         if (lotResult.rowCount === 0) {
           reply.statusCode = 404;
           return { error: 'Lot not found' };
         }
-        const lot = lotResult.rows[0] as any;
-        const itemsResult = await query(`
-          SELECT li.id, li.serial_number, li.type, li.state, li.technician,
-                 m.name as marque_name, mo.name as modele_name
-          FROM lot_items li
-          LEFT JOIN marques m ON li.marque_id = m.id
-          LEFT JOIN modeles mo ON li.modele_id = mo.id
-          WHERE li.lot_id = $1 AND (li.deleted_at IS NULL)
-          ORDER BY li.id ASC
-        `, [id]);
-        const items = itemsResult.rows as any[];
-
         const year = dateStr.slice(0, 4);
         const month = dateStr.slice(5, 7);
-        const dirPath = path.join(basePath, year, month);
+        const dirPath = path.join(pdfStorageDir, year, month);
         fs.mkdirSync(dirPath, { recursive: true });
-
-        let sanitizedName = (lotName || lot.name || '').replace(/[\s]+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim();
-        if (!sanitizedName) sanitizedName = `Lot_${id}`;
+        const sanitizedName = lotName.replace(/[\s]+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim() || `Lot_${id}`;
         const fileName = `${sanitizedName}_${dateStr}.pdf`;
-        const fullPath = path.join(dirPath, fileName);
-
-        await new Promise<void>((resolve, reject) => {
-          const doc = new PDFDocument({ margin: 50 });
-          const stream = fs.createWriteStream(fullPath);
-          doc.pipe(stream);
-          doc.fontSize(20).text(`Lot #${id}`, { underline: true });
-          doc.fontSize(10).text(`Nom: ${lot.name || '-'} | Terminé: ${dateStr}`, 50, doc.y + 10);
-          doc.moveDown(2);
-          doc.fontSize(12).text('Détail des articles', { underline: true });
-          doc.moveDown(0.5);
-          let y = doc.y;
-          doc.fontSize(9).text('N°', 50, y); doc.text('Série', 80, y); doc.text('Type', 180, y);
-          doc.text('Marque', 250, y); doc.text('Modèle', 320, y); doc.text('État', 400, y); doc.text('Technicien', 450, y);
-          doc.moveTo(50, y + 15).lineTo(550, y + 15).stroke();
-          y = y + 22;
-          for (const it of items) {
-            doc.text(String(it.id || ''), 50, y); doc.text(it.serial_number || '-', 80, y);
-            doc.text(it.type || '-', 180, y); doc.text(it.marque_name || '-', 250, y);
-            doc.text(it.modele_name || '-', 320, y); doc.text(it.state || '-', 400, y); doc.text(it.technician || '-', 450, y);
-            y += 18;
-          }
-          doc.end();
-          stream.on('finish', () => resolve());
-          stream.on('error', reject);
-          doc.on('error', reject);
-        });
+        const serverFilePath = path.join(dirPath, fileName);
+        fs.writeFileSync(serverFilePath, buffer);
+        const resolvedPath = path.resolve(serverFilePath);
 
         await query(
           'UPDATE lots SET pdf_path = $1, updated_at = NOW() WHERE id = $2',
-          [fullPath, id]
+          [resolvedPath, id]
         );
-
         return {
           success: true,
-          pdf_path: `/api/lots/${id}/pdf`,
-          path: fullPath,
+          pdf_path: resolvedPath,
           generatedAt: new Date().toISOString()
         };
       } catch (err: any) {
         fastify.log.error({ err }, 'POST /api/lots/:id/pdf error');
         reply.statusCode = 500;
-        return { error: 'PDF generation failed', message: err?.message || String(err) };
+        return { error: 'Failed to save PDF', message: err?.message || String(err) };
       }
     });
 
     fastify.get('/api/lots/:id/pdf', async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
+      if (!id || id === 'null' || id === 'undefined') {
+        reply.statusCode = 400;
+        return { error: 'Invalid lot id' };
+      }
       try {
         const result = await query('SELECT pdf_path FROM lots WHERE id = $1', [id]);
         if (result.rowCount === 0 || !(result.rows[0] as any)?.pdf_path) {
           reply.statusCode = 404;
           return { error: 'PDF not found for this lot' };
         }
-        const filePath = (result.rows[0] as any).pdf_path;
+        let filePath = (result.rows[0] as any).pdf_path;
+        // Ne pas utiliser un chemin API comme chemin disque (sécurité / cohérence)
+        if (typeof filePath !== 'string' || filePath.startsWith('/api/') || filePath.startsWith('http')) {
+          reply.statusCode = 404;
+          return { error: 'PDF path invalid' };
+        }
+        filePath = path.resolve(filePath);
         if (!fs.existsSync(filePath)) {
+          fastify.log.warn({ filePath, lotId: id }, 'GET /api/lots/:id/pdf file not found on disk');
           reply.statusCode = 404;
           return { error: 'PDF file not found' };
         }
@@ -1089,6 +1078,10 @@ const messageStartTime = Date.now();
 
     fastify.post('/api/lots/:id/email', async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
+      if (!id || id === 'null' || id === 'undefined') {
+        reply.statusCode = 400;
+        return { error: 'Invalid lot id', message: 'Identifiant de lot invalide.' };
+      }
       const body = (request.body as any) || {};
       const email = body.email && String(body.email).trim();
       const subject = body.subject || `Lot #${id} - PDF`;
@@ -1105,8 +1098,14 @@ const messageStartTime = Date.now();
           reply.statusCode = 404;
           return { error: 'PDF not found for this lot', message: 'Générez d\'abord le PDF du lot.' };
         }
-        const filePath = (result.rows[0] as any).pdf_path;
+        let filePath = (result.rows[0] as any).pdf_path;
+        if (typeof filePath !== 'string' || filePath.startsWith('/api/') || filePath.startsWith('http')) {
+          reply.statusCode = 404;
+          return { error: 'PDF path invalid', message: 'Chemin PDF invalide.' };
+        }
+        filePath = path.resolve(filePath);
         if (!fs.existsSync(filePath)) {
+          fastify.log.warn({ filePath, lotId: id }, 'POST /api/lots/:id/email PDF file not found on disk');
           reply.statusCode = 404;
           return { error: 'PDF file not found', message: 'Fichier PDF introuvable.' };
         }
@@ -1121,19 +1120,26 @@ const messageStartTime = Date.now();
           } : undefined
         });
         const fileName = path.basename(filePath);
+        // Lire le fichier en buffer pour éviter problèmes de stream avec nodemailer
+        const pdfBuffer = fs.readFileSync(filePath);
         await transporter.sendMail({
           from: process.env.SMTP_FROM || 'noreply@localhost',
           to: email,
           subject,
           text: message || `PDF du lot #${id} en pièce jointe.`,
-          attachments: [{ filename: fileName, content: fs.createReadStream(filePath) }]
+          attachments: [{ filename: fileName, content: pdfBuffer }]
         });
 
         return { success: true, message: 'Email envoyé' };
       } catch (err: any) {
+        const msg = err?.message || String(err);
+        const isSmtp = /ECONNREFUSED|ETIMEDOUT|EAUTH|ESOCKET|ECONNRESET|Invalid login/i.test(msg);
         fastify.log.error({ err }, 'POST /api/lots/:id/email error');
         reply.statusCode = 500;
-        return { error: 'Email send failed', message: err?.message || 'Erreur lors de l\'envoi de l\'email' };
+        return {
+          error: 'Email send failed',
+          message: isSmtp ? `Erreur envoi (SMTP): ${msg}` : `Erreur: ${msg}`
+        };
       }
     });
 
