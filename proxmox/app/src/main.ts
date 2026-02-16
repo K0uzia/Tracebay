@@ -595,7 +595,7 @@ const messageStartTime = Date.now();
     // Lots routes (Réception)
     fastify.get('/api/lots', async (request: FastifyRequest, reply: FastifyReply) => {
       try {
-        const { status: statusFilter } = request.query as { status?: string };
+        const { status: statusFilter, embed } = request.query as { status?: string; embed?: string };
         const selectSql = `
           SELECT 
             l.id, l.name, l.status, l.item_count, l.description, 
@@ -611,9 +611,55 @@ const messageStartTime = Date.now();
         }
         const orderSql = ' ORDER BY l.received_at DESC';
         const result = await query(selectSql + whereClause + orderSql, queryParams);
+        const lots = result.rows;
+
+        if (embed === 'items' && lots.length > 0) {
+          const lotIds = lots.map((l: any) => l.id);
+          const placeholders = lotIds.map((_: any, i: number) => `$${i + 1}`).join(',');
+          const itemsResult = await query(`
+            SELECT 
+              li.lot_id, li.id, li.serial_number, li.type, li.entry_type, li.entry_date, li.entry_time,
+              li.marque_id, li.modele_id, li.state, li.technician, li.state_changed_at,
+              m.name as marque_name,
+              mo.name as modele_name
+            FROM lot_items li
+            LEFT JOIN marques m ON li.marque_id = m.id
+            LEFT JOIN modeles mo ON li.modele_id = mo.id
+            WHERE li.lot_id IN (${placeholders}) AND (li.deleted_at IS NULL)
+            ORDER BY li.lot_id ASC, li.id ASC
+          `, lotIds);
+
+          const itemsByLotId: Record<number, any[]> = {};
+          for (const row of itemsResult.rows as any[]) {
+            const lotId = row.lot_id;
+            if (!itemsByLotId[lotId]) itemsByLotId[lotId] = [];
+            itemsByLotId[lotId].push({
+              id: row.id,
+              serial_number: row.serial_number,
+              type: row.type,
+              marque_name: row.marque_name,
+              modele_name: row.modele_name,
+              marque_id: row.marque_id,
+              modele_id: row.modele_id,
+              state: row.state || null,
+              technician: row.technician || null,
+              state_changed_at: row.state_changed_at || null,
+              entry_type: row.entry_type,
+              entry_date: row.entry_date,
+              entry_time: row.entry_time
+            });
+          }
+
+          const lotsWithItems = lots.map((lot: any) => ({
+            ...lot,
+            items: itemsByLotId[lot.id] || []
+          }));
+          return { success: true, lots: lotsWithItems };
+        }
+
         return {
           success: true,
-          lots: result.rows
+          lots
         };
       } catch (error) {
         console.error('Error fetching lots:', error);
