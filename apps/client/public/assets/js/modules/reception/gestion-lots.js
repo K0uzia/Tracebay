@@ -499,7 +499,8 @@ export default class GestionLotsManager {
             const lotId = data?.id;
             this.showNotification(`Lot #${lotId || ''} enregistré (${lotData.length} articles)`, 'success');
             
-            // Générer le PDF du lot
+            // Générer le PDF du lot (body attendu par le backend pour nommage et rangement)
+            const dateIso = new Date().toISOString().slice(0, 10);
             setTimeout(async () => {
                 try {
                     const serverUrl = api.getServerUrl();
@@ -510,10 +511,18 @@ export default class GestionLotsManager {
                         headers: {
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
-                        }
+                        },
+                        body: JSON.stringify({
+                            lot_name: lotName || `Lot_${lotId}`,
+                            date: dateIso,
+                            save_path_hint: '/mnt/team/#TEAM/#TRAÇABILITÉ'
+                        })
                     });
                     if (pdfResponse.ok) {
                         logger.debug('✅ PDF généré');
+                    } else {
+                        const errBody = await pdfResponse.text();
+                        logger.warn('⚠️ Génération PDF:', pdfResponse.status, errBody);
                     }
                 } catch (pdfError) {
                     logger.warn('⚠️ Erreur génération PDF:', pdfError);
