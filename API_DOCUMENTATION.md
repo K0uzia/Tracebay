@@ -163,6 +163,8 @@ Récupère la liste des lots.
 - `HistoriqueManager.loadLots()` (status=finished)
 - `TracabiliteManager.loadLots()` (status=all)
 
+**Dépannage** : Si `GET /api/lots` renvoie **500**, le backend utilise probablement la colonne `pdf_path` sur la table `lots`. Exécuter la migration : `ALTER TABLE lots ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(1024);`
+
 ---
 
 #### `POST /api/lots`
