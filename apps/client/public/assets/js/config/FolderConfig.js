@@ -9,13 +9,13 @@ export const folderConfig = {
         team: {
             basePath: '/mnt/team/#TEAM/',
             // Blacklist spécifique à ce preset (vide = utilise la globale)
-            blacklist: ['#TRAÇABALITÉ', '#INTERNE', '#INVITES']
+            blacklist: ['#TRAÇABILITÉ', '#INTERNE', '#INVITES', '#COMMANDES']
         },
         guest: {
             basePath: '/mnt/team/#TEAM/#INVITES',
         },
         development: {
-            basePath: '/home/goupil/Développement',
+            basePath: '/mnt/team/#TEAM/#INTERNE/#WEB',
             blacklist: []
         },
         capsule: {
