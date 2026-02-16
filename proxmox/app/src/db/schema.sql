@@ -133,6 +133,7 @@ CREATE TABLE IF NOT EXISTS lots (
   received_at TIMESTAMP DEFAULT NOW(),
   finished_at TIMESTAMP,
   recovered_at TIMESTAMP,
+  pdf_path VARCHAR(1024),
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );

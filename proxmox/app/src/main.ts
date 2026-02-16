@@ -3,6 +3,10 @@ import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import websocket from '@fastify/websocket';
 import dotenv from 'dotenv';
+import * as fs from 'fs';
+import * as path from 'path';
+import PDFDocument from 'pdfkit';
+import nodemailer from 'nodemailer';
 import { registerMonitoringRoutes, incrementMessageCount } from './api/monitoring';
 import { registerClientErrorsRoutes } from './api/client-errors';
 import { registerCompression } from './middleware/compression';
@@ -599,7 +603,7 @@ const messageStartTime = Date.now();
         const selectSql = `
           SELECT 
             l.id, l.name, l.status, l.item_count, l.description, 
-            l.received_at, l.created_at, l.updated_at, l.finished_at, l.recovered_at
+            l.received_at, l.created_at, l.updated_at, l.finished_at, l.recovered_at, l.pdf_path
           FROM lots l
         `;
         let whereClause = '';
@@ -609,9 +613,13 @@ const messageStartTime = Date.now();
         } else if (statusFilter === 'finished') {
           whereClause = " WHERE l.status = 'finished'";
         }
+        // status=all or no filter: return all lots
         const orderSql = ' ORDER BY l.received_at DESC';
         const result = await query(selectSql + whereClause + orderSql, queryParams);
-        const lots = result.rows;
+        const lots = (result.rows as any[]).map((row: any) => ({
+          ...row,
+          lot_name: row.name ?? null
+        }));
 
         if (embed === 'items' && lots.length > 0) {
           const lotIds = lots.map((l: any) => l.id);
@@ -737,7 +745,7 @@ const messageStartTime = Date.now();
         const lotResult = await query(`
           SELECT 
             l.id, l.name, l.status, l.item_count, l.description, 
-            l.received_at, l.created_at, l.updated_at, l.finished_at, l.recovered_at
+            l.received_at, l.created_at, l.updated_at, l.finished_at, l.recovered_at, l.pdf_path
           FROM lots l
           WHERE l.id = $1
         `, [id]);
@@ -783,16 +791,22 @@ const messageStartTime = Date.now();
         const total = items.length || lot.item_count || 0;
         const recond = items.filter((item: any) => item.state === 'Reconditionnés').length;
         const hs = items.filter((item: any) => item.state === 'HS').length;
-        const pending = items.filter((item: any) => !item.state || item.state === null || item.state === 'Reconditionnés').length;
+        const pieces = items.filter((item: any) => item.state === 'Pour pièces').length;
+        const pending = items.filter((item: any) =>
+          !item.state || String(item.state || '').trim() === '' ||
+          !item.technician || String(item.technician || '').trim() === ''
+        ).length;
 
         return {
           success: true,
           item: {
             ...lot,
-            items: items,
+            lot_name: lot.name ?? null,
+            items,
             total,
             recond,
             hs,
+            pieces,
             pending
           }
         };
@@ -884,8 +898,6 @@ const messageStartTime = Date.now();
         const values: any[] = [];
         let paramIndex = 1;
 
-        console.log(`[PUT /api/lots/items/:id] Request body:`, { id, state, technician, recovered_at });
-
         if (state !== undefined) {
           if (state === null || (typeof state === 'string' && state.trim() === '')) {
             // Permettre de définir state à null explicitement
@@ -919,14 +931,6 @@ const messageStartTime = Date.now();
         values.push(id);
         const whereParamIndex = values.length; // L'index du paramètre WHERE est la longueur du tableau après avoir ajouté id
         const sqlQuery = `UPDATE lot_items SET ${setClause} WHERE id = $${whereParamIndex} RETURNING *`;
-        
-        console.log(`[PUT /api/lots/items/:id] SQL Query:`, sqlQuery);
-        console.log(`[PUT /api/lots/items/:id] Values:`, JSON.stringify(values));
-        console.log(`[PUT /api/lots/items/:id] Updates array:`, updates);
-        console.log(`[PUT /api/lots/items/:id] Set clause:`, setClause);
-        console.log(`[PUT /api/lots/items/:id] Where param index:`, whereParamIndex);
-        console.log(`[PUT /api/lots/items/:id] Values length:`, values.length);
-        
         const result = await query(sqlQuery, values);
 
         if (result.rowCount === 0) {
@@ -963,10 +967,7 @@ const messageStartTime = Date.now();
           lotFinished
         };
       } catch (error: any) {
-        console.error('[PUT /api/lots/items/:id] Error updating lot item:', error);
-        console.error('[PUT /api/lots/items/:id] Error message:', error.message);
-        console.error('[PUT /api/lots/items/:id] Error code:', error.code);
-        console.error('[PUT /api/lots/items/:id] Error detail:', error.detail);
+        fastify.log.error({ err: error }, 'PUT /api/lots/items/:id error');
         reply.statusCode = 500;
         return { 
           error: 'Database error', 
@@ -978,15 +979,162 @@ const messageStartTime = Date.now();
       }
     });
 
-    // PDF generation stub
+    // PDF generation: save to /mnt/team/#TEAM/#TRAÇABILITÉ/YYYY/MM/NOMDULOT_DATE.pdf
     fastify.post('/api/lots/:id/pdf', async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      return {
-        success: true,
-        id,
-        pdf: `Lot ${id} PDF generation stub`,
-        generatedAt: new Date().toISOString()
-      };
+      const body = (request.body as any) || {};
+      const lotName = (body.lot_name && String(body.lot_name).trim()) || '';
+      const dateStr = body.date && /^\d{4}-\d{2}-\d{2}$/.test(String(body.date))
+        ? String(body.date)
+        : new Date().toISOString().slice(0, 10);
+      const basePath = (body.save_path_hint && String(body.save_path_hint).trim()) || '/mnt/team/#TEAM/#TRAÇABILITÉ';
+
+      try {
+        const lotResult = await query(
+          'SELECT id, name, status, finished_at FROM lots WHERE id = $1',
+          [id]
+        );
+        if (lotResult.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Lot not found' };
+        }
+        const lot = lotResult.rows[0] as any;
+        const itemsResult = await query(`
+          SELECT li.id, li.serial_number, li.type, li.state, li.technician,
+                 m.name as marque_name, mo.name as modele_name
+          FROM lot_items li
+          LEFT JOIN marques m ON li.marque_id = m.id
+          LEFT JOIN modeles mo ON li.modele_id = mo.id
+          WHERE li.lot_id = $1 AND (li.deleted_at IS NULL)
+          ORDER BY li.id ASC
+        `, [id]);
+        const items = itemsResult.rows as any[];
+
+        const year = dateStr.slice(0, 4);
+        const month = dateStr.slice(5, 7);
+        const dirPath = path.join(basePath, year, month);
+        fs.mkdirSync(dirPath, { recursive: true });
+
+        let sanitizedName = (lotName || lot.name || '').replace(/[\s]+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim();
+        if (!sanitizedName) sanitizedName = `Lot_${id}`;
+        const fileName = `${sanitizedName}_${dateStr}.pdf`;
+        const fullPath = path.join(dirPath, fileName);
+
+        await new Promise<void>((resolve, reject) => {
+          const doc = new PDFDocument({ margin: 50 });
+          const stream = fs.createWriteStream(fullPath);
+          doc.pipe(stream);
+          doc.fontSize(20).text(`Lot #${id}`, { underline: true });
+          doc.fontSize(10).text(`Nom: ${lot.name || '-'} | Terminé: ${dateStr}`, 50, doc.y + 10);
+          doc.moveDown(2);
+          doc.fontSize(12).text('Détail des articles', { underline: true });
+          doc.moveDown(0.5);
+          let y = doc.y;
+          doc.fontSize(9).text('N°', 50, y); doc.text('Série', 80, y); doc.text('Type', 180, y);
+          doc.text('Marque', 250, y); doc.text('Modèle', 320, y); doc.text('État', 400, y); doc.text('Technicien', 450, y);
+          doc.moveTo(50, y + 15).lineTo(550, y + 15).stroke();
+          y = y + 22;
+          for (const it of items) {
+            doc.text(String(it.id || ''), 50, y); doc.text(it.serial_number || '-', 80, y);
+            doc.text(it.type || '-', 180, y); doc.text(it.marque_name || '-', 250, y);
+            doc.text(it.modele_name || '-', 320, y); doc.text(it.state || '-', 400, y); doc.text(it.technician || '-', 450, y);
+            y += 18;
+          }
+          doc.end();
+          stream.on('finish', () => resolve());
+          stream.on('error', reject);
+          doc.on('error', reject);
+        });
+
+        await query(
+          'UPDATE lots SET pdf_path = $1, updated_at = NOW() WHERE id = $2',
+          [fullPath, id]
+        );
+
+        return {
+          success: true,
+          pdf_path: `/api/lots/${id}/pdf`,
+          path: fullPath,
+          generatedAt: new Date().toISOString()
+        };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'POST /api/lots/:id/pdf error');
+        reply.statusCode = 500;
+        return { error: 'PDF generation failed', message: err?.message || String(err) };
+      }
+    });
+
+    fastify.get('/api/lots/:id/pdf', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      try {
+        const result = await query('SELECT pdf_path FROM lots WHERE id = $1', [id]);
+        if (result.rowCount === 0 || !(result.rows[0] as any)?.pdf_path) {
+          reply.statusCode = 404;
+          return { error: 'PDF not found for this lot' };
+        }
+        const filePath = (result.rows[0] as any).pdf_path;
+        if (!fs.existsSync(filePath)) {
+          reply.statusCode = 404;
+          return { error: 'PDF file not found' };
+        }
+        reply.header('Content-Type', 'application/pdf');
+        reply.header('Content-Disposition', 'inline; filename="lot-' + id + '.pdf"');
+        return reply.send(fs.createReadStream(filePath));
+      } catch (err: any) {
+        fastify.log.error({ err }, 'GET /api/lots/:id/pdf error');
+        reply.statusCode = 500;
+        return { error: 'Failed to serve PDF' };
+      }
+    });
+
+    fastify.post('/api/lots/:id/email', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const body = (request.body as any) || {};
+      const email = body.email && String(body.email).trim();
+      const subject = body.subject || `Lot #${id} - PDF`;
+      const message = body.message || '';
+
+      if (!email) {
+        reply.statusCode = 400;
+        return { error: 'email is required', message: 'Veuillez entrer une adresse email' };
+      }
+
+      try {
+        const result = await query('SELECT pdf_path FROM lots WHERE id = $1', [id]);
+        if (result.rowCount === 0 || !(result.rows[0] as any)?.pdf_path) {
+          reply.statusCode = 404;
+          return { error: 'PDF not found for this lot', message: 'Générez d\'abord le PDF du lot.' };
+        }
+        const filePath = (result.rows[0] as any).pdf_path;
+        if (!fs.existsSync(filePath)) {
+          reply.statusCode = 404;
+          return { error: 'PDF file not found', message: 'Fichier PDF introuvable.' };
+        }
+
+        const transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || 'localhost',
+          port: parseInt(process.env.SMTP_PORT || '25', 10),
+          secure: process.env.SMTP_SECURE === 'true',
+          auth: process.env.SMTP_USER ? {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS || ''
+          } : undefined
+        });
+        const fileName = path.basename(filePath);
+        await transporter.sendMail({
+          from: process.env.SMTP_FROM || 'noreply@localhost',
+          to: email,
+          subject,
+          text: message || `PDF du lot #${id} en pièce jointe.`,
+          attachments: [{ filename: fileName, content: fs.createReadStream(filePath) }]
+        });
+
+        return { success: true, message: 'Email envoyé' };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'POST /api/lots/:id/email error');
+        reply.statusCode = 500;
+        return { error: 'Email send failed', message: err?.message || 'Erreur lors de l\'envoi de l\'email' };
+      }
     });
 
     // WebSocket routes
