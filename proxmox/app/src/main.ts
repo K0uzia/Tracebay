@@ -549,50 +549,181 @@ const messageStartTime = Date.now();
       }
     });
 
-    // Agenda routes
+    // Agenda routes (stockage en BDD, même table events que /api/events)
     fastify.get('/api/agenda/events', async (request: FastifyRequest, reply: FastifyReply) => {
-      // Mock: return empty events
-      return { success: true, events: [] };
+      const { start: startParam, end: endParam } = request.query as { start?: string; end?: string };
+      try {
+        let sql = 'SELECT id, user_id, username, title, start, "end", description, location, created_at FROM events WHERE 1=1';
+        const params: any[] = [];
+        let paramIndex = 1;
+        if (startParam) {
+          sql += ` AND start >= $${paramIndex}`;
+          params.push(startParam);
+          paramIndex++;
+        }
+        if (endParam) {
+          sql += ` AND "end" <= $${paramIndex}`;
+          params.push(endParam);
+          paramIndex++;
+        }
+        sql += ' ORDER BY start ASC';
+        const result = await query(sql, params);
+        const events = (result.rows as any[]).map((row: any) => ({
+          id: String(row.id),
+          title: row.title,
+          start: row.start,
+          end: row.end,
+          description: row.description || '',
+          location: row.location || '',
+          created_at: row.created_at
+        }));
+        return { success: true, data: events };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'GET /api/agenda/events error');
+        reply.statusCode = 500;
+        return { success: false, error: 'Database error', message: err?.message };
+      }
     });
 
     fastify.post('/api/agenda/events', async (request: FastifyRequest, reply: FastifyReply) => {
-      const { title, startTime, endTime, description } = request.body as any;
+      const body = (request.body as any) || {};
+      const title = body.title;
+      const start = body.start || body.startTime;
+      const end = body.end || body.endTime;
+      const description = body.description || null;
+      const location = body.location || null;
+      const userId = (request as any).userId || null;
+      const username = (request as any).username || null;
 
-      if (!title || !startTime || !endTime) {
+      if (!title || !start || !end) {
         reply.statusCode = 400;
-        return { error: 'Title, startTime, and endTime are required' };
+        return { success: false, error: 'Title, start and end are required' };
       }
-
-      const eventId = `event_${Date.now()}`;
-      return {
-        success: true,
-        event: {
-          id: eventId,
-          title,
-          description,
-          startTime,
-          endTime,
-          createdAt: new Date().toISOString()
-        }
-      };
+      try {
+        const result = await query(
+          'INSERT INTO events (user_id, username, title, start, "end", description, location, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) RETURNING id, title, start, "end", description, location, created_at',
+          [userId, username, title, start, end, description, location]
+        );
+        const row = result.rows[0] as any;
+        const event = {
+          id: String(row.id),
+          title: row.title,
+          start: row.start,
+          end: row.end,
+          description: row.description || '',
+          location: row.location || '',
+          created_at: row.created_at
+        };
+        return { success: true, data: event };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'POST /api/agenda/events error');
+        reply.statusCode = 500;
+        return { success: false, error: 'Database error', message: err?.message };
+      }
     });
 
     fastify.get('/api/agenda/events/:id', async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      return {
-        success: true,
-        event: { id, title: 'Mock Event' }
-      };
+      if (!id) {
+        reply.statusCode = 400;
+        return { success: false, error: 'Invalid event id' };
+      }
+      try {
+        const result = await query(
+          'SELECT id, user_id, username, title, start, "end", description, location, created_at FROM events WHERE id = $1',
+          [id]
+        );
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { success: false, error: 'Event not found' };
+        }
+        const row = result.rows[0] as any;
+        return {
+          success: true,
+          data: {
+            id: String(row.id),
+            title: row.title,
+            start: row.start,
+            end: row.end,
+            description: row.description || '',
+            location: row.location || '',
+            created_at: row.created_at
+          }
+        };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'GET /api/agenda/events/:id error');
+        reply.statusCode = 500;
+        return { success: false, error: 'Database error', message: err?.message };
+      }
     });
 
     fastify.put('/api/agenda/events/:id', async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      return { success: true, event: { id } };
+      const body = (request.body as any) || {};
+      if (!id) {
+        reply.statusCode = 400;
+        return { success: false, error: 'Invalid event id' };
+      }
+      const updates: string[] = [];
+      const params: any[] = [];
+      let paramIndex = 1;
+      if (body.title !== undefined) { updates.push(`title = $${paramIndex++}`); params.push(body.title); }
+      if (body.start !== undefined) { updates.push(`start = $${paramIndex++}`); params.push(body.start); }
+      if (body.end !== undefined) { updates.push(`"end" = $${paramIndex++}`); params.push(body.end); }
+      if (body.description !== undefined) { updates.push(`description = $${paramIndex++}`); params.push(body.description); }
+      if (body.location !== undefined) { updates.push(`location = $${paramIndex++}`); params.push(body.location); }
+      if (updates.length === 0) {
+        reply.statusCode = 400;
+        return { success: false, error: 'No fields to update' };
+      }
+      params.push(id);
+      try {
+        const result = await query(
+          `UPDATE events SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, title, start, "end", description, location, created_at`,
+          params
+        );
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { success: false, error: 'Event not found' };
+        }
+        const row = result.rows[0] as any;
+        return {
+          success: true,
+          data: {
+            id: String(row.id),
+            title: row.title,
+            start: row.start,
+            end: row.end,
+            description: row.description || '',
+            location: row.location || '',
+            created_at: row.created_at
+          }
+        };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'PUT /api/agenda/events/:id error');
+        reply.statusCode = 500;
+        return { success: false, error: 'Database error', message: err?.message };
+      }
     });
 
     fastify.delete('/api/agenda/events/:id', async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      return { success: true, message: 'Event deleted' };
+      if (!id) {
+        reply.statusCode = 400;
+        return { success: false, error: 'Invalid event id' };
+      }
+      try {
+        const result = await query('DELETE FROM events WHERE id = $1', [id]);
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { success: false, error: 'Event not found' };
+        }
+        return { success: true, message: 'Event deleted' };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'DELETE /api/agenda/events/:id error');
+        reply.statusCode = 500;
+        return { success: false, error: 'Database error', message: err?.message };
+      }
     });
 
     // Lots routes (Réception)
