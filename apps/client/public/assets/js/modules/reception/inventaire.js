@@ -12,6 +12,7 @@ export default class InventaireManager {
     constructor(modalManager) {
         this.modalManager = modalManager;
         this.currentEditingItemId = null;
+        this.currentEditingLotId = null;
         this.lots = [];
         this.init();
     }
@@ -183,10 +184,19 @@ export default class InventaireManager {
         // S'assurer que lot.items est un tableau
         const items = Array.isArray(lot.items) ? lot.items : [];
         
-        if (lotData.isFinished && lotData.status === 'received') {
-            console.log('🚫 Lot client-finished, skip affichage');
-            return null; // Ne pas créer l'élément DOM
-          }
+        // Calculer pending pour déterminer si le lot est terminé
+        const pendingCount = items.filter(item => 
+            !item.state || item.state.trim() === '' || 
+            !item.technician || item.technician.trim() === ''
+        ).length;
+        const isLotFinished = items.length > 0 && pendingCount === 0;
+        
+        // Ne pas afficher les lots terminés avec status received (doivent aller en historique)
+        if (isLotFinished && lot.status === 'received') {
+            logger.debug('🚫 Lot terminé (status=received), skip affichage');
+            return ''; // Retourner chaîne vide pour éviter null dans le join
+        }
+        
         // Calculer les statistiques à partir des items si elles ne sont pas fournies par le serveur
         const total = lot.total !== undefined ? lot.total : items.length;
         let recond = lot.recond !== undefined ? lot.recond : 0;
@@ -353,17 +363,22 @@ export default class InventaireManager {
     editPC(itemId) {
         // Chercher l'item dans les lots
         let item = null;
+        let foundLot = null;
         for (const lot of this.lots) {
             item = lot.items.find(i => i.id == itemId);
-            if (item) break;
+            if (item) {
+                foundLot = lot;
+                break;
+            }
         }
 
-        if (!item) {
+        if (!item || !foundLot) {
             this.showNotification('PC non trouvé', 'error');
             return;
         }
 
         this.currentEditingItemId = itemId;
+        this.currentEditingLotId = foundLot.id;
 
         // Remplir la modale
         document.getElementById('modal-pc-serial').textContent = item.serial_number || '-';
@@ -490,19 +505,53 @@ export default class InventaireManager {
 
             this.modalManager.close('modal-edit-pc');
 
-            // Après savePCEdit, reload complet
-            const lotData = await Promise.all([
-                api.get(`/api/lots/${this.currentEditingItemId}`),  // Lot complet
-                api.get(`/api/lots/${this.currentEditingItemId}/items`)  // Items séparés
-            ]);
+            // Déterminer si le lot est maintenant terminé : réponse API ou vérification côté client
+            let lotJustFinished = data.lotFinished === true;
+            if (!lotJustFinished && this.currentEditingLotId) {
+                try {
+                    const lotUrl = `${api.getServerUrl()}/api/lots/${this.currentEditingLotId}`;
+                    const lotRes = await fetch(lotUrl, {
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` }
+                    });
+                    if (lotRes.ok) {
+                        const lotJson = await lotRes.json();
+                        const items = Array.isArray(lotJson.items) ? lotJson.items : (lotJson.item?.items || []);
+                        const allComplete = items.length > 0 && items.every(it => (it.state && it.state.trim() !== '') && (it.technician && it.technician.trim() !== ''));
+                        if (allComplete) lotJustFinished = true;
+                    }
+                } catch (_) { /* ignorer */ }
+            }
+            // Si le lot vient d'être terminé, demander au backend de le marquer finished (historique, traçabilité, PDF)
+            if (lotJustFinished && this.currentEditingLotId) {
+                try {
+                    const putLotUrl = `${api.getServerUrl()}/api/lots/${this.currentEditingLotId}`;
+                    const finishedAt = new Date().toISOString();
+                    const putResponse = await fetch(putLotUrl, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                        },
+                        body: JSON.stringify({
+                            status: 'finished',
+                            finished_at: finishedAt
+                        })
+                    });
+                    if (putResponse.ok) {
+                        logger.info('✅ Lot marqué terminé (status=finished, finished_at)', { lotId: this.currentEditingLotId, finished_at: finishedAt });
+                    } else {
+                        logger.warn('⚠️ Le serveur n’a pas mis à jour le lot (status/finished_at). Le lot peut ne pas apparaître dans Historique/Traçabilité.', await putResponse.text());
+                    }
+                } catch (err) {
+                    logger.warn('⚠️ Erreur lors de la finalisation du lot:', err);
+                }
+            }
 
-            // Recharger les lots
-            this.lots = lotData[0];
-            this.renderLots();
+            // Recharger la liste des lots (inventaire n'affiche que les lots actifs)
+            await this.loadLots();
 
-            // Afficher une seule notification en fonction du résultat
-            if (data.lotFinished) {
-                this.showNotification('🎉 Lot terminé ! Passage en Historique...', 'success');
+            if (lotJustFinished) {
+                this.showNotification('🎉 Lot terminé ! Il apparaît dans Historique et Traçabilité.', 'success');
             } else {
                 this.showNotification('PC mis à jour', 'success');
             }
@@ -584,5 +633,6 @@ export default class InventaireManager {
         logger.debug('🧹 Destruction InventaireManager');
         this.lots = [];
         this.currentEditingItemId = null;
+        this.currentEditingLotId = null;
     }
 }
