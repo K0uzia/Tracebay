@@ -45,8 +45,7 @@ export default class GestionLotsManager {
                     logger.debug('✅ AutoFocus sur S/N de la première ligne');
                 }
             }
-        }, 400);
-        
+        }, 500);
         logger.debug('✅ GestionLotsManager prêt');
     }
 
@@ -265,12 +264,11 @@ export default class GestionLotsManager {
             }
         }, 300);
 
-        // Scan de code-barres
+        // Scan de code-barres (hors champs : buffer clavier + Enter)
         let barcodeBuffer = '';
         let barcodeTimeout;
 
         document.addEventListener('keydown', (e) => {
-            // Ignorer si on tape dans un input
             if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
 
             if (e.key === 'Enter' && barcodeBuffer.length > 3) {
@@ -283,6 +281,44 @@ export default class GestionLotsManager {
                     barcodeBuffer = '';
                 }, 100);
             }
+        });
+
+        // Quand on scan dans le champ S/N (douchette) : Enter = garder le S/N, créer une nouvelle ligne et focus S/N pour rescanner
+        document.addEventListener('keydown', (e) => {
+            if (e.target.name !== 'serial_number' || e.key !== 'Enter') return;
+            if (!e.target.closest('#lot-table-body')) return;
+            const snInput = e.target;
+            const value = (snInput.value || '').trim();
+            if (!value) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const tbody = document.getElementById('lot-table-body');
+            const row = snInput.closest('tr');
+            if (!tbody || !row) return;
+
+            // Vérifier doublon (autres lignes uniquement)
+            const existingRows = tbody.querySelectorAll('tr');
+            const snExists = Array.from(existingRows).some(r => {
+                if (r === row) return false;
+                const other = r.querySelector('input[name="serial_number"]');
+                return other && other.value.trim().toUpperCase() === value.toUpperCase();
+            });
+            if (snExists) {
+                this.showNotification(`S/N déjà présent: ${value}`, 'warning');
+                return;
+            }
+
+            // Nouvelle ligne SCAN vide et focus sur son S/N
+            const newRow = this.createRow('', 'scan');
+            tbody.appendChild(newRow);
+            const newSnInput = newRow.querySelector('input[name="serial_number"]');
+            if (newSnInput) {
+                newSnInput.focus();
+                newSnInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            this.showNotification('S/N enregistré, prêt pour le prochain scan', 'success');
         });
 
         logger.debug('✅ Événements configurés');
@@ -360,18 +396,19 @@ export default class GestionLotsManager {
         const row = document.createElement('tr');
         const now = new Date();
         const rowNum = this.currentRowNumber++;
+        const escSn = (serialNumber || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 
         row.innerHTML = `
-            <td>
+            <td data-label="Sélection">
                 <input type="checkbox" class="row-checkbox" title="Sélectionner cette ligne">
             </td>
-            <td>
+            <td data-label="N°">
                 <span>${rowNum}</span>
             </td>
-            <td>
-                <input type="text" name="serial_number" value="${serialNumber}" placeholder="S/N" required>
+            <td data-label="S/N">
+                <input type="text" name="serial_number" value="${escSn}" placeholder="S/N" required>
             </td>
-            <td>
+            <td data-label="Type">
                 <select name="type" required>
                     <option value="">Type...</option>
                     <option value="portable">Portable</option>
@@ -379,22 +416,21 @@ export default class GestionLotsManager {
                     <option value="ecran">Écran</option>
                 </select>
             </td>
-            <td>
+            <td data-label="Marque">
                 <select name="marque" required>
                     <option value="">Marque...</option>
                     ${this.marques.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
                 </select>
             </td>
-            <td>
+            <td data-label="Modèle">
                 <select name="modele" required>
                     <option value="">Modèle...</option>
-                    <!-- Les modèles seront remplis dynamiquement selon la marque sélectionnée -->
                 </select>
             </td>
-            <td>
+            <td data-label="Entrée">
                 <span class="entry-badge ${entryType}">${entryType === 'scan' ? 'SCAN' : 'MANUEL'}</span>
             </td>
-            <td>
+            <td data-label="Action">
                 <button type="button" class="btn-delete-row" title="Supprimer cette ligne">
                     <i class="fa-solid fa-trash"></i>
                 </button>

@@ -2,6 +2,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
     padding: var(--unit-2);
     margin: var(--unit-2) 0 var(--unit-2) 0;
     background: var(--blanc);
@@ -50,7 +51,8 @@
 
 .search-container {
     position: relative;
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 0;
     max-width: 500px;
 }
 
@@ -75,6 +77,21 @@
 .search-container input:focus {
     outline: none;
     border-color: var(--orange);
+}
+
+#add-category-btn {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+@media (max-width: 560px) {
+    .shortcut-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .search-container {
+        max-width: none;
+    }
 }
 
 .shortcut-grid {

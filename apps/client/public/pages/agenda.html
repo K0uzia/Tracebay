@@ -35,14 +35,14 @@
     </div>
 </section>
 
-<dialog id="agenda-create-modal" class="universal-modal">
+<dialog id="agenda-create-modal" class="universal-modal agenda-event-modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Nouvel événement</h2>
-            <button type="button" class="modal-close-btn" data-close="agenda-create-modal"><span>&times;</span></button>
+            <h2><i class="fas fa-calendar-plus"></i> Nouvel événement</h2>
+            <button type="button" class="modal-close-btn" data-close="agenda-create-modal" aria-label="Fermer"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <form id="createEventForm">
+            <form id="createEventForm" class="agenda-event-form">
                 <div class="form-group">
                     <label for="create_title">Titre *</label>
                     <input type="text" id="create_title" name="title" required>
@@ -87,24 +87,23 @@
                         </div>
                     </div>
                 </div>
+            </form>
         </div>
-        </form>
-    </div>
-    <div class="modal-footer">
-        <button type="button" class="btn btn-annuler" data-close="agenda-create-modal">Annuler</button>
-        <button type="submit" form="createEventForm" class="btn btn-primary">Enregistrer</button>
-    </div>
+        <div class="modal-footer agenda-modal-footer-actions">
+            <button type="button" class="btn btn-annuler" data-close="agenda-create-modal">Annuler</button>
+            <button type="submit" form="createEventForm" class="btn btn-primary"><i class="fas fa-check"></i> Enregistrer</button>
+        </div>
     </div>
 </dialog>
 
-<dialog id="agenda-edit-modal" class="universal-modal">
+<dialog id="agenda-edit-modal" class="universal-modal agenda-event-modal">
     <div class="modal-content">
         <div class="modal-header">
-            <h2>Modifier l'événement</h2>
-            <button type="button" class="modal-close-btn" data-close="agenda-edit-modal"><span>&times;</span></button>
+            <h2><i class="fas fa-calendar-check"></i> Modifier l'événement</h2>
+            <button type="button" class="modal-close-btn" data-close="agenda-edit-modal" aria-label="Fermer"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <form id="editEventForm">
+            <form id="editEventForm" class="agenda-event-form">
                 <input type="hidden" id="edit_eventId" name="id">
 
                 <div class="form-group">
@@ -153,11 +152,11 @@
                 </div>
             </form>
         </div>
-        <div class="modal-footer space-between">
-            <button type="button" id="triggerDeleteBtn" class="btn btn-danger-outline">Supprimer</button>
-            <div class="right-actions">
+        <div class="modal-footer agenda-modal-footer-actions">
+            <button type="button" id="triggerDeleteBtn" class="btn btn-danger-outline" title="Supprimer l'événement"><i class="fas fa-trash-alt"></i> Supprimer</button>
+            <div class="agenda-modal-footer-right">
                 <button type="button" class="btn btn-annuler" data-close="agenda-edit-modal">Annuler</button>
-                <button type="submit" form="editEventForm" class="btn btn-primary">Mettre à jour</button>
+                <button type="submit" form="editEventForm" class="btn btn-primary"><i class="fas fa-save"></i> Mettre à jour</button>
             </div>
         </div>
     </div>

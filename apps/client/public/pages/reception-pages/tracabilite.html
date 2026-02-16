@@ -10,16 +10,14 @@
         <p class="subtitle">Liste complète des lots avec accès aux documents</p>
     </div>
 
-    <!-- Barre de filtre -->
+    <!-- Choix de l'année + Rafraîchir -->
     <div class="tracabilite-filters">
         <div class="filter-group">
-            <label for="filter-tracabilite-status">
-                <i class="fa-solid fa-filter"></i> Statut :
+            <label for="filter-tracabilite-year">
+                <i class="fa-solid fa-calendar"></i> Année :
             </label>
-            <select id="filter-tracabilite-status">
-                <option value="">-- Tous les lots --</option>
-                <option value="active">En cours</option>
-                <option value="finished">Terminés</option>
+            <select id="filter-tracabilite-year">
+                <!-- Options remplies par JS (année en cours par défaut) -->
             </select>
         </div>
         <div class="filter-group">

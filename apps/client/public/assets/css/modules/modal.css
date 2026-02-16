@@ -8,20 +8,52 @@
    DIALOG ELEMENT (HTML5)
    ==================================== */
 
+/* Masquer tout dialog qui n'a pas [open] (évite affichage au chargement ou quirk navigateur/Electron) */
+dialog:not([open]) {
+    display: none !important;
+}
+
 dialog {
-    width: auto;
-    max-width: max-content;
+    width: 100%;
+    max-width: min(560px, calc(100vw - var(--unit-4)));
+    min-width: 0;
+    max-height: calc(100vh - var(--unit-4));
+    margin: auto;
     padding: 0;
     border: none;
     border-radius: var(--radius-large);
     box-shadow: var(--shadow-strong);
-    animation: slideUp 0.3s ease-out;
-    overflow-x: hidden;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* Centrage explicite du dialog dans la vue (évite décalage à droite) */
+dialog[open] {
+    position: fixed;
+    inset: 0;
+    margin: auto;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    animation: modalFadeIn 0.25s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 dialog::backdrop {
     background-color: rgba(13, 13, 13, 0.5);
     animation: fadeIn 0.3s ease-out;
+}
+
+dialog:has(.modal-content.modal-md) {
+    max-width: min(640px, calc(100vw - var(--unit-4)));
+}
+
+dialog:has(.modal-content.modal-lg) {
+    max-width: min(720px, calc(100vw - var(--unit-4)));
 }
 
 
@@ -30,7 +62,13 @@ dialog::backdrop {
    ==================================== */
 
 .universal-modal {
-    background-color: var(--blanc);
+    background-color: transparent;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 0;
+    max-height: inherit;
 }
 
 .universal-modal::-webkit-scrollbar {
@@ -53,7 +91,13 @@ dialog::backdrop {
 .modal-content {
     display: flex;
     flex-direction: column;
+    min-height: 0;
+    max-height: calc(100vh - var(--unit-4));
+    width: 100%;
     border-radius: var(--radius-large);
+    overflow: hidden;
+    background-color: var(--blanc);
+    box-shadow: var(--shadow-strong);
 }
 
 /* Header */
@@ -64,6 +108,8 @@ dialog::backdrop {
     padding: var(--unit-3);
     border-bottom: 1px solid rgba(13, 13, 13, 0.1);
     flex-shrink: 0;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .modal-header h2 {
@@ -102,10 +148,15 @@ dialog::backdrop {
 /* Body */
 .modal-body {
     padding: var(--unit-3);
-    overflow: auto;
+    overflow-y: auto;
+    overflow-x: hidden;
     flex: 1;
+    min-height: 0;
+    width: 100%;
+    box-sizing: border-box;
     color: var(--text2);
     font: var(--font-text);
+    scrollbar-gutter: stable;
 }
 
 
@@ -117,6 +168,8 @@ dialog::backdrop {
     border-top: 1px solid rgba(13, 13, 13, 0.1);
     flex-shrink: 0;
     justify-content: flex-end;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .modal-footer.space-between {
@@ -328,34 +381,44 @@ dialog::backdrop {
 
 .modal-footer .btn,
 .modal-body .btn {
-    padding: var(--btn-primary-padding);
+    padding: var(--unit-2) var(--unit-4);
+    min-height: var(--unit-5);
+    min-width: 7rem;
     border: none;
     border-radius: var(--radius-small);
     font: var(--font-btn);
     cursor: pointer;
     transition: var(--transition);
     white-space: nowrap;
-    min-height: var(--unit-5);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--unit-1);
+    box-sizing: border-box;
 }
 
 /* Primary Button (Submit) - Vert (Valid) */
 .modal-submit-btn,
+.modal-apply-btn,
 .btn-primary {
     background-color: var(--valid);
     color: var(--blanc);
     box-shadow: var(--shadow-small);
     font-weight: 500;
     border: none;
-    padding: var(--unit-2) var(--unit-3);
+    padding: var(--unit-2) var(--unit-4);
+    min-width: 7rem;
     border-radius: var(--radius-small);
     cursor: pointer;
     transition: var(--transition);
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: var(--unit-1);
 }
 
 .modal-submit-btn:hover:not(:disabled),
+.modal-apply-btn:hover:not(:disabled),
 .btn-primary:hover {
     background-color: #006600;
     box-shadow: var(--shadow-medium);
@@ -363,12 +426,14 @@ dialog::backdrop {
 }
 
 .modal-submit-btn:active:not(:disabled),
+.modal-apply-btn:active:not(:disabled),
 .btn-primary:active {
     transform: translateY(0);
     opacity: 0.95;
 }
 
-.modal-submit-btn:disabled {
+.modal-submit-btn:disabled,
+.modal-apply-btn:disabled {
     opacity: 0.6;
     cursor: not-allowed;
 }
@@ -383,12 +448,14 @@ dialog::backdrop {
     box-shadow: var(--shadow-small);
     font-weight: 500;
     border: none;
-    padding: var(--unit-2) var(--unit-3);
+    padding: var(--unit-2) var(--unit-4);
+    min-width: 7rem;
     border-radius: var(--radius-small);
     cursor: pointer;
     transition: var(--transition);
-    display: flex;
+    display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: var(--unit-1);
 }
 
@@ -523,12 +590,13 @@ dialog::backdrop {
 
 @media (max-width: 768px) {
     dialog {
-        width: calc(100vw - var(--unit-2));
-        max-height: calc(100vh - var(--unit-2));
+        width: calc(100vw - var(--unit-4));
+        max-width: none;
+        max-height: calc(100vh - var(--unit-4));
     }
 
     .modal-content {
-        max-height: calc(100vh - var(--unit-2));
+        max-height: calc(100vh - var(--unit-4));
     }
 
     .modal-header {
@@ -537,6 +605,9 @@ dialog::backdrop {
 
     .modal-header h2 {
         font-size: 1.25rem;
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 
     .modal-body {
@@ -545,11 +616,15 @@ dialog::backdrop {
 
     .modal-footer {
         flex-direction: column-reverse;
+        flex-wrap: wrap;
         padding: var(--unit-2);
+        gap: var(--unit-1);
     }
 
-    .modal-footer .btn {
+    .modal-footer .btn,
+    .modal-footer button {
         width: 100%;
+        min-width: 0;
     }
 
     .row-group {
@@ -559,6 +634,39 @@ dialog::backdrop {
     .color-selector {
         flex-direction: row;
         flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 480px) {
+    dialog {
+        width: calc(100vw - var(--unit-2));
+        max-height: calc(100vh - var(--unit-2));
+    }
+
+    .modal-content {
+        max-height: calc(100vh - var(--unit-2));
+    }
+
+    .modal-header {
+        padding: var(--unit-1) var(--unit-2);
+    }
+
+    .modal-header h2 {
+        font-size: 1.1rem;
+    }
+
+    .modal-body {
+        padding: var(--unit-1) var(--unit-2);
+    }
+
+    .modal-footer {
+        padding: var(--unit-1) var(--unit-2);
+    }
+
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+        font-size: 16px;
     }
 }
 
@@ -637,6 +745,13 @@ dialog::backdrop {
     min-width: 140px;
 }
 
+@media (max-width: 480px) {
+    .confirmation-modal .modal-footer .btn {
+        min-width: 0;
+        width: 100%;
+    }
+}
+
 /* Animation for confirmation icon */
 @keyframes scaleIn {
     from {
@@ -646,35 +761,6 @@ dialog::backdrop {
     to {
         transform: scale(1);
         opacity: 1;
-    }
-}
-
-@media (max-width: 768px) {
-    dialog {
-        max-height: calc(100vh - var(--unit-1));
-    }
-
-    .modal-header {
-        padding: var(--unit-2);
-    }
-
-    .modal-header h2 {
-        font-size: 1.1rem;
-    }
-
-    .modal-body {
-        padding: var(--unit-2);
-    }
-
-    .modal-footer {
-        padding: var(--unit-2);
-        gap: var(--unit-1);
-    }
-
-    .form-group input,
-    .form-group textarea,
-    .form-group select {
-        font-size: 16px;
     }
 }
 

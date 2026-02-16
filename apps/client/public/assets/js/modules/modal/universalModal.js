@@ -299,6 +299,14 @@ class ModalManager {
   }
 
   /**
+   * Supprime une modal du cache (après remplacement du contenu DOM, pour éviter les références à des nœuds détachés).
+   * @param {string} modalId
+   */
+  forget(modalId) {
+    this.modals.delete(modalId);
+  }
+
+  /**
    * Enregistre un gestionnaire personnalisé pour une modal
    * @param {string} modalId
    * @param {Function} handler - Fonction de gestion
@@ -318,16 +326,16 @@ export const modalManager = new ModalManager();
 export function initModals() {
   // Initialiser toutes les modals trouvées
   const modalsFound = document.querySelectorAll('[data-modal-id]');
-  
   modalsFound.forEach(modal => {
     const modalId = modal.getAttribute('data-modal-id');
     modalManager.get(modalId);
   });
 
   // Gérer les data-attributes pour ouvrir/fermer les modals
-  // Utiliser closest() pour supporter les clics sur des éléments enfants (icônes, spans...)
+  // Ne réagir qu'aux clics utilisateur réels (isTrusted) pour éviter les ouvertures automatiques
+  // lors du chargement de page ou d'événements synthétiques.
   document.addEventListener('click', (e) => {
-    // Recherche d'un élément (ou parent) avec data-modal-open
+    if (!e.isTrusted) return;
     const openBtn = e.target.closest && e.target.closest('[data-modal-open]');
     if (openBtn) {
       e.preventDefault();
@@ -335,8 +343,6 @@ export function initModals() {
       modalManager.open(modalId);
       return;
     }
-
-    // Recherche d'un élément (ou parent) avec data-modal-close
     const closeBtn = e.target.closest && e.target.closest('[data-modal-close]');
     if (closeBtn) {
       e.preventDefault();

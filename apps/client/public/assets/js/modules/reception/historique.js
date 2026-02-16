@@ -69,15 +69,16 @@ export default class HistoriqueManager {
         const container = document.getElementById('historique-list');
         if (!container) return;
 
-        const dateFrom = document.getElementById('filter-date-from')?.value;
-        const dateTo = document.getElementById('filter-date-to')?.value;
+        const searchText = (document.getElementById('filter-search-historique')?.value || '').trim().toLowerCase();
+
         let toRender = this.lots;
-        if (dateFrom || dateTo) {
-            toRender = this.lots.filter(lot => {
-                const d = new Date(lot.finished_at || lot.created_at || 0);
-                if (dateFrom && d < new Date(dateFrom + 'T00:00:00.000Z')) return false;
-                if (dateTo && d > new Date(dateTo + 'T23:59:59.999Z')) return false;
-                return true;
+
+        // Filtre par recherche (nom ou n° de lot)
+        if (searchText) {
+            toRender = toRender.filter(lot => {
+                const name = (lot.lot_name || '').toLowerCase();
+                const id = String(lot.id || '');
+                return name.includes(searchText) || id.includes(searchText);
             });
         }
 
@@ -85,8 +86,8 @@ export default class HistoriqueManager {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fa-solid fa-inbox"></i>
-                    <p>${this.lots.length === 0 ? 'Aucun lot terminé' : 'Aucun lot dans cette période'}</p>
-                    <small>${this.lots.length === 0 ? 'Les lots terminés apparaîtront ici' : 'Ajustez les filtres date'}</small>
+                    <p>${this.lots.length === 0 ? 'Aucun lot terminé' : 'Aucun résultat'}</p>
+                    <small>${this.lots.length === 0 ? 'Les lots terminés apparaîtront ici' : 'Modifiez la recherche'}</small>
                 </div>
             `;
             return;
@@ -301,12 +302,10 @@ export default class HistoriqueManager {
             });
         }
 
-        // Filtres dates
-        const dateFrom = document.getElementById('filter-date-from');
-        const dateTo = document.getElementById('filter-date-to');
-        if (dateFrom && dateTo) {
-            dateFrom.addEventListener('change', () => this.renderLots());
-            dateTo.addEventListener('change', () => this.renderLots());
+        // Recherche
+        const searchInput = document.getElementById('filter-search-historique');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => this.renderLots());
         }
 
         // Bouton appliquer les modifications des items
@@ -635,35 +634,6 @@ export default class HistoriqueManager {
         .catch(err => {
             logger.error('Erreur:', err);
             this.showNotification('Erreur lors de la mise à jour', 'error');
-        });
-    }
-
-    /**
-     * Apliquer les changements
-        const dateFrom = document.getElementById('filter-date-from').value;
-        const dateTo = document.getElementById('filter-date-to').value;
-
-        document.querySelectorAll('.historique-lot-card').forEach(card => {
-            const lotId = card.dataset.lotId;
-            const lot = this.lots.find(l => l.id == lotId);
-            
-            if (!lot) return;
-
-            const lotDate = new Date(lot.finished_at);
-            let visible = true;
-
-            if (dateFrom) {
-                const from = new Date(dateFrom);
-                visible = visible && lotDate >= from;
-            }
-
-            if (dateTo) {
-                const to = new Date(dateTo);
-                to.setHours(23, 59, 59);
-                visible = visible && lotDate <= to;
-            }
-
-            card.style.display = visible ? '' : 'none';
         });
     }
 

@@ -10,19 +10,13 @@
         <p class="subtitle">Consultez les lots complètement traités</p>
     </div>
 
-    <!-- Barre de filtre -->
+    <!-- Recherche + Rafraîchir -->
     <div class="historique-filters">
-        <div class="filter-group">
-            <label for="filter-date-from">
-                <i class="fa-solid fa-calendar"></i> Du :
+        <div class="filter-group filter-group-search">
+            <label for="filter-search-historique">
+                <i class="fa-solid fa-magnifying-glass"></i> Recherche :
             </label>
-            <input type="date" id="filter-date-from">
-        </div>
-        <div class="filter-group">
-            <label for="filter-date-to">
-                Au :
-            </label>
-            <input type="date" id="filter-date-to">
+            <input type="text" id="filter-search-historique" placeholder="Nom du lot ou n° de lot" autocomplete="off">
         </div>
         <div class="filter-group">
             <button type="button" id="btn-refresh-historique">
