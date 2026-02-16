@@ -5,6 +5,7 @@
 
 import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
+import { loadLotsWithItems } from './lotsApi.js';
 const logger = getLogger();
 
 
@@ -29,124 +30,35 @@ export default class InventaireManager {
      */
     async loadLots() {
         try {
-            // Séparer l'endpoint des query params
-            const serverUrl = api.getServerUrl();
-            const endpoint = '/api/lots';
-            // Charger uniquement les lots actifs (non terminés)
-            // Les lots terminés doivent avoir status='finished' et finished_at non null
-            const url = `${serverUrl}${endpoint}?status=active`;
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
-                }
-            });
-            
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            
-            const data = await response.json();
-            logger.info('📦 Données lots reçues (brutes):', JSON.stringify(data, null, 2));
-            
-            // Gérer les deux formats : tableau direct ou avec wrapper
-            const rawLots = Array.isArray(data) ? data : (data.items || data.lots || []);
-            logger.info('📦 Lots extraits:', JSON.stringify({
-                count: rawLots.length,
-                firstLot: rawLots.length > 0 ? {
-                    id: rawLots[0].id,
-                    hasItems: 'items' in rawLots[0],
-                    itemsType: typeof rawLots[0].items,
-                    itemsIsArray: Array.isArray(rawLots[0].items),
-                    itemsCount: Array.isArray(rawLots[0].items) ? rawLots[0].items.length : 'N/A',
-                    itemsRaw: rawLots[0].items
-                } : null
-            }, null, 2));
-            
-            // S'assurer que this.lots est toujours un tableau
-            if (!Array.isArray(rawLots)) {
-                logger.warn('Données lots invalides, utilisation tableau vide:', rawLots);
-                this.lots = [];
-                return;
-            }
-            
-            // Charger les items pour chaque lot (l'API ne les inclut pas dans la liste)
-            this.lots = await Promise.all(rawLots.map(async (lot) => {
-                try {
-                    // Récupérer les détails complets du lot avec ses items
-                    const serverUrl = api.getServerUrl();
-                    const lotUrl = `${serverUrl}/api/lots/${lot.id}`;
-                    const lotResponse = await fetch(lotUrl, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
-                        }
-                    });
-                    
-                    if (lotResponse.ok) {
-                        const lotData = await lotResponse.json();
-                        const items = Array.isArray(lotData.items) ? lotData.items : (lotData.item?.items || []);
-                        
-                        // Calculer pending depuis les items
-                        const calculatedPending = items.filter(item => 
-                            !item.state || item.state.trim() === '' || 
-                            !item.technician || item.technician.trim() === ''
-                        ).length;
-                        
-                        const isFinished = items.length > 0 && calculatedPending === 0 && items.every(item => 
-                            item.state && item.state.trim() !== '' && 
-                            item.technician && item.technician.trim() !== ''
-                        );
-                        
-                        logger.info(`📦 Lot ${lot.id} - Items chargés:`, JSON.stringify({ 
-                            lotId: lot.id, 
-                            itemsCount: items.length,
-                            calculatedPending,
-                            isFinished,
-                            finished_at: lotData.item?.finished_at,
-                            status: lotData.item?.status,
-                            items: items.map(item => ({ id: item.id, state: item.state, technician: item.technician }))
-                        }, null, 2));
-                        
-                        const lotWithItems = {
-                            ...lot,
-                            ...lotData.item,
-                            items: items
-                        };
-                        
-                        // Si le lot est terminé mais toujours dans les lots actifs, le logger
-                        if (isFinished && lotWithItems.status !== 'finished') {
-                            logger.warn(`⚠️ Lot ${lot.id} est terminé mais status=${lotWithItems.status}, finished_at=${lotWithItems.finished_at}`);
-                        }
-                        
-                        return lotWithItems;
-                    } else {
-                        const errorText = await lotResponse.text();
-                        logger.error(`❌ Erreur chargement items lot ${lot.id}:`, JSON.stringify({ 
-                            status: lotResponse.status, 
-                            errorText 
-                        }, null, 2));
-                        return {
-                            ...lot,
-                            items: []
-                        };
-                    }
-                } catch (error) {
-                    logger.error(`❌ Erreur chargement items lot ${lot.id}:`, error);
-                    return {
-                        ...lot,
-                        items: []
-                    };
-                }
-            }));
-            
-            logger.info(`📦 ${this.lots.length} lot(s) chargé(s) avec items`, this.lots);
+            this.lots = await loadLotsWithItems({ status: 'active' });
+            logger.info('📦 Inventaire : ' + this.lots.length + ' lot(s) chargé(s)');
             this.renderLots();
         } catch (error) {
             logger.error('❌ Erreur chargement lots:', error);
-            this.lots = []; // S'assurer que this.lots est toujours défini
-            this.showNotification('Erreur lors du chargement des lots', 'error');
+            this.lots = [];
+            this.renderLotsError(error);
         }
+    }
+
+    /**
+     * Afficher un bloc d'erreur avec bouton Réessayer
+     */
+    renderLotsError(error) {
+        const container = document.getElementById('lots-list');
+        if (!container) return;
+        const message = error && error.message ? error.message : 'Erreur inconnue';
+        container.innerHTML = `
+            <div class="empty-state error-state">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <p>Erreur de chargement</p>
+                <small>${String(message).replace(/</g, '&lt;')}</small>
+                <button type="button" class="btn-retry-lots" id="btn-retry-lots-inventaire">
+                    <i class="fa-solid fa-sync"></i> Réessayer
+                </button>
+            </div>
+        `;
+        const btn = document.getElementById('btn-retry-lots-inventaire');
+        if (btn) btn.addEventListener('click', () => this.loadLots());
     }
 
     /**
@@ -233,7 +145,7 @@ export default class InventaireManager {
             item.technician && item.technician.trim() !== ''
         );
         
-        logger.info('📦 Création élément lot:', JSON.stringify({
+        logger.debug('📦 Création élément lot:', JSON.stringify({
             lotId: lot.id,
             itemsCount: items.length,
             total,
@@ -296,7 +208,7 @@ export default class InventaireManager {
                             </thead>
                             <tbody>
                                 ${items.map((item, idx) => `
-                                    <tr class="item-row item-${item.state?.replace(/\s+/g, '-')}">
+                                    <tr class="item-row item-${(item.state && item.state.trim() !== '') ? item.state.replace(/\s+/g, '-') : 'non-defini'}">
                                         <td>${idx + 1}</td>
                                         <td>${item.serial_number || '-'}</td>
                                         <td>${item.type || '-'}</td>
@@ -400,7 +312,14 @@ export default class InventaireManager {
         // Bouton rafraîchir
         const refreshBtn = document.getElementById('btn-refresh-lots');
         if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => this.loadLots());
+            refreshBtn.addEventListener('click', async () => {
+                refreshBtn.disabled = true;
+                try {
+                    await this.loadLots();
+                } finally {
+                    refreshBtn.disabled = false;
+                }
+            });
         }
 
         // Filtre état
@@ -452,7 +371,7 @@ export default class InventaireManager {
             const serverUrl = api.getServerUrl();
             const endpointPath = '/api/lots/items/:id'.replace(':id', this.currentEditingItemId);
             const fullUrl = `${serverUrl}${endpointPath}`;
-            logger.info('💾 Sauvegarde item:', JSON.stringify({ itemId: this.currentEditingItemId, state, technician, fullUrl }, null, 2));
+            logger.debug('💾 Sauvegarde item:', JSON.stringify({ itemId: this.currentEditingItemId, state, technician, fullUrl }, null, 2));
             
             const response = await fetch(fullUrl, {
                 method: 'PUT',
@@ -501,7 +420,7 @@ export default class InventaireManager {
             }
 
             const data = await response.json();
-            logger.info('✅ Item mis à jour:', JSON.stringify(data, null, 2));
+            logger.debug('✅ Item mis à jour:', JSON.stringify(data, null, 2));
 
             this.modalManager.close('modal-edit-pc');
 
@@ -538,7 +457,7 @@ export default class InventaireManager {
                         })
                     });
                     if (putResponse.ok) {
-                        logger.info('✅ Lot marqué terminé (status=finished, finished_at)', { lotId: this.currentEditingLotId, finished_at: finishedAt });
+                        logger.debug('✅ Lot marqué terminé (status=finished, finished_at)', { lotId: this.currentEditingLotId, finished_at: finishedAt });
                     } else {
                         logger.warn('⚠️ Le serveur n’a pas mis à jour le lot (status/finished_at). Le lot peut ne pas apparaître dans Historique/Traçabilité.', await putResponse.text());
                     }
@@ -567,13 +486,13 @@ export default class InventaireManager {
      */
     applyFilters() {
         const filterState = document.getElementById('filter-state').value;
-        
+        const classSuffix = filterState === 'Non défini' ? 'non-defini' : filterState.replace(/\s+/g, '-');
         document.querySelectorAll('.item-row').forEach(row => {
             if (filterState === '') {
                 row.style.display = '';
             } else {
                 const rowState = row.classList.toString();
-                if (rowState.includes(`item-${filterState.replace(/\s+/g, '-')}`)) {
+                if (rowState.includes(`item-${classSuffix}`)) {
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';

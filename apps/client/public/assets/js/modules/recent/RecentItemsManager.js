@@ -214,7 +214,7 @@ class RecentItemsManager {
             'sortie': { icon: 'fas fa-minus', type: 'subpage', action: 'navigate' },
             'inventaire': { icon: 'fas fa-list', type: 'subpage', action: 'navigate' },
             'historique': { icon: 'fas fa-history', type: 'subpage', action: 'navigate' },
-            'tracabiliter': { icon: 'fas fa-barcode', type: 'subpage', action: 'navigate' },
+            'tracabilite': { icon: 'fas fa-barcode', type: 'subpage', action: 'navigate' },
         };
 
         const pageInfo = pageMap[pageName] || { icon: 'fas fa-file', type: 'page', action: 'navigate' };
@@ -304,7 +304,7 @@ class RecentItemsManager {
             'sortie': 'Sortie',
             'inventaire': 'Inventaire',
             'historique': 'Historique',
-            'tracabiliter': 'Traçabilité',
+            'tracabilite': 'Traçabilité',
         };
         return names[pageName] || pageName;
     }

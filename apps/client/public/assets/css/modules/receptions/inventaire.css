@@ -2,7 +2,6 @@
 
 .inventaire-container {
     padding: var(--unit-2);
-    background-color: var(--blanc);
     display: flex;
     flex-direction: column;
     height: 100%;
@@ -309,6 +308,28 @@
 .empty-state small {
     font-size: 0.9rem;
     color: #bbb;
+}
+
+.error-state i {
+    color: var(--orange, #e65100);
+}
+
+.btn-retry-lots {
+    margin-top: var(--unit-3);
+    padding: var(--unit-1) var(--unit-3);
+    background: var(--bleu1, #3e3b8c);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-1);
+}
+
+.btn-retry-lots:hover {
+    opacity: 0.9;
 }
 
 /* Loading */
