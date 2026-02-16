@@ -25,6 +25,11 @@ export const pdfConfig = [
         pdfFile: 'livret_d_accueil_mini.pdf',
         title: 'Livret d\'accueil'
     },
+    {
+        buttonId: 'members-list-btn',
+        pdfFile: 'adherant_2025_2026.pdf',
+        title: 'Liste des adhérents'
+    },
     // Ajoute d'autres PDFs ici comme ceci :
     // {
     //     buttonId: 'open-guide-btn',
