@@ -1,4 +1,14 @@
 /* Container principal */
+.gestion-lots-container {
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
 
 .gestion-lots-header h1 {
     font: var(--font-title);
@@ -120,13 +130,16 @@
     box-shadow: var(--shadow-small);
     min-height: 0;
     width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
+    flex: 1;
 }
 
 .lot-table {
     border-collapse: collapse;
+    min-width: 920px;
     width: 100%;
-    min-width: 100%;
+    table-layout: fixed;
 }
 
 .lot-table thead {
@@ -141,6 +154,14 @@
     font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.lot-table thead th.th-select,
+.lot-table tbody td:first-child {
+    text-align: left;
+    width: 42px;
+    min-width: 42px;
 }
 
 .lot-table tbody tr {
@@ -156,6 +177,7 @@
     padding: var(--unit-1) var(--unit-2);
     word-wrap: break-word;
     overflow-wrap: break-word;
+    min-width: 0;
 }
 
 .lot-table tbody td span {
@@ -186,12 +208,14 @@
     box-shadow: 0 0 0 2px rgba(62, 59, 140, 0.1);
 }
 
-/* Checkbox */
+/* Checkbox : alignées à gauche */
 .lot-table input[type="checkbox"] {
     width: 18px;
     height: 18px;
     cursor: pointer;
     accent-color: var(--bleu1);
+    display: block;
+    margin: 0;
 }
 
 .lot-table thead input[type="checkbox"] {
@@ -454,11 +478,106 @@
         font-size: 0.75rem;
     }
     
+    .lot-table {
+        min-width: 800px;
+    }
+    
     .lot-table tbody td {
-        padding: 4px;
+        padding: 4px 6px;
     }
     
     .lot-table thead th {
-        padding: 4px;
+        padding: 4px 6px;
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .lot-table {
+        min-width: 720px;
+    }
+}
+
+/* Responsive : vue cartes sur écran étroit (même infos que le tableau) */
+@media (max-width: 992px) {
+    .lot-table-wrapper {
+        overflow-x: hidden;
+        overflow-y: auto;
+        min-height: 120px;
+    }
+
+    .lot-table {
+        min-width: 0;
+        width: 100%;
+        display: block;
+        table-layout: auto;
+    }
+
+    .lot-table thead {
+        display: none;
+    }
+
+    .lot-table tbody {
+        display: block;
+    }
+
+    .lot-table tbody tr {
+        display: block;
+        border: 1px solid #e0e0e0;
+        border-radius: var(--radius-medium);
+        margin-bottom: var(--unit-3);
+        padding: var(--unit-2);
+        background-color: var(--blanc);
+        box-shadow: var(--shadow-small);
+    }
+
+    .lot-table tbody tr:hover {
+        background-color: var(--blanc);
+    }
+
+    .lot-table tbody td {
+        display: flex;
+        align-items: center;
+        gap: var(--unit-2);
+        padding: var(--unit-1) 0;
+        border: none;
+        min-width: 0;
+    }
+
+    .lot-table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 0.8rem;
+        color: var(--bleu1);
+        min-width: 72px;
+        flex-shrink: 0;
+    }
+
+    .lot-table tbody td[data-label="Sélection"],
+    .lot-table tbody td[data-label="Action"] {
+        justify-content: flex-start;
+        align-items: center;
+        border-top: 1px solid #eee;
+        padding-top: var(--unit-2);
+        margin-top: var(--unit-1);
+    }
+
+    .lot-table tbody td[data-label="Sélection"] {
+        justify-content: flex-start;
+    }
+
+    .lot-table tbody td[data-label="Sélection"]::before,
+    .lot-table tbody td[data-label="Action"]::before {
+        min-width: 0;
+    }
+
+    .lot-table tbody td input,
+    .lot-table tbody td select {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .lot-table .btn-delete-row {
+        margin-left: 0;
     }
 }

@@ -737,8 +737,7 @@ export default class ShortcutManager {
         if (!token) return;
 
         try {
-            const endpoint = `shortcuts.categories.delete`.replace(':id', categoryId);
-            const response = await api.delete(endpoint);
+            const response = await api.delete(`/api/shortcuts/categories/${categoryId}`);
 
             const data = await response.json();
 
@@ -817,8 +816,7 @@ export default class ShortcutManager {
         if (!token) return;
 
         try {
-            const endpoint = `shortcuts.delete`.replace(':id', shortcutId);
-            const response = await api.delete(endpoint);
+            const response = await api.delete(`/api/shortcuts/${shortcutId}`);
 
             const data = await response.json();
 
@@ -923,8 +921,7 @@ export default class ShortcutManager {
         }
 
         try {
-            const endpoint = `shortcuts.categories.update`.replace(':id', categoryId);
-            const response = await api.put(endpoint, { name: newName });
+            const response = await api.put(`/api/shortcuts/categories/${categoryId}`, { name: newName });
 
             const data = await response.json();
 
@@ -949,8 +946,7 @@ export default class ShortcutManager {
         }
 
         try {
-            const endpoint = `shortcuts.update`.replace(':id', shortcutId);
-            const response = await api.put(endpoint, { name, url });
+            const response = await api.put(`/api/shortcuts/${shortcutId}`, { name, url });
 
             const data = await response.json();
 

@@ -1,27 +1,39 @@
+#footer {
+    flex-shrink: 0;
+}
+
 .footer-contain {
     display: flex;
     flex-direction: row;
     justify-content: center;
     align-items: center;
-    padding: var(--unit-1) 0;
+    flex-wrap: wrap;
+    padding: var(--unit-1) var(--unit-2);
     background-color: var(--bleu1);
     color: var(--text);
-    gap: var(--unit-8);
+    gap: var(--unit-4);
+    min-height: 0;
+    box-sizing: border-box;
 }
 
 .footer-copyright {
     flex-shrink: 0;
+    min-width: 0;
 }
 
 .footer-copyright p {
     margin: 0;
+    font-size: 0.9rem;
 }
 
 .footer-system-info {
     display: flex;
     flex-direction: row;
     align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: var(--unit-3);
+    min-width: 0;
 }
 
 .footer-info-item {
@@ -29,9 +41,11 @@
     align-items: center;
     gap: var(--unit-1);
     white-space: nowrap;
+    font-size: 0.85rem;
 }
 
 .footer-info-item i {
+    flex-shrink: 0;
 }
 
 #footer-ip-value {
@@ -45,21 +59,51 @@
     text-decoration: underline;
 }
 
-/* Responsive pour petits écrans */
+/* Responsive tablette */
 @media (max-width: 768px) {
     .footer-contain {
         flex-direction: column;
-        height: auto;
+        padding: var(--unit-2);
+        gap: var(--unit-2);
+    }
+
+    .footer-system-info {
+        gap: var(--unit-2);
+        font-size: 0.8rem;
+    }
+
+    .footer-copyright p {
+        font-size: 0.85rem;
+    }
+
+    .footer-info-item {
+        font-size: 0.8rem;
+    }
+}
+
+/* Responsive mobile */
+@media (max-width: 480px) {
+    .footer-contain {
         padding: var(--unit-1) var(--unit-2);
         gap: var(--unit-1);
     }
-    
+
     .footer-system-info {
-        gap: var(--unit-2);
+        gap: var(--unit-1);
         font-size: 0.75rem;
     }
-    
+
     .footer-copyright p {
-        font-size: 0.8rem;
+        font-size: 0.75rem;
+    }
+
+    .footer-info-item {
+        font-size: 0.75rem;
+    }
+
+    .footer-info-item span {
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
     }
 }

@@ -73,18 +73,18 @@ export default class ModalManager {
     setupForms() {
         const createForm = document.getElementById('createEventForm');
         if (createForm) {
-            const handler = (e) => {
+            const handler = async (e) => {
                 e.preventDefault();
-                this.handleCreateSubmit(e);
+                await this.handleCreateSubmit(e);
             };
             this.addListener(createForm, 'submit', handler);
         }
 
         const editForm = document.getElementById('editEventForm');
         if (editForm) {
-            const handler = (e) => {
+            const handler = async (e) => {
                 e.preventDefault();
-                this.handleEditSubmit(e);
+                await this.handleEditSubmit(e);
             };
             this.addListener(editForm, 'submit', handler);
         }
@@ -102,7 +102,9 @@ export default class ModalManager {
 
         const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
         if (confirmDeleteBtn) {
-            const handler = () => this.onDeleteConfirm?.();
+            const handler = async () => {
+                await this.onDeleteConfirm?.();
+            };
             this.addListener(confirmDeleteBtn, 'click', handler);
         }
     }

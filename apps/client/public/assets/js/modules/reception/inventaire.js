@@ -458,6 +458,10 @@ export default class InventaireManager {
                     });
                     if (putResponse.ok) {
                         logger.debug('✅ Lot marqué terminé (status=finished, finished_at)', { lotId: this.currentEditingLotId, finished_at: finishedAt });
+                        // Générer le PDF et créer le dossier /mnt/team/#TEAM/#TRAÇABILITÉ/AAAA/MM/ (Electron uniquement)
+                        this.generateLotPdfOnFinished(this.currentEditingLotId, finishedAt).catch(err => {
+                            logger.warn('⚠️ Génération PDF automatique (dossier traçabilité):', err);
+                        });
                     } else {
                         logger.warn('⚠️ Le serveur n’a pas mis à jour le lot (status/finished_at). Le lot peut ne pas apparaître dans Historique/Traçabilité.', await putResponse.text());
                     }
@@ -480,7 +484,65 @@ export default class InventaireManager {
             this.showNotification('Erreur lors de la mise à jour', 'error');
         }
     }
-    
+
+    /**
+     * Générer le PDF du lot et créer le dossier traçabilité (/mnt/team/#TEAM/#TRAÇABILITÉ/AAAA/MM/)
+     * puis envoyer le PDF au serveur. Appelé automatiquement quand un lot est marqué terminé.
+     */
+    async generateLotPdfOnFinished(lotId, finishedAt) {
+        if (!lotId || !window.electron?.invoke) return;
+        const basePath = '/mnt/team/#TEAM/#TRAÇABILITÉ';
+        const dateForFile = (finishedAt && String(finishedAt).slice(0, 10)) || new Date().toISOString().slice(0, 10);
+        let lot;
+        try {
+            const serverUrl = api.getServerUrl();
+            const res = await fetch(`${serverUrl}/api/lots/${lotId}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` }
+            });
+            if (!res.ok) return;
+            const data = await res.json();
+            lot = data.item || data;
+            if (lot && !lot.items && data.items) lot.items = data.items;
+        } catch (e) {
+            logger.warn('Chargement lot pour PDF:', e);
+            return;
+        }
+        if (!lot || !Array.isArray(lot.items)) return;
+        const lotName = (lot.lot_name || lot.name) ? String(lot.lot_name || lot.name).trim() : `Lot_${lotId}`;
+        const result = await window.electron.invoke('generate-lot-pdf', {
+            lotId: String(lotId),
+            lotName,
+            date: dateForFile,
+            items: lot.items,
+            created_at: lot.created_at,
+            finished_at: lot.finished_at,
+            recovered_at: lot.recovered_at,
+            basePath
+        });
+        if (!result?.success || !result.pdf_path) return;
+        try {
+            const readResult = await window.electron.invoke('read-file-as-base64', { path: result.pdf_path });
+            if (!readResult?.success || !readResult.base64) return;
+            await fetch(`${api.getServerUrl()}/api/lots/${lotId}/pdf`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                },
+                body: JSON.stringify({
+                    pdf_base64: readResult.base64,
+                    lot_name: lotName,
+                    date: dateForFile
+                })
+            });
+        } catch (_) { /* envoi serveur optionnel */ }
+        const year = dateForFile.slice(0, 4);
+        const monthNum = parseInt(dateForFile.slice(5, 7), 10);
+        const moisNoms = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+        const monthName = monthNum >= 1 && monthNum <= 12 ? moisNoms[monthNum - 1] : dateForFile.slice(5, 7);
+        this.showNotification(`PDF enregistré dans ${basePath}/${year}/${monthName}/`, 'success');
+    }
+
     /**
      * Appliquer les filtres
      */

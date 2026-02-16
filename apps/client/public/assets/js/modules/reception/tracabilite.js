@@ -19,9 +19,28 @@ export default class TracabiliteManager {
 
     async init() {
         logger.debug('🚀 Initialisation TracabiliteManager');
+        this.fillYearSelect();
         await this.loadLots();
         this.setupEventListeners();
         logger.debug('✅ TracabiliteManager prêt');
+    }
+
+    /**
+     * Remplir le select Année (année en cours par défaut)
+     */
+    fillYearSelect() {
+        const select = document.getElementById('filter-tracabilite-year');
+        if (!select) return;
+        const currentYear = new Date().getFullYear();
+        const startYear = currentYear - 10;
+        select.innerHTML = '';
+        for (let y = currentYear; y >= startYear; y--) {
+            const opt = document.createElement('option');
+            opt.value = String(y);
+            opt.textContent = String(y);
+            if (y === currentYear) opt.selected = true;
+            select.appendChild(opt);
+        }
     }
 
     /**
@@ -103,19 +122,27 @@ export default class TracabiliteManager {
         
         logger.debug(`📦 Traçabilité: ${this.lots.length} lots chargés, ${finishedLots.length} lots terminés trouvés`);
 
-        if (finishedLots.length === 0) {
+        // Filtrer par année sélectionnée (défaut : année en cours)
+        const yearSelect = document.getElementById('filter-tracabilite-year');
+        const selectedYear = yearSelect ? yearSelect.value : String(new Date().getFullYear());
+        const lotsForYear = finishedLots.filter(lot => {
+            const date = new Date(lot.finished_at || lot.created_at);
+            return date.getFullYear().toString() === selectedYear;
+        });
+
+        if (lotsForYear.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fa-solid fa-inbox"></i>
-                    <p>Aucun lot terminé</p>
-                    <small>Les lots terminés apparaîtront ici</small>
+                    <p>Aucun lot terminé pour ${selectedYear}</p>
+                    <small>Changez d'année ou les lots terminés apparaîtront ici</small>
                 </div>
             `;
             return;
         }
 
         // Grouper les lots par année, puis par mois
-        const grouped = this.groupByYearMonth(finishedLots);
+        const grouped = this.groupByYearMonth(lotsForYear);
         
         // Générer le HTML
         let html = '';
@@ -190,6 +217,9 @@ export default class TracabiliteManager {
         // Chemin PDF : backend peut renvoyer pdf_path, pdf_url, pdfPath, path, document_path
         const pdfPath = lot.pdf_path || lot.pdf_url || lot.pdfPath || lot.path || lot.document_path || '';
         const isGenerating = this._generatingPdfLotId === String(lot.id);
+        const dateForFile = lot.finished_at ? this.formatDateForFilename(lot.finished_at) : this.formatDateForFilename(new Date().toISOString());
+        const sanitizedName = (lot.lot_name || lot.name || '').replace(/[\s]+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim() || `Lot_${lot.id}`;
+        const downloadFileName = `${sanitizedName}_${dateForFile}.pdf`;
 
         return `
             <div class="lot-card" data-lot-id="${lot.id}">
@@ -232,11 +262,14 @@ export default class TracabiliteManager {
                         <a href="${api.getServerUrl()}/api/lots/${lot.id}/pdf?v=${Date.now()}" target="_blank" class="btn-action btn-view">
                             <i class="fa-solid fa-eye"></i> Voir le PDF
                         </a>
-                        <button type="button" class="btn-action btn-download-pdf" data-lot-id="${lot.id}" data-pdf-path="/api/lots/${lot.id}/pdf">
+                        <button type="button" class="btn-action btn-download-pdf" data-lot-id="${lot.id}" data-pdf-path="/api/lots/${lot.id}/pdf" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}">
                             <i class="fa-solid fa-download"></i> Télécharger PDF
                         </button>
                         <button type="button" class="btn-action btn-send-email" data-lot-id="${lot.id}">
                             <i class="fa-solid fa-envelope"></i> Envoyer par email
+                        </button>
+                        <button type="button" class="btn-action btn-regenerate-pdf" data-lot-id="${lot.id}" ${isGenerating ? 'disabled' : ''} title="Recréer le PDF et le dossier local (en cas de bug ou perte)">
+                            <i class="fa-solid fa-arrows-rotate"></i> ${isGenerating ? 'Génération...' : 'Régénérer le PDF'}
                         </button>
                     ` : `
                         <button type="button" class="btn-action btn-generate-pdf" data-lot-id="${lot.id}" ${isGenerating ? 'disabled' : ''}>
@@ -268,13 +301,14 @@ export default class TracabiliteManager {
             });
         });
 
-        // Télécharger PDF
+        // Télécharger PDF (même nom que l'enregistrement local : NomDuLot_YYYY-MM-DD.pdf)
         document.querySelectorAll('.btn-download-pdf').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const lotId = btn.dataset.lotId;
                 const pdfPath = btn.dataset.pdfPath;
-                this.downloadPDF(lotId, pdfPath);
+                const downloadFilename = (btn.dataset.downloadFilename || '').replace(/&quot;/g, '"');
+                this.downloadPDF(lotId, pdfPath, downloadFilename || undefined);
             });
         });
 
@@ -286,12 +320,21 @@ export default class TracabiliteManager {
                 this.openEmailModal(lotId);
             });
         });
+
+        // Régénérer le PDF (dossier local + envoi serveur, en cas de bug ou perte)
+        document.querySelectorAll('.btn-regenerate-pdf').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const lotId = btn.dataset.lotId;
+                this.generatePDF(lotId);
+            });
+        });
     }
 
     /**
-     * Télécharger le PDF sur le PC
+     * Télécharger le PDF sur le PC (même format de nom que l'enregistrement : NomDuLot_YYYY-MM-DD.pdf)
      */
-    async downloadPDF(lotId, pdfPath) {
+    async downloadPDF(lotId, pdfPath, suggestedFilename) {
         try {
             const baseUrl = pdfPath.startsWith('http') ? '' : api.getServerUrl();
             const pathPart = pdfPath.startsWith('http') ? pdfPath : (pdfPath.startsWith('/') ? pdfPath : '/' + pdfPath);
@@ -302,10 +345,11 @@ export default class TracabiliteManager {
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
-            
+            const filename = suggestedFilename && /\.pdf$/i.test(suggestedFilename) ? suggestedFilename : `lot-${lotId}.pdf`;
+
             const a = document.createElement('a');
             a.href = downloadUrl;
-            a.download = `lot-${lotId}.pdf`;
+            a.download = filename;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -319,40 +363,88 @@ export default class TracabiliteManager {
     }
 
     /**
-     * Générer le PDF
+     * Générer le PDF : crée le fichier dans /mnt/team/#TEAM/#TRAÇABILITÉ/AAAA/MM/ puis l'envoie au serveur.
+     * La sauvegarde locale est automatique à la finalisation du lot (depuis l'inventaire).
+     * Ceci sert aussi pour « Régénérer le PDF » en cas de bug ou perte.
      */
     async generatePDF(lotId) {
         if (this._generatingPdfLotId) return;
         this._generatingPdfLotId = String(lotId);
         this.renderTable();
 
-        const lot = this.lots.find(l => l.id == lotId);
-        const lotName = (lot && (lot.lot_name || lot.name)) ? String(lot.lot_name || lot.name).trim() : `Lot_${lotId}`;
-        const dateForFile = (lot && lot.finished_at) ? this.formatDateForFilename(lot.finished_at) : this.formatDateForFilename(new Date().toISOString());
+        let lot = this.lots.find(l => l.id == lotId);
+        if (!lot || !Array.isArray(lot.items)) {
+            try {
+                const serverUrl = api.getServerUrl();
+                const res = await fetch(`${serverUrl}/api/lots/${lotId}`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    lot = data.item || data;
+                    if (lot && !lot.items && data.items) lot.items = data.items;
+                }
+            } catch (e) {
+                logger.warn('Chargement détail lot:', e);
+            }
+        }
+        if (!lot) {
+            this._generatingPdfLotId = null;
+            this.renderTable();
+            this.showNotification('Lot introuvable', 'error');
+            return;
+        }
+        const items = Array.isArray(lot.items) ? lot.items : [];
+        const lotName = (lot.lot_name || lot.name) ? String(lot.lot_name || lot.name).trim() : `Lot_${lotId}`;
+        const dateForFile = lot.finished_at ? this.formatDateForFilename(lot.finished_at) : this.formatDateForFilename(new Date().toISOString());
+
+        const basePath = '/mnt/team/#TEAM/#TRAÇABILITÉ';
 
         try {
             this.showNotification('Génération du PDF...', 'info');
-            
+
+            if (!window.electron || typeof window.electron.invoke !== 'function') {
+                throw new Error('Régénération PDF uniquement dans l\'application desktop (Electron). En navigateur, utilisez l\'app installée.');
+            }
+            const result = await window.electron.invoke('generate-lot-pdf', {
+                lotId: String(lotId),
+                lotName,
+                date: dateForFile,
+                items,
+                created_at: lot.created_at,
+                finished_at: lot.finished_at,
+                recovered_at: lot.recovered_at,
+                basePath
+            });
+            if (!result || !result.success) {
+                throw new Error(result?.error || 'Échec génération PDF');
+            }
+            const localPdfPath = result.pdf_path;
+
+            const readResult = await window.electron.invoke('read-file-as-base64', { path: localPdfPath });
+            if (!readResult || !readResult.success || !readResult.base64) {
+                throw new Error(readResult?.error || 'Impossible de lire le PDF pour envoi au serveur');
+            }
+
             const serverUrl = api.getServerUrl();
             const endpointPath = '/api/lots/:id/pdf'.replace(':id', lotId);
-            const fullUrl = `${serverUrl}${endpointPath}`;
-            const response = await fetch(fullUrl, {
+            const response = await fetch(`${serverUrl}${endpointPath}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
                 },
                 body: JSON.stringify({
+                    pdf_base64: readResult.base64,
                     lot_name: lotName,
                     date: dateForFile,
-                    save_path_hint: '/mnt/team/#TEAM/#TRAÇABILITÉ'
+                    save_path_hint: basePath
                 })
             });
 
             const contentType = response.headers.get('Content-Type') || '';
-
             if (!response.ok) {
-                let message = `Erreur ${response.status}`;
+                let message = `Erreur serveur ${response.status} : le PDF n'a pas été mis à jour sur le serveur.`;
                 try {
                     if (contentType.includes('application/json')) {
                         const err = await response.json();
@@ -361,27 +453,13 @@ export default class TracabiliteManager {
                         const text = await response.text();
                         if (text) message = text;
                     }
-                } catch (_) { /* garder message par défaut */ }
+                } catch (_) { /* ok */ }
                 throw new Error(message);
             }
 
-            let pathFromResponse = null;
-            if (contentType.includes('application/json')) {
-                const data = await response.json();
-                pathFromResponse = data.pdf_path || data.pdf_url || data.path || data.pdfPath || data.document_path || null;
-            }
-            if (!pathFromResponse) {
-                pathFromResponse = `/api/lots/${lotId}/pdf`;
-            }
-
-            this.showNotification('PDF généré avec succès', 'success');
+            this.showNotification('PDF régénéré : sauvegardé en local et envoyé au serveur.', 'success');
             await this.loadLots();
-
-            const lot = this.lots.find(l => l.id == lotId);
-            if (lot) {
-                lot.pdf_path = lot.pdf_path || pathFromResponse;
-                this.renderTable();
-            }
+            this.renderTable();
         } catch (error) {
             logger.error('❌ Erreur génération PDF:', error);
             this.showNotification(error.message || 'Erreur lors de la génération du PDF', 'error');
@@ -418,41 +496,16 @@ export default class TracabiliteManager {
             });
         }
 
-        // Filtre statut
-        const filterStatus = document.getElementById('filter-tracabilite-status');
-        if (filterStatus) {
-            filterStatus.addEventListener('change', () => this.applyStatusFilter());
+        // Filtre année
+        const filterYear = document.getElementById('filter-tracabilite-year');
+        if (filterYear) {
+            filterYear.addEventListener('change', () => this.renderTable());
         }
 
         // Bouton envoyer email
         const sendEmailBtn = document.getElementById('btn-confirm-send-email');
         if (sendEmailBtn) {
             sendEmailBtn.addEventListener('click', () => this.sendEmailPDF());
-        }
-    }
-
-    /**
-     * Appliquer le filtre de statut
-     */
-    applyStatusFilter() {
-        const status = document.getElementById('filter-tracabilite-status').value;
-        
-        if (status === '' || status === 'finished') {
-            // Afficher tous les lots terminés ou garder l'affichage actuel
-            const container = document.getElementById('tracabilite-grouped');
-            if (container) container.style.display = '';
-        } else if (status === 'active') {
-            // Pas de lots en cours dans la traçabilité (seulement les terminés)
-            const container = document.getElementById('tracabilite-grouped');
-            if (container) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fa-solid fa-inbox"></i>
-                        <p>Aucun lot en cours</p>
-                        <small>Consultez l'inventaire pour les lots en cours</small>
-                    </div>
-                `;
-            }
         }
     }
 
