@@ -70,26 +70,25 @@ export default class TracabiliteManager {
         const container = document.getElementById('tracabilite-grouped');
         if (!container) return;
 
-        // Filtrer pour les lots terminés uniquement
+        // Filtrer pour les lots terminés : soit tous les items ont état + technicien, soit le backend a marqué le lot (status + finished_at)
         const finishedLots = this.lots.filter(lot => {
             const items = Array.isArray(lot.items) ? lot.items : [];
             const total = lot.total !== undefined ? lot.total : items.length;
             
-            // Calculer pending si non fourni
             let pending = lot.pending !== undefined ? lot.pending : 0;
             if (pending === 0 && items.length > 0) {
-                // Un item est "pending" s'il n'a pas d'état défini OU pas de technicien
                 pending = items.filter(item => 
                     !item.state || item.state.trim() === '' || 
                     !item.technician || item.technician.trim() === ''
                 ).length;
             }
             
-            // Un lot est terminé si tous les items ont un état et un technicien
-            const isFinished = total > 0 && pending === 0 && items.length > 0 && items.every(item => 
+            const isFinishedFromItems = total > 0 && pending === 0 && items.length > 0 && items.every(item => 
                 item.state && item.state.trim() !== '' && 
                 item.technician && item.technician.trim() !== ''
             );
+            const isFinishedFromBackend = lot.status === 'finished' && lot.finished_at != null && lot.finished_at !== '';
+            const isFinished = isFinishedFromItems || isFinishedFromBackend;
             
             logger.debug(`Lot ${lot.id} - isFinished:`, { 
                 isFinished, 
@@ -97,8 +96,7 @@ export default class TracabiliteManager {
                 pending, 
                 itemsCount: items.length, 
                 finished_at: lot.finished_at,
-                status: lot.status,
-                items: items.map(item => ({ id: item.id, state: item.state, technician: item.technician }))
+                status: lot.status
             });
             return isFinished;
         });
@@ -237,7 +235,6 @@ export default class TracabiliteManager {
                         <button type="button" class="btn-action btn-send-email" data-lot-id="${lot.id}">
                             <i class="fa-solid fa-envelope"></i> Envoyer par email
                         </button>
-                        </button>
                     ` : `
                         <button type="button" class="btn-action btn-generate-pdf" data-lot-id="${lot.id}">
                             <i class="fa-solid fa-file-pdf"></i> Générer PDF
@@ -330,19 +327,34 @@ export default class TracabiliteManager {
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
-                }
+                },
+                body: JSON.stringify({})
             });
 
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                let message = `Erreur ${response.status}`;
+                const contentType = response.headers.get('Content-Type') || '';
+                try {
+                    if (contentType.includes('application/json')) {
+                        const err = await response.json();
+                        message = err.message || err.error || message;
+                    } else {
+                        const text = await response.text();
+                        if (text) message = text;
+                    }
+                } catch (_) { /* garder message par défaut */ }
+                throw new Error(message);
+            }
 
-            const data = await response.json();
+            const contentType = response.headers.get('Content-Type') || '';
+            if (contentType.includes('application/json')) {
+                await response.json();
+            }
             this.showNotification('PDF généré avec succès', 'success');
-            
-            // Recharger les lots
             await this.loadLots();
         } catch (error) {
             logger.error('❌ Erreur génération PDF:', error);
-            this.showNotification('Erreur lors de la génération du PDF', 'error');
+            this.showNotification(error.message || 'Erreur lors de la génération du PDF', 'error');
         }
     }
 
@@ -431,10 +443,20 @@ export default class TracabiliteManager {
 
             this.showNotification('Envoi en cours...', 'info');
 
-            const endpoint = `lots.email`.replace(':id', this.currentEmailLotId);
-            const response = await api.post(endpoint, {
-                recipient: recipient,
-                message: message || null
+            const serverUrl = api.getServerUrl();
+            const endpointPath = '/api/lots/:id/email'.replace(':id', this.currentEmailLotId);
+            const fullUrl = `${serverUrl}${endpointPath}`;
+            const response = await fetch(fullUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                },
+                body: JSON.stringify({
+                    email: recipient,
+                    subject: `Lot #${this.currentEmailLotId} - PDF`,
+                    message: message || ''
+                })
             });
 
             if (!response.ok) {

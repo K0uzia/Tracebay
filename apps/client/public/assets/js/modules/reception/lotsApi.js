@@ -15,20 +15,39 @@ const logger = getLogger();
  */
 export async function loadLotsWithItems({ status }) {
     const serverUrl = api.getServerUrl();
-    const url = `${serverUrl}/api/lots?status=${status}`;
     const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
     };
 
-    const response = await fetch(url, { method: 'GET', headers });
-    if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+    let rawLots = [];
+    if (status === 'all') {
+        const [activeRes, finishedRes] = await Promise.all([
+            fetch(`${serverUrl}/api/lots?status=active`, { method: 'GET', headers }),
+            fetch(`${serverUrl}/api/lots?status=finished`, { method: 'GET', headers })
+        ]);
+        if (!activeRes.ok) throw new Error(`HTTP ${activeRes.status}`);
+        if (!finishedRes.ok) throw new Error(`HTTP ${finishedRes.status}`);
+        const activeData = await activeRes.json();
+        const finishedData = await finishedRes.json();
+        const activeList = Array.isArray(activeData) ? activeData : (activeData.items || activeData.lots || []);
+        const finishedList = Array.isArray(finishedData) ? finishedData : (finishedData.items || finishedData.lots || []);
+        const seen = new Set();
+        rawLots = [...activeList, ...finishedList].filter(lot => {
+            const id = lot.id;
+            if (seen.has(id)) return false;
+            seen.add(id);
+            return true;
+        });
+        logger.debug('Lots liste reçus (all = active + finished):', { count: rawLots.length });
+    } else {
+        const url = `${serverUrl}/api/lots?status=${status}`;
+        const response = await fetch(url, { method: 'GET', headers });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        rawLots = Array.isArray(data) ? data : (data.items || data.lots || []);
+        logger.debug('Lots liste reçus:', { status, count: rawLots.length });
     }
-
-    const data = await response.json();
-    const rawLots = Array.isArray(data) ? data : (data.items || data.lots || []);
-    logger.debug('Lots liste reçus:', { status, count: rawLots.length });
 
     if (!Array.isArray(rawLots)) {
         logger.warn('Données lots invalides:', rawLots);

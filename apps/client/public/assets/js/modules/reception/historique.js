@@ -126,15 +126,17 @@ export default class HistoriqueManager {
             ).length;
         }
         
-        // Le lot peut être récupéré seulement s'il est terminé (pending === 0) ET tous les items ont un état et un technicien
-        const isFinished = total > 0 && pending === 0 && items.length > 0 && items.every(item => 
+        // Le lot peut être récupéré s'il est terminé : soit tous les items ont état + technicien, soit le backend l'a marqué (status + finished_at)
+        const isFinishedFromItems = total > 0 && pending === 0 && items.length > 0 && items.every(item => 
             item.state && item.state.trim() !== '' && 
             item.technician && item.technician.trim() !== ''
         );
-        const canRecover = isFinished && items.length > 0 && items.every(item => 
+        const isFinishedFromBackend = lot.status === 'finished' && lot.finished_at != null && lot.finished_at !== '';
+        const isFinished = isFinishedFromItems || isFinishedFromBackend;
+        const canRecover = (isFinishedFromItems && items.length > 0 && items.every(item => 
             item.state && item.state.trim() !== '' && 
             item.technician && item.technician.trim() !== ''
-        );
+        )) || isFinishedFromBackend;
         
         logger.debug(`Lot ${lot.id} - canRecover:`, { 
             isFinished, 
