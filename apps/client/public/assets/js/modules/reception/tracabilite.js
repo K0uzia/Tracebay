@@ -187,6 +187,9 @@ export default class TracabiliteManager {
         const pending = lot.pending || 0;
         const isFinished = pending === 0 && total > 0;
         const isRecovered = lot.recovered_at != null && lot.recovered_at !== '';
+        // Chemin PDF : backend peut renvoyer pdf_path, pdf_url, pdfPath, path, document_path
+        const pdfPath = lot.pdf_path || lot.pdf_url || lot.pdfPath || lot.path || lot.document_path || '';
+        const isGenerating = this._generatingPdfLotId === String(lot.id);
 
         return `
             <div class="lot-card" data-lot-id="${lot.id}">
@@ -225,19 +228,19 @@ export default class TracabiliteManager {
                 </div>
 
                 <div class="lot-card-actions">
-                    ${lot.pdf_path ? `
-                        <a href="${api.getServerUrl()}${lot.pdf_path}?v=${Date.now()}" target="_blank" class="btn-action btn-view">
+                    ${pdfPath ? `
+                        <a href="${pdfPath.startsWith('http') ? pdfPath : api.getServerUrl() + (pdfPath.startsWith('/') ? pdfPath : '/' + pdfPath)}?v=${Date.now()}" target="_blank" class="btn-action btn-view">
                             <i class="fa-solid fa-eye"></i> Voir le PDF
                         </a>
-                        <button type="button" class="btn-action btn-download-pdf" data-lot-id="${lot.id}" data-pdf-path="${lot.pdf_path}">
+                        <button type="button" class="btn-action btn-download-pdf" data-lot-id="${lot.id}" data-pdf-path="${pdfPath}">
                             <i class="fa-solid fa-download"></i> Télécharger PDF
                         </button>
                         <button type="button" class="btn-action btn-send-email" data-lot-id="${lot.id}">
                             <i class="fa-solid fa-envelope"></i> Envoyer par email
                         </button>
                     ` : `
-                        <button type="button" class="btn-action btn-generate-pdf" data-lot-id="${lot.id}">
-                            <i class="fa-solid fa-file-pdf"></i> Générer PDF
+                        <button type="button" class="btn-action btn-generate-pdf" data-lot-id="${lot.id}" ${isGenerating ? 'disabled' : ''}>
+                            <i class="fa-solid fa-file-pdf"></i> ${isGenerating ? 'Génération...' : 'Générer PDF'}
                         </button>
                     `}
                 </div>
@@ -290,10 +293,13 @@ export default class TracabiliteManager {
      */
     async downloadPDF(lotId, pdfPath) {
         try {
-            const url = `${api.getServerUrl()}${pdfPath}?v=${Date.now()}`;
-            
-            // Créer un lien temporaire pour le téléchargement
-            const response = await fetch(url);
+            const baseUrl = pdfPath.startsWith('http') ? '' : api.getServerUrl();
+            const pathPart = pdfPath.startsWith('http') ? pdfPath : (pdfPath.startsWith('/') ? pdfPath : '/' + pdfPath);
+            const url = `${baseUrl}${pathPart}${pathPart.includes('?') ? '&' : '?'}v=${Date.now()}`;
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` }
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
             
@@ -316,6 +322,14 @@ export default class TracabiliteManager {
      * Générer le PDF
      */
     async generatePDF(lotId) {
+        if (this._generatingPdfLotId) return;
+        this._generatingPdfLotId = String(lotId);
+        this.renderTable();
+
+        const lot = this.lots.find(l => l.id == lotId);
+        const lotName = (lot && (lot.lot_name || lot.name)) ? String(lot.lot_name || lot.name).trim() : `Lot_${lotId}`;
+        const dateForFile = (lot && lot.finished_at) ? this.formatDateForFilename(lot.finished_at) : this.formatDateForFilename(new Date().toISOString());
+
         try {
             this.showNotification('Génération du PDF...', 'info');
             
@@ -328,12 +342,17 @@ export default class TracabiliteManager {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
                 },
-                body: JSON.stringify({})
+                body: JSON.stringify({
+                    lot_name: lotName,
+                    date: dateForFile,
+                    save_path_hint: '/mnt/team/#TEAM/#TRAÇABILITÉ'
+                })
             });
+
+            const contentType = response.headers.get('Content-Type') || '';
 
             if (!response.ok) {
                 let message = `Erreur ${response.status}`;
-                const contentType = response.headers.get('Content-Type') || '';
                 try {
                     if (contentType.includes('application/json')) {
                         const err = await response.json();
@@ -346,15 +365,29 @@ export default class TracabiliteManager {
                 throw new Error(message);
             }
 
-            const contentType = response.headers.get('Content-Type') || '';
+            let pathFromResponse = null;
             if (contentType.includes('application/json')) {
-                await response.json();
+                const data = await response.json();
+                pathFromResponse = data.pdf_path || data.pdf_url || data.path || data.pdfPath || data.document_path || null;
             }
+            if (!pathFromResponse) {
+                pathFromResponse = `/api/lots/${lotId}/pdf`;
+            }
+
             this.showNotification('PDF généré avec succès', 'success');
             await this.loadLots();
+
+            const lot = this.lots.find(l => l.id == lotId);
+            if (lot) {
+                lot.pdf_path = lot.pdf_path || pathFromResponse;
+                this.renderTable();
+            }
         } catch (error) {
             logger.error('❌ Erreur génération PDF:', error);
             this.showNotification(error.message || 'Erreur lors de la génération du PDF', 'error');
+        } finally {
+            this._generatingPdfLotId = null;
+            this.renderTable();
         }
     }
 
@@ -363,7 +396,7 @@ export default class TracabiliteManager {
      */
     openEmailModal(lotId) {
         this.currentEmailLotId = lotId;
-        document.getElementById('email-recipient').value = '';
+        document.getElementById('email-recipient').value = 'destinataire@example.com';
         document.getElementById('email-message').value = '';
         this.modalManager.open('modal-send-email');
     }
@@ -483,6 +516,18 @@ export default class TracabiliteManager {
                 this.modalManager.close('modal-send-email');
             }, 3000);
         }
+    }
+
+    /**
+     * Formater une date pour un nom de fichier (YYYY-MM-DD)
+     */
+    formatDateForFilename(dateStr) {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
     }
 
     /**
