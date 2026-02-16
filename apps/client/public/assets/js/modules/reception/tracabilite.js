@@ -5,6 +5,7 @@
 
 import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
+import { loadLotsWithItems } from './lotsApi.js';
 const logger = getLogger();
 
 
@@ -28,106 +29,38 @@ export default class TracabiliteManager {
      */
     async loadLots() {
         try {
-            // Séparer l'endpoint des query params
-            const serverUrl = api.getServerUrl();
-            const endpoint = '/api/lots';
-            const url = `${serverUrl}${endpoint}?status=all`;
-            const response = await fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
-                }
-            });
-            
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
-            
-            const data = await response.json();
-            logger.debug('Données lots reçues:', data);
-            
-            // Gérer les deux formats : tableau direct ou avec wrapper
-            const rawLots = Array.isArray(data) ? data : (data.items || data.lots || []);
-            
-            // Charger les items et détails pour chaque lot (comme dans inventaire.js et historique.js)
-            this.lots = await Promise.all(rawLots.map(async (lot) => {
-                try {
-                    // Récupérer les détails complets du lot avec ses items
-                    const serverUrl = api.getServerUrl();
-                    const lotUrl = `${serverUrl}/api/lots/${lot.id}`;
-                    const lotResponse = await fetch(lotUrl, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
-                        }
-                    });
-                    
-                    if (lotResponse.ok) {
-                        const lotData = await lotResponse.json();
-                        const items = Array.isArray(lotData.items) ? lotData.items : (lotData.item?.items || []);
-                        
-                        // Calculer pending depuis les items
-                        const calculatedPending = items.filter(item => 
-                            !item.state || item.state.trim() === '' || 
-                            !item.technician || item.technician.trim() === ''
-                        ).length;
-                        
-                        const isFinished = items.length > 0 && calculatedPending === 0 && items.every(item => 
-                            item.state && item.state.trim() !== '' && 
-                            item.technician && item.technician.trim() !== ''
-                        );
-                        
-                        logger.debug(`📦 Lot traçabilité ${lot.id} - Items chargés:`, { 
-                            lotId: lot.id, 
-                            itemsCount: items.length,
-                            calculatedPending,
-                            isFinished,
-                            finished_at: lotData.item?.finished_at,
-                            status: lotData.item?.status
-                        });
-                        
-                        return {
-                            ...lot,
-                            ...lotData.item,
-                            items: items
-                        };
-                    } else {
-                        logger.warn(`⚠️ Impossible de charger les détails du lot ${lot.id}`);
-                        return {
-                            ...lot,
-                            items: [],
-                            total: lot.item_count || 0,
-                            pending: lot.item_count || 0,
-                            recond: 0,
-                            hs: 0
-                        };
-                    }
-                } catch (error) {
-                    logger.error(`❌ Erreur chargement lot traçabilité ${lot.id}:`, error);
-                    return {
-                        ...lot,
-                        items: [],
-                        total: lot.item_count || 0,
-                        pending: lot.item_count || 0,
-                        recond: 0,
-                        hs: 0
-                    };
-                }
-            }));
-            
-            // Trier par date de création
-            this.lots.sort((a, b) => 
+            this.lots = await loadLotsWithItems({ status: 'all' });
+            this.lots.sort((a, b) =>
                 new Date(b.created_at) - new Date(a.created_at)
             );
-            
-            logger.info('📦 Lots traçabilité chargés:', { count: this.lots.length });
-            
-            logger.debug(`📦 ${this.lots.length} lot(s) chargé(s)`);
+            logger.info('📦 Traçabilité : ' + this.lots.length + ' lot(s) chargé(s)');
             this.renderTable();
         } catch (error) {
             logger.error('❌ Erreur chargement lots:', error);
-            this.showNotification('Erreur lors du chargement des lots', 'error');
+            this.lots = [];
+            this.renderLotsError(error);
         }
+    }
+
+    /**
+     * Afficher un bloc d'erreur avec bouton Réessayer
+     */
+    renderLotsError(error) {
+        const container = document.getElementById('tracabilite-grouped');
+        if (!container) return;
+        const message = error && error.message ? error.message : 'Erreur inconnue';
+        container.innerHTML = `
+            <div class="empty-state error-state">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <p>Erreur de chargement</p>
+                <small>${String(message).replace(/</g, '&lt;')}</small>
+                <button type="button" class="btn-retry-lots" id="btn-retry-lots-tracabilite">
+                    <i class="fa-solid fa-sync"></i> Réessayer
+                </button>
+            </div>
+        `;
+        const btn = document.getElementById('btn-retry-lots-tracabilite');
+        if (btn) btn.addEventListener('click', () => this.loadLots());
     }
 
     /**
@@ -170,7 +103,7 @@ export default class TracabiliteManager {
             return isFinished;
         });
         
-        logger.info(`📦 Traçabilité: ${this.lots.length} lots chargés, ${finishedLots.length} lots terminés trouvés`);
+        logger.debug(`📦 Traçabilité: ${this.lots.length} lots chargés, ${finishedLots.length} lots terminés trouvés`);
 
         if (finishedLots.length === 0) {
             container.innerHTML = `
@@ -430,7 +363,14 @@ export default class TracabiliteManager {
         // Bouton rafraîchir
         const refreshBtn = document.getElementById('btn-refresh-tracabilite');
         if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => this.loadLots());
+            refreshBtn.addEventListener('click', async () => {
+                refreshBtn.disabled = true;
+                try {
+                    await this.loadLots();
+                } finally {
+                    refreshBtn.disabled = false;
+                }
+            });
         }
 
         // Filtre statut

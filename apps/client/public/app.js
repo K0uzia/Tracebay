@@ -438,7 +438,7 @@ class PageManager {
 
     async loadPage(pageName) {
         try {
-            const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabiliter'].includes(pageName);
+            const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite'].includes(pageName);
             
             // Si c'est une sous-page de réception, charger d'abord reception.html
             if (isReceptionSubPage) {
@@ -460,6 +460,7 @@ class PageManager {
                 if (recepSection) {
                     recepSection.innerHTML = html;
                 }
+                this.setReceptionNavActive(pageName);
             } else {
                 // Si on clique sur "Réception" du header, rediriger vers "entrer" par défaut
                 if (pageName === 'reception') {
@@ -703,7 +704,7 @@ class PageManager {
                 .catch(error => {
                     logger.error('❌ Erreur import HistoriqueManager:', error);
                 });
-        } else if (pageName === 'tracabiliter') {
+        } else if (pageName === 'tracabilite') {
             // Détruire l'ancien manager s'il existe
             if (window.tracabiliteManager) {
                 window.tracabiliteManager.destroy();
@@ -906,6 +907,18 @@ class PageManager {
                 });
                 
                 button.dataset.listenerAttached = 'true';
+            }
+        });
+    }
+
+    setReceptionNavActive(pageName) {
+        const buttons = document.querySelectorAll('[data-reception-page="true"]');
+        buttons.forEach(btn => {
+            btn.classList.remove('active');
+            btn.removeAttribute('aria-current');
+            if (btn.dataset.page === pageName) {
+                btn.classList.add('active');
+                btn.setAttribute('aria-current', 'page');
             }
         });
     }
