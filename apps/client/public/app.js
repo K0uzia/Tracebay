@@ -61,28 +61,10 @@ class PageManager {
         await this.loadComponent('header', './components/header.html', () => this.initializeAuth());
         await this.loadComponent('footer', './components/footer.html', () => this.initializeSystemInfo());
         
-        // Initialiser le gestionnaire de notifications de mise à jour
-        await this.initializeUpdateNotifier();
-        
         // Charger la page sauvegardée ou home
         const lastPage = this.getLastPage();
         const pageToLoad = lastPage && this.pagesConfig[lastPage] ? lastPage : 'home';
         this.loadPage(pageToLoad);
-    }
-
-    async initializeUpdateNotifier() {
-        try {
-            if (typeof window !== 'undefined' && window.electron) {
-                const config = await window.electron.invoke('get-app-config');
-                if (config && config.isProduction) {
-                    const UpdateNotifierModule = await import('./assets/js/modules/system/UpdateNotifier.js');
-                    window.updateNotifier = new UpdateNotifierModule.default();
-                    this.logger.info('UpdateNotifier initialisé');
-                }
-            }
-        } catch (error) {
-            this.logger.warn('Impossible d\'initialiser UpdateNotifier:', error);
-        }
     }
 
     async initializeServerConnection() {

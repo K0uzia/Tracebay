@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lot {{lotId}} - {{lotName}}</title>
+    <link rel="stylesheet" href="lot.css">
+</head>
+<body>
+    <header class="pdf-header">
+        <h1><i class="fa-solid fa-boxes-stacked"></i> Fiche du Lot #{{lotId}} - {{lotName}}</h1>
+    </header>
+
+    <section class="pdf-info">
+        <h2><i class="fa-solid fa-circle-info"></i> Informations du lot</h2>
+        <ul>
+            <li><span class="label"><i class="fa-regular fa-square-plus"></i> Créé le :</span><span class="value">{{created_at}}</span></li>
+            <li><span class="label"><i class="fa-regular fa-square-check"></i> Terminé le :</span><span class="value">{{finished_at}}</span></li>
+            <li><span class="label"><i class="fa-solid fa-reply"></i> Récupéré le :</span><span class="value">{{recovered_at}}</span></li>
+        </ul>
+    </section>
+
+    <section class="pdf-summary">
+        <h2><i class="fa-solid fa-square-poll-horizontal"></i> Résumé</h2>
+        {{summary_block}}
+    </section>
+
+    <section class="pdf-detail">
+        <h2><i class="fa-solid fa-table-list"></i> Détail des articles</h2>
+        <table class="pdf-table">
+            <thead>
+                <tr>
+                    <th class="col-num">N°</th>
+                    <th class="col-sn">S/N</th>
+                    <th class="col-type">Type</th>
+                    <th class="col-marque">Marque</th>
+                    <th class="col-modele">Modèle</th>
+                    <th class="col-date">Date / Heure</th>
+                    <th class="col-state">État</th>
+                    <th class="col-tech">Technicien</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{items_rows}}
+            </tbody>
+        </table>
+    </section>
+</body>
+</html>

@@ -2,11 +2,12 @@
 <section class="gestion-lots-container">
     
     <!-- En-tête -->
-    <div class="gestion-lots-header">
+    <div class="gestion-lots-header reception-page-header">
         <h1>
             <i class="fa-solid fa-boxes-stacked"></i>
             Réception Nouveau Lot
         </h1>
+        <p class="subtitle">Saisissez les numéros de série et les informations des machines</p>
     </div>
 
     <!-- Barre d'Actions -->
@@ -63,6 +64,7 @@
                     <th class="th-type" data-label="Type">Type</th>
                     <th class="th-marque" data-label="Marque">Marque</th>
                     <th class="th-modele" data-label="Modèle">Modèle</th>
+                    <th class="th-date" data-label="Date / Heure">Date / Heure</th>
                     <th class="th-entree" data-label="Entrée">Entrée</th>
                     <th class="th-action" data-label="Action">Action</th>
                 </tr>
@@ -178,7 +180,9 @@
                         <option value="portable">Portable</option>
                         <option value="fixe">Fixe</option>
                         <option value="ecran">Écran</option>
+                        <option value="autres">Autres</option>
                     </select>
+                    <input type="text" id="modal-mass-type-other" name="type_other" class="type-other-input" placeholder="Précisez le type..." style="display: none;" maxlength="100">
                 </div>
                 <div class="form-group">
                     <label for="modal-mass-marque">
@@ -209,32 +213,28 @@
     </div>
 </dialog>
 
-<!-- MODALE : Confirmation Suppression -->
-<dialog class="universal-modal modal-danger" id="modal-confirm-delete" data-modal-id="modal-confirm-delete">
+<!-- MODALE : Confirmation Suppression de ligne -->
+<dialog class="universal-modal modal-delete-row" id="modal-confirm-delete" data-modal-id="modal-confirm-delete">
     <div class="modal-content">
-        <div class="modal-header">
-            <h2><i class="fa-solid fa-triangle-exclamation"></i> Supprimer la ligne</h2>
-            <button type="button" class="modal-close-btn" data-modal-close="modal-confirm-delete">
-                <i class="fa-solid fa-times"></i>
-            </button>
-        </div>
+        <button type="button" class="modal-delete-row-close" data-modal-close="modal-confirm-delete" aria-label="Fermer">
+            <i class="fa-solid fa-times"></i>
+        </button>
         <div class="modal-body">
-            <div class="modal-warning-box">
-                <div class="warning-icon">
-                    <i class="fa-solid fa-exclamation-triangle"></i>
-                </div>
-                <div class="warning-content">
-                    <h3>Êtes-vous sûr ?</h3>
-                    <p>Cette ligne sera supprimée définitivement. Cette action ne peut pas être annulée.</p>
-                </div>
+            <div class="delete-row-icon" aria-hidden="true">
+                <i class="fa-solid fa-trash"></i>
+            </div>
+            <h2 class="delete-row-title">Supprimer cette ligne ?</h2>
+            <p class="delete-row-desc">La ligne sera retirée du lot. Vous pourrez continuer à enregistrer sans elle.</p>
+            <div class="delete-row-preview" id="delete-row-preview" role="status">
+                <!-- Rempli par le JS avec S/N, type, marque, modèle -->
             </div>
         </div>
-        <div class="modal-footer space-between">
-            <button type="button" class="modal-cancel-btn" data-modal-close="modal-confirm-delete">
-                <i class="fa-solid fa-times"></i> Non, garder
+        <div class="modal-footer modal-delete-row-footer">
+            <button type="button" class="delete-row-btn delete-row-btn-cancel" data-modal-close="modal-confirm-delete">
+                Annuler
             </button>
-            <button type="button" class="btn-danger" id="btn-confirm-delete-row">
-                <i class="fa-solid fa-trash"></i> Oui, supprimer
+            <button type="button" class="delete-row-btn delete-row-btn-confirm" id="btn-confirm-delete-row">
+                <i class="fa-solid fa-trash"></i> Supprimer
             </button>
         </div>
     </div>
