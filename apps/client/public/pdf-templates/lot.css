@@ -1,0 +1,168 @@
+/**
+ * Style du PDF Lot - Traçabilité
+ * Personnalisez ce fichier pour adapter l’apparence du PDF à vos besoins.
+ * Les variables ci-dessous sont injectées automatiquement.
+ */
+@page {
+    size: A4;
+    margin: 15mm;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 11px;
+    color: black;
+    line-height: 1.4;
+    margin: 0;
+    padding: 20px;
+    max-width: 210mm;
+}
+
+.pdf-header {
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #2D3073;
+}
+
+.pdf-header h1 {
+    margin: 0 0 4px 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: #2D3073;
+}
+
+.pdf-info {
+    margin-bottom: 20px;
+}
+
+.pdf-info h2 {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: black;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pdf-info ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.pdf-info li {
+    padding: 4px 0;
+    display: flex;
+    gap: 12px;
+}
+
+.pdf-info .label {
+    color: black;
+    min-width: 90px;
+}
+
+.pdf-info .value {
+    font-weight: 500;
+    color: #3E3B8C;
+}
+
+.pdf-summary {
+    margin-bottom: 20px;
+}
+
+.pdf-summary h2 {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: black;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pdf-summary-total-line {
+    margin: 0 0 12px 0;
+    font-size: 11px;
+    color: #1a1a1a;
+    line-height: 1.5;
+}
+
+.pdf-summary-total-line strong {
+    color: #2D3073;
+}
+
+.pdf-summary-state-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.pdf-summary-state-card {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: #fff;
+    border: 1px solid #d0d7de;
+    border-radius: 6px;
+    font-size: 10px;
+    color: black;
+}
+
+.pdf-summary-state-name {
+    font-weight: 600;
+    color: #2D3073;
+}
+
+.pdf-summary-state-count {
+    font-weight: 700;
+    color: black;
+}
+
+.pdf-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 10px;
+}
+
+.pdf-table thead th {
+    text-align: left;
+    padding: 8px 6px;
+    font-weight: 700;
+    color: #333;
+    border-bottom: 2px solid #2D3073;
+    background: #f5f5f5;
+}
+
+.pdf-table tbody td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #e0e0e0;
+    white-space: nowrap;
+}
+
+.pdf-table tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.pdf-table tbody tr:hover {
+    background: #f0f7ff;
+}
+
+.pdf-table .col-num { min-width: 2.5em; }
+.pdf-table .col-sn { min-width: 120px; }
+.pdf-table .col-type { min-width: 85px; }
+.pdf-table .col-marque { min-width: 95px; }
+.pdf-table .col-modele { min-width: 110px; }
+.pdf-table .col-state { min-width: 100px; }
+.pdf-table .col-tech { min-width: 95px; }
+.pdf-table .col-date { min-width: 95px; }
+
+@media print {
+    body { padding: 0; }
+    .pdf-table { page-break-inside: auto; }
+    .pdf-table tr { page-break-inside: avoid; page-break-after: auto; }
+}

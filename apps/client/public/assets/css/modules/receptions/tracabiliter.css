@@ -11,26 +11,11 @@
 }
 
 .tracabilite-header {
-    margin-bottom: 30px;
-    padding-bottom: 20px;
+    padding-bottom: var(--unit-3);
     border-bottom: 2px solid var(--bleu2);
-    flex-shrink: 0;
 }
 
-.tracabilite-header h1 {
-    margin: 0 0 10px 0;
-    color: var(--bleu1);
-    font-size: 28px;
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-.tracabilite-header .subtitle {
-    margin: 0;
-    color: #666;
-    font-size: 14px;
-}
+/* Titre/sous-titre unifiés via .reception-page-header (reception.css) */
 
 /* FILTRES */
 .tracabilite-filters {
@@ -367,10 +352,6 @@
 @media (max-width: 768px) {
     .tracabilite-container {
         padding: 15px;
-    }
-
-    .tracabilite-header h1 {
-        align-items: flex-start;
     }
 
     .tracabilite-filters {

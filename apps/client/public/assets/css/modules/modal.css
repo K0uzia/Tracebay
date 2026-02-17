@@ -27,15 +27,20 @@ dialog {
     box-sizing: border-box;
 }
 
-/* Centrage explicite du dialog dans la vue (évite décalage à droite) */
+/* Centrage du dialog au milieu de la page */
 dialog[open] {
     position: fixed;
-    inset: 0;
-    margin: auto;
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
+    margin: 0;
     animation: modalFadeIn 0.25s ease-out;
+}
+
+dialog[open]:has(.modal-content.modal-lg) {
+    width: 90%;
+    max-width: min(1280px, calc(100vw - var(--unit-4)));
+    max-height: 85vh;
 }
 
 @keyframes modalFadeIn {
@@ -53,7 +58,13 @@ dialog:has(.modal-content.modal-md) {
 }
 
 dialog:has(.modal-content.modal-lg) {
-    max-width: min(720px, calc(100vw - var(--unit-4)));
+    max-width: min(1280px, calc(100vw - var(--unit-4)));
+    width: 90%;
+    max-height: 85vh;
+}
+
+.modal-content.modal-lg {
+    max-height: 85vh;
 }
 
 
@@ -1012,11 +1023,14 @@ dialog:has(.modal-content.modal-lg) {
 
 .edit-items-table-wrapper {
     overflow-x: auto;
+    overflow-y: visible;
     margin-bottom: var(--unit-2);
+    -webkit-overflow-scrolling: touch;
 }
 
 .edit-items-table {
     font-size: var(--small-text);
+    min-width: 835px;
 }
 
 .edit-items-table thead {
@@ -1029,6 +1043,7 @@ dialog:has(.modal-content.modal-lg) {
     text-align: left;
     font-weight: 600;
     color: var(--text2);
+    white-space: nowrap;
 }
 
 .edit-items-table tbody tr {
@@ -1041,7 +1056,25 @@ dialog:has(.modal-content.modal-lg) {
 
 .edit-items-table td {
     padding: var(--unit-2);
+    white-space: nowrap;
 }
+
+.edit-items-table th:nth-child(1),
+.edit-items-table td:nth-child(1) { min-width: 50px; }
+.edit-items-table th:nth-child(2),
+.edit-items-table td:nth-child(2) { min-width: 160px; }
+.edit-items-table th:nth-child(3),
+.edit-items-table td:nth-child(3) { min-width: 110px; }
+.edit-items-table th:nth-child(4),
+.edit-items-table td:nth-child(4) { min-width: 110px; }
+.edit-items-table th:nth-child(5),
+.edit-items-table td:nth-child(5) { min-width: 130px; }
+.edit-items-table th:nth-child(6),
+.edit-items-table td:nth-child(6) { min-width: 120px; }
+.edit-items-table th:nth-child(7),
+.edit-items-table td:nth-child(7) { min-width: 150px; }
+.edit-items-table th:nth-child(8),
+.edit-items-table td:nth-child(8) { min-width: 115px; }
 
 .edit-items-table .item-number {
     font-weight: 600;

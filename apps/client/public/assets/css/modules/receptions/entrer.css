@@ -10,18 +10,7 @@
     flex: 1;
 }
 
-.gestion-lots-header h1 {
-    font: var(--font-title);
-    color: var(--h2);
-    margin-bottom: var(--unit-4);
-    display: flex;
-    align-items: center;
-    gap: var(--unit-2);
-}
-
-.gestion-lots-header h1 i {
-    color: var(--bleu1);
-}
+/* Titre/sous-titre unifiés via .reception-page-header (reception.css) */
 
 /* Barre d'actions */
 .actions-bar {
@@ -276,6 +265,20 @@
     color: var(--noir);
 }
 
+/* Type : Autres + précision manuelle */
+.type-cell-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+.type-cell-wrapper .type-other-input {
+    width: 100%;
+    margin-top: 2px;
+}
+#modal-mass-type-other.type-other-input {
+    margin-top: var(--unit-1);
+}
+
 /* Système de notifications */
 .notification {
     position: fixed;
@@ -428,6 +431,143 @@
     .warning-icon i {
         font-size: 2rem;
     }
+}
+
+/* ====================================
+   Modale suppression de ligne (réception)
+   ==================================== */
+.modal-delete-row .modal-content {
+    max-width: 420px;
+    position: relative;
+    padding-top: var(--unit-5);
+}
+
+.modal-delete-row-close {
+    position: absolute;
+    top: var(--unit-2);
+    right: var(--unit-2);
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    border-radius: var(--radius-medium);
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+.modal-delete-row-close:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--noir);
+}
+
+.modal-delete-row .modal-body {
+    text-align: center;
+    padding: 0 var(--unit-4) var(--unit-3);
+}
+
+.delete-row-icon {
+    width: 56px;
+    height: 56px;
+    margin: 0 auto var(--unit-3);
+    border-radius: 50%;
+    background: rgba(198, 40, 40, 0.12);
+    color: var(--error);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.delete-row-icon i {
+    font-size: 1.5rem;
+}
+
+.delete-row-title {
+    margin: 0 0 var(--unit-2);
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--h2);
+}
+
+.delete-row-desc {
+    margin: 0 0 var(--unit-3);
+    font-size: 0.9rem;
+    color: var(--text2);
+    line-height: 1.5;
+}
+
+.delete-row-preview {
+    margin-top: var(--unit-3);
+    padding: var(--unit-2) var(--unit-3);
+    background: var(--grey-light, #f5f5f5);
+    border-radius: var(--radius-medium);
+    font-size: 0.85rem;
+    color: var(--text2);
+    text-align: left;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.75rem;
+}
+.delete-row-preview:empty {
+    color: var(--text2);
+    opacity: 0.8;
+}
+.delete-row-preview:not(:empty) {
+    justify-content: flex-start;
+}
+
+.modal-delete-row-footer {
+    padding: var(--unit-3) var(--unit-4) var(--unit-4);
+    gap: var(--unit-3);
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.modal-delete-row-footer .delete-row-btn {
+    min-height: 44px;
+    padding: 0 var(--unit-4);
+    border-radius: var(--radius-medium);
+    font: var(--font-btn);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s, border-color 0.2s, color 0.2s, transform 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border: none;
+    min-width: 120px;
+}
+
+.modal-delete-row-footer .delete-row-btn-cancel {
+    background: transparent;
+    color: var(--text2);
+    border: 1px solid rgba(0, 0, 0, 0.18);
+}
+.modal-delete-row-footer .delete-row-btn-cancel:hover {
+    background: rgba(0, 0, 0, 0.05);
+    border-color: rgba(0, 0, 0, 0.28);
+    color: var(--noir);
+}
+.modal-delete-row-footer .delete-row-btn-cancel:active {
+    background: rgba(0, 0, 0, 0.08);
+}
+
+.modal-delete-row-footer .delete-row-btn-confirm {
+    background-color: var(--error);
+    color: var(--blanc);
+}
+.modal-delete-row-footer .delete-row-btn-confirm:hover {
+    background-color: #b71c1c;
+    transform: translateY(-1px);
+}
+.modal-delete-row-footer .delete-row-btn-confirm:active {
+    transform: translateY(0);
+    background-color: #a01010;
 }
 
 /* Responsive pour écrans moyens */

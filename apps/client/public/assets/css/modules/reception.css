@@ -1,3 +1,40 @@
+/* En-têtes des pages réception : titres et sous-titres identiques */
+.reception-page-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+    margin-bottom: var(--unit-4);
+    flex-shrink: 0;
+}
+
+.reception-page-header h1 {
+    font: var(--font-title);
+    color: var(--h2);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    flex-wrap: wrap;
+}
+
+.reception-page-header h1 i {
+    color: var(--bleu1);
+    flex-shrink: 0;
+}
+
+.reception-page-header .subtitle {
+    font-size: 0.95rem;
+    color: var(--text2);
+    margin: 0;
+}
+
+@media (max-width: 768px) {
+    .reception-page-header h1 {
+        font-size: 1.25rem;
+        align-items: flex-start;
+    }
+}
+
 .recep-main {
     display: grid;
     grid-template-columns: 15vw 1fr;

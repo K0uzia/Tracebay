@@ -2,8 +2,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const ALLOWED_CHANNELS = {
     send: ['open-pdf'],
-    invoke: ['open-external', 'open-pdf-window', 'get-app-config', 'get-server-config', 'get-local-ip', 'get-system-info', 'list-folders', 'open-path', 'launch-app', 'get-app-icon', 'check-for-updates', 'install-update', 'get-update-info', 'generate-lot-pdf', 'read-file-as-base64'],
-    on: ['update:checking-for-update', 'update:available', 'update:not-available', 'update:downloaded', 'update:download-progress', 'update:error']
+    invoke: ['open-external', 'open-pdf-window', 'get-app-config', 'get-server-config', 'get-local-ip', 'get-system-info', 'list-folders', 'open-path', 'launch-app', 'get-app-icon', 'generate-lot-pdf', 'read-file-as-base64'],
+    on: []
 };
 
 function validateChannel(channel, type) {
@@ -48,33 +48,6 @@ contextBridge.exposeInMainWorld('electron', {
 
     openPDF: () => {
         ipcRenderer.send('open-pdf');
-    },
-
-    // Méthodes pour l'auto-updater
-    checkForUpdates: async () => {
-        return ipcRenderer.invoke('check-for-updates');
-    },
-
-    installUpdate: async () => {
-        return ipcRenderer.invoke('install-update');
-    },
-
-    getUpdateInfo: async () => {
-        return ipcRenderer.invoke('get-update-info');
-    },
-
-    onUpdateAvailable: (callback) => {
-        if (typeof callback !== 'function') {
-            throw new Error('Le callback doit être une fonction');
-        }
-        ipcRenderer.on('update:available', (event, args) => callback(args));
-    },
-
-    onUpdateDownloaded: (callback) => {
-        if (typeof callback !== 'function') {
-            throw new Error('Le callback doit être une fonction');
-        }
-        ipcRenderer.on('update:downloaded', (event, args) => callback(args));
     }
 });
 
