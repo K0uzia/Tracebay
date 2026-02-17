@@ -9,7 +9,6 @@
   "dependencies": {
     "@electron-forge/plugin-webpack": "^7.11.1",
     "electron-squirrel-startup": "^1.0.1",
-    "electron-updater": "^6.6.2",
     "pdfkit": "^0.15.0"
   },
   "devDependencies": {
@@ -45,6 +44,7 @@
     "appId": "com.workspace.client",
     "productName": "Workspace Client",
     "copyright": "Copyright © 2026 Sandersonn",
+    "electronVersion": "39.5.2",
     "publish": {
       "provider": "github",
       "owner": "SandersonnDev",
@@ -88,8 +88,7 @@
         }
       ],
       "icon": "build/icon.ico",
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "publisherName": "Sandersonn"
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -147,6 +146,7 @@
       }
     },
     "linux": {
+      "maintainer": "Sandersonn <sandersonn@users.noreply.github.com>",
       "target": [
         {
           "target": "AppImage",
@@ -165,9 +165,11 @@
       "category": "Utility",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "desktop": {
-        "Name": "Workspace Client",
-        "Comment": "Workspace Client - Interface utilisateur collaborative",
-        "Categories": "Utility;"
+        "entry": {
+          "Name": "Workspace Client",
+          "Comment": "Workspace Client - Interface utilisateur collaborative",
+          "Categories": "Utility;"
+        }
       }
     },
     "appImage": {

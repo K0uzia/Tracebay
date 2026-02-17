@@ -10,11 +10,51 @@ const os = require('os');
 const { exec } = require('child_process');
 const PDFDocument = require('pdfkit');
 
+// #region agent log (bootstrap debug log pour AppImage sur autres machines)
+function getAppImageDebugLogPath() {
+    try {
+        if (app.isPackaged) {
+            return path.join(app.getPath('userData'), 'debug.log');
+        }
+        return path.join(__dirname, '..', '..', '.cursor', 'debug.log');
+    } catch (_) {
+        return path.join(os.homedir(), '.config', 'workspace-client-debug.log');
+    }
+}
+function writeAppImageDebugLog(payload) {
+    try {
+        const logPath = getAppImageDebugLogPath();
+        const dir = path.dirname(logPath);
+        if (!fs.existsSync(dir)) {
+            try { fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+        }
+        fs.appendFileSync(logPath, JSON.stringify({ ...payload, timestamp: Date.now() }) + '\n');
+    } catch (_) {}
+}
+try {
+    writeAppImageDebugLog({
+        hypothesisId: 'H4-H5',
+        location: 'main.js:bootstrap',
+        message: 'main_started',
+        data: {
+            platform: process.platform,
+            arch: process.arch,
+            nodeVersion: process.version,
+            packaged: app.isPackaged,
+            execPath: process.execPath ? path.basename(process.execPath) : ''
+        }
+    });
+} catch (_) {}
+process.on('uncaughtException', (err) => {
+    writeAppImageDebugLog({ hypothesisId: 'H4', location: 'uncaughtException', message: String(err && err.message), data: { stack: err && err.stack } });
+});
+process.on('unhandledRejection', (reason) => {
+    writeAppImageDebugLog({ hypothesisId: 'H4', location: 'unhandledRejection', message: String(reason) });
+});
+// #endregion
+
 // Import ClientDiscovery
 const ClientDiscovery = require('./lib/ClientDiscovery.js');
-
-// Import AutoUpdater
-const getAutoUpdater = require('./lib/AutoUpdater.js');
 
 // Détection environnement (production vs développement)
 const isProduction = process.env.NODE_ENV === 'production' || app.isPackaged;
@@ -185,6 +225,7 @@ const MAX_RETRY_ATTEMPTS = 10;
 const RETRY_INTERVAL = 500;
 
 let mainWindow;
+let splashWindow = null;
 let pdfWindows = new Map();
 let serverConnected = false;
 let discoveredServer = null;
@@ -254,6 +295,70 @@ function checkServerConnection(retries = 0) {
 }
 
 /**
+ * Écran de démarrage (splash) affiché pendant le chargement
+ */
+function createSplashWindow() {
+    const splashHtml = `
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(145deg, #1a237e 0%, #0d47a1 100%);
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  .logo { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; letter-spacing: 0.02em; }
+  .tagline { font-size: 0.9rem; opacity: 0.85; margin-bottom: 2rem; }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(255,255,255,0.25);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .message { margin-top: 1.25rem; font-size: 0.85rem; opacity: 0.9; }
+</style></head><body>
+  <div class="logo">Workspace</div>
+  <div class="tagline">By Sandersonn</div>
+  <div class="spinner"></div>
+  <p class="message">Chargement en cours…</p>
+</body></html>`;
+    const win = new BrowserWindow({
+        width: 380,
+        height: 280,
+        frame: true,
+        transparent: false,
+        resizable: false,
+        show: false,
+        alwaysOnTop: true,
+        webPreferences: { nodeIntegration: false, contextIsolation: true }
+    });
+    win.setMenuBarVisibility(false);
+    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(splashHtml));
+    win.once('ready-to-show', () => win.show());
+    splashWindow = win;
+    win.on('closed', () => { splashWindow = null; });
+    return win;
+}
+
+/**
+ * Fermer l'écran de démarrage (splash)
+ */
+function closeSplashWindow() {
+    if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.close();
+        splashWindow = null;
+    }
+}
+
+/**
  * Créer la fenêtre principale
  */
 function createWindow() {
@@ -270,9 +375,15 @@ function createWindow() {
         }
     });
 
-    // Charger l'index.html directement
+    // Charger l'index.html ; afficher la fenêtre et fermer le splash une fois prêt
     mainWindow.loadURL(`file://${path.join(__dirname, 'public', 'index.html')}`);
-    mainWindow.show();
+    const showMainAndCloseSplash = () => {
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+        closeSplashWindow();
+    };
+    mainWindow.webContents.once('did-finish-load', showMainAndCloseSplash);
+    // Fallback si did-finish-load tarde (réseau, erreur, etc.)
+    setTimeout(showMainAndCloseSplash, 15000);
 
     // DevTools uniquement en développement
     if (!isProduction) {
@@ -307,7 +418,10 @@ app.on('ready', async () => {
     console.log(`🔗 Serveur par défaut: ${SERVER_URL}`);
     console.log(`🌍 Environnement: ${isProduction ? 'PRODUCTION' : 'DÉVELOPPEMENT'}`);
     console.log('ℹ️  La config réelle sera chargée par le client web');
-    
+
+    // Afficher l'écran de démarrage immédiatement (lancement long)
+    createSplashWindow();
+
     // Tenter la connexion au serveur (non-bloquant)
     await checkServerConnection();
     
@@ -317,16 +431,6 @@ app.on('ready', async () => {
     
     // Créer la fenêtre principale
     createWindow();
-    
-    // Initialiser l'auto-updater APRÈS la création de la fenêtre (si production)
-    if (isProduction) {
-        const autoUpdater = getAutoUpdater({
-            enabled: true,
-            owner: 'SandersonnDev',
-            repo: 'Workspace'
-        });
-        autoUpdater.init(isProduction, mainWindow);
-    }
     
     console.log('✅ Interface graphique lancée');
     console.log('✨ Application prête');
@@ -712,6 +816,144 @@ function formatDateForPdf(iso) {
     }
 }
 
+/** Échapper pour affichage dans le HTML du template PDF */
+function escapeHtml(s) {
+    if (s == null) return '';
+    const str = String(s);
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/** Libellés français pour les types (code API -> affichage PDF) */
+const TYPE_LABELS = { portable: 'Portable', fixe: 'Fixe', ecran: 'Écran', autres: 'Autres' };
+function typeLabel(code) {
+    if (!code || typeof code !== 'string') return 'Non défini';
+    const c = code.trim().toLowerCase();
+    return TYPE_LABELS[c] || (code.trim() || 'Non défini');
+}
+
+/**
+ * Formater date/heure item pour le PDF (created_at, state_changed_at, updated_at, ou date+time)
+ */
+function formatItemDateForPdf(it) {
+    const iso = it.created_at || it.createdAt || it.state_changed_at || it.stateChangedAt || it.updated_at || it.updatedAt;
+    if (iso) return formatDateForPdf(iso);
+    if (it.date && it.time) {
+        const d = it.date + 'T' + (String(it.time).length === 5 ? it.time + ':00' : it.time);
+        return formatDateForPdf(d);
+    }
+    if (it.date && /^\d{4}-\d{2}-\d{2}/.test(String(it.date))) return formatDateForPdf(it.date + 'T00:00:00');
+    // Chaîne type "YYYY-MM-DD HH:mm:ss" ou "YYYY-MM-DD"
+    const dateStr = it.date || it.date_changed;
+    if (dateStr && /^\d{4}-\d{2}-\d{2}/.test(String(dateStr))) return formatDateForPdf(String(dateStr).replace(' ', 'T').slice(0, 19) || dateStr + 'T00:00:00');
+    return '-';
+}
+
+/** Construire le bloc HTML du résumé PDF : total + types en ligne, puis cartes par état */
+function buildPdfSummaryBlock(totalItems, typeEntries, stateEntries) {
+    const typeParts = typeEntries.map(([typeName, count]) => `${escapeHtml(typeLabel(typeName))} ${count}`).join(', ');
+    const totalLine = `<p class="pdf-summary-total-line"><i class="fa-solid fa-laptop-code"></i> <strong>${escapeHtml(String(totalItems))} machine(s)</strong>${typeParts ? ` (${typeParts})` : ''}</p>`;
+    const stateCards = stateEntries
+        .map(([stateName, count]) => `<span class="pdf-summary-state-card"><span class="pdf-summary-state-name">${escapeHtml(stateName)}</span><span class="pdf-summary-state-count">${escapeHtml(String(count))}</span></span>`)
+        .join('\n');
+    return `${totalLine}\n<div class="pdf-summary-state-cards">${stateCards}</div>`;
+}
+
+/**
+ * Générer le PDF d'un lot via le template HTML/CSS si présent, sinon PDFKit.
+ * Template : apps/client/public/pdf-templates/lot.html + lot.css
+ * Placeholders : {{lotId}}, {{lotName}}, {{created_at}}, {{finished_at}}, {{recovered_at}},
+ * {{summary_block}}, {{items_rows}}
+ */
+async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, typeEntries, totalItems) {
+    const templateDir = path.join(__dirname, 'public', 'pdf-templates');
+    const htmlPath = path.join(templateDir, 'lot.html');
+    const cssPath = path.join(templateDir, 'lot.css');
+    if (!fs.existsSync(htmlPath) || !fs.existsSync(cssPath)) {
+        return null;
+    }
+    const {
+        lotId,
+        lotName,
+        items = [],
+        created_at,
+        finished_at,
+        recovered_at
+    } = payload;
+
+    const css = fs.readFileSync(cssPath, 'utf8');
+    let html = fs.readFileSync(htmlPath, 'utf8');
+
+    const summaryBlock = buildPdfSummaryBlock(totalItems, typeEntries, stateEntries);
+    const itemsRows = items
+        .map((it, idx) => {
+            const num = it.numero != null ? it.numero : idx + 1;
+            const sn = escapeHtml(it.serial_number || it.serialNumber || '-');
+            const type = escapeHtml(typeLabel(it.type));
+            const marque = escapeHtml(it.marque_name || it.marqueName || '-');
+            const modele = escapeHtml(it.modele_name || it.modeleName || '-');
+            const state = escapeHtml(it.state || '-');
+            const tech = escapeHtml(it.technician || it.technicien || '-');
+            const dateHeure = escapeHtml(formatItemDateForPdf(it));
+            return `<tr><td class="col-num">${num}</td><td class="col-sn">${sn}</td><td class="col-type">${type}</td><td class="col-marque">${marque}</td><td class="col-modele">${modele}</td><td class="col-date">${dateHeure}</td><td class="col-state">${state}</td><td class="col-tech">${tech}</td></tr>`;
+        })
+        .join('\n');
+
+    const replacements = [
+        [/\{\{\s*lotId\s*\}\}/g, escapeHtml(lotId)],
+        [/\{\{\s*lotName\s*\}\}/g, escapeHtml(lotName || '-')],
+        [/\{\{\s*created_at\s*\}\}/g, escapeHtml(formatDateForPdf(created_at))],
+        [/\{\{\s*finished_at\s*\}\}/g, escapeHtml(formatDateForPdf(finished_at))],
+        [/\{\{\s*recovered_at\s*\}\}/g, escapeHtml(formatDateForPdf(recovered_at))],
+        [/\{\{\s*totalItems\s*\}\}/g, String(totalItems)],
+        [/\{\{\s*summary_block\s*\}\}/g, summaryBlock],
+        [/\{\{\s*items_rows\s*\}\}/g, itemsRows]
+    ];
+    replacements.forEach(([regex, value]) => { html = html.replace(regex, value); });
+
+    html = html.replace(
+        /<link\s+rel="stylesheet"\s+href="lot\.css"\s*\/?>/i,
+        `<style>${css}</style>`
+    );
+
+    // FontAwesome : lien relatif valide quand on charge depuis un fichier dans pdf-templates
+    const fontawesomeLink = '<link rel="stylesheet" href="../assets/css/fontawesome-local.css">';
+    if (!html.includes('fontawesome')) {
+        html = html.replace('</head>', `${fontawesomeLink}\n</head>`);
+    }
+
+    const outputPath = path.join(templateDir, '.lot-pdf-output.html');
+    try {
+        fs.writeFileSync(outputPath, html, 'utf8');
+    } catch (e) {
+        console.error('❌ generate-lot-pdf write temp HTML:', e.message);
+        return null;
+    }
+
+    const win = new BrowserWindow({
+        show: false,
+        webPreferences: { offscreen: true }
+    });
+    try {
+        await win.loadFile(outputPath);
+        // Marges gérées par @page dans lot.css ; pas de custom margins pour éviter l'erreur Chromium
+        const pdfBuffer = await win.webContents.printToPDF({
+            printBackground: true,
+            pageSize: 'A4',
+            preferCSSPageSize: true
+        });
+        fs.writeFileSync(fullPath, pdfBuffer);
+        return { success: true, pdf_path: path.resolve(fullPath) };
+    } finally {
+        win.close();
+        try { fs.unlinkSync(outputPath); } catch (_) {}
+    }
+}
+
 /**
  * Générer le PDF d'un lot et l'enregistrer localement dans le dossier traçabilité.
  * Payload: { lotId, lotName, date, items, created_at?, finished_at?, recovered_at?, basePath? }
@@ -750,11 +992,29 @@ ipcMain.handle('generate-lot-pdf', async (_event, payload) => {
 
     const totalItems = items.length;
     const stateCounts = {};
+    const typeCounts = {};
     items.forEach((it) => {
         const s = (it.state && String(it.state).trim()) || 'Non défini';
         stateCounts[s] = (stateCounts[s] || 0) + 1;
+        const t = (it.type && String(it.type).trim()) || 'Non défini';
+        typeCounts[t] = (typeCounts[t] || 0) + 1;
     });
-    const stateEntries = Object.entries(stateCounts).sort((a, b) => b[1] - a[1]);
+    const STATE_ORDER = ['Reconditionnés', 'Pour pièces', 'HS', 'Non défini'];
+    const stateEntries = STATE_ORDER.map((name) => [name, stateCounts[name] || 0]);
+    const typeEntries = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+
+    try {
+        const htmlResult = await generateLotPdfFromHtmlTemplate(
+            { lotId, lotName, date, items, created_at, finished_at, recovered_at },
+            fullPath,
+            stateEntries,
+            typeEntries,
+            totalItems
+        );
+        if (htmlResult) return htmlResult;
+    } catch (err) {
+        console.error('❌ generate-lot-pdf (template HTML):', err.message);
+    }
 
     const margin = 50;
     const pageWidth = 595;
@@ -892,68 +1152,6 @@ ipcMain.handle('get-app-config', async () => {
         isProduction: isProduction,
         appVersion: app.getVersion()
     };
-});
-
-/**
- * Vérifier manuellement les mises à jour
- */
-ipcMain.handle('check-for-updates', async () => {
-    if (!isProduction) {
-        return { success: false, message: 'Auto-updater désactivé en développement' };
-    }
-    
-    try {
-        const autoUpdater = getAutoUpdater();
-        await autoUpdater.checkForUpdates();
-        return { success: true };
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
-});
-
-/**
- * Installer la mise à jour téléchargée
- */
-ipcMain.handle('install-update', async () => {
-    if (!isProduction) {
-        return { success: false, message: 'Auto-updater désactivé en développement' };
-    }
-    
-    try {
-        const autoUpdater = getAutoUpdater();
-        await autoUpdater.installUpdate();
-        return { success: true };
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
-});
-
-/**
- * Obtenir les informations sur les mises à jour
- */
-ipcMain.handle('get-update-info', async () => {
-    if (!isProduction) {
-        return {
-            enabled: false,
-            currentVersion: app.getVersion(),
-            updateAvailable: false,
-            updateDownloaded: false
-        };
-    }
-    
-    try {
-        const autoUpdater = getAutoUpdater();
-        const info = autoUpdater.getUpdateInfo();
-        return {
-            enabled: true,
-            ...info
-        };
-    } catch (error) {
-        return {
-            enabled: true,
-            error: error.message
-        };
-    }
 });
 
 /**

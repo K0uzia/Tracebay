@@ -266,6 +266,12 @@ export default class HistoriqueManager {
             items: items.slice(0, 5)
         }, null, 2));
         
+        const formatItemDateTime = (it) => {
+            if (it.created_at) return this.formatDateTime(it.created_at);
+            if (it.state_changed_at) return this.formatDateTime(it.state_changed_at);
+            if (it.date && it.time) return `${it.date} ${it.time}`;
+            return '-';
+        };
         itemsContainer.innerHTML = items.map((item, idx) => `
             <tr>
                 <td>${idx + 1}</td>
@@ -279,6 +285,7 @@ export default class HistoriqueManager {
                     </span>
                 </td>
                 <td>${item.technician || '-'}</td>
+                <td>${formatItemDateTime(item)}</td>
             </tr>
         `).join('');
 
@@ -494,7 +501,12 @@ export default class HistoriqueManager {
             items: items.slice(0, 5)
         }, null, 2));
 
-        // Remplir la modale avec les items du lot
+        const formatItemDateTime = (it) => {
+            if (it.created_at) return this.formatDateTime(it.created_at);
+            if (it.state_changed_at) return this.formatDateTime(it.state_changed_at);
+            if (it.date && it.time) return `${it.date} ${it.time}`;
+            return '-';
+        };
         this.currentEditingLotId = lotId;
         const itemsContainer = document.getElementById('modal-edit-items-body');
         if (itemsContainer) {
@@ -518,6 +530,7 @@ export default class HistoriqueManager {
                     <td>
                         <input type="text" class="item-technician-input" data-item-id="${item.id}" value="${item.technician || ''}" placeholder="Technicien">
                     </td>
+                    <td><span class="item-text">${formatItemDateTime(item)}</span></td>
                 </tr>
             `;
             }).join('');

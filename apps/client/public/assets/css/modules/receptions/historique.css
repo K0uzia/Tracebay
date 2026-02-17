@@ -11,33 +11,7 @@
     box-sizing: border-box;
 }
 
-.historique-header {
-    display: flex;
-    flex-direction: column;
-    gap: var(--unit-1);
-    flex-shrink: 0;
-}
-
-.historique-header h1 {
-    font: var(--font-subtitle);
-    color: var(--h2);
-    display: flex;
-    align-items: center;
-    gap: var(--unit-2);
-    margin: 0;
-    flex-wrap: wrap;
-}
-
-.historique-header h1 i {
-    color: var(--bleu1);
-    flex-shrink: 0;
-}
-
-.historique-header .subtitle {
-    font-size: 0.95rem;
-    color: var(--text2);
-    margin: 0;
-}
+/* Titre/sous-titre unifiés via .reception-page-header (reception.css) */
 
 /* Filtres */
 .historique-filters {
@@ -461,8 +435,7 @@
 
 .lot-details-table {
     overflow-x: auto;
-    overflow-y: auto;
-    max-height: 400px;
+    overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     margin: 0 calc(-1 * var(--unit-2));
     padding: 0 var(--unit-2);
@@ -470,7 +443,7 @@
 
 .details-table {
     width: 100%;
-    min-width: 560px;
+    min-width: 835px;
     border-collapse: collapse;
     font-size: 0.9rem;
 }
@@ -497,8 +470,25 @@
     padding: var(--unit-1) var(--unit-2);
     border-bottom: 1px solid #e0e0e0;
     color: var(--text2);
-    word-break: break-word;
+    white-space: nowrap;
 }
+
+.details-table th:nth-child(1),
+.details-table td:nth-child(1) { min-width: 50px; }
+.details-table th:nth-child(2),
+.details-table td:nth-child(2) { min-width: 160px; }
+.details-table th:nth-child(3),
+.details-table td:nth-child(3) { min-width: 110px; }
+.details-table th:nth-child(4),
+.details-table td:nth-child(4) { min-width: 110px; }
+.details-table th:nth-child(5),
+.details-table td:nth-child(5) { min-width: 130px; }
+.details-table th:nth-child(6),
+.details-table td:nth-child(6) { min-width: 120px; }
+.details-table th:nth-child(7),
+.details-table td:nth-child(7) { min-width: 140px; }
+.details-table th:nth-child(8),
+.details-table td:nth-child(8) { min-width: 115px; }
 
 .details-table tbody tr:hover {
     background-color: #f9f9f9;
@@ -511,6 +501,8 @@
     font-size: 0.85rem;
     font-weight: 600;
     text-align: center;
+    background-color: #e8e8e8;
+    color: #555;
 }
 
 .state-badge.state-À-faire {
@@ -518,9 +510,15 @@
     color: #8a6e04;
 }
 
-.state-badge.state-Reconditionné {
+.state-badge.state-Reconditionné,
+.state-badge.state-Reconditionnés {
     background-color: #b8e0c8;
     color: #1b5938;
+}
+
+.state-badge.state-Pour-pièces {
+    background-color: #e0d4f7;
+    color: #4a3a6a;
 }
 
 .state-badge.state-HS {
@@ -563,10 +561,6 @@
 @media (max-width: 768px) {
     .historique-container {
         padding: var(--unit-1) var(--unit-2);
-    }
-
-    .historique-header h1 {
-        font-size: 1.25rem;
     }
 
     .historique-filters {
@@ -635,7 +629,7 @@
 
     .details-table {
         font-size: 0.8rem;
-        min-width: 480px;
+        min-width: 835px;
     }
 
     .details-table th,
@@ -673,6 +667,6 @@
     }
 
     .details-table {
-        min-width: 420px;
+        min-width: 835px;
     }
 }

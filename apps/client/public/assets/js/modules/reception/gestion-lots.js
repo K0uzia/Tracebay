@@ -253,6 +253,17 @@ export default class GestionLotsManager {
             // Boutons de confirmation modale
             attachButton('btn-confirm-mass-apply', () => this.confirmMassApply());
             attachButton('btn-confirm-delete-row', () => this.confirmDeleteRow());
+            // Afficher/masquer "Précisez le type" dans la modale masse quand Type = Autres
+            const modalMassType = document.getElementById('modal-mass-type');
+            const modalMassTypeOther = document.getElementById('modal-mass-type-other');
+            if (modalMassType && modalMassTypeOther) {
+                modalMassType.addEventListener('change', () => {
+                    const isAutres = modalMassType.value === 'autres';
+                    modalMassTypeOther.style.display = isAutres ? 'block' : 'none';
+                    modalMassTypeOther.required = isAutres;
+                    if (!isAutres) modalMassTypeOther.value = '';
+                });
+            }
             
             // Bouton add-modele pour remplir le select
             const btnAddModele = document.getElementById('btn-add-modele');
@@ -409,12 +420,16 @@ export default class GestionLotsManager {
                 <input type="text" name="serial_number" value="${escSn}" placeholder="S/N" required>
             </td>
             <td data-label="Type">
-                <select name="type" required>
-                    <option value="">Type...</option>
-                    <option value="portable">Portable</option>
-                    <option value="fixe">Fixe</option>
-                    <option value="ecran">Écran</option>
-                </select>
+                <div class="type-cell-wrapper">
+                    <select name="type" required>
+                        <option value="">Type...</option>
+                        <option value="portable">Portable</option>
+                        <option value="fixe">Fixe</option>
+                        <option value="ecran">Écran</option>
+                        <option value="autres">Autres</option>
+                    </select>
+                    <input type="text" name="type_other" class="type-other-input" placeholder="Précisez..." style="display: none;" maxlength="100">
+                </div>
             </td>
             <td data-label="Marque">
                 <select name="marque" required>
@@ -426,6 +441,9 @@ export default class GestionLotsManager {
                 <select name="modele" required>
                     <option value="">Modèle...</option>
                 </select>
+            </td>
+            <td data-label="Date / Heure">
+                <span class="row-date-display">${now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${now.toTimeString().slice(0, 5)}</span>
             </td>
             <td data-label="Entrée">
                 <span class="entry-badge ${entryType}">${entryType === 'scan' ? 'SCAN' : 'MANUEL'}</span>
@@ -442,8 +460,21 @@ export default class GestionLotsManager {
         
         // Attacher les événements
         const deleteBtn = row.querySelector('.btn-delete-row');
+        const typeSelect = row.querySelector('select[name="type"]');
+        const typeOtherInput = row.querySelector('input[name="type_other"]');
         const marqueSelect = row.querySelector('select[name="marque"]');
         const modeleSelect = row.querySelector('select[name="modele"]');
+        
+        // Afficher/masquer "Précisez" quand Type = Autres
+        if (typeSelect && typeOtherInput) {
+            typeSelect.addEventListener('change', () => {
+                const isAutres = typeSelect.value === 'autres';
+                typeOtherInput.style.display = isAutres ? 'inline-block' : 'none';
+                typeOtherInput.required = isAutres;
+                if (isAutres) typeOtherInput.focus();
+                else typeOtherInput.value = '';
+            });
+        }
         
         // Événement changement de marque - FILTRE LES MODÈLES
         if (marqueSelect) {
@@ -489,6 +520,7 @@ export default class GestionLotsManager {
         rows.forEach((row, index) => {
             const snInput = row.querySelector('[name="serial_number"]');
             const typeSelect = row.querySelector('[name="type"]');
+            const typeOtherInput = row.querySelector('[name="type_other"]');
             const marqueSelect = row.querySelector('[name="marque"]');
             const modeleSelect = row.querySelector('[name="modele"]');
             const dateInput = row.querySelector('[name="date"]');
@@ -496,7 +528,10 @@ export default class GestionLotsManager {
             const entryBadge = row.querySelector('.entry-badge');
             const entryType = entryBadge?.classList.contains('scan') ? 'scan' : 'manual';
 
-            if (!snInput.value || !typeSelect.value || !marqueSelect.value || !modeleSelect.value) {
+            const typeValue = typeSelect.value === 'autres'
+                ? (typeOtherInput?.value?.trim() || '')
+                : typeSelect.value;
+            if (!snInput.value || !typeValue || !marqueSelect.value || !modeleSelect.value) {
                 isValid = false;
                 row.style.backgroundColor = '#ffebee';
                 return;
@@ -505,7 +540,7 @@ export default class GestionLotsManager {
             lotData.push({
                 numero: index + 1,
                 serialNumber: snInput.value,
-                type: typeSelect.value,
+                type: typeValue,
                 marqueId: marqueSelect.value,
                 modeleId: modeleSelect.value,
                 entryType,
@@ -912,8 +947,24 @@ export default class GestionLotsManager {
      * Supprimer une ligne
      */
     deleteRow(row) {
-        // Stocker la ligne pour suppression dans la modale
         this.rowToDelete = row;
+        const preview = document.getElementById('delete-row-preview');
+        if (preview) {
+            const sn = row.querySelector('[name="serial_number"]');
+            const typeSelect = row.querySelector('select[name="type"]');
+            const marqueSelect = row.querySelector('select[name="marque"]');
+            const modeleSelect = row.querySelector('select[name="modele"]');
+            const typeOther = row.querySelector('input[name="type_other"]');
+            const snVal = sn && sn.value ? sn.value.trim() : '';
+            const typeVal = typeSelect && typeSelect.selectedOptions[0] ? typeSelect.selectedOptions[0].text : '';
+            const typeDisplay = (typeSelect && typeSelect.value === 'autres' && typeOther && typeOther.value)
+                ? typeOther.value.trim() || typeVal
+                : typeVal;
+            const marqueVal = marqueSelect && marqueSelect.selectedOptions[0] ? marqueSelect.selectedOptions[0].text : '';
+            const modeleVal = modeleSelect && modeleSelect.selectedOptions[0] ? modeleSelect.selectedOptions[0].text : '';
+            const parts = [snVal && `S/N ${snVal}`, typeDisplay, marqueVal, modeleVal].filter(Boolean);
+            preview.textContent = parts.length ? parts.join(' · ') : 'Ligne sans détail';
+        }
         this.modalManager.open('modal-confirm-delete');
     }
     
@@ -972,6 +1023,7 @@ export default class GestionLotsManager {
      */
     confirmMassApply() {
         const massType = document.getElementById('modal-mass-type')?.value;
+        const massTypeOther = document.getElementById('modal-mass-type-other')?.value?.trim() || '';
         const massMarque = document.getElementById('modal-mass-marque')?.value;
         const massModele = document.getElementById('modal-mass-modele')?.value;
         
@@ -981,6 +1033,10 @@ export default class GestionLotsManager {
             this.showNotification('Aucune ligne sélectionnée', 'error');
             return;
         }
+        if (massType === 'autres' && !massTypeOther) {
+            this.showNotification('Précisez le type pour "Autres"', 'warning');
+            return;
+        }
         
         selectedRows.forEach(checkbox => {
             const row = checkbox.closest('tr');
@@ -988,7 +1044,15 @@ export default class GestionLotsManager {
             
             if (massType) {
                 const typeSelect = row.querySelector('[name="type"]');
-                if (typeSelect) typeSelect.value = massType;
+                const typeOtherInput = row.querySelector('[name="type_other"]');
+                if (typeSelect) {
+                    typeSelect.value = massType;
+                    if (massType === 'autres' && typeOtherInput) {
+                        typeOtherInput.value = massTypeOther;
+                        typeOtherInput.style.display = 'inline-block';
+                        typeOtherInput.required = true;
+                    }
+                }
             }
             
             if (massMarque) {
@@ -1007,6 +1071,11 @@ export default class GestionLotsManager {
         
         // Réinitialiser les selects et checkboxes
         document.getElementById('modal-mass-type').value = '';
+        const modalTypeOther = document.getElementById('modal-mass-type-other');
+        if (modalTypeOther) {
+            modalTypeOther.value = '';
+            modalTypeOther.style.display = 'none';
+        }
         document.getElementById('modal-mass-marque').value = '';
         document.getElementById('modal-mass-modele').value = '';
         document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);

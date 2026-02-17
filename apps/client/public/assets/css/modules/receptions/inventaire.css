@@ -9,29 +9,7 @@
     gap: var(--unit-3);
 }
 
-.inventaire-header {
-    display: flex;
-    flex-direction: column;
-    gap: var(--unit-1);
-}
-
-.inventaire-header h1 {
-    font: var(--font-title);
-    color: var(--h2);
-    display: flex;
-    align-items: center;
-    gap: var(--unit-2);
-}
-
-.inventaire-header h1 i {
-    color: var(--bleu1);
-}
-
-.inventaire-header .subtitle {
-    font-size: 0.95rem;
-    color: var(--text2);
-    margin: 0;
-}
+/* Titre/sous-titre unifiés via .reception-page-header (reception.css) */
 
 /* Filtres */
 .inventaire-filters {
@@ -201,8 +179,7 @@
 
 .items-table-wrapper {
     overflow-x: auto;
-    overflow-y: auto;
-    max-height: 400px;
+    overflow-y: visible;
 }
 
 .items-table {
@@ -245,6 +222,8 @@
     font-size: 0.85rem;
     font-weight: 600;
     text-align: center;
+    background-color: #e8e8e8;
+    color: #555;
 }
 
 .state-badge.state-À-faire {
@@ -252,9 +231,15 @@
     color: #8a6e04;
 }
 
-.state-badge.state-Reconditionné {
+.state-badge.state-Reconditionné,
+.state-badge.state-Reconditionnés {
     background-color: #b8e0c8;
     color: #1b5938;
+}
+
+.state-badge.state-Pour-pièces {
+    background-color: #e0d4f7;
+    color: #4a3a6a;
 }
 
 .state-badge.state-HS {
@@ -428,10 +413,6 @@
     .filter-group input,
     .filter-group button {
         width: 100%;
-    }
-    
-    .items-table-wrapper {
-        max-height: 300px;
     }
     
     .items-table {
