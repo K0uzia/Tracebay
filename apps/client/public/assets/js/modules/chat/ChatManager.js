@@ -124,6 +124,9 @@ class ChatManager {
                 this.scrollToBottom();
             } else if (data.type === 'newMessage') {
                 const msg = data.message;
+                // #region agent log
+                fetch('http://127.0.0.1:7403/ingest/5b4afebf-1ab5-47ee-8048-06afef059dbf',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee81ff'},body:JSON.stringify({sessionId:'ee81ff',location:'ChatManager.js:newMessage',message:'newMessage branch',data:{pseudo:msg?.pseudo,textLen:(msg?.text||msg?.message||'').length,hasId:!!msg?.id},timestamp:Date.now(),hypothesisId:'H2-H5'})}).catch(()=>{});
+                // #endregion
                 logger.debug('Nouveau message reçu', { 
                     pseudo: msg.pseudo, 
                     messageType: typeof msg.message 
