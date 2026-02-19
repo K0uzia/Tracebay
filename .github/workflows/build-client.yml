@@ -1,0 +1,96 @@
+name: Build & Publish Client
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Plateforme à builder'
+        required: true
+        default: 'linux'
+        type: choice
+        options:
+          - linux
+          - win
+          - mac
+          - all
+  push:
+    branches: [main]
+    paths:
+      - 'apps/client/**'
+      - 'package.json'
+      - 'package-lock.json'
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'linux' || github.event.inputs.platform == 'all'))
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies (root)
+        run: npm ci
+
+      - name: Build client (Linux) & publish
+        working-directory: apps/client
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_ENV: production
+        run: npm run build:prod:linux
+
+  build-windows:
+    runs-on: windows-latest
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'win' || github.event.inputs.platform == 'all')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies (root)
+        run: npm ci
+
+      - name: Build client (Windows) & publish
+        working-directory: apps/client
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_ENV: production
+        run: npm run build:prod:win
+
+  build-macos:
+    runs-on: macos-latest
+    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'mac' || github.event.inputs.platform == 'all')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies (root)
+        run: npm ci
+
+      - name: Build client (macOS) & publish
+        working-directory: apps/client
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_ENV: production
+        run: npm run build:prod:mac
