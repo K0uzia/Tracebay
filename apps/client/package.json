@@ -9,6 +9,7 @@
   "dependencies": {
     "@electron-forge/plugin-webpack": "^7.11.1",
     "electron-squirrel-startup": "^1.0.1",
+    "electron-updater": "^6.3.9",
     "pdfkit": "^0.15.0"
   },
   "devDependencies": {

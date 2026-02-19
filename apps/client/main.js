@@ -349,6 +349,17 @@ function createSplashWindow() {
 }
 
 /**
+ * Mettre à jour le message affiché sur l'écran de démarrage (splash)
+ */
+function setSplashMessage(text) {
+    if (splashWindow && !splashWindow.isDestroyed() && splashWindow.webContents) {
+        splashWindow.webContents.executeJavaScript(
+            `(function(){ var el = document.querySelector('.message'); if (el) el.textContent = ${JSON.stringify(text)}; })();`
+        ).catch(() => {});
+    }
+}
+
+/**
  * Fermer l'écran de démarrage (splash)
  */
 function closeSplashWindow() {
@@ -410,6 +421,20 @@ function createWindow() {
 }
 
 /**
+ * Lancer l'application (fenêtre principale après éventuelle mise à jour)
+ */
+async function launchApp() {
+    setSplashMessage('Chargement en cours…');
+    await checkServerConnection();
+    if (!serverConnected) {
+        console.log('🔌 Mode hors-ligne: Le client démarre sans connexion serveur');
+    }
+    createWindow();
+    console.log('✅ Interface graphique lancée');
+    console.log('✨ Application prête');
+}
+
+/**
  * Événement de démarrage Electron
  */
 app.on('ready', async () => {
@@ -419,21 +444,43 @@ app.on('ready', async () => {
     console.log(`🌍 Environnement: ${isProduction ? 'PRODUCTION' : 'DÉVELOPPEMENT'}`);
     console.log('ℹ️  La config réelle sera chargée par le client web');
 
-    // Afficher l'écran de démarrage immédiatement (lancement long)
     createSplashWindow();
 
-    // Tenter la connexion au serveur (non-bloquant)
-    await checkServerConnection();
-    
-    if (!serverConnected) {
-        console.log('🔌 Mode hors-ligne: Le client démarre sans connexion serveur');
+    if (app.isPackaged) {
+        try {
+            const { autoUpdater } = require('electron-updater');
+            autoUpdater.autoDownload = true;
+            autoUpdater.autoInstallOnAppQuit = false;
+
+            let updateHandled = false;
+            let timeoutId;
+            const done = () => {
+                if (updateHandled) return;
+                updateHandled = true;
+                if (timeoutId) clearTimeout(timeoutId);
+                launchApp();
+            };
+
+            autoUpdater.on('checking-for-update', () => setSplashMessage('Vérification des mises à jour…'));
+            autoUpdater.on('update-available', () => setSplashMessage('Mise à jour disponible, téléchargement…'));
+            autoUpdater.on('download-progress', (p) => setSplashMessage(`Téléchargement… ${Math.round(p.percent || 0)} %`));
+            autoUpdater.on('update-downloaded', () => {
+                setSplashMessage('Installation de la mise à jour…');
+                autoUpdater.quitAndInstall(false, true);
+            });
+            autoUpdater.on('update-not-available', done);
+            autoUpdater.on('error', () => done());
+
+            setSplashMessage('Vérification des mises à jour…');
+            await autoUpdater.checkForUpdates();
+            timeoutId = setTimeout(done, 12000);
+        } catch (e) {
+            console.warn('Mise à jour auto non disponible:', e.message);
+            await launchApp();
+        }
+    } else {
+        await launchApp();
     }
-    
-    // Créer la fenêtre principale
-    createWindow();
-    
-    console.log('✅ Interface graphique lancée');
-    console.log('✨ Application prête');
 });
 
 // IPC: lister les dossiers d'un chemin
