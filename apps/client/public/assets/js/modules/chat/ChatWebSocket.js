@@ -116,6 +116,20 @@ class ChatWebSocket {
                 type: 'newMessage',
                 message: payload
             }));
+        } else if (data.type === 'message:new') {
+            // Broadcast serveur (format: { type: 'message:new', data: { id, userId, username, text, createdAt } })
+            const d = data.data || data;
+            const payload = {
+                id: d.id,
+                pseudo: d.username || d.pseudo,
+                text: d.text,
+                message: d.text,
+                created_at: d.createdAt || d.created_at
+            };
+            this.messageHandlers.forEach(handler => handler({
+                type: 'newMessage',
+                message: payload
+            }));
         } else if (data.type === 'history') {
             // Historique au démarrage
             this.messageHandlers.forEach(handler => handler({

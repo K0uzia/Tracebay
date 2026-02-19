@@ -1,0 +1,19 @@
+--- a/proxmox/app/src/main.ts
++++ b/proxmox/app/src/main.ts
+@@ -153,11 +153,9 @@
+       }
+ 
+       const normalizedUsername = String(username).trim().toLowerCase();
+-      if (activeSessions.has(normalizedUsername)) {
+-        reply.statusCode = 200;
+-        return {
+-          success: false,
+-          code: 'ALREADY_LOGGED_IN',
+-          message: 'Compte déjà connecté sur un autre poste.'
+-        };
++      if (activeSessions.has(normalizedUsername)) {
++        activeSessions.delete(normalizedUsername);
++        // Permettre reconnexion (même poste, client relancé ou WS fermé sans close)
+       }
+ 
+       const userId = `user_${Date.now()}`;
