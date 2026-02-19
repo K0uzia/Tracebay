@@ -9,7 +9,7 @@ class PageManager {
         // Pages et leur configuration de layout
         this.pagesConfig = {
             'home': { showHeader: true, showFooter: true, showChat: true },
-            'agenda': { showHeader: true, showFooter: false, showChat: false },
+            'agenda': { showHeader: true, showFooter: true, showChat: false },
             'dossier': { showHeader: true, showFooter: true, showChat: true },
             'application': { showHeader: true, showFooter: true, showChat: true },
             'reception': { showHeader: true, showFooter: false, showChat: false },
