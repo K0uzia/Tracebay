@@ -1492,7 +1492,16 @@ const messageStartTime = Date.now();
 
         // Handle disconnection
         socket.on('close', (code?: number, reason?: Buffer) => {
+          const normalizedUsername = String(username).trim().toLowerCase();
+          const connectionsForUser = Array.from(connectedUsers.values()).filter(
+            (u) => String(u.username).trim().toLowerCase() === normalizedUsername
+          );
+          const wasOnlyConnectionForUser = connectionsForUser.length === 1;
           connectedUsers.delete(userId);
+          if (wasOnlyConnectionForUser) {
+            activeSessions.delete(normalizedUsername);
+            fastify.log.info(`Session libérée pour ${normalizedUsername} (déconnexion WebSocket)`);
+          }
           fastify.log.info(`❌ WebSocket disconnected: ${username} (${userId}) code=${code} reason=${reason?.toString() || ''}`);
 
           clearInterval(pingInterval);
