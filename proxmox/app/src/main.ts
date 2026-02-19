@@ -1397,10 +1397,26 @@ const messageStartTime = Date.now();
             const message = JSON.parse(data.toString());
 
             switch (message.type) {
-            case 'auth':
-              // Mock auth acknowledgement
+            case 'auth': {
+              // Déduire le username du token pour libérer la bonne session à la déco et pour le compteur
+              let tokenUsername: string | null = null;
+              try {
+                const raw = (message.token || message.data?.token || '').toString().replace(/^Bearer\s+/i, '').trim();
+                if (raw.startsWith('jwt_')) {
+                  const decoded = JSON.parse(Buffer.from(raw.slice(4), 'base64').toString());
+                  if (decoded && decoded.username) tokenUsername = String(decoded.username).trim().toLowerCase();
+                }
+              } catch {
+                // ignore invalid token
+              }
+              if (tokenUsername) {
+                username = tokenUsername;
+                const existing = connectedUsers.get(userId);
+                if (existing) existing.username = username;
+              }
               socket.socket.send(JSON.stringify({ type: 'auth:ack', ok: true }));
               break;
+            }
 
             case 'message':
             case 'message:send': {
