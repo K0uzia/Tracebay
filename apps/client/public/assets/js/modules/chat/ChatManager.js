@@ -128,15 +128,34 @@ class ChatManager {
                     messageType: typeof msg.message 
                 });
                 
-                // Extraire le texte correctement
                 const messageText = typeof msg.message === 'string' ? msg.message : (msg.text || '');
+                const pseudo = msg.pseudo || 'Anonyme';
+                const isOwn = pseudo === this.pseudo;
+                // Éviter le doublon si on a déjà affiché ce message en "optimistic" (même pseudo + même texte récent)
+                const recent = Date.now() - 15000;
+                const isDuplicate = isOwn && this.messages.some(m => 
+                    m.own && m.pseudo === pseudo && m.text === messageText && (m.created_at && new Date(m.created_at).getTime() > recent)
+                );
+                if (isDuplicate) {
+                    const idx = this.messages.findIndex(m => 
+                        m.own && m.pseudo === pseudo && m.text === messageText && (m.created_at && new Date(m.created_at).getTime() > recent)
+                    );
+                    if (idx !== -1 && this.messages[idx].id && String(this.messages[idx].id).startsWith('temp-')) {
+                        this.messages[idx].id = msg.id || this.messages[idx].id;
+                        this.messages[idx].created_at = msg.created_at;
+                        this.messages[idx].timestamp = this.formatTime(msg.created_at);
+                    }
+                    this.renderMessages();
+                    this.scrollToBottom();
+                    return;
+                }
                 
                 this.messages.push({
                     id: msg.id || Date.now(),
-                    pseudo: msg.pseudo || 'Anonyme',
+                    pseudo,
                     text: messageText,
                     timestamp: this.formatTime(msg.created_at),
-                    own: msg.pseudo === this.pseudo,
+                    own: isOwn,
                     created_at: msg.created_at
                 });
                 logger.debug('Message ajouté', { id: this.messages[this.messages.length - 1].id });
@@ -144,9 +163,18 @@ class ChatManager {
                 this.scrollToBottom();
             } else if (data.type === 'userCount') {
                 logger.debug(`Mise à jour utilisateurs: ${data.count}`, { users: data.users });
-                this.userCount = data.count;
-                this.connectedUsers = data.users;
-                // Mettre à jour l'affichage du compteur d'utilisateurs
+                // #region agent log
+                fetch('http://127.0.0.1:7403/ingest/5b4afebf-1ab5-47ee-8048-06afef059dbf',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee81ff'},body:JSON.stringify({sessionId:'ee81ff',location:'ChatManager.js:userCount',message:'userCount payload',data:{serverCount:data.count,usersIsArray:Array.isArray(data.users),usersLength:(data.users||[]).length,usersSample:(data.users||[]).slice(0,10),usersTypes:(data.users||[]).slice(0,10).map(u=>typeof u)},timestamp:Date.now(),hypothesisId:'H1-H4'})}).catch(()=>{});
+                // #endregion
+                this.connectedUsers = data.users || [];
+                // Afficher le nombre d'utilisateurs uniques (évite de compter plusieurs connexions du même user)
+                const pseudos = Array.isArray(this.connectedUsers)
+                    ? this.connectedUsers.map(u => (typeof u === 'string' ? u : (u?.pseudo || u?.username || '')))
+                    : [];
+                this.userCount = new Set(pseudos.filter(Boolean)).size;
+                // #region agent log
+                fetch('http://127.0.0.1:7403/ingest/5b4afebf-1ab5-47ee-8048-06afef059dbf',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee81ff'},body:JSON.stringify({sessionId:'ee81ff',location:'ChatManager.js:userCountComputed',message:'computed unique count',data:{pseudos,pseudosLength:pseudos.length,uniqueCount:this.userCount},timestamp:Date.now(),hypothesisId:'H1-H2-H5'})}).catch(()=>{});
+                // #endregion
                 this.displayPseudo();
             } else if (data.type === 'chatCleared') {
                 logger.info(`Chat supprimé par: ${data.clearedBy}`);
@@ -254,7 +282,9 @@ class ChatManager {
         
         if (this.pseudo) {
             const displayCount = this.userCount > 0 ? this.userCount : 0;
-            
+            // #region agent log
+            fetch('http://127.0.0.1:7403/ingest/5b4afebf-1ab5-47ee-8048-06afef059dbf',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee81ff'},body:JSON.stringify({sessionId:'ee81ff',location:'ChatManager.js:displayPseudo',message:'display count',data:{userCount:this.userCount,displayCount},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
+            // #endregion
             pseudoDisplay.innerHTML = `
                 <div class="chat-pseudo-confirmed">
                     <div class="chat-pseudo-info">
@@ -303,10 +333,26 @@ class ChatManager {
                 return;
             }
             
+            const now = new Date().toISOString();
+            const tempId = 'temp-' + Date.now();
+            this.messages.push({
+                id: tempId,
+                pseudo: this.pseudo,
+                text,
+                timestamp: this.formatTime(now),
+                own: true,
+                created_at: now
+            });
+            this.renderMessages();
+            this.scrollToBottom();
+            
             await this.webSocket.sendMessage(this.pseudo, text);
             input.value = '';
         } catch (error) {
             logger.error('Erreur envoi message', error);
+            const idx = this.messages.findIndex(m => m.own && m.text === text && m.id && String(m.id).startsWith('temp-'));
+            if (idx !== -1) this.messages.splice(idx, 1);
+            this.renderMessages();
         }
     }
 
