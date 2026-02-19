@@ -1339,8 +1339,8 @@ const messageStartTime = Date.now();
         }, 30000);
 
         const sendUserCount = () => {
-          const count = connectedUsers.size;
-          const users = Array.from(connectedUsers.values()).map(u => u.username);
+          const users = [...new Set(Array.from(connectedUsers.values()).map(u => u.username))];
+          const count = users.length;
           const payload = JSON.stringify({ type: 'userCount', count, users });
           for (const user of connectedUsers.values()) {
             try {
