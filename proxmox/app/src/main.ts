@@ -61,6 +61,7 @@ interface WebSocketUser {
 
 // Global state
 const connectedUsers = new Map<string, WebSocketUser>();
+const activeSessions = new Set<string>(); // usernames with an active session (one poste per compte)
 let messageCount = 0;
 const messageStartTime = Date.now();
 
@@ -141,7 +142,7 @@ const messageStartTime = Date.now();
       };
     });
 
-    // Auth routes
+    // Auth routes (un seul poste par compte : refus si déjà connecté)
     fastify.post('/api/auth/login', async (request: FastifyRequest, reply: FastifyReply) => {
       const { username, password } = request.body as { username: string; password: string };
 
@@ -150,28 +151,44 @@ const messageStartTime = Date.now();
         return { error: 'Username and password required' };
       }
 
-      // Mock: génère un token temporaire avec timestamp
+      const normalizedUsername = String(username).trim().toLowerCase();
+      if (activeSessions.has(normalizedUsername)) {
+        reply.statusCode = 200;
+        return {
+          success: false,
+          code: 'ALREADY_LOGGED_IN',
+          message: 'Compte déjà connecté sur un autre poste.'
+        };
+      }
+
       const userId = `user_${Date.now()}`;
-      const token = `jwt_${Buffer.from(JSON.stringify({ userId, username, iat: Date.now() })).toString('base64')}`;
+      const token = `jwt_${Buffer.from(JSON.stringify({ userId, username: normalizedUsername, iat: Date.now() })).toString('base64')}`;
+      activeSessions.add(normalizedUsername);
 
       return {
         success: true,
         token,
         user: {
           id: userId,
-          username,
+          username: normalizedUsername,
           createdAt: new Date().toISOString()
         }
       };
     });
 
     fastify.post('/api/auth/logout', async (request: FastifyRequest, reply: FastifyReply) => {
-      // Remove user from connected users if exists
-      const userId = (request as any).userId;
-      if (userId) {
-        connectedUsers.delete(userId);
+      const token = request.headers.authorization?.replace('Bearer ', '');
+      if (token && token.startsWith('jwt_')) {
+        try {
+          const decoded = JSON.parse(Buffer.from(token.replace('jwt_', ''), 'base64').toString());
+          const username = decoded.username && String(decoded.username).trim().toLowerCase();
+          if (username) activeSessions.delete(username);
+        } catch {
+          // ignore invalid token
+        }
       }
-
+      const userId = (request as any).userId;
+      if (userId) connectedUsers.delete(userId);
       return { success: true, message: 'Logged out successfully' };
     });
 
@@ -553,16 +570,16 @@ const messageStartTime = Date.now();
     fastify.get('/api/agenda/events', async (request: FastifyRequest, reply: FastifyReply) => {
       const { start: startParam, end: endParam } = request.query as { start?: string; end?: string };
       try {
-        let sql = 'SELECT id, user_id, username, title, start, "end", description, location, created_at FROM events WHERE 1=1';
+        let sql = 'SELECT id, user_id, username, title, start, "end", description, location, color, created_at FROM events WHERE 1=1';
         const params: any[] = [];
         let paramIndex = 1;
         if (startParam) {
-          sql += ` AND start >= $${paramIndex}`;
+          sql += ` AND "end" >= $${paramIndex}`;
           params.push(startParam);
           paramIndex++;
         }
         if (endParam) {
-          sql += ` AND "end" <= $${paramIndex}`;
+          sql += ` AND start <= $${paramIndex}`;
           params.push(endParam);
           paramIndex++;
         }
@@ -575,6 +592,7 @@ const messageStartTime = Date.now();
           end: row.end,
           description: row.description || '',
           location: row.location || '',
+          color: row.color || '',
           created_at: row.created_at
         }));
         return { success: true, data: events };
@@ -592,6 +610,7 @@ const messageStartTime = Date.now();
       const end = body.end || body.endTime;
       const description = body.description || null;
       const location = body.location || null;
+      const color = body.color || null;
       const userId = (request as any).userId || null;
       const username = (request as any).username || null;
 
@@ -601,8 +620,8 @@ const messageStartTime = Date.now();
       }
       try {
         const result = await query(
-          'INSERT INTO events (user_id, username, title, start, "end", description, location, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, NOW()) RETURNING id, title, start, "end", description, location, created_at',
-          [userId, username, title, start, end, description, location]
+          'INSERT INTO events (user_id, username, title, start, "end", description, location, color, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW()) RETURNING id, title, start, "end", description, location, color, created_at',
+          [userId, username, title, start, end, description, location, color]
         );
         const row = result.rows[0] as any;
         const event = {
@@ -612,6 +631,7 @@ const messageStartTime = Date.now();
           end: row.end,
           description: row.description || '',
           location: row.location || '',
+          color: row.color || '',
           created_at: row.created_at
         };
         return { success: true, data: event };
@@ -630,7 +650,7 @@ const messageStartTime = Date.now();
       }
       try {
         const result = await query(
-          'SELECT id, user_id, username, title, start, "end", description, location, created_at FROM events WHERE id = $1',
+          'SELECT id, user_id, username, title, start, "end", description, location, color, created_at FROM events WHERE id = $1',
           [id]
         );
         if (result.rowCount === 0) {
@@ -647,6 +667,7 @@ const messageStartTime = Date.now();
             end: row.end,
             description: row.description || '',
             location: row.location || '',
+            color: row.color || '',
             created_at: row.created_at
           }
         };
@@ -672,6 +693,7 @@ const messageStartTime = Date.now();
       if (body.end !== undefined) { updates.push(`"end" = $${paramIndex++}`); params.push(body.end); }
       if (body.description !== undefined) { updates.push(`description = $${paramIndex++}`); params.push(body.description); }
       if (body.location !== undefined) { updates.push(`location = $${paramIndex++}`); params.push(body.location); }
+      if (body.color !== undefined) { updates.push(`color = $${paramIndex++}`); params.push(body.color); }
       if (updates.length === 0) {
         reply.statusCode = 400;
         return { success: false, error: 'No fields to update' };
@@ -679,7 +701,7 @@ const messageStartTime = Date.now();
       params.push(id);
       try {
         const result = await query(
-          `UPDATE events SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, title, start, "end", description, location, created_at`,
+          `UPDATE events SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, title, start, "end", description, location, color, created_at`,
           params
         );
         if (result.rowCount === 0) {
@@ -696,6 +718,7 @@ const messageStartTime = Date.now();
             end: row.end,
             description: row.description || '',
             location: row.location || '',
+            color: row.color || '',
             created_at: row.created_at
           }
         };
@@ -1257,7 +1280,7 @@ const messageStartTime = Date.now();
         // Lire le fichier en buffer pour éviter problèmes de stream avec nodemailer
         const pdfBuffer = fs.readFileSync(filePath);
         await transporter.sendMail({
-          from: process.env.SMTP_FROM || 'noreply@localhost',
+          from: process.env.MAIL_FROM || process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@localhost',
           to: email,
           subject,
           text: message || `PDF du lot #${id} en pièce jointe.`,
@@ -1277,9 +1300,9 @@ const messageStartTime = Date.now();
       }
     });
 
-    // WebSocket routes
+    // WebSocket routes (client connects to ws://host:4000/ or ws://host:4000/ws)
     fastify.register(async (fastify: any) => {
-      fastify.get('/ws', { websocket: true }, (socket: any, request: any) => {
+      const wsHandler = (socket: any, request: any) => {
         const userId = `ws_user_${Date.now()}`;
         let username = request.query?.username as string || `User_${Math.random().toString(36).substr(2, 9)}`;
         let isAlive = true;
@@ -1315,6 +1338,19 @@ const messageStartTime = Date.now();
           }
         }, 30000);
 
+        const sendUserCount = () => {
+          const count = connectedUsers.size;
+          const users = Array.from(connectedUsers.values()).map(u => u.username);
+          const payload = JSON.stringify({ type: 'userCount', count, users });
+          for (const user of connectedUsers.values()) {
+            try {
+              user.socket.socket.send(payload);
+            } catch {
+              // ignore
+            }
+          }
+        };
+
         // Send welcome message
         socket.socket.send(JSON.stringify({
           type: 'connected',
@@ -1323,6 +1359,7 @@ const messageStartTime = Date.now();
           timestamp: new Date().toISOString(),
           connectedUsers: connectedUsers.size
         }));
+        sendUserCount();
 
         // Broadcast user joined
         for (const user of connectedUsers.values()) {
@@ -1436,6 +1473,10 @@ const messageStartTime = Date.now();
               }, userId);
               break;
 
+            case 'clearChat':
+              broadcast({ type: 'chatCleared' });
+              break;
+
             default:
               fastify.log.warn(`Unknown message type: ${message.type}`);
             }
@@ -1471,6 +1512,7 @@ const messageStartTime = Date.now();
               // Socket might be closed
             }
           }
+          sendUserCount();
         });
 
         // Handle errors
@@ -1480,7 +1522,9 @@ const messageStartTime = Date.now();
 
         // Handle pong response
         socket.on('pong', heartbeat);
-      });
+      };
+      fastify.get('/ws', { websocket: true }, wsHandler);
+      fastify.get('/', { websocket: true }, wsHandler);
     });
 
     // Shortcuts routes

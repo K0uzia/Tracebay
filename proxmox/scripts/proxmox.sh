@@ -102,12 +102,26 @@ git_update() {
 generate_env() {
   info "Génération de la configuration (.env)"
   local ct_ip=$(get_ip)
+  local jwt_secret
+  jwt_secret=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p -c 64)
+  [[ -z "$jwt_secret" ]] && jwt_secret="change-me-$(date +%s)-$(openssl rand -hex 8 2>/dev/null || echo fallback)"
+
   cat > "$ENV_FILE" <<EOF
-# Configuration générée automatiquement par proxmox.sh
+# Configuration générée automatiquement par proxmox.sh — rien à modifier pour démarrer
 NODE_ENV=production
 API_PORT=${API_PORT_DEFAULT}
 PORT=${API_PORT_DEFAULT}
 LOG_LEVEL=info
+SERVER_HOST=0.0.0.0
+WS_PORT=${API_PORT_DEFAULT}
+
+# CORS : client Electron depuis ce CT ou le réseau local
+ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://${ct_ip}:3000,http://${ct_ip},http://localhost
+
+# JWT (généré à l'install)
+JWT_SECRET=${jwt_secret}
+
+# Base de données (Docker)
 DB_HOST=db
 DB_PORT=${DB_PORT_DEFAULT}
 DB_NAME=${DB_NAME_DEFAULT}
@@ -115,9 +129,52 @@ DB_USER=${DB_USER_DEFAULT}
 DB_PASSWORD=${DB_PASS_DEFAULT}
 DB_POOL_MIN=2
 DB_POOL_MAX=10
+DB_IDLE_TIMEOUT=30000
+DB_CONNECTION_TIMEOUT=2000
+
+# Compose
 COMPOSE_PROJECT_NAME=proxmox
 EOF
-  ok "Config générée (IP: $ct_ip)"
+
+  echo ""
+  info "Configuration email (envoi de PDF par mail depuis la réception)"
+  if [[ -t 0 ]] && read -r -p "Configurer l'email maintenant ? [o/N] " reply && [[ "$reply" =~ ^[oOyY] ]]; then
+    local mail_from="noreply@localhost"
+    local smtp_host="localhost"
+    local smtp_port="25"
+    local smtp_secure="false"
+    local smtp_user=""
+    local smtp_pass=""
+    read -r -p "Adresse expéditeur (MAIL_FROM) [$mail_from]: " input && [[ -n "$input" ]] && mail_from="$input"
+    read -r -p "Serveur SMTP (SMTP_HOST) [$smtp_host]: " input && [[ -n "$input" ]] && smtp_host="$input"
+    read -r -p "Port SMTP (SMTP_PORT) [$smtp_port]: " input && [[ -n "$input" ]] && smtp_port="$input"
+    read -r -p "SMTP sécurisé (TLS) ? [o/N]: " input && [[ "$input" =~ ^[oOyY] ]] && smtp_secure="true"
+    read -r -p "Utilisateur SMTP (vide si aucun): " smtp_user
+    read -r -s -p "Mot de passe SMTP (vide si aucun): " smtp_pass; echo ""
+    cat >> "$ENV_FILE" <<MAILEOF
+
+# Email (configuré lors de l'install)
+MAIL_FROM=${mail_from}
+SMTP_HOST=${smtp_host}
+SMTP_PORT=${smtp_port}
+SMTP_SECURE=${smtp_secure}
+SMTP_USER=${smtp_user}
+SMTP_PASS=${smtp_pass}
+MAILEOF
+    ok "Email enregistré dans .env"
+  else
+    cat >> "$ENV_FILE" <<'EOF'
+
+# Email (défaut — pas d'envoi réel)
+MAIL_FROM=noreply@localhost
+SMTP_HOST=localhost
+SMTP_PORT=25
+SMTP_SECURE=false
+SMTP_USER=
+SMTP_PASS=
+EOF
+    ok "Config générée (IP: $ct_ip). Email non configuré (défaut localhost)."
+  fi
 }
 
 # =============== SQL Script (FIX: Support start & start_time) ===============
@@ -491,6 +548,7 @@ status_table() {
   else 
     web_status="${RED}OFFLINE${RESET}"; 
   fi
+  ws_status="$web_status"
   set -e  # Réactiver erreur immédiate
 
   echo -e "\n${CYAN}${BOLD}=== Proxmox Backend Status ===${RESET}\n"
@@ -498,40 +556,57 @@ status_table() {
   draw_table_row "Systemd" "${sys_status^^}"
   draw_table_row "Container API" "$api_status"
   draw_table_row "Container DB" "$db_status"
-  draw_table_row "API Health" "$web_status"
+  draw_table_row "API HTTP" "$web_status"
+  draw_table_row "WebSocket" "$ws_status"
   draw_table_row "Accès" "http://$ip:4000"
   draw_table_footer
   echo
-  
-  echo -e "${BLUE}Endpoints disponibles :${RESET}"
-  draw_table_header "Type" "Route"
+}
+
+show_endpoints() {
+  ip=$(hostname -I | awk '{print $1}')
+  echo -e "\n${CYAN}${BOLD}=== Endpoints API (GET / POST) ===${RESET}\n"
+  draw_table_header "Méthode" "URL"
   local endpoints=(
     "GET:/api/health"
     "GET:/api/metrics"
     "GET:/api/monitoring/stats"
+    "GET:/api/agenda/events"
+    "GET:/api/agenda/events/:id"
+    "POST:/api/agenda/events"
+    "PUT:/api/agenda/events/:id"
+    "DELETE:/api/agenda/events/:id"
     "POST:/api/auth/login"
     "POST:/api/auth/register"
     "POST:/api/auth/logout"
-    "POST:/api/auth/verify"
+    "GET:/api/auth/verify"
     "GET:/api/events"
     "POST:/api/events"
     "GET:/api/messages"
     "POST:/api/messages"
     "GET:/api/lots"
     "POST:/api/lots"
+    "GET:/api/lots/:id"
+    "PUT:/api/lots/:id"
+    "POST:/api/lots/:id/pdf"
+    "GET:/api/lots/:id/pdf"
+    "POST:/api/lots/:id/email"
     "GET:/api/shortcuts"
     "POST:/api/shortcuts"
     "GET:/api/shortcuts/categories"
     "POST:/api/shortcuts/categories"
     "GET:/api/marques"
     "GET:/api/marques/all"
-    "GET:/api/agenda/events"
+    "POST:/api/marques"
+    "GET:/api/marques/:id/modeles"
+    "POST:/api/modeles"
   )
   for ep in "${endpoints[@]}"; do
-    IFS=':' read -r type route <<< "$ep"
-    draw_table_row "$type" "http://$ip:4000$route"
+    IFS=':' read -r method route <<< "$ep"
+    draw_table_row "$method" "http://$ip:4000$route"
   done
   draw_table_footer
+  echo -e "\nWebSocket: ws://$ip:4000  ou  ws://$ip:4000/ws"
   echo
 }
 
@@ -656,12 +731,14 @@ case "$cmd" in
   status) 
     status_table || true
     ;;
+  endpoints) show_endpoints ;;
   debug|diag) show_diagnostics ;;
   test-api|api-test) run_tests ;;
   help|--help|-h)
-    echo "Usage: proxmox [start|stop|restart|rebuild|logs|status|debug|test-api]"
+    echo "Usage: proxmox [start|stop|restart|rebuild|logs|status|endpoints|debug|test-api]"
     echo "  logs     : Affiche les logs Docker (Requêtes HTTP, etc)"
     echo "  logs live: Affiche les logs Docker en continu"
+    echo "  endpoints: Liste tous les endpoints API (GET/POST/PUT/DELETE) et WebSocket"
     ;;
   *) 
     status_table || true
@@ -688,6 +765,10 @@ cmd_install() {
   install_systemd
   install_cli
   ok "Installation terminée."
+  echo ""
+  echo -e "${GREEN}Pour démarrer le serveur :${RESET}  ${BOLD}proxmox start${RESET}"
+  echo -e "Puis statut / logs :  ${BOLD}proxmox status${RESET}  |  ${BOLD}proxmox logs${RESET}"
+  echo ""
 }
 
 cmd_start() { /usr/local/bin/proxmox start; }

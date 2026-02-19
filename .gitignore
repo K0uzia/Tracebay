@@ -19,6 +19,7 @@ apps/server/dist/
 .env.local
 .env.*.local
 .env.development.local
+proxmox/docker/email.env
 
 # Logs
 logs/

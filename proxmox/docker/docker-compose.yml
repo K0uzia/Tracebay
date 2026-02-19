@@ -38,15 +38,28 @@ services:
         condition: service_healthy
     environment:
       NODE_ENV: ${NODE_ENV:-production}
+      API_PORT: ${API_PORT:-4000}
       PORT: ${PORT:-4000}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      SERVER_HOST: ${SERVER_HOST:-0.0.0.0}
+      WS_PORT: ${WS_PORT:-4000}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
+      JWT_SECRET: ${JWT_SECRET:-change-me}
       DB_HOST: db
       DB_PORT: ${DB_PORT:-5432}
-      DB_NAME: ${DB_NAME:-workspace}
-      DB_USER: ${DB_USER:-workspace}
+      DB_NAME: ${DB_NAME:-workspace_db}
+      DB_USER: ${DB_USER:-Admin}
       DB_PASSWORD: ${DB_PASSWORD:-SECRET_RETIRE}
       DB_POOL_MIN: ${DB_POOL_MIN:-2}
       DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      DB_IDLE_TIMEOUT: ${DB_IDLE_TIMEOUT:-30000}
+      DB_CONNECTION_TIMEOUT: ${DB_CONNECTION_TIMEOUT:-2000}
+      MAIL_FROM: ${MAIL_FROM:-noreply@localhost}
+      SMTP_HOST: ${SMTP_HOST:-localhost}
+      SMTP_PORT: ${SMTP_PORT:-25}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
     ports:
       - "${API_PORT:-4000}:4000"
     volumes:

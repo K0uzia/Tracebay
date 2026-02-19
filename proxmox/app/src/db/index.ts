@@ -102,7 +102,11 @@ export async function initializeDatabase(): Promise<void> {
 
     // Migrations pour colonnes ajoutées après coup (bases existantes)
     const migrations = [
-      'ALTER TABLE lots ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(1024)'
+      'ALTER TABLE lots ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(1024)',
+      'ALTER TABLE events ADD COLUMN IF NOT EXISTS start TIMESTAMP',
+      'ALTER TABLE events ADD COLUMN IF NOT EXISTS "end" TIMESTAMP',
+      'ALTER TABLE events ADD COLUMN IF NOT EXISTS username VARCHAR(255)',
+      'ALTER TABLE events ADD COLUMN IF NOT EXISTS color VARCHAR(50)'
     ];
     for (const sql of migrations) {
       try {
@@ -112,6 +116,11 @@ export async function initializeDatabase(): Promise<void> {
           console.warn('Migration (non bloquante):', (migErr as Error).message);
         }
       }
+    }
+    try {
+      await query(`UPDATE events SET start = start_time, "end" = end_time WHERE (start IS NULL OR "end" IS NULL) AND start_time IS NOT NULL AND end_time IS NOT NULL`);
+    } catch (backfillErr: any) {
+      if (backfillErr?.code !== '42703') console.warn('Backfill events start/end (optionnel):', (backfillErr as Error).message);
     }
   } catch (error) {
     console.error('❌ Failed to initialize database:', error);
