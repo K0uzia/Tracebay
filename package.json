@@ -13,6 +13,7 @@
     "build:production": "node build-production.js",
     "start": "npm start --workspace=apps/client",
     "start:client": "npm start --workspace=apps/client",
+    "start:with-update": "node scripts/auto-update-and-launch.js",
     "start:prod": "NODE_ENV=production electron apps/client",
     "start:dev": "NODE_ENV=development electron apps/client",
     "lint": "eslint \"apps/**/*.{ts,js}\" --fix",
