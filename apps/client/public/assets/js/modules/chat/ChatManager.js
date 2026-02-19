@@ -84,7 +84,7 @@ class ChatManager {
         // Attacher les écouteurs d'événements
         this.attachEventListeners();
         
-        // Attendre que le WebSocket soit connecté, puis envoyer le pseudo s'il existe
+        // Attendre que le WebSocket soit connecté, puis envoyer le pseudo et charger l'historique
         const connectAndRestoreSession = () => {
             if (this.webSocket.isConnected()) {
                 const token = this.getStoredToken();
@@ -97,6 +97,7 @@ class ChatManager {
                         logger.error('Erreur reconnexion', err);
                     });
                 }
+                this.fetchHistory();
             } else {
                 // Attendre un peu et réessayer
                 setTimeout(connectAndRestoreSession, 500);
@@ -200,6 +201,32 @@ class ChatManager {
 
     getStoredToken() {
         return localStorage.getItem('workspace_jwt');
+    }
+
+    /**
+     * Charger l'historique des messages via l'API (après connexion/reconnexion)
+     */
+    async fetchHistory() {
+        try {
+            const res = await api.get('messages.list', { useCache: false });
+            if (!res.ok) return;
+            const data = await res.json();
+            const list = data.messages || [];
+            if (list.length === 0) return;
+            const mapped = list.map(msg => ({
+                id: msg.id,
+                pseudo: msg.pseudo || msg.username || 'Anonyme',
+                text: msg.message || msg.text || '',
+                timestamp: this.formatTime(msg.created_at),
+                own: (msg.pseudo || msg.username) === this.pseudo,
+                created_at: msg.created_at
+            }));
+            this.messages = mapped.reverse();
+            this.renderMessages();
+            this.scrollToBottom();
+        } catch (e) {
+            logger.debug('Historique chat non disponible', e);
+        }
     }
 
     /**
