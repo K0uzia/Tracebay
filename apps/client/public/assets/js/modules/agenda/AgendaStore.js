@@ -4,12 +4,21 @@
  * Support localStorage (démo) et API BDD
  */
 
+import api from '../../config/api.js';
+
 class AgendaStore {
     constructor() {
         this.storageKey = 'workspace_events';
-        this.apiUrl = '/api/agenda';
-        this.useApi = false; // Basculer à true quand serveur prêt
+        const env = window.SERVER_CONFIG?.environment || 'local';
+        this.useApi = (env === 'proxmox' || env === 'production');
         this.initializeStore();
+    }
+
+    _getAuthHeaders() {
+        const token = localStorage.getItem('workspace_jwt');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        return headers;
     }
 
     /**
@@ -70,10 +79,12 @@ class AgendaStore {
     async getAllEvents() {
         if (this.useApi) {
             try {
-                const url = `${this.apiUrl}/events?start=1900-01-01&end=2100-12-31&_t=${Date.now()}`;
-                const response = await fetch(url, { cache: 'no-store' });
+                await api.init();
+                const baseUrl = api.getUrl('agenda.events');
+                const url = `${baseUrl}?start=1900-01-01&end=2100-12-31&_t=${Date.now()}`;
+                const response = await fetch(url, { headers: this._getAuthHeaders(), cache: 'no-store' });
                 const data = await response.json();
-                return data.success ? data.data : [];
+                return (data.success && Array.isArray(data.data)) ? data.data : [];
             } catch (error) {
                 console.error('❌ Erreur récupération API:', error);
                 return [];
@@ -90,10 +101,12 @@ class AgendaStore {
     async getEventsByRange(startDate, endDate) {
         if (this.useApi) {
             try {
-                const url = `${this.apiUrl}/events?start=${startDate}&end=${endDate}&_t=${Date.now()}`;
-                const response = await fetch(url, { cache: 'no-store' });
+                await api.init();
+                const baseUrl = api.getUrl('agenda.events');
+                const url = `${baseUrl}?start=${startDate}&end=${endDate}&_t=${Date.now()}`;
+                const response = await fetch(url, { headers: this._getAuthHeaders(), cache: 'no-store' });
                 const data = await response.json();
-                return data.success ? data.data : [];
+                return (data.success && Array.isArray(data.data)) ? data.data : [];
             } catch (error) {
                 console.error('❌ Erreur récupération API:', error);
                 return [];
@@ -115,11 +128,8 @@ class AgendaStore {
     async addEvent(event) {
         if (this.useApi) {
             try {
-                const response = await fetch(`${this.apiUrl}/events`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(event)
-                });
+                await api.init();
+                const response = await api.post('agenda.events', event, { useCache: false });
                 const data = await response.json();
                 if (data.success) {
                     return data.data;
@@ -149,9 +159,11 @@ class AgendaStore {
     async updateEvent(id, updates) {
         if (this.useApi) {
             try {
-                const response = await fetch(`${this.apiUrl}/events/${id}`, {
+                await api.init();
+                const url = `${api.getUrl('agenda.events')}/${id}`;
+                const response = await fetch(url, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: this._getAuthHeaders(),
                     body: JSON.stringify(updates)
                 });
                 const data = await response.json();
@@ -186,8 +198,11 @@ class AgendaStore {
     async deleteEvent(id) {
         if (this.useApi) {
             try {
-                const response = await fetch(`${this.apiUrl}/events/${id}`, {
-                    method: 'DELETE'
+                await api.init();
+                const url = `${api.getUrl('agenda.events')}/${id}`;
+                const response = await fetch(url, {
+                    method: 'DELETE',
+                    headers: this._getAuthHeaders()
                 });
                 const data = await response.json();
                 if (data.success) {

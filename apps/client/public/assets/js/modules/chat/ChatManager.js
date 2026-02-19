@@ -381,10 +381,10 @@ class ChatManager {
      */
     async confirmClearChat() {
         try {
-            const pseudo = this.chatWebSocket?.userPseudo || localStorage.getItem('userPseudo') || 'Unknown';
+            const pseudo = this.pseudo || localStorage.getItem('userPseudo') || 'Unknown';
             
             // Envoyer le message WebSocket pour supprimer le chat
-            this.chatWebSocket?.ws?.send(JSON.stringify({
+            this.webSocket?.ws?.send(JSON.stringify({
                 type: 'clearChat',
                 pseudo: pseudo
             }));
