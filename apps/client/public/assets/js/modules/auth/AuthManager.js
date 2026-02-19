@@ -162,6 +162,14 @@ class AuthManager {
 
             if (data.success) {
                 this.setSession(data.user, data.token);
+                return data;
+            }
+
+            if (data.code === 'ALREADY_LOGGED_IN' || data.code === 'already_logged_in') {
+                return {
+                    success: false,
+                    message: 'Compte déjà connecté sur un autre poste. Déconnectez-vous de l\'autre session ou réessayez plus tard.'
+                };
             }
 
             return data;
