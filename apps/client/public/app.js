@@ -137,6 +137,13 @@ class PageManager {
                 }
             });
 
+            window.addEventListener('session-expired', () => {
+                if (this.authManager) {
+                    this.authManager.clearSession();
+                    this.updateProfileUI(null);
+                }
+            });
+
             await this.loadAuthModal();
             
             // Attendre que le DOM soit complètement chargé

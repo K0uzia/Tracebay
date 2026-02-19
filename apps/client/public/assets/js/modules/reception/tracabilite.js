@@ -535,8 +535,9 @@ export default class TracabiliteManager {
             this.showNotification('Envoi en cours...', 'info');
 
             const serverUrl = api.getServerUrl();
-            const endpointPath = '/api/lots/:id/email'.replace(':id', String(this.currentEmailLotId));
-            const fullUrl = `${serverUrl}${endpointPath}`;
+            const emailPath = window.SERVER_CONFIG?.getEndpoint?.('lots.email') || '/api/lots/:id/email';
+            const endpointPath = emailPath.replace(':id', String(this.currentEmailLotId));
+            const fullUrl = `${serverUrl}${endpointPath.startsWith('/') ? '' : '/'}${endpointPath}`;
             const response = await fetch(fullUrl, {
                 method: 'POST',
                 headers: {

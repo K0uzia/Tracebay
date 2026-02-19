@@ -198,6 +198,10 @@ async function request(method, endpointPath, data = null, options = {}) {
     }
     
     const response = await fetch(url, fetchOptions);
+
+    if (response.status === 401 && endpointPath !== 'auth.login' && endpointPath !== 'auth.register') {
+        window.dispatchEvent(new CustomEvent('session-expired', { detail: { status: 401 } }));
+    }
     
     // Mettre en cache les réponses GET réussies
     if (useCache && cacheKey && response.ok) {
