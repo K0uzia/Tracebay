@@ -109,11 +109,6 @@ class ChatWebSocket {
      * Gérer les messages reçus
      */
     handleMessage(data) {
-        // #region agent log
-        if (data.type === 'message:new' || data.type === 'userCount') {
-            fetch('http://127.0.0.1:7403/ingest/5b4afebf-1ab5-47ee-8048-06afef059dbf',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee81ff'},body:JSON.stringify({sessionId:'ee81ff',location:'ChatWebSocket.js:handleMessage',message:'WS frame',data:{type:data.type,userCount:data.type==='userCount'?{count:data.count,usersLen:(data.users||[]).length}:undefined,messageNew:data.type==='message:new'?data.data:undefined},timestamp:Date.now(),hypothesisId:'H1-H2-H4-H5'})}).catch(()=>{});
-        }
-        // #endregion
         if (data.type === 'message') {
             // Message de chat (compat) -> normaliser en newMessage avec payload direct
             const payload = data.message || data;

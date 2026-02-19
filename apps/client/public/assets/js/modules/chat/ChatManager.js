@@ -124,9 +124,6 @@ class ChatManager {
                 this.scrollToBottom();
             } else if (data.type === 'newMessage') {
                 const msg = data.message;
-                // #region agent log
-                fetch('http://127.0.0.1:7403/ingest/5b4afebf-1ab5-47ee-8048-06afef059dbf',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee81ff'},body:JSON.stringify({sessionId:'ee81ff',location:'ChatManager.js:newMessage',message:'newMessage branch',data:{pseudo:msg?.pseudo,textLen:(msg?.text||msg?.message||'').length,hasId:!!msg?.id},timestamp:Date.now(),hypothesisId:'H2-H5'})}).catch(()=>{});
-                // #endregion
                 logger.debug('Nouveau message reçu', { 
                     pseudo: msg.pseudo, 
                     messageType: typeof msg.message 
@@ -167,18 +164,12 @@ class ChatManager {
                 this.scrollToBottom();
             } else if (data.type === 'userCount') {
                 logger.debug(`Mise à jour utilisateurs: ${data.count}`, { users: data.users });
-                // #region agent log
-                fetch('http://127.0.0.1:7403/ingest/5b4afebf-1ab5-47ee-8048-06afef059dbf',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee81ff'},body:JSON.stringify({sessionId:'ee81ff',location:'ChatManager.js:userCount',message:'userCount payload',data:{serverCount:data.count,usersIsArray:Array.isArray(data.users),usersLength:(data.users||[]).length,usersSample:(data.users||[]).slice(0,10),usersTypes:(data.users||[]).slice(0,10).map(u=>typeof u)},timestamp:Date.now(),hypothesisId:'H1-H4'})}).catch(()=>{});
-                // #endregion
                 this.connectedUsers = data.users || [];
                 // Afficher le nombre d'utilisateurs uniques (évite de compter plusieurs connexions du même user)
                 const pseudos = Array.isArray(this.connectedUsers)
                     ? this.connectedUsers.map(u => (typeof u === 'string' ? u : (u?.pseudo || u?.username || '')))
                     : [];
                 this.userCount = new Set(pseudos.filter(Boolean)).size;
-                // #region agent log
-                fetch('http://127.0.0.1:7403/ingest/5b4afebf-1ab5-47ee-8048-06afef059dbf',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee81ff'},body:JSON.stringify({sessionId:'ee81ff',location:'ChatManager.js:userCountComputed',message:'computed unique count',data:{pseudos,pseudosLength:pseudos.length,uniqueCount:this.userCount},timestamp:Date.now(),hypothesisId:'H1-H2-H5'})}).catch(()=>{});
-                // #endregion
                 this.displayPseudo();
             } else if (data.type === 'chatCleared') {
                 logger.info(`Chat supprimé par: ${data.clearedBy}`);
@@ -312,9 +303,6 @@ class ChatManager {
         
         if (this.pseudo) {
             const displayCount = this.userCount > 0 ? this.userCount : 0;
-            // #region agent log
-            fetch('http://127.0.0.1:7403/ingest/5b4afebf-1ab5-47ee-8048-06afef059dbf',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ee81ff'},body:JSON.stringify({sessionId:'ee81ff',location:'ChatManager.js:displayPseudo',message:'display count',data:{userCount:this.userCount,displayCount},timestamp:Date.now(),hypothesisId:'H5'})}).catch(()=>{});
-            // #endregion
             pseudoDisplay.innerHTML = `
                 <div class="chat-pseudo-confirmed">
                     <div class="chat-pseudo-info">
