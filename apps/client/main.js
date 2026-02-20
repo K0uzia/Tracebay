@@ -422,9 +422,14 @@ function closeSplashWindow() {
 }
 
 /**
- * Créer la fenêtre principale
+ * Créer la fenêtre principale (une seule instance)
  */
 function createWindow() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+        mainWindow.focus();
+        return;
+    }
     mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
@@ -440,7 +445,12 @@ function createWindow() {
 
     // Charger l'index.html ; afficher la fenêtre et fermer le splash une fois prêt
     mainWindow.loadURL(`file://${path.join(__dirname, 'public', 'index.html')}`);
+    let showMainCalled = false;
+    let showMainFallbackId;
     const showMainAndCloseSplash = () => {
+        if (showMainCalled) return;
+        showMainCalled = true;
+        if (showMainFallbackId) clearTimeout(showMainFallbackId);
         if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
         closeSplashWindow();
         const flagPath = path.join(app.getPath('userData'), 'workspace-update-installed.flag');
@@ -456,8 +466,7 @@ function createWindow() {
         }
     };
     mainWindow.webContents.once('did-finish-load', showMainAndCloseSplash);
-    // Fallback si did-finish-load tarde (réseau, erreur, etc.)
-    setTimeout(showMainAndCloseSplash, 15000);
+    showMainFallbackId = setTimeout(showMainAndCloseSplash, 15000);
 
     // DevTools uniquement en développement
     if (!isProduction) {
@@ -483,10 +492,15 @@ function createWindow() {
     });
 }
 
+/** Garde pour éviter le double lancement (ex. checkForUpdates rejette après update-not-available) */
+let appLaunched = false;
+
 /**
  * Lancer l'application (fenêtre principale après éventuelle mise à jour)
  */
 async function launchApp() {
+    if (appLaunched) return;
+    appLaunched = true;
     setSplashMessage('Chargement en cours…');
     await checkServerConnection();
     if (!serverConnected) {
@@ -570,10 +584,11 @@ app.on('ready', async () => {
             autoUpdater.on('error', () => done());
 
             setSplashMessage('Recherche de mise à jour…');
-            await autoUpdater.checkForUpdates();
             timeoutId = setTimeout(done, 12000);
+            await autoUpdater.checkForUpdates();
         } catch (e) {
             console.warn('Mise à jour auto non disponible:', e.message);
+            if (timeoutId) clearTimeout(timeoutId);
             await launchApp();
         }
     } else {
