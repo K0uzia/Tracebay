@@ -1341,7 +1341,7 @@ function broadcastUserCount() {
     fastify.register(async (fastify: any) => {
       const wsHandler = (socket: any, request: any) => {
         const userId = `ws_user_${Date.now()}`;
-        let username = request.query?.username as string || `User_${Math.random().toString(36).substr(2, 9)}`;
+        let username = `anon_${Math.random().toString(36).substr(2, 9)}`;
         let isAlive = true;
 
         const heartbeat = () => { isAlive = true; };
@@ -1385,24 +1385,6 @@ function broadcastUserCount() {
         }));
         broadcastUserCount();
 
-        // Broadcast user joined
-        for (const user of connectedUsers.values()) {
-          if (user.id !== userId) {
-            try {
-              user.socket.socket.send(JSON.stringify({
-                type: 'presence:update',
-                data: {
-                  userId,
-                  username,
-                  status: 'online'
-                }
-              }));
-            } catch (e) {
-              // Socket might be closed
-            }
-          }
-        }
-
         // Helper for broadcasting
         const broadcast = (payload: any, excludeId?: string) => {
           for (const user of connectedUsers.values()) {
@@ -1416,13 +1398,12 @@ function broadcastUserCount() {
         };
 
         // Handle incoming messages
-        socket.on('message', (data: any) => {
+        socket.on('message', async (data: any) => {
           try {
             const message = JSON.parse(data.toString());
 
             switch (message.type) {
             case 'auth': {
-              // Déduire le username du token pour libérer la bonne session à la déco et pour le compteur
               let tokenUsername: string | null = null;
               try {
                 const raw = (message.token || message.data?.token || '').toString().replace(/^Bearer\s+/i, '').trim();
@@ -1433,26 +1414,42 @@ function broadcastUserCount() {
               } catch {
                 // ignore invalid token
               }
-              if (tokenUsername) {
-                username = tokenUsername;
-                const existing = connectedUsers.get(userId);
-                if (existing) existing.username = username;
-                // Nettoyer les connexions zombies (ancienne socket du même user, ex: reload avant close)
-                const zombies = Array.from(connectedUsers.entries()).filter(
+              if (!tokenUsername) {
+                socket.socket.send(JSON.stringify({ type: 'error', message: 'Token invalide' }));
+                break;
+              }
+              // Un compte = une connexion : refuser si déjà connecté ailleurs
+              if (activeSessions.has(tokenUsername)) {
+                const otherWithSameUser = Array.from(connectedUsers.entries()).find(
                   ([id, u]) => id !== userId && String(u.username).trim().toLowerCase() === tokenUsername
                 );
-                for (const [id, u] of zombies) {
-                  connectedUsers.delete(id);
+                if (otherWithSameUser) {
                   try {
-                    u.socket.socket?.terminate?.();
+                    socket.socket.send(JSON.stringify({ type: 'error', code: 'ALREADY_LOGGED_IN', message: 'Compte déjà connecté sur un autre poste.' }));
+                  } catch { /* ignore */ }
+                  try {
+                    socket.socket.terminate?.();
                   } catch {
-                    try { u.socket.socket?.close(); } catch { /* ignore */ }
+                    try { socket.socket.close(); } catch { /* ignore */ }
                   }
-                }
-                if (zombies.length > 0) {
-                  activeSessions.delete(tokenUsername);
+                  break;
                 }
               }
+              username = tokenUsername;
+              const existing = connectedUsers.get(userId);
+              if (existing) existing.username = username;
+              const zombies = Array.from(connectedUsers.entries()).filter(
+                ([id, u]) => id !== userId && String(u.username).trim().toLowerCase() === tokenUsername
+              );
+              for (const [id, u] of zombies) {
+                connectedUsers.delete(id);
+                try {
+                  u.socket.socket?.terminate?.();
+                } catch {
+                  try { u.socket.socket?.close(); } catch { /* ignore */ }
+                }
+              }
+              activeSessions.add(tokenUsername);
               socket.socket.send(JSON.stringify({ type: 'auth:ack', ok: true }));
               broadcastUserCount();
               break;
@@ -1460,83 +1457,43 @@ function broadcastUserCount() {
 
             case 'message':
             case 'message:send': {
+              const isAuthenticated = username.startsWith('anon_') === false;
+              if (!isAuthenticated) {
+                socket.socket.send(JSON.stringify({ type: 'error', message: 'Authentification requise' }));
+                break;
+              }
               const text = message.text || message.data?.text;
               if (!text || !text.toString().trim()) {
                 socket.socket.send(JSON.stringify({ type: 'error', message: 'Message text is required' }));
-                return;
+                break;
               }
-
-              messageCount++;
-              incrementMessageCount();
-
-              const outbound = {
-                type: 'message:new',
-                data: {
-                  id: `msg_${Date.now()}`,
-                  userId,
-                  username,
-                  text,
-                  createdAt: new Date().toISOString()
-                }
-              };
-
-              const recipientCount = connectedUsers.size;
-              const textPreview = String(text).substring(0, 40) + (String(text).length > 40 ? '…' : '');
-              console.log(`[WS] broadcast message:new → ${recipientCount} client(s) | msg=${outbound.data.id} | "${textPreview}"`);
-
-              broadcast(outbound);
-              break;
-            }
-
-            case 'setPseudo': {
-              if (message.pseudo && typeof message.pseudo === 'string') {
-                username = message.pseudo;
-                const existing = connectedUsers.get(userId);
-                if (existing) {
-                  existing.username = username;
-                }
-
-                broadcast({
-                  type: 'presence:update',
+              try {
+                const insertResult = await query(
+                  'INSERT INTO messages (user_id, username, text, conversation_id, created_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING id, username, text, created_at',
+                  [null, username, String(text).trim(), null]
+                );
+                const row = insertResult.rows[0];
+                messageCount++;
+                incrementMessageCount();
+                const outbound = {
+                  type: 'message:new',
                   data: {
-                    userId,
-                    username,
-                    status: 'online'
+                    id: row.id,
+                    username: row.username,
+                    text: row.text,
+                    createdAt: row.created_at
                   }
-                }, userId);
-
-                socket.socket.send(JSON.stringify({ type: 'success', message: 'Pseudo updated' }));
-                broadcastUserCount();
+                };
+                const recipientCount = connectedUsers.size;
+                const textPreview = String(text).substring(0, 40) + (String(text).length > 40 ? '…' : '');
+                fastify.log.info(`[WS] broadcast message:new → ${recipientCount} client(s) | msg=${outbound.data.id} | "${textPreview}"`);
+                broadcast(outbound);
+              } catch (dbErr: any) {
+                fastify.log.error({ err: dbErr }, 'DB insert message');
+                socket.socket.send(JSON.stringify({ type: 'error', message: 'Erreur enregistrement message' }));
               }
               break;
             }
-
-            case 'typing':
-            case 'typing:indicator':
-              broadcast({
-                type: 'typing:indicator',
-                data: {
-                  userId,
-                  username,
-                  isTyping: Boolean(message.isTyping)
-                }
-              }, userId);
-              break;
-
-            case 'presence:update':
-              broadcast({
-                type: 'presence:update',
-                data: {
-                  userId,
-                  username,
-                  status: message.status || 'online'
-                }
-              }, userId);
-              break;
-
-            case 'clearChat':
-              broadcast({ type: 'chatCleared' });
-              break;
 
             default:
               fastify.log.warn(`Unknown message type: ${message.type}`);
@@ -1559,11 +1516,6 @@ function broadcastUserCount() {
           );
           const wasOnlyConnectionForUser = connectionsForUser.length === 1;
           connectedUsers.delete(userId);
-          // #region agent log
-          try {
-            fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'b1c6ff' }, body: JSON.stringify({ sessionId: 'b1c6ff', location: 'main.ts:close', message: 'after delete', data: { connectedUsersSize: connectedUsers.size, disconnectedUserId: userId }, hypothesisId: 'H1', timestamp: Date.now() }) }).catch(() => {});
-          } catch { /* ignore */ }
-          // #endregion
           if (wasOnlyConnectionForUser) {
             activeSessions.delete(normalizedUsername);
             fastify.log.info(`Session libérée pour ${normalizedUsername} (déconnexion WebSocket)`);
@@ -1571,22 +1523,6 @@ function broadcastUserCount() {
           fastify.log.info(`❌ WebSocket disconnected: ${username} (${userId}) code=${code} reason=${reason?.toString() || ''}`);
 
           clearInterval(pingInterval);
-
-          // Broadcast user left
-          for (const user of connectedUsers.values()) {
-            try {
-              user.socket.socket.send(JSON.stringify({
-                type: 'presence:update',
-                data: {
-                  userId,
-                  username,
-                  status: 'offline'
-                }
-              }));
-            } catch (e) {
-              // Socket might be closed
-            }
-          }
           broadcastUserCount();
         });
 
