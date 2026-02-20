@@ -20,7 +20,11 @@ class ChatWebSocket {
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 3000;
         this.authToken = null;
-        
+        // #region agent log
+        try {
+            fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'ChatWebSocket.js:constructor',message:'ChatWebSocket constructed',data:{wsUrl:this.wsUrl},hypothesisId:'H4',timestamp:Date.now()})}).catch(()=>{});
+        } catch (_) {}
+        // #endregion
         logger.info(`ChatWebSocket initialisé avec: ${this.wsUrl}`);
         this.connect();
     }
@@ -39,6 +43,11 @@ class ChatWebSocket {
      */
     connect() {
         try {
+            // #region agent log
+            try {
+                fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'ChatWebSocket.js:connect',message:'WebSocket connect() called',data:{wsUrl:this.wsUrl},hypothesisId:'H1',timestamp:Date.now()})}).catch(()=>{});
+            } catch (_) {}
+            // #endregion
             this.ws = new WebSocket(this.wsUrl);
             
             this.ws.addEventListener('open', () => {
@@ -110,14 +119,17 @@ class ChatWebSocket {
      */
     handleMessage(data) {
         if (data.type === 'message') {
-            // Message de chat (compat) -> normaliser en newMessage avec payload direct
             const payload = data.message || data;
+            // #region agent log
+            try {
+                fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'ChatWebSocket.js:handleMessage:message',message:'message (legacy) received',data:{pseudo:payload?.pseudo,textLen:(payload?.text||payload?.message||'').length},hypothesisId:'H2',timestamp:Date.now()})}).catch(()=>{});
+            } catch (_) {}
+            // #endregion
             this.messageHandlers.forEach(handler => handler({
                 type: 'newMessage',
                 message: payload
             }));
         } else if (data.type === 'message:new') {
-            // Broadcast serveur (format: { type: 'message:new', data: { id, userId, username, text, createdAt } })
             const d = data.data || data;
             const payload = {
                 id: d.id,
@@ -126,6 +138,11 @@ class ChatWebSocket {
                 message: d.text,
                 created_at: d.createdAt || d.created_at
             };
+            // #region agent log
+            try {
+                fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'ChatWebSocket.js:handleMessage:message:new',message:'message:new received (broadcast)',data:{pseudo:payload.pseudo,textLen:(payload.text||'').length},hypothesisId:'H2',timestamp:Date.now()})}).catch(()=>{});
+            } catch (_) {}
+            // #endregion
             this.messageHandlers.forEach(handler => handler({
                 type: 'newMessage',
                 message: payload
@@ -137,13 +154,23 @@ class ChatWebSocket {
                 messages: data.messages
             }));
         } else if (data.type === 'newMessage') {
-            // Nouveau message (depuis le serveur via broadcast)
             const payload = data.message || data;
+            // #region agent log
+            try {
+                fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'ChatWebSocket.js:handleMessage:newMessage',message:'newMessage received (broadcast)',data:{pseudo:payload?.pseudo,textLen:(payload?.text||payload?.message||'').length},hypothesisId:'H2',timestamp:Date.now()})}).catch(()=>{});
+            } catch (_) {}
+            // #endregion
+            // Nouveau message (depuis le serveur via broadcast)
             this.messageHandlers.forEach(handler => handler({
                 type: 'newMessage',
                 message: payload
             }));
         } else if (data.type === 'userCount') {
+            // #region agent log
+            try {
+                fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'ChatWebSocket.js:handleMessage:userCount',message:'userCount received',data:{count:data.count,users:data.users},hypothesisId:'H1',timestamp:Date.now()})}).catch(()=>{});
+            } catch (_) {}
+            // #endregion
             // Mise à jour du nombre d'utilisateurs
             this.messageHandlers.forEach(handler => handler({
                 type: 'userCount',
