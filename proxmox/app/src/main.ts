@@ -65,6 +65,20 @@ const activeSessions = new Set<string>(); // usernames with an active session (o
 let messageCount = 0;
 const messageStartTime = Date.now();
 
+/** Broadcast current user count to all connected WebSockets (used by WS close and HTTP logout). */
+function broadcastUserCount() {
+  const users = [...new Set(Array.from(connectedUsers.values()).map((u) => u.username))];
+  const count = users.length;
+  const payload = JSON.stringify({ type: 'userCount', count, users });
+  for (const user of connectedUsers.values()) {
+    try {
+      user.socket.socket.send(payload);
+    } catch {
+      // ignore
+    }
+  }
+}
+
 
 // Register plugins
 (async () => {
@@ -177,18 +191,36 @@ const messageStartTime = Date.now();
     });
 
     fastify.post('/api/auth/logout', async (request: FastifyRequest, reply: FastifyReply) => {
+      let normalizedUsername: string | null = null;
       const token = request.headers.authorization?.replace('Bearer ', '');
       if (token && token.startsWith('jwt_')) {
         try {
           const decoded = JSON.parse(Buffer.from(token.replace('jwt_', ''), 'base64').toString());
-          const username = decoded.username && String(decoded.username).trim().toLowerCase();
-          if (username) activeSessions.delete(username);
+          normalizedUsername = decoded.username && String(decoded.username).trim().toLowerCase();
+          if (normalizedUsername) activeSessions.delete(normalizedUsername);
         } catch {
           // ignore invalid token
         }
       }
       const userId = (request as any).userId;
       if (userId) connectedUsers.delete(userId);
+      if (normalizedUsername) {
+        for (const [id, u] of Array.from(connectedUsers.entries())) {
+          if (String(u.username).trim().toLowerCase() === normalizedUsername) {
+            connectedUsers.delete(id);
+            try {
+              u.socket.socket?.terminate?.();
+            } catch {
+              try {
+                u.socket.socket?.close();
+              } catch {
+                // ignore
+              }
+            }
+          }
+        }
+        broadcastUserCount();
+      }
       return { success: true, message: 'Logged out successfully' };
     });
 
@@ -1338,19 +1370,6 @@ const messageStartTime = Date.now();
           }
         }, 30000);
 
-        const sendUserCount = () => {
-          const users = [...new Set(Array.from(connectedUsers.values()).map(u => u.username))];
-          const count = users.length;
-          const payload = JSON.stringify({ type: 'userCount', count, users });
-          for (const user of connectedUsers.values()) {
-            try {
-              user.socket.socket.send(payload);
-            } catch {
-              // ignore
-            }
-          }
-        };
-
         // Send welcome message
         socket.socket.send(JSON.stringify({
           type: 'connected',
@@ -1359,7 +1378,7 @@ const messageStartTime = Date.now();
           timestamp: new Date().toISOString(),
           connectedUsers: connectedUsers.size
         }));
-        sendUserCount();
+        broadcastUserCount();
 
         // Broadcast user joined
         for (const user of connectedUsers.values()) {
@@ -1537,7 +1556,7 @@ const messageStartTime = Date.now();
               // Socket might be closed
             }
           }
-          sendUserCount();
+          broadcastUserCount();
         });
 
         // Handle errors
