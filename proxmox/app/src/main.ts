@@ -219,8 +219,9 @@ function broadcastUserCount() {
             }
           }
         }
-        broadcastUserCount();
       }
+      // Toujours notifier tous les clients du compteur après une tentative de logout
+      broadcastUserCount();
       return { success: true, message: 'Logged out successfully' };
     });
 
