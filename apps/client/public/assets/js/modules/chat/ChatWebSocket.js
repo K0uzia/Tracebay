@@ -216,6 +216,11 @@ class ChatWebSocket {
       console.log('✅ Authentifié');
       return;
     } else if (data.type === 'message:new') {
+      // #region agent log
+      try {
+        fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'ChatWebSocket.js:message:new',message:'message:new received',data:{handlers:this.messageHandlers.length},hypothesisId:'H2',timestamp:Date.now()})}).catch(()=>{});
+      } catch (_) {}
+      // #endregion
       const raw = data.data || data;
       const payload = {
         ...raw,

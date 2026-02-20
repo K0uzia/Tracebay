@@ -1461,6 +1461,11 @@ function broadcastUserCount() {
                 }
               };
 
+              // #region agent log
+              try {
+                fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'b1c6ff' }, body: JSON.stringify({ sessionId: 'b1c6ff', location: 'main.ts:message', message: 'broadcast message:new', data: { connectedUsersSize: connectedUsers.size, senderUserId: userId }, hypothesisId: 'H2', timestamp: Date.now() }) }).catch(() => {});
+              } catch { /* ignore */ }
+              // #endregion
               broadcast(outbound);
               break;
             }
@@ -1536,6 +1541,11 @@ function broadcastUserCount() {
           );
           const wasOnlyConnectionForUser = connectionsForUser.length === 1;
           connectedUsers.delete(userId);
+          // #region agent log
+          try {
+            fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'b1c6ff' }, body: JSON.stringify({ sessionId: 'b1c6ff', location: 'main.ts:close', message: 'after delete', data: { connectedUsersSize: connectedUsers.size, disconnectedUserId: userId }, hypothesisId: 'H1', timestamp: Date.now() }) }).catch(() => {});
+          } catch { /* ignore */ }
+          // #endregion
           if (wasOnlyConnectionForUser) {
             activeSessions.delete(normalizedUsername);
             fastify.log.info(`Session libérée pour ${normalizedUsername} (déconnexion WebSocket)`);
