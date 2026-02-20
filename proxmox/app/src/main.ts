@@ -390,18 +390,22 @@ function broadcastUserCount() {
         messageCount++;
         incrementMessageCount();
 
-        // Broadcast to all connected users
+        const wsPayload = {
+          type: 'message:new',
+          data: {
+            id: msg.id,
+            pseudo: msg.username,
+            message: msg.text,
+            created_at: msg.created_at
+          }
+        };
+        const recipientCount = connectedUsers.size;
+        const textPreview = String(msg.text || '').substring(0, 40) + (String(msg.text || '').length > 40 ? '…' : '');
+        console.log(`[WS] broadcast message:new (HTTP) → ${recipientCount} client(s) | msg=${msg.id} | "${textPreview}"`);
+
         for (const user of connectedUsers.values()) {
           try {
-            user.socket.socket.send(JSON.stringify({
-              type: 'message:new',
-              data: {
-                id: msg.id,
-                pseudo: msg.username,
-                message: msg.text,
-                created_at: msg.created_at
-              }
-            }));
+            user.socket.socket.send(JSON.stringify(wsPayload));
           } catch (e) {
             // Socket might be closed
           }
@@ -1476,11 +1480,10 @@ function broadcastUserCount() {
                 }
               };
 
-              // #region agent log
-              try {
-                fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'b1c6ff' }, body: JSON.stringify({ sessionId: 'b1c6ff', location: 'main.ts:message', message: 'broadcast message:new', data: { connectedUsersSize: connectedUsers.size, senderUserId: userId }, hypothesisId: 'H2', timestamp: Date.now() }) }).catch(() => {});
-              } catch { /* ignore */ }
-              // #endregion
+              const recipientCount = connectedUsers.size;
+              const textPreview = String(text).substring(0, 40) + (String(text).length > 40 ? '…' : '');
+              console.log(`[WS] broadcast message:new → ${recipientCount} client(s) | msg=${outbound.data.id} | "${textPreview}"`);
+
               broadcast(outbound);
               break;
             }

@@ -39,13 +39,12 @@ export const handleMessageSend = async (context: WSContext, message: WSMessage) 
     createdAt: new Date().toISOString()
   };
 
-  // Broadcast to all connected users
   broadcast({
     type: 'message:new',
     data: newMessage
   });
 
-  console.log(`💬 Message from ${username}: "${message.text.substring(0, 50)}..."`);
+  console.log(`[WS] broadcast message:new (handler) | msg=${newMessage.id} | ${username}: "${message.text.substring(0, 50)}${message.text.length > 50 ? '…' : ''}"`);
 };
 
 /**
