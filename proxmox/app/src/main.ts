@@ -70,6 +70,10 @@ function broadcastUserCount() {
   const snapshot = Array.from(connectedUsers.values());
   const count = snapshot.length;
   const users = snapshot.map((u) => u.username);
+  // #region agent log
+  const userIds = Array.from(connectedUsers.keys());
+  fastify.log.info({ hypothesisId: 'H5', count, userIds, usernames: users }, '[DEBUG] H5 broadcastUserCount');
+  // #endregion
   const payload = JSON.stringify({ type: 'userCount', count, users });
   for (const user of snapshot) {
     try {
@@ -1413,8 +1417,11 @@ function broadcastUserCount() {
             switch (message.type) {
             case 'auth': {
               let tokenUsername: string | null = null;
+              const raw = (message.token || message.data?.token || '').toString().replace(/^Bearer\s+/i, '').trim();
+              // #region agent log
+              fastify.log.info({ hypothesisId: 'H1', hasToken: raw.length > 0, tokenPrefix: raw.substring(0, 10) }, '[DEBUG] H1 auth message received');
+              // #endregion
               try {
-                const raw = (message.token || message.data?.token || '').toString().replace(/^Bearer\s+/i, '').trim();
                 if (raw.startsWith('jwt_')) {
                   const decoded = JSON.parse(Buffer.from(raw.slice(4), 'base64').toString());
                   if (decoded && decoded.username) tokenUsername = String(decoded.username).trim().toLowerCase();
@@ -1423,6 +1430,7 @@ function broadcastUserCount() {
                 // ignore invalid token
               }
               if (!tokenUsername) {
+                fastify.log.info({ hypothesisId: 'H1' }, '[DEBUG] H1 auth rejected (Token invalide)');
                 socket.socket.send(JSON.stringify({ type: 'error', message: 'Token invalide' }));
                 break;
               }
@@ -1458,6 +1466,9 @@ function broadcastUserCount() {
                 }
               }
               activeSessions.add(tokenUsername);
+              // #region agent log
+              fastify.log.info({ hypothesisId: 'H1', tokenUsername }, '[DEBUG] H1 auth success');
+              // #endregion
               socket.socket.send(JSON.stringify({ type: 'auth:ack', ok: true }));
               broadcastUserCount();
               break;
@@ -1466,7 +1477,11 @@ function broadcastUserCount() {
             case 'message':
             case 'message:send': {
               const isAuthenticated = username.startsWith('anon_') === false;
+              // #region agent log
+              fastify.log.info({ hypothesisId: 'H2', messageType: message.type, isAuthenticated, username }, '[DEBUG] H2 message received');
+              // #endregion
               if (!isAuthenticated) {
+                fastify.log.info({ hypothesisId: 'H2' }, '[DEBUG] H2 message rejected (Authentification requise)');
                 socket.socket.send(JSON.stringify({ type: 'error', message: 'Authentification requise' }));
                 break;
               }
@@ -1519,12 +1534,17 @@ function broadcastUserCount() {
         // Handle disconnection
         socket.on('close', (code?: number, reason?: Buffer) => {
           const hadEntry = connectedUsers.has(userId);
+          const sizeBefore = connectedUsers.size;
           const normalizedUsername = String(username).trim().toLowerCase();
           const connectionsForUser = Array.from(connectedUsers.values()).filter(
             (u) => String(u.username).trim().toLowerCase() === normalizedUsername
           );
           const wasOnlyConnectionForUser = connectionsForUser.length === 1;
           connectedUsers.delete(userId);
+          const sizeAfter = connectedUsers.size;
+          // #region agent log
+          fastify.log.info({ hypothesisId: 'H3', userId, username, sizeBefore, sizeAfter, hadEntry }, '[DEBUG] H3 WS close');
+          // #endregion
           if (wasOnlyConnectionForUser) {
             activeSessions.delete(normalizedUsername);
             fastify.log.info(`Session libérée pour ${normalizedUsername} (déconnexion WebSocket)`);
@@ -1549,7 +1569,12 @@ function broadcastUserCount() {
         });
 
         // Handle pong response
-        socket.on('pong', heartbeat);
+        socket.on('pong', () => {
+          // #region agent log
+          fastify.log.info({ hypothesisId: 'H4', userId, username }, '[DEBUG] H4 pong received');
+          // #endregion
+          heartbeat();
+        });
       };
       fastify.get('/ws', { websocket: true }, wsHandler);
       fastify.get('/', { websocket: true }, wsHandler);
