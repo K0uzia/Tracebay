@@ -324,11 +324,18 @@ function createSplashWindow() {
   }
   @keyframes spin { to { transform: rotate(360deg); } }
   .message { margin-top: 1.25rem; font-size: 0.85rem; opacity: 0.9; }
+  .progress-wrap { margin-top: 1rem; width: 100%; max-width: 260px; display: none; }
+  .progress-wrap.visible { display: block; }
+  .progress-bar { height: 8px; background: rgba(255,255,255,0.25); border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; width: 0%; background: rgba(255,255,255,0.9); border-radius: 4px; transition: width 0.2s ease; }
 </style></head><body>
   <div class="logo">Workspace</div>
   <div class="tagline">By Sandersonn</div>
   <div class="spinner"></div>
   <p class="message">Chargement en cours…</p>
+  <div class="progress-wrap" id="splash-progress">
+    <div class="progress-bar"><div class="progress-fill" id="splash-progress-fill"></div></div>
+  </div>
 </body></html>`;
     const win = new BrowserWindow({
         width: 380,
@@ -355,6 +362,51 @@ function setSplashMessage(text) {
     if (splashWindow && !splashWindow.isDestroyed() && splashWindow.webContents) {
         splashWindow.webContents.executeJavaScript(
             `(function(){ var el = document.querySelector('.message'); if (el) el.textContent = ${JSON.stringify(text)}; })();`
+        ).catch(() => {});
+    }
+}
+
+/**
+ * Afficher ou masquer la barre de progression (percent: 0-100, ou null pour masquer)
+ */
+function setSplashProgress(percent) {
+    if (!splashWindow || splashWindow.isDestroyed() || !splashWindow.webContents) return;
+    const show = typeof percent === 'number';
+    const value = Math.min(100, Math.max(0, percent));
+    splashWindow.webContents.executeJavaScript(
+        `(function(){
+            var wrap = document.getElementById('splash-progress');
+            var fill = document.getElementById('splash-progress-fill');
+            if (wrap) wrap.classList.toggle('visible', ${show});
+            if (fill) fill.style.width = ${JSON.stringify(value)} + '%';
+        })();`
+    ).catch(() => {});
+}
+
+/**
+ * Afficher l'état succès sur le splash (icône check, pas de spinner) et masquer la barre de progression
+ */
+function setSplashUpdateSuccess(text) {
+    if (splashWindow && !splashWindow.isDestroyed() && splashWindow.webContents) {
+        splashWindow.webContents.executeJavaScript(
+            `(function(){
+                var spinner = document.querySelector('.spinner');
+                var msg = document.querySelector('.message');
+                var progressWrap = document.getElementById('splash-progress');
+                if (spinner) { spinner.style.display = 'none'; }
+                if (progressWrap) { progressWrap.classList.remove('visible'); }
+                var wrap = document.querySelector('.message-wrap');
+                if (!wrap && msg) {
+                    wrap = document.createElement('div');
+                    wrap.className = 'message-wrap';
+                    msg.parentNode.insertBefore(wrap, msg);
+                    wrap.appendChild(msg);
+                }
+                if (wrap) wrap.innerHTML = '<div class="splash-success"><span class="splash-check">✓</span></div><p class="message">' + ${JSON.stringify(text)} + '</p>';
+                var style = document.createElement('style');
+                style.textContent = '.splash-success { margin-top: 1rem; }.splash-check { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: rgba(76, 175, 80, 0.9); color: #fff; border-radius: 50%; font-size: 1.5rem; font-weight: bold; }.message-wrap .message { margin-top: 0.75rem; }';
+                if (!document.querySelector('#splash-success-style')) { style.id = 'splash-success-style'; document.head.appendChild(style); }
+            })();`
         ).catch(() => {});
     }
 }
@@ -391,6 +443,17 @@ function createWindow() {
     const showMainAndCloseSplash = () => {
         if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
         closeSplashWindow();
+        const flagPath = path.join(app.getPath('userData'), 'workspace-update-installed.flag');
+        if (fs.existsSync(flagPath)) {
+            try {
+                fs.unlinkSync(flagPath);
+            } catch (_) {}
+            setTimeout(() => {
+                if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
+                    mainWindow.webContents.send('update-was-installed');
+                }
+            }, 800);
+        }
     };
     mainWindow.webContents.once('did-finish-load', showMainAndCloseSplash);
     // Fallback si did-finish-load tarde (réseau, erreur, etc.)
@@ -458,20 +521,55 @@ app.on('ready', async () => {
                 if (updateHandled) return;
                 updateHandled = true;
                 if (timeoutId) clearTimeout(timeoutId);
-                launchApp();
+                setSplashMessage('Aucune mise à jour');
+                setSplashProgress(null);
+                setTimeout(() => {
+                    setSplashMessage('Lancement…');
+                    setTimeout(launchApp, 400);
+                }, 600);
             };
 
-            autoUpdater.on('checking-for-update', () => setSplashMessage('Vérification des mises à jour…'));
-            autoUpdater.on('update-available', () => setSplashMessage('Mise à jour disponible, téléchargement…'));
-            autoUpdater.on('download-progress', (p) => setSplashMessage(`Téléchargement… ${Math.round(p.percent || 0)} %`));
+            autoUpdater.on('checking-for-update', () => {
+                setSplashMessage('Recherche de mise à jour…');
+                setSplashProgress(null);
+            });
+            autoUpdater.on('update-available', () => {
+                setSplashMessage('Mise à jour trouvée');
+                setSplashProgress(0);
+            });
+            autoUpdater.on('download-progress', (p) => {
+                const percent = Math.round(p.percent || 0);
+                setSplashMessage('Téléchargement');
+                setSplashProgress(percent);
+            });
             autoUpdater.on('update-downloaded', () => {
-                setSplashMessage('Installation de la mise à jour…');
-                autoUpdater.quitAndInstall(false, true);
+                if (timeoutId) clearTimeout(timeoutId);
+                updateHandled = true;
+                setSplashProgress(null);
+                setSplashMessage('Installation');
+                const flagPath = path.join(app.getPath('userData'), 'workspace-update-installed.flag');
+                try {
+                    fs.writeFileSync(flagPath, Date.now().toString(), 'utf8');
+                } catch (_) {}
+                setTimeout(() => {
+                    const REDIRECT_SECONDS = 3;
+                    setSplashUpdateSuccess(`Redémarrage dans ${REDIRECT_SECONDS} s…`);
+                    let left = REDIRECT_SECONDS;
+                    const t = setInterval(() => {
+                        left--;
+                        if (left > 0) {
+                            setSplashMessage(`Redémarrage dans ${left} s…`);
+                        } else {
+                            clearInterval(t);
+                            autoUpdater.quitAndInstall(false, true);
+                        }
+                    }, 1000);
+                }, 500);
             });
             autoUpdater.on('update-not-available', done);
             autoUpdater.on('error', () => done());
 
-            setSplashMessage('Vérification des mises à jour…');
+            setSplashMessage('Recherche de mise à jour…');
             await autoUpdater.checkForUpdates();
             timeoutId = setTimeout(done, 12000);
         } catch (e) {

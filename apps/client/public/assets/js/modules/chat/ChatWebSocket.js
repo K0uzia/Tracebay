@@ -12,6 +12,11 @@ const errorHandler = getErrorHandler();
 let sharedInstance = null;
 
 function getSharedChatWebSocket(options = {}) {
+    // #region agent log
+    try {
+        fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'ChatWebSocket.js:getShared',message:'getSharedChatWebSocket',data:{reuse:!!sharedInstance},hypothesisId:'H4',timestamp:Date.now()})}).catch(()=>{});
+    } catch (_) {}
+    // #endregion
     if (sharedInstance) return sharedInstance;
     sharedInstance = new ChatWebSocket(options);
     return sharedInstance;
@@ -80,6 +85,15 @@ class ChatWebSocket {
             });
             
             this.ws.addEventListener('close', () => {
+                // #region agent log
+                try {
+                    fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'ChatWebSocket.js:close listener',message:'WS close event',data:{skipReconnect:!!this._skipReconnect},hypothesisId:'H5',timestamp:Date.now()})}).catch(()=>{});
+                } catch (_) {}
+                // #endregion
+                if (this._skipReconnect) {
+                    logger.info('WebSocket fermé (déconnexion volontaire), pas de reconnexion');
+                    return;
+                }
                 logger.warn('WebSocket fermé, reconnexion...');
                 this.reconnect();
             });
@@ -272,8 +286,15 @@ class ChatWebSocket {
 
     /**
      * Fermer la connexion
+     * @param {boolean} [skipReconnect=false] - Si true, ne pas tenter de reconnexion (ex: logout)
      */
-    close() {
+    close(skipReconnect = false) {
+        // #region agent log
+        try {
+            fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'ChatWebSocket.js:close',message:'close() called',data:{skipReconnect},hypothesisId:'H5',timestamp:Date.now()})}).catch(()=>{});
+        } catch (_) {}
+        // #endregion
+        this._skipReconnect = skipReconnect;
         if (this.ws) {
             this.ws.close();
             this.ws = null;
