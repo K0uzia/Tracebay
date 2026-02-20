@@ -9,7 +9,7 @@
  */
 
 import ChatSecurityManager from './ChatSecurityManager.js';
-import ChatWebSocket from './ChatWebSocket.js';
+import { getSharedChatWebSocket } from './ChatWebSocket.js';
 import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
 import getErrorHandler from '../../config/ErrorHandler.js';
@@ -31,9 +31,8 @@ class ChatManager {
         this.sendButtonId = options.sendButtonId || 'chat-widget-send';
         this.clearChatBtnId = options.clearChatBtnId || 'chat-widget-clear';
         
-        // WebSocket avec serverUrl depuis api.js
         const wsUrl = options.wsUrl || api.getWsUrl();
-        this.webSocket = new ChatWebSocket({ wsUrl });
+        this.webSocket = getSharedChatWebSocket({ wsUrl });
         
         // État
         this.pseudo = this.loadPseudo();

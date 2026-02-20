@@ -9,9 +9,20 @@ import getErrorHandler from '../../config/ErrorHandler.js';
 const logger = getLogger();
 const errorHandler = getErrorHandler();
 
+let sharedInstance = null;
+
+function getSharedChatWebSocket(options = {}) {
+    if (sharedInstance) return sharedInstance;
+    sharedInstance = new ChatWebSocket(options);
+    return sharedInstance;
+}
+
 class ChatWebSocket {
     constructor(options = {}) {
-        // Utiliser l'URL WebSocket depuis APP_CONFIG si disponible
+        if (sharedInstance && sharedInstance !== this) {
+            logger.warn('ChatWebSocket: réutilisation de l’instance partagée');
+            return sharedInstance;
+        }
         this.wsUrl = options.wsUrl || (window.APP_CONFIG && window.APP_CONFIG.serverWsUrl) || this.getWebSocketUrl();
         this.ws = null;
         this.messageHandlers = [];
@@ -267,6 +278,9 @@ class ChatWebSocket {
             this.ws.close();
             this.ws = null;
         }
+        if (sharedInstance === this) {
+            sharedInstance = null;
+        }
     }
 
     /**
@@ -277,4 +291,5 @@ class ChatWebSocket {
     }
 }
 
+export { getSharedChatWebSocket };
 export default ChatWebSocket;
