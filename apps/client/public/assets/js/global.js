@@ -41,10 +41,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Initialiser ChatWidgetManager (widget flottant)
-    // Attendre que api soit disponible (initialisé par app.js)
+    let chatWidgetInitStarted = false;
     const initChatWidget = async () => {
-        if (window.chatWidgetManager) return;
+        if (window.chatWidgetManager || chatWidgetInitStarted) return;
+        chatWidgetInitStarted = true;
         try {
             // Importer api pour obtenir l'URL
             const api = await import('./config/api.js');
@@ -62,6 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } catch (error) {
             console.error('❌ Erreur initialisation ChatWidgetManager:', error);
+            chatWidgetInitStarted = false;
         }
     };
     
