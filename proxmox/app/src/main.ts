@@ -192,35 +192,36 @@ function broadcastUserCount() {
 
     fastify.post('/api/auth/logout', async (request: FastifyRequest, reply: FastifyReply) => {
       let normalizedUsername: string | null = null;
-      const token = request.headers.authorization?.replace('Bearer ', '');
+      const authHeader = (request.headers as any).authorization || (request.headers as any).Authorization;
+      const token = typeof authHeader === 'string' ? authHeader.replace(/Bearer\s+/i, '').trim() : '';
       if (token && token.startsWith('jwt_')) {
         try {
           const decoded = JSON.parse(Buffer.from(token.replace('jwt_', ''), 'base64').toString());
           normalizedUsername = decoded.username && String(decoded.username).trim().toLowerCase();
-          if (normalizedUsername) activeSessions.delete(normalizedUsername);
         } catch {
           // ignore invalid token
         }
       }
-      const userId = (request as any).userId;
-      if (userId) connectedUsers.delete(userId);
       if (normalizedUsername) {
-        for (const [id, u] of Array.from(connectedUsers.entries())) {
-          if (String(u.username).trim().toLowerCase() === normalizedUsername) {
-            connectedUsers.delete(id);
+        activeSessions.delete(normalizedUsername);
+        const toRemove = Array.from(connectedUsers.entries()).filter(
+          ([_, u]) => String(u.username).trim().toLowerCase() === normalizedUsername
+        );
+        for (const [id] of toRemove) {
+          connectedUsers.delete(id);
+        }
+        for (const [, u] of toRemove) {
+          try {
+            u.socket.socket?.terminate?.();
+          } catch {
             try {
-              u.socket.socket?.terminate?.();
+              u.socket.socket?.close();
             } catch {
-              try {
-                u.socket.socket?.close();
-              } catch {
-                // ignore
-              }
+              // ignore
             }
           }
         }
       }
-      // Toujours notifier tous les clients du compteur après une tentative de logout
       broadcastUserCount();
       return { success: true, message: 'Logged out successfully' };
     });
