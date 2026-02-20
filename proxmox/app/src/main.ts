@@ -1572,9 +1572,17 @@ function broadcastUserCount() {
           broadcastUserCount();
         });
 
-        // Handle errors
+        // Handle errors (connexion fermée brutalement sans close frame, ex: reload) → retirer de connectedUsers
         socket.on('error', (error: any) => {
           fastify.log.error(`WebSocket error for ${username}: ${error.message}`);
+          connectedUsers.delete(userId);
+          clearInterval(pingInterval);
+          const normalized = String(username).trim().toLowerCase();
+          const others = Array.from(connectedUsers.values()).filter(
+            (u) => String(u.username).trim().toLowerCase() === normalized
+          );
+          if (others.length === 0) activeSessions.delete(normalized);
+          broadcastUserCount();
         });
 
         // Handle pong response
