@@ -126,11 +126,12 @@ class ChatSecurityManager {
      * Retourne un DocumentFragment contenant les éléments DOM
      */
     processMessage(text) {
-        if (!text) {
+        if (text == null || text === '') {
             const fragment = document.createDocumentFragment();
-            fragment.appendChild(document.createTextNode(text));
+            fragment.appendChild(document.createTextNode(''));
             return fragment;
         }
+        text = String(text);
 
         // Vérifier les mots-clés bloqués
         if (this.containsBlockedKeyword(text)) {
