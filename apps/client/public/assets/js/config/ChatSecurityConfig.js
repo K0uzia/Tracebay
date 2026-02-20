@@ -43,13 +43,8 @@ export const CHAT_SECURITY_CONFIG = {
         'get rich quick'
     ],
     
-    // Protocoles autorisés
-    allowedProtocols: [
-        'http',
-        'https',
-        'mailto',
-        'ftp'
-    ]
+    // Protocoles autorisés pour le partage de liens (chat)
+    allowedProtocols: ['http', 'https']
 };
 
 /**
