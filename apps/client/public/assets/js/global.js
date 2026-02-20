@@ -56,7 +56,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 buttonId: 'chat-widget-btn',
                 panelId: 'chat-widget-panel',
                 closeButtonId: 'chat-widget-close',
-                pseudoModalId: 'chat-widget-pseudo-modal',
                 notificationBadgeId: 'chat-notification-badge',
                 serverUrl: serverUrl
             });

@@ -22,9 +22,8 @@ class ChatWidgetManager {
         this.buttonElement = document.getElementById(options.buttonId || 'chat-widget-btn');
         this.panelElement = document.getElementById(options.panelId || 'chat-widget-panel');
         this.closeButtonElement = document.getElementById(options.closeButtonId || 'chat-widget-close');
-        this.pseudoModalElement = document.getElementById(options.pseudoModalId || 'chat-widget-pseudo-modal');
         this.notificationBadgeElement = document.getElementById(options.notificationBadgeId || 'chat-notification-badge');
-        
+
         // État
         this.isOpen = false;
         this.unreadCount = 0;
@@ -36,16 +35,11 @@ class ChatWidgetManager {
             this.chatManager = window.chatManager;
         } else {
             this.chatManager = new ChatManager({
-                wsUrl: wsUrl,
-                pseudoWrapperId: 'chat-widget-pseudo-area',
+                wsUrl,
                 pseudoDisplayId: 'chat-widget-pseudo-display',
-                pseudoInputId: 'chat-widget-pseudo-input',
-                pseudoConfirmId: 'chat-widget-pseudo-confirm',
-                pseudoErrorId: 'chat-widget-pseudo-error',
                 messagesContainerId: 'chat-widget-messages',
                 inputId: 'chat-widget-input',
                 sendButtonId: 'chat-widget-send',
-                clearChatBtnId: 'chat-widget-clear',
                 securityConfig: options.securityConfig || {}
             });
             window.chatManager = this.chatManager;
@@ -146,16 +140,9 @@ class ChatWidgetManager {
         // Mettre à jour les messages à l'affichage du panel
         this.chatManager.renderMessages();
         
-        // Focus sur l'input si pseudo confirmé
         if (this.chatManager.pseudo) {
             setTimeout(() => {
                 const input = document.getElementById('chat-widget-input');
-                if (input) input.focus();
-            }, 300);
-        } else {
-            // Focus sur input pseudo du modal si pseudo pas encore défini
-            setTimeout(() => {
-                const input = document.getElementById('chat-widget-pseudo-input');
                 if (input) input.focus();
             }, 300);
         }

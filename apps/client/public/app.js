@@ -582,20 +582,17 @@ class PageManager {
         Promise.all([
             import('./assets/js/modules/chat/ChatManager.js'),
             import('./assets/js/config/ChatSecurityConfig.js')
-        ]).then(([chatModule, configModule]) => {
+        ]).then(async ([chatModule, configModule]) => {
             const ChatManager = chatModule.default;
             const securityConfig = configModule.default;
+            const apiModule = await import('./assets/js/config/api.js');
+            const wsUrl = apiModule.default.getWsUrl?.() || (window.APP_CONFIG?.serverWsUrl);
             window.chatManager = new ChatManager({
-                serverUrl: this.serverUrl || window.APP_CONFIG?.serverUrl || 'http://localhost:8060',
+                wsUrl,
                 messagesContainerId: 'chat-messages',
                 inputId: 'chat-input',
                 sendButtonId: 'chat-send',
-                pseudoInputId: 'chat-pseudo-input',
-                pseudoConfirmId: 'chat-pseudo-confirm',
                 pseudoDisplayId: 'chat-pseudo-display',
-                pseudoErrorId: 'chat-pseudo-error',
-                clearChatBtnId: 'chat-clear-btn',
-                pseudoWrapperId: 'chat-pseudo-input-wrapper',
                 securityConfig: securityConfig
             });
         }).catch(error => {
