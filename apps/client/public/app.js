@@ -68,6 +68,18 @@ class PageManager {
         await this.loadComponent('header', './components/header.html', () => this.initializeAuth());
         await this.loadComponent('footer', './components/footer.html', () => this.initializeSystemInfo());
         
+        // Fermer le WebSocket à la fermeture de la fenêtre pour que le serveur
+        // reçoive l'événement close et libère la session (évite "déjà connecté" au retour).
+        const closeChatWebSocketOnUnload = () => {
+            try {
+                if (window.chatManager?.webSocket?.close) {
+                    window.chatManager.webSocket.close(true);
+                }
+            } catch (_) { /* ignore */ }
+        };
+        window.addEventListener('beforeunload', closeChatWebSocketOnUnload);
+        window.addEventListener('pagehide', closeChatWebSocketOnUnload);
+
         // Charger la page sauvegardée ou home
         const lastPage = this.getLastPage();
         const pageToLoad = lastPage && this.pagesConfig[lastPage] ? lastPage : 'home';
