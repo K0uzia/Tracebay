@@ -166,6 +166,14 @@ class ChatWebSocket {
             }));
             return;
         }
+        if (data.type === 'connected') {
+            this.messageHandlers.forEach(handler => handler({
+                type: 'userCount',
+                count: typeof data.connectedUsers === 'number' ? data.connectedUsers : data.count,
+                users: data.users || []
+            }));
+            return;
+        }
         if (data.type === 'success') {
             logger.info(`Succès serveur: ${data.message || data.text}`);
         }
