@@ -3,8 +3,41 @@
  * Remplace le polling HTTP par WebSocket pour plus de réactivité
  */
 
+let logoutPatchInstalled = false;
+function installLogoutPatch(instanceRef) {
+  if (typeof window === 'undefined' || logoutPatchInstalled) return;
+  logoutPatchInstalled = true;
+  const originalRemoveItem = localStorage.removeItem.bind(localStorage);
+  localStorage.removeItem = function (key) {
+    if (key === 'workspace_jwt' || key === 'workspace_username') {
+      const token = localStorage.getItem('workspace_jwt');
+      const ws = instanceRef.current;
+      if (ws) {
+        ws.close(true);
+      }
+      const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || (window.SERVER_CONFIG && window.SERVER_CONFIG.serverUrl) || 'http://localhost:4000';
+      const logoutUrl = baseUrl.replace(/\/$/, '') + '/api/auth/logout';
+      if (token) {
+        fetch(logoutUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
+        }).catch(() => {});
+      }
+      originalRemoveItem('workspace_jwt');
+      originalRemoveItem('workspace_username');
+      originalRemoveItem('workspace_user_id');
+      return;
+    }
+    originalRemoveItem(key);
+  };
+}
+
+const currentInstance = { current: null };
+
 class ChatWebSocket {
   constructor(options = {}) {
+    currentInstance.current = this;
+    installLogoutPatch(currentInstance);
     // Utiliser l'URL WebSocket depuis APP_CONFIG si disponible (le backend expose la route /ws)
     let base = options.wsUrl || (window.APP_CONFIG && window.APP_CONFIG.serverWsUrl) || this.getWebSocketUrl();
     this.wsUrl = this.normalizeWsUrl(base);
@@ -18,6 +51,8 @@ class ChatWebSocket {
     this.authToken = null;
     this.reconnectTimeout = null;
     this.heartbeatInterval = null;
+    /** Si true, ne pas tenter de reconnexion au prochain 'close' (ex: logout) */
+    this.skipReconnect = false;
 
     console.log('🔌 ChatWebSocket initialisé avec:', this.wsUrl);
     this.connect();
@@ -73,8 +108,13 @@ class ChatWebSocket {
       });
 
       this.ws.addEventListener('close', (event) => {
-        console.warn(`⚠️ WebSocket fermé (code: ${event.code}), reconnexion dans ${this.getReconnectDelay()}ms...`);
         this.stopHeartbeat();
+        if (this.skipReconnect) {
+          this.skipReconnect = false;
+          console.log('🔌 WebSocket fermé (logout), pas de reconnexion.');
+          return;
+        }
+        console.warn(`⚠️ WebSocket fermé (code: ${event.code}), reconnexion dans ${this.getReconnectDelay()}ms...`);
         this.reconnect();
       });
 
@@ -176,8 +216,13 @@ class ChatWebSocket {
       console.log('✅ Authentifié');
       return;
     } else if (data.type === 'message:new') {
-      // Nouveau message reçu
-      const payload = data.data || data;
+      const raw = data.data || data;
+      const payload = {
+        ...raw,
+        pseudo: raw.username ?? raw.pseudo,
+        text: raw.text ?? raw.message,
+        created_at: raw.createdAt ?? raw.created_at
+      };
       this.messageHandlers.forEach(handler => handler({
         type: 'newMessage',
         message: payload
@@ -291,9 +336,11 @@ class ChatWebSocket {
   }
 
   /**
-     * Fermer la connexion
-     */
-  close() {
+   * Fermer la connexion.
+   * @param {boolean} [skipReconnect=false] - Si true, ne pas reconnecter au 'close' (à utiliser au logout).
+   */
+  close(skipReconnect = false) {
+    this.skipReconnect = !!skipReconnect;
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
@@ -303,13 +350,16 @@ class ChatWebSocket {
       this.ws.close();
       this.ws = null;
     }
+    if (skipReconnect && currentInstance.current === this) {
+      currentInstance.current = null;
+    }
   }
 
   /**
-     * Alias pour close()
-     */
-  disconnect() {
-    this.close();
+   * Alias pour close(). Pour un logout, appeler disconnect(true) pour éviter une reconnexion.
+   */
+  disconnect(skipReconnect = false) {
+    this.close(!!skipReconnect);
   }
 }
 
