@@ -43,7 +43,8 @@ jobs:
       - name: Build client (Linux) & publish
         working-directory: apps/client
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # PAT optionnel (Settings → Secrets) ; sinon token automatique du job
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           NODE_ENV: production
         run: npm run build:prod:linux
 
@@ -67,7 +68,7 @@ jobs:
       - name: Build client (Windows) & publish
         working-directory: apps/client
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           NODE_ENV: production
         run: npm run build:prod:win
 
@@ -91,6 +92,6 @@ jobs:
       - name: Build client (macOS) & publish
         working-directory: apps/client
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           NODE_ENV: production
         run: npm run build:prod:mac

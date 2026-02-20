@@ -7,13 +7,13 @@
   "author": "Sandersonn",
   "license": "MIT",
   "dependencies": {
-    "@electron-forge/plugin-webpack": "^7.11.1",
     "electron-squirrel-startup": "^1.0.1",
     "electron-updater": "^6.3.9",
     "pdfkit": "^0.15.0"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.8.3",
+    "@electron-forge/plugin-webpack": "^7.11.1",
     "@electron-forge/maker-deb": "^7.10.2",
     "@electron-forge/maker-squirrel": "^7.10.2",
     "@electron-forge/maker-zip": "^7.10.2",
@@ -36,6 +36,7 @@
     "build:prod:win": "NODE_ENV=production npx electron-builder --win --publish=always",
     "build:prod:mac": "NODE_ENV=production npx electron-builder --mac --publish=always",
     "build:prod:linux": "NODE_ENV=production npx electron-builder --linux --publish=always",
+    "build:prod:linux:local": "NODE_ENV=production npx electron-builder --linux --publish=never",
     "build:win": "electron-forge make --platform win32",
     "build:mac": "electron-forge make --platform darwin",
     "build:linux": "npx electron-builder --linux",
