@@ -192,8 +192,11 @@ class AuthManager {
                 window.chatManager.webSocket.close(true);
             } catch (_) {}
         }
+        const token = localStorage.getItem(this.tokenKey);
         try {
-            await api.post('auth.logout', null);
+            await api.post('auth.logout', null, {
+                headers: token ? { Authorization: `Bearer ${token}` } : {}
+            });
         } catch (_) {}
         this.clearSession();
         window.location.reload();
