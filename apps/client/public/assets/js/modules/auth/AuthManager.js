@@ -187,11 +187,21 @@ class AuthManager {
      * @returns {Object} Résultat de la déconnexion
      */
     async logout() {
+        // #region agent log
+        try {
+            fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'AuthManager.js:logout',message:'logout started',data:{hasChatWs:!!window.chatManager?.webSocket},hypothesisId:'H3',timestamp:Date.now()})}).catch(()=>{});
+        } catch (_) {}
+        // #endregion
         if (window.chatManager?.webSocket) {
             try {
-                window.chatManager.webSocket.close();
+                window.chatManager.webSocket.close(true);
             } catch (_) {}
         }
+        // #region agent log
+        try {
+            fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'AuthManager.js:logout',message:'after close, before api',data:{},hypothesisId:'H3',timestamp:Date.now()})}).catch(()=>{});
+        } catch (_) {}
+        // #endregion
         try {
             await api.post('auth.logout', null);
         } catch (_) {}

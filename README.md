@@ -1,13 +1,3 @@
-Revois tout le systeme de connexion coter client et apres coter serveur (gerer sur la branch proxmox)
-car y a un toujours un soucis de je me connecte une fois, si je me deconnecte je suis toujours considerer connecter donc impossible de me reconnecter.
-les messages sont tjr pas synchroniser ni en direct comme un chat de discussion
-toujours pas d'historique
-je peut me connecter deux compte différent sur le meme poste (a empecher 1 poste = 1 compte max de connecter)
-empecher le lancement de plusieur instance du client
-vérifier le systeme qui empeche la double connexion du meme compte sur le réseaux
-revoir le systeme de compteur du nombre d'utilisateur connecter ! car le nombre augmente tjr a chaque connexion et deconnexion
-
-
 # Workspace v2.0
 
 Application Electron client pour la gestion de workspace. Se connecte à un serveur backend déployé séparément (sur Proxmox).
