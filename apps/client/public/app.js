@@ -54,6 +54,13 @@ class PageManager {
         // Exposer l'instance App globalement
         window.app = this;
 
+        // Toast "Mise à jour installée" après redémarrage post-update
+        if (typeof window.electron !== 'undefined' && window.electron.on) {
+            window.electron.on('update-was-installed', () => {
+                window.app?.showNotification('Une nouvelle version a été installée avec succès.', 'success');
+            });
+        }
+
         // Initialiser le gestionnaire de connexion serveur
         await this.initializeServerConnection();
 
@@ -940,7 +947,7 @@ class PageManager {
      */
     showNotification(message, type = 'info') {
         const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
+        notification.className = `notification ${type}`;
         notification.setAttribute('role', 'status');
         let icon = '<i class="fa-solid fa-circle-info"></i>';
         if (type === 'success') icon = '<i class="fa-solid fa-check-circle"></i>';
