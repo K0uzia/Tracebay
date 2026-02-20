@@ -27,40 +27,18 @@ class ChatManager {
         this.securityConfig = options.securityConfig || {};
         this.securityManager = new ChatSecurityManager(this.securityConfig);
 
+        this._registerWsHandlers();
         this.init();
     }
 
-    loadPseudo() {
-        return localStorage.getItem('workspace_username') || null;
-    }
-
-    async init() {
-        window.addEventListener('auth-change', (e) => {
-            const user = e.detail?.user;
-            const token = e.detail?.token;
-            this.pseudo = user ? user.username : null;
-            this.displayPseudo();
-            if (token && this.webSocket.isConnected()) {
-                this.webSocket.authenticate(token);
-            }
-        });
-
-        this.displayPseudo();
-        this.renderMessages();
-        this.attachEventListeners();
-
-        const connectAndRestoreSession = () => {
-            if (this.webSocket.isConnected()) {
-                const token = this.getStoredToken();
-                if (token) this.webSocket.authenticate(token);
-                if (this.pseudo) this.fetchHistory();
-            } else {
-                setTimeout(connectAndRestoreSession, 500);
-            }
-        };
-        connectAndRestoreSession();
-
+    _registerWsHandlers() {
         this.webSocket.onMessage((data) => {
+            if (data.type === 'userCount') {
+                this.connectedUsers = data.users || [];
+                this.userCount = typeof data.count === 'number' ? data.count : 0;
+                this.displayPseudo();
+                return;
+            }
             if (data.type === 'auth:ack') {
                 this.fetchHistory();
                 return;
@@ -112,12 +90,6 @@ class ChatManager {
                 this.scrollToBottom();
                 return;
             }
-            if (data.type === 'userCount') {
-                this.connectedUsers = data.users || [];
-                this.userCount = typeof data.count === 'number' ? data.count : 0;
-                this.displayPseudo();
-                return;
-            }
             if (data.type === 'chatCleared') {
                 this.messages = [];
                 this.renderMessages();
@@ -133,6 +105,37 @@ class ChatManager {
                 logger.error('Erreur chat', message);
             }
         });
+    }
+
+    loadPseudo() {
+        return localStorage.getItem('workspace_username') || null;
+    }
+
+    async init() {
+        window.addEventListener('auth-change', (e) => {
+            const user = e.detail?.user;
+            const token = e.detail?.token;
+            this.pseudo = user ? user.username : null;
+            this.displayPseudo();
+            if (token && this.webSocket.isConnected()) {
+                this.webSocket.authenticate(token);
+            }
+        });
+
+        this.displayPseudo();
+        this.renderMessages();
+        this.attachEventListeners();
+
+        const connectAndRestoreSession = () => {
+            if (this.webSocket.isConnected()) {
+                const token = this.getStoredToken();
+                if (token) this.webSocket.authenticate(token);
+                if (this.pseudo) this.fetchHistory();
+            } else {
+                setTimeout(connectAndRestoreSession, 500);
+            }
+        };
+        connectAndRestoreSession();
     }
 
     getStoredToken() {
