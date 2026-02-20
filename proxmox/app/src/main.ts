@@ -67,8 +67,8 @@ const messageStartTime = Date.now();
 
 /** Broadcast current user count to all connected WebSockets (used by WS close and HTTP logout). */
 function broadcastUserCount() {
-  const users = [...new Set(Array.from(connectedUsers.values()).map((u) => u.username))];
-  const count = users.length;
+  const count = connectedUsers.size;
+  const users = Array.from(connectedUsers.values()).map((u) => u.username);
   const payload = JSON.stringify({ type: 'userCount', count, users });
   for (const user of connectedUsers.values()) {
     try {
@@ -1435,6 +1435,7 @@ function broadcastUserCount() {
                 if (existing) existing.username = username;
               }
               socket.socket.send(JSON.stringify({ type: 'auth:ack', ok: true }));
+              broadcastUserCount();
               break;
             }
 
@@ -1482,6 +1483,7 @@ function broadcastUserCount() {
                 }, userId);
 
                 socket.socket.send(JSON.stringify({ type: 'success', message: 'Pseudo updated' }));
+                broadcastUserCount();
               }
               break;
             }
