@@ -187,14 +187,14 @@ class AuthManager {
      * @returns {Object} Résultat de la déconnexion
      */
     async logout() {
-        try {
-            await api.post('auth.logout', null);
-        } catch (_) {}
         if (window.chatManager?.webSocket) {
             try {
                 window.chatManager.webSocket.close(true);
             } catch (_) {}
         }
+        try {
+            await api.post('auth.logout', null);
+        } catch (_) {}
         this.clearSession();
         window.location.reload();
         return {
