@@ -186,7 +186,15 @@ class AuthManager {
      * Déconnecte l'utilisateur actuel
      * @returns {Object} Résultat de la déconnexion
      */
-    logout() {
+    async logout() {
+        if (window.chatManager?.webSocket) {
+            try {
+                window.chatManager.webSocket.close();
+            } catch (_) {}
+        }
+        try {
+            await api.post('auth.logout', null);
+        } catch (_) {}
         this.clearSession();
         window.location.reload();
         return {
