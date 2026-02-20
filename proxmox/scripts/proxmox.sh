@@ -380,7 +380,29 @@ run_db_setup() {
   info "Configuration de la base de données..."
   if command -v docker >/dev/null 2>&1; then
     cd "$DOCKER_DIR"
-    docker compose up -d db
+    local max_attempts=3
+    local attempt=1
+    local ok=false
+    while [[ $attempt -le $max_attempts ]]; do
+      info "Tentative $attempt/$max_attempts : démarrage PostgreSQL (pull Docker Hub si besoin)..."
+      if docker compose up -d db; then
+        ok=true
+        break
+      fi
+      if [[ $attempt -lt $max_attempts ]]; then
+        warn "Échec (réseau ?). Nouvelle tentative dans 15 s..."
+        sleep 15
+        attempt=$((attempt + 1))
+      else
+        err "Impossible de démarrer la base de données."
+        echo ""
+        echo -e "${YELLOW}Cause probable : le CT ne peut pas joindre Docker Hub (registry-1.docker.io).${RESET}"
+        echo "  - Vérifier l'accès internet / DNS du conteneur."
+        echo "  - Réessayer plus tard : sudo bash proxmox/scripts/proxmox.sh install"
+        echo "  - Ou lancer uniquement la DB après coup : cd proxmox/docker && docker compose up -d db"
+        exit 1
+      fi
+    done
     info "Attente PostgreSQL..."
     for i in {1..30}; do
       if docker compose exec -T db pg_isready -U "$DB_USER_DEFAULT" >/dev/null 2>&1; then
@@ -393,7 +415,7 @@ run_db_setup() {
     docker compose exec -T db psql -U "$DB_USER_DEFAULT" -d "$DB_NAME_DEFAULT" < /tmp/proxmox_schema.sql && ok "Tables & Migrations créées." || warn "Erreur Tables."
     docker compose down
   fi
-  rm -f /tmp/proxmox_schema_sql
+  rm -f /tmp/proxmox_schema.sql
 }
 
 npm_build() {
