@@ -31,22 +31,25 @@ class ChatWidgetManager {
         this.lastReadCount = 0;  // Nombre de messages lus la dernière fois qu'on a ouvert le panel
         this.badgeUpdateInterval = null; // Stocker l'intervalle pour le nettoyage
         
-        // Initialiser ChatManager avec wsUrl depuis api.js
         const wsUrl = options.wsUrl || api.getWsUrl();
-        this.chatManager = new ChatManager({
-            wsUrl: wsUrl,
-            pseudoWrapperId: 'chat-widget-pseudo-area',
-            pseudoDisplayId: 'chat-widget-pseudo-display',
-            pseudoInputId: 'chat-widget-pseudo-input',
-            pseudoConfirmId: 'chat-widget-pseudo-confirm',
-            pseudoErrorId: 'chat-widget-pseudo-error',
-            messagesContainerId: 'chat-widget-messages',
-            inputId: 'chat-widget-input',
-            sendButtonId: 'chat-widget-send',
-            clearChatBtnId: 'chat-widget-clear',
-            securityConfig: options.securityConfig || {}
-        });
-        
+        if (window.chatManager) {
+            this.chatManager = window.chatManager;
+        } else {
+            this.chatManager = new ChatManager({
+                wsUrl: wsUrl,
+                pseudoWrapperId: 'chat-widget-pseudo-area',
+                pseudoDisplayId: 'chat-widget-pseudo-display',
+                pseudoInputId: 'chat-widget-pseudo-input',
+                pseudoConfirmId: 'chat-widget-pseudo-confirm',
+                pseudoErrorId: 'chat-widget-pseudo-error',
+                messagesContainerId: 'chat-widget-messages',
+                inputId: 'chat-widget-input',
+                sendButtonId: 'chat-widget-send',
+                clearChatBtnId: 'chat-widget-clear',
+                securityConfig: options.securityConfig || {}
+            });
+            window.chatManager = this.chatManager;
+        }
         this.init();
     }
 
