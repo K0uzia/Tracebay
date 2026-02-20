@@ -1433,6 +1433,21 @@ function broadcastUserCount() {
                 username = tokenUsername;
                 const existing = connectedUsers.get(userId);
                 if (existing) existing.username = username;
+                // Nettoyer les connexions zombies (ancienne socket du même user, ex: reload avant close)
+                const zombies = Array.from(connectedUsers.entries()).filter(
+                  ([id, u]) => id !== userId && String(u.username).trim().toLowerCase() === tokenUsername
+                );
+                for (const [id, u] of zombies) {
+                  connectedUsers.delete(id);
+                  try {
+                    u.socket.socket?.terminate?.();
+                  } catch {
+                    try { u.socket.socket?.close(); } catch { /* ignore */ }
+                  }
+                }
+                if (zombies.length > 0) {
+                  activeSessions.delete(tokenUsername);
+                }
               }
               socket.socket.send(JSON.stringify({ type: 'auth:ack', ok: true }));
               broadcastUserCount();
