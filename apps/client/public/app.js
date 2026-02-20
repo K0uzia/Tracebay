@@ -558,32 +558,30 @@ class PageManager {
 
     initializeChatIfNeeded() {
         const chatMessagesContainer = document.getElementById('chat-messages');
-        
-        if (chatMessagesContainer) {
-            Promise.all([
-                import('./assets/js/modules/chat/ChatManager.js'),
-                import('./assets/js/config/ChatSecurityConfig.js')
-            ]).then(([chatModule, configModule]) => {
-                const ChatManager = chatModule.default;
-                const securityConfig = configModule.default;
-                
-                window.chatManager = new ChatManager({
-                    serverUrl: this.serverUrl || window.APP_CONFIG?.serverUrl || 'http://localhost:8060',
-                    messagesContainerId: 'chat-messages',
-                    inputId: 'chat-input',
-                    sendButtonId: 'chat-send',
-                    pseudoInputId: 'chat-pseudo-input',
-                    pseudoConfirmId: 'chat-pseudo-confirm',
-                    pseudoDisplayId: 'chat-pseudo-display',
-                    pseudoErrorId: 'chat-pseudo-error',
-                    clearChatBtnId: 'chat-clear-btn',
-                    pseudoWrapperId: 'chat-pseudo-input-wrapper',
-                    securityConfig: securityConfig
-                });
-            }).catch(error => {
-                logger.error('❌ Erreur import ChatManager:', error);
+        if (!chatMessagesContainer) return;
+        if (window.chatManager) return;
+        Promise.all([
+            import('./assets/js/modules/chat/ChatManager.js'),
+            import('./assets/js/config/ChatSecurityConfig.js')
+        ]).then(([chatModule, configModule]) => {
+            const ChatManager = chatModule.default;
+            const securityConfig = configModule.default;
+            window.chatManager = new ChatManager({
+                serverUrl: this.serverUrl || window.APP_CONFIG?.serverUrl || 'http://localhost:8060',
+                messagesContainerId: 'chat-messages',
+                inputId: 'chat-input',
+                sendButtonId: 'chat-send',
+                pseudoInputId: 'chat-pseudo-input',
+                pseudoConfirmId: 'chat-pseudo-confirm',
+                pseudoDisplayId: 'chat-pseudo-display',
+                pseudoErrorId: 'chat-pseudo-error',
+                clearChatBtnId: 'chat-clear-btn',
+                pseudoWrapperId: 'chat-pseudo-input-wrapper',
+                securityConfig: securityConfig
             });
-        }
+        }).catch(error => {
+            logger.error('❌ Erreur import ChatManager:', error);
+        });
     }
 
     initializePageElements(pageName) {

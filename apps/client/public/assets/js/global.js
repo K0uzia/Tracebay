@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialiser ChatWidgetManager (widget flottant)
     // Attendre que api soit disponible (initialisé par app.js)
     const initChatWidget = async () => {
+        if (window.chatWidgetManager) return;
         try {
             // Importer api pour obtenir l'URL
             const api = await import('./config/api.js');
