@@ -163,6 +163,9 @@ class ChatWebSocket {
                 message: d.text,
                 created_at: d.createdAt || d.created_at
             };
+            const n = this.messageHandlers.length;
+            const textPreview = (payload.text || payload.message || '').substring(0, 30);
+            console.log('📩 message:new reçu → affichage à', n, 'handler(s) | id=', payload.id, '|', (payload.pseudo || '?') + ':', textPreview + ((payload.text || payload.message || '').length > 30 ? '…' : ''));
             // #region agent log
             try {
                 fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'ChatWebSocket.js:handleMessage:message:new',message:'message:new received (broadcast)',data:{pseudo:payload.pseudo,textLen:(payload.text||'').length},hypothesisId:'H2',timestamp:Date.now()})}).catch(()=>{});
