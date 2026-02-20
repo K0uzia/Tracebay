@@ -2,14 +2,25 @@
 
 À appliquer **sur la branche `proxmox`** (fichier `proxmox/app/src/main.ts`).
 
-## 1. Compteur = nombre de comptes (pas de connexions)
+## 1. Compteur = nombre de connexions + broadcast à chaque auth/setPseudo (recommandé)
 
 ```bash
 git checkout proxmox
+git apply proxmox-chat-fix-count-and-broadcast.patch
+```
+
+- **Compteur** : `count = connectedUsers.size` (nombre de connexions : 0, 1, 2…).
+- **Broadcast** : après `auth` et après `setPseudo`, appelle `sendUserCount()` pour que tous les clients reçoivent le nouveau compteur (le 2ᵉ client qui se connecte met à jour l’affichage du 1ᵉʳ).
+
+Si tu avais appliqué `proxmox-userCount-unique-usernames.patch` auparavant, ce patch le remplace (même zone modifiée).
+
+## 1bis. Ancien correctif (compteur = pseudos uniques)
+
+```bash
 git apply proxmox-userCount-unique-usernames.patch
 ```
 
-Envoie des **pseudos uniques** dans `userCount` pour que le client affiche le bon nombre de comptes connectés.
+Envoie des **pseudos uniques** dans `userCount`. Préférer le patch ci‑dessus pour « 2 clients = 2 ».
 
 ## 2. Bloquer deux connexions du même compte (deux postes)
 
