@@ -1,0 +1,29 @@
+--- a/proxmox/app/src/main.ts
++++ b/proxmox/app/src/main.ts
+@@ -1336,9 +1336,9 @@
+         };
+ 
+         const sendUserCount = () => {
+-          const users = [...new Set(Array.from(connectedUsers.values()).map(u => u.username))];
+-          const count = users.length;
++          const count = connectedUsers.size;
++          const users = Array.from(connectedUsers.values()).map(u => u.username);
+           const payload = JSON.stringify({ type: 'userCount', count, users });
+           for (const user of connectedUsers.values()) {
+             try {
+@@ -1432,6 +1432,7 @@
+                   if (existing) existing.username = username;
+               }
+               socket.socket.send(JSON.stringify({ type: 'auth:ack', ok: true }));
++              sendUserCount();
+               break;
+             }
+ 
+@@ -1462,6 +1463,7 @@
+                 }
+ 
+                 socket.socket.send(JSON.stringify({ type: 'success', message: 'Pseudo updated' }));
++                sendUserCount();
+               }
+               break;
+             }

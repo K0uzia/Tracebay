@@ -169,10 +169,11 @@ class ChatManager {
                 // #endregion
                 logger.debug(`Mise à jour utilisateurs: ${data.count}`, { users: data.users });
                 this.connectedUsers = data.users || [];
+                // Utiliser le count envoyé par le serveur (nombre de connexions), sinon déduplication par pseudo
                 const pseudos = Array.isArray(this.connectedUsers)
                     ? this.connectedUsers.map(u => (typeof u === 'string' ? u : (u?.pseudo || u?.username || '')))
                     : [];
-                this.userCount = new Set(pseudos.filter(Boolean)).size;
+                this.userCount = typeof data.count === 'number' ? data.count : new Set(pseudos.filter(Boolean)).size;
                 this.displayPseudo();
             } else if (data.type === 'chatCleared') {
                 logger.info(`Chat supprimé par: ${data.clearedBy}`);
