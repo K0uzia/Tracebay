@@ -67,10 +67,11 @@ const messageStartTime = Date.now();
 
 /** Broadcast current user count to all connected WebSockets (used by WS close and HTTP logout). */
 function broadcastUserCount() {
-  const count = connectedUsers.size;
-  const users = Array.from(connectedUsers.values()).map((u) => u.username);
+  const snapshot = Array.from(connectedUsers.values());
+  const count = snapshot.length;
+  const users = snapshot.map((u) => u.username);
   const payload = JSON.stringify({ type: 'userCount', count, users });
-  for (const user of connectedUsers.values()) {
+  for (const user of snapshot) {
     try {
       user.socket.socket.send(payload);
     } catch {
@@ -202,6 +203,9 @@ function broadcastUserCount() {
           // ignore invalid token
         }
       }
+      if (!normalizedUsername) {
+        fastify.log.warn('logout: pas de token ou username (Authorization header manquant ?)');
+      }
       if (normalizedUsername) {
         activeSessions.delete(normalizedUsername);
         const toRemove = Array.from(connectedUsers.entries()).filter(
@@ -221,6 +225,7 @@ function broadcastUserCount() {
             }
           }
         }
+        fastify.log.info({ username: normalizedUsername, removedSockets: toRemove.length }, 'logout: session et sockets supprimés');
       }
       broadcastUserCount();
       return { success: true, message: 'Logged out successfully' };
@@ -1386,12 +1391,14 @@ function broadcastUserCount() {
         }));
         broadcastUserCount();
 
-        // Helper for broadcasting
+        // Helper for broadcasting (snapshot pour ne manquer personne)
         const broadcast = (payload: any, excludeId?: string) => {
-          for (const user of connectedUsers.values()) {
+          const snapshot = Array.from(connectedUsers.values());
+          const payloadStr = JSON.stringify(payload);
+          for (const user of snapshot) {
             if (excludeId && user.id === excludeId) continue;
             try {
-              user.socket.socket.send(JSON.stringify(payload));
+              user.socket.socket.send(payloadStr);
             } catch {
               // Ignore send failures
             }
@@ -1511,6 +1518,7 @@ function broadcastUserCount() {
 
         // Handle disconnection
         socket.on('close', (code?: number, reason?: Buffer) => {
+          const hadEntry = connectedUsers.has(userId);
           const normalizedUsername = String(username).trim().toLowerCase();
           const connectionsForUser = Array.from(connectedUsers.values()).filter(
             (u) => String(u.username).trim().toLowerCase() === normalizedUsername
@@ -1521,10 +1529,10 @@ function broadcastUserCount() {
             activeSessions.delete(normalizedUsername);
             fastify.log.info(`Session libérée pour ${normalizedUsername} (déconnexion WebSocket)`);
           }
-          fastify.log.info(`❌ WebSocket disconnected: ${username} (${userId}) code=${code} reason=${reason?.toString() || ''}`);
+          fastify.log.info(`❌ WebSocket disconnected: ${username} (${userId}) hadEntry=${hadEntry} code=${code} reason=${reason?.toString() || ''}`);
 
           clearInterval(pingInterval);
-          broadcastUserCount();
+          if (hadEntry) broadcastUserCount();
         });
 
         // Handle errors (connexion fermée brutalement sans close frame, ex: reload) → retirer de connectedUsers
