@@ -43,8 +43,9 @@ jobs:
       - name: Build client (Linux) & publish
         working-directory: apps/client
         env:
-          # PAT optionnel (Settings → Secrets) ; sinon token automatique du job
+          # electron-builder utilise GH_TOKEN ou GITHUB_TOKEN pour publier sur GitHub Releases
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           NODE_ENV: production
         run: npm run build:prod:linux
 
@@ -69,6 +70,7 @@ jobs:
         working-directory: apps/client
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           NODE_ENV: production
         run: npm run build:prod:win
 
@@ -93,5 +95,6 @@ jobs:
         working-directory: apps/client
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           NODE_ENV: production
         run: npm run build:prod:mac
