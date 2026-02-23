@@ -32,6 +32,9 @@ class ChatWebSocket {
         this.maxReconnectAttempts = 5;
         this.reconnectDelay = 3000;
         this.authToken = null;
+        this._authAcked = false;
+        this._authRetryCount = 0;
+        this._authRetryTimer = null;
         logger.info(`ChatWebSocket initialisé avec: ${this.wsUrl}`);
         this.connect();
     }
@@ -56,10 +59,10 @@ class ChatWebSocket {
             this.ws.addEventListener('open', () => {
                 logger.info('WebSocket connecté');
                 this.reconnectAttempts = 0;
-                const token = this.authToken || (typeof localStorage !== 'undefined' && localStorage.getItem('workspace_jwt'));
-                if (token) {
-                    this.authenticate(token).catch(() => {});
-                }
+                this._authAcked = false;
+                this._authRetryCount = 0;
+                this._trySendAuth();
+                this._startAuthRetry();
             });
 
             this.ws.addEventListener('message', (event) => {
@@ -72,6 +75,7 @@ class ChatWebSocket {
             });
 
             this.ws.addEventListener('close', () => {
+                this._stopAuthRetry();
                 if (this._skipReconnect) {
                     logger.info('WebSocket fermé (déconnexion volontaire), pas de reconnexion');
                     return;
@@ -100,12 +104,44 @@ class ChatWebSocket {
         setTimeout(() => this.connect(), this.reconnectDelay);
     }
 
+    _trySendAuth() {
+        const token = this.authToken || (typeof localStorage !== 'undefined' && localStorage.getItem('workspace_jwt'));
+        if (!token || !this.ws || this.ws.readyState !== WebSocket.OPEN || this._authAcked) return;
+        try {
+            this.ws.send(JSON.stringify({ type: 'auth', token }));
+            logger.info('Auth WebSocket envoyée (token présent)');
+        } catch (err) {
+            logger.error('Erreur envoi auth WS', err);
+        }
+    }
+
+    _startAuthRetry() {
+        this._stopAuthRetry();
+        const maxAttempts = 15;
+        this._authRetryTimer = setInterval(() => {
+            if (this._authAcked || this._authRetryCount >= maxAttempts) {
+                this._stopAuthRetry();
+                return;
+            }
+            this._authRetryCount++;
+            this._trySendAuth();
+        }, 2000);
+    }
+
+    _stopAuthRetry() {
+        if (this._authRetryTimer) {
+            clearInterval(this._authRetryTimer);
+            this._authRetryTimer = null;
+        }
+    }
+
     async authenticate(token) {
         if (!token) return;
         this.authToken = token;
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
         try {
             this.ws.send(JSON.stringify({ type: 'auth', token }));
+            logger.info('Auth WebSocket envoyée (authenticate)');
         } catch (err) {
             logger.error('Erreur envoi auth WS', err);
         }
@@ -113,7 +149,10 @@ class ChatWebSocket {
 
     handleMessage(data) {
         if (data.type === 'auth:ack') {
+            this._authAcked = true;
+            this._stopAuthRetry();
             this.messageHandlers.forEach(handler => handler({ type: 'auth:ack', ok: data.ok }));
+            logger.info('Auth WebSocket confirmée par le serveur');
             return;
         }
         if (data.type === 'error') {
@@ -181,9 +220,8 @@ class ChatWebSocket {
                 count: typeof data.connectedUsers === 'number' ? data.connectedUsers : data.count,
                 users: data.users || []
             }));
-            // Si on a un token (ex: login après ouverture du WS), s'authentifier maintenant
-            const token = this.authToken || (typeof localStorage !== 'undefined' && localStorage.getItem('workspace_jwt'));
-            if (token) this.authenticate(token).catch(() => {});
+            this._trySendAuth();
+            if (!this._authAcked) this._startAuthRetry();
             return;
         }
         if (data.type === 'success') {
