@@ -30,29 +30,30 @@ const proxmoxConfig = {
   wsPort: parseInt(process.env.WS_PORT || '4000', 10)
 };
 
-// Initialize Fastify
+// Logger Pino : multistream = même process (pas de worker) → tous les logs vont à stdout ET au buffer monitoring
+function createLoggerStreams() {
+  const pino = require('pino') as typeof import('pino');
+  const pinoPretty = require('pino-pretty') as (opts?: any) => NodeJS.WritableStream;
+  const prettyStream = pinoPretty({
+    colorize: true,
+    translateTime: 'SYS:standard',
+    ignore: 'pid,hostname'
+  });
+  const bufferStream = createPinoBufferStream();
+  return pino.multistream([
+    { stream: prettyStream },
+    { stream: bufferStream, level: 'trace' as const }
+  ]);
+}
+
+// Initialize Fastify (logger = multistream pour Docker + page monitoring)
 const fastify: FastifyInstance = Fastify({
   logger: {
     level: process.env.LOG_LEVEL || 'info',
-    transport: {
-      target: 'pino-pretty',
-      options: {
-        colorize: true,
-        translateTime: 'SYS:standard',
-        ignore: 'pid,hostname'
-      }
-    }
+    stream: createLoggerStreams()
   },
   bodyLimit: 1048576 // 1MB
 });
-
-// Envoyer tous les logs Pino (API, requêtes HTTP, etc.) vers la page monitoring
-try {
-  const pinoStream = createPinoBufferStream();
-  (fastify.log as any).addStream?.({ stream: pinoStream, level: 'trace' });
-} catch {
-  // ignore si addStream non disponible
-}
 
 // Log every HTTP request (method, url, status, ms, ip)
 fastify.addHook('onResponse', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -1397,11 +1398,14 @@ function broadcastUserCount() {
         });
 
         fastify.log.info(`✅ WebSocket connected: ${username} (${userId})`);
+        console.log(`[CHAT] WS connecté: ${username} (${userId}) | total connectés: ${connectedUsers.size}`);
 
-        // Heartbeat to keep connections alive and detect dead sockets
+        // Heartbeat : 45s pour laisser le temps à l'auth après connexion
+        const PING_INTERVAL_MS = 45000;
         const pingInterval = setInterval(() => {
           if (!isAlive) {
             fastify.log.warn(`⏱️ Closing stale WebSocket for ${username} (${userId})`);
+            console.log(`[CHAT] Connexion fermée (stale): ${username} (${userId})`);
             try {
               socket.terminate?.();
             } catch {
@@ -1415,7 +1419,7 @@ function broadcastUserCount() {
           } catch {
             // Ignore ping failures
           }
-        }, 30000);
+        }, PING_INTERVAL_MS);
 
         // Send welcome message
         const rawSocket = getRawSocket(socket);
@@ -1439,6 +1443,7 @@ function broadcastUserCount() {
           }
           if (sentTo.length > 0) {
             fastify.log.info({ broadcastTo: sentTo.length, userIds: sentTo }, '[WS] broadcast sent');
+            console.log(`[CHAT] Broadcast envoyé à ${sentTo.length} socket(s): ${sentTo.join(', ')}`);
           }
         };
 
@@ -1505,6 +1510,7 @@ function broadcastUserCount() {
               // #region agent log
               fastify.log.info({ hypothesisId: 'H1', tokenUsername }, '[DEBUG] H1 auth success');
               // #endregion
+              console.log(`[CHAT] Auth OK: ${tokenUsername} (${userId}) | total: ${connectedUsers.size}`);
               const rAck = getRawSocket(socket);
               if (rAck) rAck.send(JSON.stringify({ type: 'auth:ack', ok: true }));
               broadcastUserCount();
@@ -1552,6 +1558,7 @@ function broadcastUserCount() {
                 const recipientCount = connectedUsers.size;
                 const textPreview = String(text).substring(0, 40) + (String(text).length > 40 ? '…' : '');
                 fastify.log.info(`[WS] broadcast message:new → ${recipientCount} client(s) | msg=${outbound.data.id} | "${textPreview}"`);
+                console.log(`[CHAT] Message de ${username} → broadcast à ${recipientCount} client(s) | "${textPreview}"`);
                 broadcast(outbound);
               } catch (dbErr: any) {
                 fastify.log.error({ err: dbErr }, 'DB insert message');
@@ -1594,6 +1601,7 @@ function broadcastUserCount() {
             fastify.log.info(`Session libérée pour ${normalizedUsername} (déconnexion WebSocket)`);
           }
           fastify.log.info(`❌ WebSocket disconnected: ${username} (${userId}) hadEntry=${hadEntry} code=${code} reason=${reason?.toString() || ''}`);
+          console.log(`[CHAT] Déconnexion: ${username} (${userId}) | restants: ${connectedUsers.size}`);
 
           clearInterval(pingInterval);
           if (hadEntry) broadcastUserCount();

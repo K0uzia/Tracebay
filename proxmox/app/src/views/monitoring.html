@@ -425,7 +425,12 @@
         <header>
             <h1>🔍 Monitoring - Erreurs Clients Electron</h1>
             <p>Surveillance des erreurs des applications clientes</p>
+            <p style="font-size: 13px; color: #7f8c8d; margin-top: 8px;">Pour accéder aux erreurs : ajoutez <code>?token=VOTRE_TOKEN</code> à l’URL (token admin ou JWT de l’app), ou définissez <code>MONITORING_PUBLIC=true</code> pour l’accès lecture sans token.</p>
         </header>
+        
+        <div id="authBanner" class="error-message" style="display: none; margin-bottom: 20px;">
+            <strong>401 Non autorisé.</strong> Ajoutez un token à l’URL : <code>?token=SECRET_RETIRE</code> ou votre JWT d’app. <a href="javascript:location.href=location.pathname+'?token=SECRET_RETIRE'">Essayer avec token admin</a>
+        </div>
         
         <div class="stats-grid" id="statsGrid">
             <div class="stat-card">
@@ -560,10 +565,17 @@
             }
         }
         
+        // Afficher ou masquer la bannière 401
+        function setAuthBanner(show) {
+            const el = document.getElementById('authBanner');
+            if (el) el.style.display = show ? 'block' : 'none';
+        }
+        
         // Charger les erreurs
         async function loadErrors() {
             const container = document.getElementById('errorsTableContainer');
             container.innerHTML = '<div class="loading">Chargement...</div>';
+            setAuthBanner(false);
             
             try {
                 const params = new URLSearchParams({
@@ -575,6 +587,12 @@
                 const response = await fetch(`${API_BASE}/errors?${params}`, {
                     headers: getAuthHeaders()
                 });
+                
+                if (response.status === 401) {
+                    setAuthBanner(true);
+                    container.innerHTML = '<div class="loading">Authentification requise (voir ci-dessus).</div>';
+                    return;
+                }
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}`);
@@ -588,6 +606,7 @@
                     throw new Error(data.error || 'Erreur inconnue');
                 }
             } catch (error) {
+                if (error.message && error.message.includes('401')) setAuthBanner(true);
                 container.innerHTML = `<div class="error-message">Erreur: ${error.message}</div>`;
             }
         }

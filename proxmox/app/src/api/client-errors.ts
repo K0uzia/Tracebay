@@ -56,25 +56,44 @@ setInterval(() => {
 
 // Middleware d'authentification pour le dashboard
 async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<boolean> {
+  // Option : accès lecture seule sans token (réseau interne uniquement)
+  const publicReadOnly = process.env.MONITORING_PUBLIC === 'true' || process.env.MONITORING_PUBLIC === '1';
+  const method = (request as any).method;
+  if (publicReadOnly && (method === 'GET' || method === 'HEAD')) {
+    return true;
+  }
+
   const authHeader = request.headers.authorization;
-  // Pour les cookies, utiliser request.headers.cookie et parser manuellement si nécessaire
   const cookies = request.headers.cookie || '';
   const cookieMatch = cookies.match(/workspace_jwt=([^;]+)/);
-  const token = authHeader && authHeader.startsWith('Bearer ') 
-    ? authHeader.substring(7) 
-    : cookieMatch ? cookieMatch[1] : (request.query as any)?.token;
-  
+  const token = authHeader && authHeader.startsWith('Bearer ')
+    ? authHeader.substring(7).trim()
+    : cookieMatch ? cookieMatch[1].trim() : (request.query as any)?.token;
+
   if (!token) {
     reply.statusCode = 401;
-    reply.send({ success: false, error: 'Authentification requise' });
+    reply.send({ success: false, error: 'Authentification requise. Ajoutez ?token=VOTRE_TOKEN à l\'URL ou définissez MONITORING_ADMIN_TOKEN.' });
     return false;
   }
-  
+
   const adminToken = process.env.MONITORING_ADMIN_TOKEN || 'SECRET_RETIRE';
   if (token === adminToken || token === 'SECRET_RETIRE') {
     return true;
   }
-  
+
+  // Accepter le JWT de l'app (même format que /api/auth) pour les utilisateurs connectés
+  const raw = token.replace(/^Bearer\s+/i, '').trim();
+  if (raw.startsWith('jwt_')) {
+    try {
+      const decoded = JSON.parse(Buffer.from(raw.slice(4), 'base64').toString());
+      if (decoded && decoded.username) {
+        return true;
+      }
+    } catch {
+      // token invalide
+    }
+  }
+
   reply.statusCode = 403;
   reply.send({ success: false, error: 'Token invalide' });
   return false;
