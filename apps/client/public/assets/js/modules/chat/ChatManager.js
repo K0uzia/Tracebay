@@ -18,7 +18,9 @@ class ChatManager {
         this.sendButtonId = options.sendButtonId || 'chat-widget-send';
         this.emoteButtonId = options.emoteButtonId || 'chat-widget-emote';
         this.emotePickerId = options.emotePickerId || 'chat-widget-emote-picker';
-        this.emotes = ['😀', '😊', '😂', '😍', '🥳', '👍', '👋', '❤️', '🎉', '🔥', '✨', '🙏', '😎', '🤔', '💪', '👏', '😅', '🥺', '😢', '😤'];
+        this.gifButtonId = options.gifButtonId || 'chat-widget-gif';
+        this.gifPickerId = options.gifPickerId || 'chat-widget-gif-picker';
+        this.giphyApiKey = options.giphyApiKey || (options.securityConfig && options.securityConfig.giphyApiKey) || (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.giphyApiKey) || '';
 
         const wsUrl = options.wsUrl || api.getWsUrl();
         this.webSocket = getSharedChatWebSocket({ wsUrl });
@@ -121,14 +123,20 @@ class ChatManager {
             this.pseudo = user ? user.username : null;
             this.displayPseudo();
             if (token) {
+                if (!this.webSocket.isConnected()) this.webSocket.connect();
                 this.webSocket.authenticate(token);
+            } else {
+                this.webSocket.disconnect();
             }
         });
 
         this.displayPseudo();
         this.renderMessages();
         this.attachEventListeners();
-        this.initEmotePicker();
+        requestAnimationFrame(() => {
+            this.initEmotePicker();
+            this.initGifPicker();
+        });
 
         const connectAndRestoreSession = () => {
             if (this.webSocket.isConnected()) {
@@ -188,28 +196,138 @@ class ChatManager {
         const input = document.getElementById(this.inputId);
         if (!btn || !picker || !input) return;
 
-        picker.innerHTML = '';
-        this.emotes.forEach(emote => {
-            const b = document.createElement('button');
-            b.type = 'button';
-            b.textContent = emote;
-            b.setAttribute('aria-label', `Insérer ${emote}`);
-            b.addEventListener('click', () => {
-                const start = input.selectionStart ?? input.value.length;
-                const end = input.selectionEnd ?? input.value.length;
-                const before = input.value.slice(0, start);
-                const after = input.value.slice(end);
-                input.value = before + emote + after;
-                input.focus();
-                input.selectionStart = input.selectionEnd = start + emote.length;
-                picker.classList.remove('show');
+        const insertEmoji = (unicode) => {
+            const start = input.selectionStart ?? input.value.length;
+            const end = input.selectionEnd ?? input.value.length;
+            const before = input.value.slice(0, start);
+            const after = input.value.slice(end);
+            input.value = before + unicode + after;
+            input.focus();
+            input.selectionStart = input.selectionEnd = start + unicode.length;
+            picker.classList.remove('show');
+        };
+
+        const initPickerElement = () => {
+            picker.innerHTML = '';
+            const emojiPicker = document.createElement('emoji-picker');
+            emojiPicker.classList.add('chat-emoji-picker');
+            emojiPicker.addEventListener('emoji-click', (e) => {
+                const unicode = e.detail?.unicode;
+                if (unicode) insertEmoji(unicode);
             });
-            picker.appendChild(b);
+            picker.appendChild(emojiPicker);
+        };
+
+        if (customElements.get('emoji-picker')) {
+            initPickerElement();
+        } else {
+            customElements.whenDefined('emoji-picker').then(initPickerElement);
+        }
+
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById(this.gifPickerId)?.classList.remove('show');
+            picker.classList.toggle('show');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (picker.classList.contains('show') && !picker.contains(e.target) && e.target !== btn) {
+                picker.classList.remove('show');
+            }
+        });
+    }
+
+    async fetchGiphyGifs(query, limit = 12) {
+        if (!this.giphyApiKey) return [];
+        try {
+            const q = encodeURIComponent((query || 'reaction').slice(0, 50));
+            const res = await fetch(
+                `https://api.giphy.com/v1/gifs/search?api_key=${this.giphyApiKey}&q=${q}&limit=${limit}&rating=g&lang=fr`
+            );
+            if (!res.ok) return [];
+            const data = await res.json();
+            const results = data.data || [];
+            return results.map(g => {
+                const imgs = g.images || {};
+                const orig = imgs.original || imgs.fixed_height || {};
+                const preview = (imgs.fixed_height_small || imgs.fixed_height || orig).url;
+                const url = orig.url || preview;
+                return { url, preview: preview || url, id: g.id };
+            }).filter(x => x.url);
+        } catch (e) {
+            logger.debug('Giphy API error', e);
+            return [];
+        }
+    }
+
+    initGifPicker() {
+        const btn = document.getElementById(this.gifButtonId);
+        const picker = document.getElementById(this.gifPickerId);
+        const input = document.getElementById(this.inputId);
+        if (!btn || !picker || !input) return;
+
+        picker.className = 'chat-widget-gif-picker';
+        const searchWrap = document.createElement('div');
+        searchWrap.className = 'chat-widget-gif-search';
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.placeholder = 'Rechercher un GIF...';
+        searchInput.className = 'chat-widget-gif-search-input';
+        const resultsWrap = document.createElement('div');
+        resultsWrap.className = 'chat-widget-gif-results';
+
+        const renderResults = (gifs) => {
+            resultsWrap.innerHTML = '';
+            if (!this.giphyApiKey) {
+                resultsWrap.innerHTML = '<p class="chat-widget-gif-no-key">Ajoutez une clé API Giphy dans la config (giphyApiKey) pour rechercher des GIFs. <a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener">Créer une clé Giphy</a></p>';
+                return;
+            }
+            if (gifs.length === 0) {
+                resultsWrap.innerHTML = '<p class="chat-widget-gif-empty">Aucun GIF. Essayez un autre mot.</p>';
+                return;
+            }
+            gifs.forEach(({ url, preview }) => {
+                const thumb = document.createElement('button');
+                thumb.type = 'button';
+                thumb.className = 'chat-widget-gif-thumb';
+                const img = document.createElement('img');
+                img.src = preview || url;
+                img.alt = '';
+                img.loading = 'lazy';
+                thumb.appendChild(img);
+                thumb.addEventListener('click', () => {
+                    const sep = input.value.trim() ? ' ' : '';
+                    input.value = input.value + sep + url;
+                    picker.classList.remove('show');
+                    input.focus();
+                });
+                resultsWrap.appendChild(thumb);
+            });
+        };
+
+        searchWrap.appendChild(searchInput);
+        picker.appendChild(searchWrap);
+        picker.appendChild(resultsWrap);
+
+        let searchTimeout = null;
+        searchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            const q = searchInput.value.trim();
+            searchTimeout = setTimeout(async () => {
+                const gifs = await this.fetchGiphyGifs(q || 'reaction');
+                renderResults(gifs);
+            }, 300);
         });
 
         btn.addEventListener('click', (e) => {
             e.preventDefault();
+            e.stopPropagation();
+            document.getElementById(this.emotePickerId)?.classList.remove('show');
             picker.classList.toggle('show');
+            if (picker.classList.contains('show') && resultsWrap.children.length === 0) {
+                this.fetchGiphyGifs('reaction').then(renderResults);
+            }
         });
 
         document.addEventListener('click', (e) => {

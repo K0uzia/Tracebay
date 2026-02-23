@@ -55,6 +55,7 @@ class ChatWebSocket {
     }
 
     connect() {
+        this._skipReconnect = false;
         try {
             this.ws = new WebSocket(this.wsUrl);
 
@@ -285,13 +286,13 @@ class ChatWebSocket {
             this.ws.close();
             this.ws = null;
         }
-        if (sharedInstance === this) {
+        if (!skipReconnect && sharedInstance === this) {
             sharedInstance = null;
         }
     }
 
     disconnect() {
-        this.close();
+        this.close(true);
     }
 }
 

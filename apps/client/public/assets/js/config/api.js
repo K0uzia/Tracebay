@@ -39,6 +39,7 @@ function applyConnectionConfig(cfg) {
         getFullUrl: (endpoint) => `${env.url}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`
     };
     window.APP_CONFIG = {
+        ...(window.APP_CONFIG || {}),
         serverUrl: env.url,
         serverWsUrl: env.ws,
         healthCheckInterval: cfg.connection?.healthCheckInterval ?? 30000,
@@ -88,6 +89,7 @@ async function init() {
         getFullUrl: (endpoint) => `${fallback.url}${endpoint}`
     };
     window.APP_CONFIG = {
+        ...(window.APP_CONFIG || {}),
         serverUrl: fallback.url,
         serverWsUrl: fallback.ws
     };
