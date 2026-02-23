@@ -23,7 +23,8 @@ class ChatWebSocket {
             logger.warn('ChatWebSocket: réutilisation de l’instance partagée');
             return sharedInstance;
         }
-        this.wsUrl = options.wsUrl || (window.APP_CONFIG && window.APP_CONFIG.serverWsUrl) || this.getWebSocketUrl();
+        const base = options.wsUrl || (window.APP_CONFIG && window.APP_CONFIG.serverWsUrl) || this.getWebSocketUrl();
+        this.wsUrl = this.normalizeWsUrl(base);
         this.ws = null;
         this.messageHandlers = [];
         this.errorHandlers = [];
@@ -39,6 +40,13 @@ class ChatWebSocket {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
         return `${protocol}//${host}/ws`;
+    }
+
+    /** S'assurer que l'URL pointe vers la route /ws du backend */
+    normalizeWsUrl(url) {
+        if (!url || typeof url !== 'string') return this.getWebSocketUrl();
+        const u = url.trim().replace(/\/+$/, '');
+        return u.endsWith('/ws') ? u : `${u}/ws`;
     }
 
     connect() {
