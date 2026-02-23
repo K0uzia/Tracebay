@@ -1451,6 +1451,8 @@ function broadcastUserCount() {
         socket.on('message', async (data: any) => {
           try {
             const message = JSON.parse(data.toString());
+            fastify.log.info({ type: message?.type }, '[WS] message reçu');
+            console.log('[WS] message reçu:', message?.type);
 
             switch (message.type) {
             case 'auth': {
