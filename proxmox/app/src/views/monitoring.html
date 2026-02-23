@@ -500,6 +500,7 @@
                 <h2>📋 Logs serveur</h2>
                 <div>
                     <span id="serverLogsCount" style="font-size: 14px; color: #7f8c8d; margin-right: 10px;">0 lignes</span>
+                    <button class="btn-primary" onclick="copyServerLogs()" title="Copier tout le contenu des logs dans le presse-papiers">📋 Copier les logs</button>
                     <button class="btn-primary" onclick="loadServerLogs()">🔄 Actualiser</button>
                 </div>
             </div>
@@ -911,6 +912,46 @@
                 viewer.innerHTML = '<span class="server-logs-empty">Erreur: ' + (error.message || error) + '</span>';
                 countEl.textContent = '0 lignes';
             }
+        }
+        
+        function copyServerLogs() {
+            const viewer = document.getElementById('serverLogsViewer');
+            if (!viewer) return;
+            const text = viewer.innerText || viewer.textContent || '';
+            if (!text.trim()) {
+                if (typeof navigator.clipboard !== 'undefined' && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText('(Aucun log à copier)');
+                }
+                return;
+            }
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(function() {
+                    var btn = document.querySelector('button[onclick="copyServerLogs()"]');
+                    if (btn) {
+                        var oldText = btn.textContent;
+                        btn.textContent = '✓ Copié';
+                        setTimeout(function() { btn.textContent = oldText; }, 2000);
+                    }
+                }).catch(function() {
+                    fallbackCopy(text);
+                });
+            } else {
+                fallbackCopy(text);
+            }
+        }
+        function fallbackCopy(text) {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.left = '-9999px';
+            document.body.appendChild(ta);
+            ta.select();
+            try {
+                document.execCommand('copy');
+                var btn = document.querySelector('button[onclick="copyServerLogs()"]');
+                if (btn) { btn.textContent = '✓ Copié'; setTimeout(function() { btn.textContent = '📋 Copier les logs'; }, 2000); }
+            } catch (e) { alert('Copie échouée'); }
+            document.body.removeChild(ta);
         }
         
         // Initialisation

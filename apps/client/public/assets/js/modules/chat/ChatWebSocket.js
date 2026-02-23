@@ -92,9 +92,10 @@ class ChatWebSocket {
         console.log('✅ WebSocket connecté');
         this.reconnectAttempts = 0;
         this.startHeartbeat();
-        // Si on a déjà un token, l'envoyer pour authentifier
-        if (this.authToken) {
-          this.authenticate(this.authToken).catch(() => {});
+        // Authentifier avec le token en mémoire ou celui en localStorage (ex: déjà connecté ou refresh après login)
+        const token = this.authToken || (typeof localStorage !== 'undefined' && localStorage.getItem('workspace_jwt'));
+        if (token) {
+          this.authenticate(token).catch(() => {});
         }
       });
 
@@ -366,6 +367,18 @@ class ChatWebSocket {
   disconnect(skipReconnect = false) {
     this.close(!!skipReconnect);
   }
+}
+
+// Permettre au code de login (même onglet) d'authentifier le WebSocket après un login réussi
+if (typeof window !== 'undefined') {
+  window.workspaceChatAuthenticate = (token) => {
+    const ws = currentInstance.current;
+    if (ws && token) ws.authenticate(token);
+  };
+  window.addEventListener('workspace-login', (e) => {
+    const token = e.detail && e.detail.token;
+    if (token) window.workspaceChatAuthenticate(token);
+  });
 }
 
 export default ChatWebSocket;
