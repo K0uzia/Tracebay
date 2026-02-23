@@ -117,7 +117,7 @@ class ChatManager {
             const token = e.detail?.token;
             this.pseudo = user ? user.username : null;
             this.displayPseudo();
-            if (token && this.webSocket.isConnected()) {
+            if (token) {
                 this.webSocket.authenticate(token);
             }
         });
