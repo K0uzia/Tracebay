@@ -2,6 +2,7 @@
  * ChatWebSocket - Communication temps réel avec le serveur chat
  * Pseudo = username du compte (auth via token). Pas de setPseudo.
  */
+console.log('[Chat WS] Module chargé (auth + retry activés)');
 
 import getLogger from '../../config/Logger.js';
 import getErrorHandler from '../../config/ErrorHandler.js';
@@ -35,6 +36,7 @@ class ChatWebSocket {
         this._authAcked = false;
         this._authRetryCount = 0;
         this._authRetryTimer = null;
+        this._authLogged = false;
         logger.info(`ChatWebSocket initialisé avec: ${this.wsUrl}`);
         this.connect();
     }
@@ -57,10 +59,12 @@ class ChatWebSocket {
             this.ws = new WebSocket(this.wsUrl);
 
             this.ws.addEventListener('open', () => {
+                console.log('[Chat WS] Connecté à', this.wsUrl);
                 logger.info('WebSocket connecté');
                 this.reconnectAttempts = 0;
                 this._authAcked = false;
                 this._authRetryCount = 0;
+                this._authLogged = false;
                 this._trySendAuth();
                 this._startAuthRetry();
             });
@@ -106,11 +110,24 @@ class ChatWebSocket {
 
     _trySendAuth() {
         const token = this.authToken || (typeof localStorage !== 'undefined' && localStorage.getItem('workspace_jwt'));
-        if (!token || !this.ws || this.ws.readyState !== WebSocket.OPEN || this._authAcked) return;
+        if (this._authAcked) return;
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+        if (!token) {
+            if (this._authRetryCount === 1) {
+                console.warn('[Chat WS] Pas de token (workspace_jwt vide). Connectez-vous pour envoyer des messages.');
+                logger.warn('Auth WebSocket: pas de token dans localStorage (workspace_jwt)');
+            }
+            return;
+        }
         try {
             this.ws.send(JSON.stringify({ type: 'auth', token }));
+            if (!this._authLogged) {
+                this._authLogged = true;
+                console.log('[Chat WS] Auth envoyée au serveur (token jwt_...)');
+            }
             logger.info('Auth WebSocket envoyée (token présent)');
         } catch (err) {
+            console.error('[Chat WS] Erreur envoi auth:', err);
             logger.error('Erreur envoi auth WS', err);
         }
     }
@@ -141,8 +158,10 @@ class ChatWebSocket {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
         try {
             this.ws.send(JSON.stringify({ type: 'auth', token }));
+            console.log('[Chat WS] Auth envoyée (authenticate)');
             logger.info('Auth WebSocket envoyée (authenticate)');
         } catch (err) {
+            console.error('[Chat WS] Erreur envoi auth:', err);
             logger.error('Erreur envoi auth WS', err);
         }
     }
@@ -152,6 +171,7 @@ class ChatWebSocket {
             this._authAcked = true;
             this._stopAuthRetry();
             this.messageHandlers.forEach(handler => handler({ type: 'auth:ack', ok: data.ok }));
+            console.log('[Chat WS] Auth confirmée par le serveur – vous pouvez envoyer des messages');
             logger.info('Auth WebSocket confirmée par le serveur');
             return;
         }
