@@ -16,6 +16,9 @@ class ChatManager {
         this.messagesContainerId = options.messagesContainerId || 'chat-widget-messages';
         this.inputId = options.inputId || 'chat-widget-input';
         this.sendButtonId = options.sendButtonId || 'chat-widget-send';
+        this.emoteButtonId = options.emoteButtonId || 'chat-widget-emote';
+        this.emotePickerId = options.emotePickerId || 'chat-widget-emote-picker';
+        this.emotes = ['😀', '😊', '😂', '😍', '🥳', '👍', '👋', '❤️', '🎉', '🔥', '✨', '🙏', '😎', '🤔', '💪', '👏', '😅', '🥺', '😢', '😤'];
 
         const wsUrl = options.wsUrl || api.getWsUrl();
         this.webSocket = getSharedChatWebSocket({ wsUrl });
@@ -125,6 +128,7 @@ class ChatManager {
         this.displayPseudo();
         this.renderMessages();
         this.attachEventListeners();
+        this.initEmotePicker();
 
         const connectAndRestoreSession = () => {
             if (this.webSocket.isConnected()) {
@@ -178,6 +182,43 @@ class ChatManager {
         }
     }
 
+    initEmotePicker() {
+        const btn = document.getElementById(this.emoteButtonId);
+        const picker = document.getElementById(this.emotePickerId);
+        const input = document.getElementById(this.inputId);
+        if (!btn || !picker || !input) return;
+
+        picker.innerHTML = '';
+        this.emotes.forEach(emote => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = emote;
+            b.setAttribute('aria-label', `Insérer ${emote}`);
+            b.addEventListener('click', () => {
+                const start = input.selectionStart ?? input.value.length;
+                const end = input.selectionEnd ?? input.value.length;
+                const before = input.value.slice(0, start);
+                const after = input.value.slice(end);
+                input.value = before + emote + after;
+                input.focus();
+                input.selectionStart = input.selectionEnd = start + emote.length;
+                picker.classList.remove('show');
+            });
+            picker.appendChild(b);
+        });
+
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            picker.classList.toggle('show');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (picker.classList.contains('show') && !picker.contains(e.target) && e.target !== btn) {
+                picker.classList.remove('show');
+            }
+        });
+    }
+
     displayPseudo() {
         const el = document.getElementById(this.pseudoDisplayId);
         if (!el) return;
@@ -187,11 +228,11 @@ class ChatManager {
                 <div class="chat-pseudo-confirmed">
                     <div class="chat-pseudo-info">
                         <i class="fas fa-user"></i>
-                        <span>Connecté en tant que ${this.escapeHtml(this.pseudo)}</span>
+                        <span>${this.escapeHtml(this.pseudo)}</span>
                     </div>
                     <div class="chat-user-count">
                         <i class="fas fa-users"></i>
-                        <span>${count} utilisateur(s) connecté(s)</span>
+                        <span>${count}</span>
                     </div>
                 </div>
             `;

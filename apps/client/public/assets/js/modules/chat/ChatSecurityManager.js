@@ -103,18 +103,15 @@ class ChatSecurityManager {
         button.textContent = urlString;
         button.className = 'chat-link';
         
-        // Au clic, ouvrir dans le navigateur système
+        // Au clic, ouvrir dans le navigateur système ou nouvel onglet
         button.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            
-            // Utiliser l'API Electron pour ouvrir dans le navigateur par défaut
             if (window.electron && typeof window.electron.openExternal === 'function') {
                 window.electron.openExternal(url);
             } else {
-                console.warn('⚠️ window.electron.openExternal non disponible');
+                window.open(url, '_blank', 'noopener,noreferrer');
             }
-            
             return false;
         });
         
