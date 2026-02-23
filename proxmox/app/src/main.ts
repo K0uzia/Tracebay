@@ -1400,28 +1400,7 @@ function broadcastUserCount() {
         fastify.log.info(`✅ WebSocket connected: ${username} (${userId})`);
         console.log(`[CHAT] WS connecté: ${username} (${userId}) | total connectés: ${connectedUsers.size}`);
 
-        // Heartbeat : 45s pour laisser le temps à l'auth après connexion
-        const PING_INTERVAL_MS = 45000;
-        const pingInterval = setInterval(() => {
-          if (!isAlive) {
-            fastify.log.warn(`⏱️ Closing stale WebSocket for ${username} (${userId})`);
-            console.log(`[CHAT] Connexion fermée (stale): ${username} (${userId})`);
-            try {
-              socket.terminate?.();
-            } catch {
-              try { socket.close(); } catch { /* ignore */ }
-            }
-            return;
-          }
-          isAlive = false;
-          try {
-            socket.ping();
-          } catch {
-            // Ignore ping failures
-          }
-        }, PING_INTERVAL_MS);
-
-        // Send welcome message
+        // Send welcome message (rawSocket défini en premier pour heartbeat + message/pong)
         const rawSocket = getRawSocket(socket);
         if (rawSocket) rawSocket.send(JSON.stringify({
           type: 'connected',
@@ -1447,9 +1426,29 @@ function broadcastUserCount() {
           }
         };
 
-        // Handle incoming messages: @fastify/websocket peut passer un Stream wrapper ;
-        // les événements 'message' sont émis par la socket brute (ws).
+        // Handle incoming messages + heartbeat: message et pong sur la socket brute ; ping aussi.
         const messageTarget = rawSocket && typeof (rawSocket as any).on === 'function' ? rawSocket : socket;
+        const pingTarget = (messageTarget as any).ping ? messageTarget : socket;
+        const PING_INTERVAL_MS = 45000;
+        const pingInterval = setInterval(() => {
+          if (!isAlive) {
+            fastify.log.warn(`⏱️ Closing stale WebSocket for ${username} (${userId})`);
+            console.log(`[CHAT] Connexion fermée (stale): ${username} (${userId})`);
+            try {
+              socket.terminate?.();
+            } catch {
+              try { socket.close(); } catch { /* ignore */ }
+            }
+            return;
+          }
+          isAlive = false;
+          try {
+            (pingTarget as any).ping();
+          } catch {
+            // Ignore ping failures
+          }
+        }, PING_INTERVAL_MS);
+
         messageTarget.on('message', async (data: any) => {
           try {
             const message = JSON.parse(data.toString());
