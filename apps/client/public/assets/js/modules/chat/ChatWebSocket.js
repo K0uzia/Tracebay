@@ -48,8 +48,9 @@ class ChatWebSocket {
             this.ws.addEventListener('open', () => {
                 logger.info('WebSocket connecté');
                 this.reconnectAttempts = 0;
-                if (this.authToken) {
-                    this.authenticate(this.authToken).catch(() => {});
+                const token = this.authToken || (typeof localStorage !== 'undefined' && localStorage.getItem('workspace_jwt'));
+                if (token) {
+                    this.authenticate(token).catch(() => {});
                 }
             });
 
@@ -223,6 +224,14 @@ class ChatWebSocket {
     disconnect() {
         this.close();
     }
+}
+
+// Permettre à AuthManager (login) d'authentifier le WebSocket dans le même onglet
+if (typeof window !== 'undefined') {
+    window.workspaceChatAuthenticate = (token) => {
+        const ws = getSharedChatWebSocket();
+        if (ws && token) ws.authenticate(token);
+    };
 }
 
 export { getSharedChatWebSocket };

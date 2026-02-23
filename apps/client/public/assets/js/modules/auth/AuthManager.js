@@ -219,6 +219,10 @@ class AuthManager {
         localStorage.setItem('workspace_username', user.username);
         if (token) {
             localStorage.setItem(this.tokenKey, token);
+            // Authentifier le WebSocket chat immédiatement (même onglet)
+            if (typeof window.workspaceChatAuthenticate === 'function') {
+                window.workspaceChatAuthenticate(token);
+            }
         }
         this.emit('auth-change', this.user);
         
