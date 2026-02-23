@@ -13,7 +13,7 @@ import { registerRateLimit } from './middleware/rate-limit';
 import { registerMonitoring } from './middleware/monitoring';
 import { globalMetrics } from './utils/metrics';
 import { globalCache } from './utils/cache';
-import { initServerLogBuffer } from './utils/server-log-buffer';
+import { initServerLogBuffer, createPinoBufferStream } from './utils/server-log-buffer';
 import { testConnection, initializeDatabase, query } from './db';
 
 // Load environment variables
@@ -46,6 +46,13 @@ const fastify: FastifyInstance = Fastify({
   bodyLimit: 1048576 // 1MB
 });
 
+// Envoyer tous les logs Pino (API, requêtes HTTP, etc.) vers la page monitoring
+try {
+  const pinoStream = createPinoBufferStream();
+  (fastify.log as any).addStream?.({ stream: pinoStream, level: 'trace' });
+} catch {
+  // ignore si addStream non disponible
+}
 
 // Log every HTTP request (method, url, status, ms, ip)
 fastify.addHook('onResponse', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -76,6 +83,27 @@ function getRawSocket(socketWrapper: any): { send: (data: string) => void; ready
   return raw;
 }
 
+/** Envoie un payload à une socket (send ou write selon l'API disponible). */
+function sendToSocket(socketRef: any, payloadStr: string): boolean {
+  const raw = getRawSocket(socketRef);
+  if (!raw) return false;
+  const ready = raw.readyState === undefined || raw.readyState === 1;
+  if (!ready) return false;
+  try {
+    if (typeof raw.send === 'function') {
+      raw.send(payloadStr);
+      return true;
+    }
+    if (typeof (raw as any).write === 'function') {
+      (raw as any).write(payloadStr);
+      return true;
+    }
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
 /** Broadcast current user count to all connected WebSockets (used by WS close and HTTP logout). */
 function broadcastUserCount() {
   const snapshot = Array.from(connectedUsers.values());
@@ -87,12 +115,7 @@ function broadcastUserCount() {
   // #endregion
   const payload = JSON.stringify({ type: 'userCount', count, users });
   for (const user of snapshot) {
-    try {
-      const raw = getRawSocket(user.socket);
-      if (raw && (raw.readyState === undefined || raw.readyState === 1)) raw.send(payload);
-    } catch {
-      // ignore
-    }
+    sendToSocket(user.socket, payload);
   }
 }
 
@@ -414,23 +437,21 @@ function broadcastUserCount() {
           type: 'message:new',
           data: {
             id: msg.id,
+            username: msg.username,
             pseudo: msg.username,
+            text: msg.text,
             message: msg.text,
+            createdAt: msg.created_at,
             created_at: msg.created_at
           }
         };
-        const recipientCount = connectedUsers.size;
-        const textPreview = String(msg.text || '').substring(0, 40) + (String(msg.text || '').length > 40 ? '…' : '');
-        console.log(`[WS] broadcast message:new (HTTP) → ${recipientCount} client(s) | msg=${msg.id} | "${textPreview}"`);
-
+        const payloadStr = JSON.stringify(wsPayload);
+        let sentCount = 0;
         for (const user of connectedUsers.values()) {
-          try {
-            const raw = getRawSocket(user.socket);
-            if (raw && (raw.readyState === undefined || raw.readyState === 1)) raw.send(JSON.stringify(wsPayload));
-          } catch {
-            // Socket might be closed
-          }
+          if (sendToSocket(user.socket, payloadStr)) sentCount++;
         }
+        const textPreview = String(msg.text || '').substring(0, 40) + (String(msg.text || '').length > 40 ? '…' : '');
+        fastify.log.info(`[WS] broadcast message:new (HTTP) → ${sentCount}/${connectedUsers.size} client(s) | msg=${msg.id} | "${textPreview}"`);
 
         return { success: true, message: msg };
       } catch (error) {
@@ -1407,18 +1428,17 @@ function broadcastUserCount() {
         }));
         broadcastUserCount();
 
-        // Helper for broadcasting (snapshot pour ne manquer personne)
+        // Helper for broadcasting à tous les clients connectés (snapshot pour ne manquer personne)
         const broadcast = (payload: any, excludeId?: string) => {
           const snapshot = Array.from(connectedUsers.values());
           const payloadStr = JSON.stringify(payload);
+          const sentTo: string[] = [];
           for (const user of snapshot) {
             if (excludeId && user.id === excludeId) continue;
-            try {
-              const raw = getRawSocket(user.socket);
-              if (raw && (raw.readyState === undefined || raw.readyState === 1)) raw.send(payloadStr);
-            } catch {
-              // Ignore send failures
-            }
+            if (sendToSocket(user.socket, payloadStr)) sentTo.push(user.id);
+          }
+          if (sentTo.length > 0) {
+            fastify.log.info({ broadcastTo: sentTo.length, userIds: sentTo }, '[WS] broadcast sent');
           }
         };
 
@@ -1522,8 +1542,11 @@ function broadcastUserCount() {
                   data: {
                     id: row.id,
                     username: row.username,
+                    pseudo: row.username,
                     text: row.text,
-                    createdAt: row.created_at
+                    message: row.text,
+                    createdAt: row.created_at,
+                    created_at: row.created_at
                   }
                 };
                 const recipientCount = connectedUsers.size;
