@@ -614,6 +614,21 @@
     opacity: 0.9;
 }
 
+.chat-message-text .chat-image-link {
+    display: inline-block;
+    margin: var(--unit-1) 0;
+}
+.chat-message-text .chat-inline-image {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    vertical-align: middle;
+}
+.chat-message-text .chat-inline-image:hover {
+    opacity: 0.9;
+}
+
 .chat-message-time {
     font-size: calc(var(--chat-message-font) * 0.65);
     color: var(--text3);
@@ -672,31 +687,128 @@
     left: 0;
     bottom: 100%;
     margin-bottom: var(--unit-1);
-    padding: var(--unit-1);
+    padding: 0;
     background: var(--blanc);
     border-radius: var(--radius-small);
     box-shadow: var(--shadow-medium);
     border: 1px solid rgba(0,0,0,0.08);
     z-index: 10;
-    max-height: calc(var(--unit-2) * 10);
-    overflow-y: auto;
+    overflow: hidden;
+    min-width: 320px;
+    height: 360px;
 }
 .chat-widget-emote-picker.show {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr);
-    gap: calc(var(--unit-1) * 0.5);
+    display: block;
 }
-.chat-widget-emote-picker button {
-    padding: var(--unit-1);
+/* emoji-picker-element (web component) dans le chat */
+.chat-widget-emote-picker emoji-picker.chat-emoji-picker,
+.chat-widget-emote-picker .chat-emoji-picker {
+    width: 100%;
+    height: 100%;
+    --num-columns: 8;
+    --emoji-size: 1.25rem;
+    --background: var(--blanc);
+    --border-color: rgba(0,0,0,0.08);
+    --border-radius: var(--radius-small);
+    --indicator-color: var(--btn);
+    --input-border-radius: var(--radius-small);
+}
+@media (prefers-color-scheme: dark) {
+    .chat-widget-emote-picker emoji-picker.chat-emoji-picker,
+    .chat-widget-emote-picker .chat-emoji-picker {
+        --background: #222;
+        --border-color: #444;
+    }
+}
+
+/* Bouton GIF */
+.chat-widget-gif-btn {
+    flex-shrink: 0;
+    width: calc(var(--unit-2) * 2);
+    height: calc(var(--unit-2) * 2);
     border: none;
-    background: none;
-    cursor: pointer;
-    font-size: 1.25rem;
     border-radius: var(--radius-small);
+    background-color: var(--blanc);
+    color: var(--btn);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: calc(var(--chat-input-font) * 1.1);
     transition: var(--transition);
 }
-.chat-widget-emote-picker button:hover {
-    background-color: rgba(62, 59, 140, 0.15);
+.chat-widget-gif-btn:hover {
+    background-color: var(--bleu2);
+    color: var(--blanc);
+}
+
+.chat-widget-gif-picker {
+    display: none;
+    position: absolute;
+    left: 0;
+    bottom: 100%;
+    margin-bottom: var(--unit-1);
+    width: calc(var(--unit-2) * 18);
+    max-height: calc(var(--unit-2) * 14);
+    background: var(--blanc);
+    border-radius: var(--radius-small);
+    box-shadow: var(--shadow-medium);
+    border: 1px solid rgba(0,0,0,0.08);
+    z-index: 10;
+    flex-direction: column;
+    overflow: hidden;
+}
+.chat-widget-gif-picker.show {
+    display: flex;
+}
+.chat-widget-gif-search {
+    padding: var(--unit-1);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+.chat-widget-gif-search-input {
+    width: 100%;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid rgba(0,0,0,0.15);
+    border-radius: var(--radius-small);
+    font-size: var(--chat-input-font);
+    box-sizing: border-box;
+}
+.chat-widget-gif-results {
+    flex: 1;
+    overflow-y: auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--unit-1);
+    padding: var(--unit-1);
+}
+.chat-widget-gif-thumb {
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    background: transparent;
+    overflow: hidden;
+    aspect-ratio: 1;
+}
+.chat-widget-gif-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+.chat-widget-gif-thumb:hover {
+    opacity: 0.9;
+}
+.chat-widget-gif-no-key,
+.chat-widget-gif-empty {
+    padding: var(--unit-2);
+    margin: 0;
+    font-size: calc(var(--chat-input-font) * 0.95);
+    color: var(--text3);
+    grid-column: 1 / -1;
+}
+.chat-widget-gif-no-key a {
+    color: var(--btn);
 }
 
 #chat-widget-input {
