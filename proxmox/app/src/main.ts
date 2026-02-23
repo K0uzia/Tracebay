@@ -1447,8 +1447,10 @@ function broadcastUserCount() {
           }
         };
 
-        // Handle incoming messages
-        socket.on('message', async (data: any) => {
+        // Handle incoming messages: @fastify/websocket peut passer un Stream wrapper ;
+        // les événements 'message' sont émis par la socket brute (ws).
+        const messageTarget = rawSocket && typeof (rawSocket as any).on === 'function' ? rawSocket : socket;
+        messageTarget.on('message', async (data: any) => {
           try {
             const message = JSON.parse(data.toString());
             fastify.log.info({ type: message?.type }, '[WS] message reçu');
@@ -1623,7 +1625,7 @@ function broadcastUserCount() {
         });
 
         // Handle pong response
-        socket.on('pong', () => {
+        (messageTarget as any).on('pong', () => {
           // #region agent log
           fastify.log.info({ hypothesisId: 'H4', userId, username }, '[DEBUG] H4 pong received');
           // #endregion
