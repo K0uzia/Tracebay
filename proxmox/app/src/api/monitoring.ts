@@ -3,6 +3,7 @@ import { ActivityLog } from '../models/ActivityLog';
 import { Message } from '../models/Message';
 import { Event } from '../models/Event';
 import { User } from '../models/User';
+import { getServerLogs } from '../utils/server-log-buffer';
 
 /**
  * Monitoring statistics interface
@@ -176,6 +177,22 @@ export async function registerMonitoringRoutes(
       fastify.log.error({ msg: 'Error fetching monitoring stats', error: errorMsg });
       reply.statusCode = 500;
       return { error: 'Failed to fetch monitoring stats' };
+    }
+  });
+
+  /**
+   * GET /api/monitoring/server-logs
+   * Returns last 250 lines of server stdout/stderr for the monitoring page
+   */
+  fastify.get('/api/monitoring/server-logs', async (_request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const lines = getServerLogs();
+      return { lines, total: lines.length };
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      fastify.log.error({ msg: 'Error fetching server logs', error: errorMsg });
+      reply.statusCode = 500;
+      return { error: 'Failed to fetch server logs' };
     }
   });
 

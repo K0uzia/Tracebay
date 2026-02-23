@@ -13,10 +13,14 @@ import { registerRateLimit } from './middleware/rate-limit';
 import { registerMonitoring } from './middleware/monitoring';
 import { globalMetrics } from './utils/metrics';
 import { globalCache } from './utils/cache';
+import { initServerLogBuffer } from './utils/server-log-buffer';
 import { testConnection, initializeDatabase, query } from './db';
 
 // Load environment variables
 dotenv.config();
+
+// Capture stdout/stderr pour la page monitoring (historique 250 lignes)
+initServerLogBuffer();
 
 // Configuration
 const nodeEnv = (process.env.NODE_ENV || 'development') as 'development' | 'production';

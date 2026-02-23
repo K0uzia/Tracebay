@@ -352,6 +352,72 @@
             border-radius: 4px;
             margin-bottom: 20px;
         }
+        
+        .server-logs-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        
+        .server-logs-container .table-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .server-logs-viewer {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            font-size: 12px;
+            line-height: 1.45;
+            padding: 16px;
+            max-height: 480px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        
+        .server-logs-viewer .log-line {
+            margin: 2px 0;
+            padding: 2px 0;
+            border-bottom: 1px solid transparent;
+        }
+        
+        .server-logs-viewer .log-line-stderr {
+            color: #f48771;
+        }
+        
+        .server-logs-viewer .log-time {
+            color: #6a9955;
+            margin-right: 8px;
+        }
+        
+        .server-logs-viewer .log-badge {
+            font-size: 10px;
+            padding: 1px 4px;
+            border-radius: 3px;
+            margin-right: 8px;
+        }
+        
+        .server-logs-viewer .log-badge-stderr {
+            background: #5a2a2a;
+            color: #f48771;
+        }
+        
+        .server-logs-viewer .log-badge-stdout {
+            background: #2a2a5a;
+            color: #9cdcfe;
+        }
+        
+        .server-logs-empty {
+            color: #6a9955;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
@@ -421,6 +487,19 @@
             </div>
             <div id="errorsTableContainer">
                 <div class="loading">Chargement...</div>
+            </div>
+        </div>
+        
+        <div class="server-logs-container">
+            <div class="table-header">
+                <h2>📋 Logs serveur</h2>
+                <div>
+                    <span id="serverLogsCount" style="font-size: 14px; color: #7f8c8d; margin-right: 10px;">0 lignes</span>
+                    <button class="btn-primary" onclick="loadServerLogs()">🔄 Actualiser</button>
+                </div>
+            </div>
+            <div class="server-logs-viewer" id="serverLogsViewer">
+                <div class="loading">Chargement des logs...</div>
             </div>
         </div>
     </div>
@@ -785,15 +864,49 @@
             }
         });
         
+        // --- Logs serveur (historique 250 lignes) ---
+        async function loadServerLogs() {
+            const viewer = document.getElementById('serverLogsViewer');
+            const countEl = document.getElementById('serverLogsCount');
+            try {
+                const response = await fetch(`${API_BASE}/server-logs`, {
+                    headers: getAuthHeaders()
+                });
+                if (!response.ok) throw new Error('HTTP ' + response.status);
+                const data = await response.json();
+                const lines = data.lines || [];
+                countEl.textContent = lines.length + ' ligne' + (lines.length !== 1 ? 's' : '');
+                if (lines.length === 0) {
+                    viewer.innerHTML = '<span class="server-logs-empty">Aucun log pour le moment.</span>';
+                    return;
+                }
+                viewer.innerHTML = lines.map(function(line) {
+                    const time = line.time ? new Date(line.time).toLocaleTimeString('fr-FR', { hour12: false }) : '';
+                    const badge = line.level === 'stderr' ? 'stderr' : 'stdout';
+                    const cls = line.level === 'stderr' ? 'log-line log-line-stderr' : 'log-line';
+                    const text = (line.text || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                    return '<div class="' + cls + '"><span class="log-time">[' + time + ']</span><span class="log-badge log-badge-' + badge + '">' + line.level + '</span>' + text + '</div>';
+                }).join('');
+                viewer.scrollTop = viewer.scrollHeight;
+            } catch (error) {
+                viewer.innerHTML = '<span class="server-logs-empty">Erreur: ' + (error.message || error) + '</span>';
+                countEl.textContent = '0 lignes';
+            }
+        }
+        
         // Initialisation
         loadStats();
         loadErrors();
+        loadServerLogs();
         
-        // Actualiser toutes les 30 secondes
-        setInterval(() => {
+        // Actualiser toutes les 30 secondes (stats + erreurs)
+        setInterval(function() {
             loadStats();
             loadErrors();
         }, 30000);
+        
+        // Actualiser les logs serveur toutes les 5 secondes
+        setInterval(loadServerLogs, 5000);
     </script>
 </body>
 </html>
