@@ -65,6 +65,13 @@ const activeSessions = new Set<string>(); // usernames with an active session (o
 let messageCount = 0;
 const messageStartTime = Date.now();
 
+/** Get the raw WebSocket for sending (supports both raw socket and @fastify/websocket wrapper). */
+function getRawSocket(socketWrapper: any): { send: (data: string) => void; readyState?: number } | null {
+  const raw = socketWrapper?.socket ?? socketWrapper;
+  if (!raw || typeof raw.send !== 'function') return null;
+  return raw;
+}
+
 /** Broadcast current user count to all connected WebSockets (used by WS close and HTTP logout). */
 function broadcastUserCount() {
   const snapshot = Array.from(connectedUsers.values());
@@ -77,7 +84,8 @@ function broadcastUserCount() {
   const payload = JSON.stringify({ type: 'userCount', count, users });
   for (const user of snapshot) {
     try {
-      user.socket.socket.send(payload);
+      const raw = getRawSocket(user.socket);
+      if (raw && (raw.readyState === undefined || raw.readyState === 1)) raw.send(payload);
     } catch {
       // ignore
     }
@@ -220,13 +228,11 @@ function broadcastUserCount() {
         }
         for (const [, u] of toRemove) {
           try {
-            u.socket.socket?.terminate?.();
+            const raw = getRawSocket(u.socket);
+            if (raw && typeof (raw as any).terminate === 'function') (raw as any).terminate();
+            else if (raw && typeof (raw as any).close === 'function') (raw as any).close();
           } catch {
-            try {
-              u.socket.socket?.close();
-            } catch {
-              // ignore
-            }
+            // ignore
           }
         }
         fastify.log.info({ username: normalizedUsername, removedSockets: toRemove.length }, 'logout: session et sockets supprimés');
@@ -415,8 +421,9 @@ function broadcastUserCount() {
 
         for (const user of connectedUsers.values()) {
           try {
-            user.socket.socket.send(JSON.stringify(wsPayload));
-          } catch (e) {
+            const raw = getRawSocket(user.socket);
+            if (raw && (raw.readyState === undefined || raw.readyState === 1)) raw.send(JSON.stringify(wsPayload));
+          } catch {
             // Socket might be closed
           }
         }
@@ -1386,7 +1393,8 @@ function broadcastUserCount() {
         }, 30000);
 
         // Send welcome message
-        socket.socket.send(JSON.stringify({
+        const rawSocket = getRawSocket(socket);
+        if (rawSocket) rawSocket.send(JSON.stringify({
           type: 'connected',
           userId,
           username,
@@ -1402,7 +1410,8 @@ function broadcastUserCount() {
           for (const user of snapshot) {
             if (excludeId && user.id === excludeId) continue;
             try {
-              user.socket.socket.send(payloadStr);
+              const raw = getRawSocket(user.socket);
+              if (raw && (raw.readyState === undefined || raw.readyState === 1)) raw.send(payloadStr);
             } catch {
               // Ignore send failures
             }
@@ -1431,7 +1440,8 @@ function broadcastUserCount() {
               }
               if (!tokenUsername) {
                 fastify.log.info({ hypothesisId: 'H1' }, '[DEBUG] H1 auth rejected (Token invalide)');
-                socket.socket.send(JSON.stringify({ type: 'error', message: 'Token invalide' }));
+                const r = getRawSocket(socket);
+                if (r) r.send(JSON.stringify({ type: 'error', message: 'Token invalide' }));
                 break;
               }
               // Un compte = une connexion : refuser si déjà connecté ailleurs
@@ -1440,14 +1450,16 @@ function broadcastUserCount() {
                   ([id, u]) => id !== userId && String(u.username).trim().toLowerCase() === tokenUsername
                 );
                 if (otherWithSameUser) {
+                  connectedUsers.delete(userId);
                   try {
-                    socket.socket.send(JSON.stringify({ type: 'error', code: 'ALREADY_LOGGED_IN', message: 'Compte déjà connecté sur un autre poste.' }));
+                    const raw = getRawSocket(socket);
+                    if (raw) raw.send(JSON.stringify({ type: 'error', code: 'ALREADY_LOGGED_IN', message: 'Compte déjà connecté sur un autre poste.' }));
                   } catch { /* ignore */ }
                   try {
-                    socket.socket.terminate?.();
-                  } catch {
-                    try { socket.socket.close(); } catch { /* ignore */ }
-                  }
+                    const raw = getRawSocket(socket);
+                    if (raw && typeof (raw as any).terminate === 'function') (raw as any).terminate();
+                    else if (raw && typeof (raw as any).close === 'function') (raw as any).close();
+                  } catch { /* ignore */ }
                   break;
                 }
               }
@@ -1460,16 +1472,17 @@ function broadcastUserCount() {
               for (const [id, u] of zombies) {
                 connectedUsers.delete(id);
                 try {
-                  u.socket.socket?.terminate?.();
-                } catch {
-                  try { u.socket.socket?.close(); } catch { /* ignore */ }
-                }
+                  const r = getRawSocket(u.socket);
+                  if (r && typeof (r as any).terminate === 'function') (r as any).terminate();
+                  else if (r && typeof (r as any).close === 'function') (r as any).close();
+                } catch { /* ignore */ }
               }
               activeSessions.add(tokenUsername);
               // #region agent log
               fastify.log.info({ hypothesisId: 'H1', tokenUsername }, '[DEBUG] H1 auth success');
               // #endregion
-              socket.socket.send(JSON.stringify({ type: 'auth:ack', ok: true }));
+              const rAck = getRawSocket(socket);
+              if (rAck) rAck.send(JSON.stringify({ type: 'auth:ack', ok: true }));
               broadcastUserCount();
               break;
             }
@@ -1482,12 +1495,14 @@ function broadcastUserCount() {
               // #endregion
               if (!isAuthenticated) {
                 fastify.log.info({ hypothesisId: 'H2' }, '[DEBUG] H2 message rejected (Authentification requise)');
-                socket.socket.send(JSON.stringify({ type: 'error', message: 'Authentification requise' }));
+                const r = getRawSocket(socket);
+                if (r) r.send(JSON.stringify({ type: 'error', message: 'Authentification requise' }));
                 break;
               }
               const text = message.text || message.data?.text;
               if (!text || !text.toString().trim()) {
-                socket.socket.send(JSON.stringify({ type: 'error', message: 'Message text is required' }));
+                const r = getRawSocket(socket);
+                if (r) r.send(JSON.stringify({ type: 'error', message: 'Message text is required' }));
                 break;
               }
               try {
@@ -1513,7 +1528,8 @@ function broadcastUserCount() {
                 broadcast(outbound);
               } catch (dbErr: any) {
                 fastify.log.error({ err: dbErr }, 'DB insert message');
-                socket.socket.send(JSON.stringify({ type: 'error', message: 'Erreur enregistrement message' }));
+                const r = getRawSocket(socket);
+                if (r) r.send(JSON.stringify({ type: 'error', message: 'Erreur enregistrement message' }));
               }
               break;
             }
@@ -1524,7 +1540,8 @@ function broadcastUserCount() {
           } catch (e) {
             fastify.log.error(`Error parsing message: ${e}`);
             try {
-              socket.socket.send(JSON.stringify({ type: 'error', message: 'Invalid message payload' }));
+              const r = getRawSocket(socket);
+              if (r) r.send(JSON.stringify({ type: 'error', message: 'Invalid message payload' }));
             } catch {
               // Ignore send failures
             }
