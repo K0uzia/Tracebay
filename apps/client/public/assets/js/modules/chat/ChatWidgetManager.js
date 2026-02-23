@@ -10,6 +10,7 @@
  */
 
 import ChatManager from './ChatManager.js';
+import { CHAT_SECURITY_CONFIG } from '../../config/ChatSecurityConfig.js';
 import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
 const logger = getLogger();
@@ -34,14 +35,15 @@ class ChatWidgetManager {
         if (window.chatManager) {
             this.chatManager = window.chatManager;
         } else {
+            const securityConfig = options.securityConfig || CHAT_SECURITY_CONFIG;
             this.chatManager = new ChatManager({
                 wsUrl,
                 pseudoDisplayId: 'chat-widget-pseudo-display',
                 messagesContainerId: 'chat-widget-messages',
                 inputId: 'chat-widget-input',
                 sendButtonId: 'chat-widget-send',
-                securityConfig: options.securityConfig || {},
-                giphyApiKey: (options.securityConfig && options.securityConfig.giphyApiKey) || ''
+                securityConfig,
+                giphyApiKey: (options.securityConfig && options.securityConfig.giphyApiKey) || securityConfig.giphyApiKey || ''
             });
             window.chatManager = this.chatManager;
         }
