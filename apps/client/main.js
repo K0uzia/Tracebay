@@ -1315,6 +1315,14 @@ ipcMain.handle('get-app-config', async () => {
 });
 
 /**
+ * Obtenir la configuration connexion complète (connection.json) lue depuis le disque.
+ * Utilisée par le renderer quand fetch('./config/connection.json') échoue (ex. en build avec file://).
+ */
+ipcMain.handle('get-connection-config', async () => {
+    return serverConfig;
+});
+
+/**
  * Obtenir la configuration serveur complète
  */
 ipcMain.handle('get-server-config', async () => {
