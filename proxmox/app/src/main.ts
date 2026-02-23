@@ -1434,6 +1434,11 @@ function broadcastUserCount() {
           if (!isAlive) {
             fastify.log.warn(`⏱️ Closing stale WebSocket for ${username} (${userId})`);
             console.log(`[CHAT] Connexion fermée (stale): ${username} (${userId})`);
+            clearInterval(pingInterval);
+            connectedUsers.delete(userId);
+            const normalizedStale = String(username).trim().toLowerCase();
+            activeSessions.delete(normalizedStale);
+            broadcastUserCount();
             try {
               socket.terminate?.();
             } catch {
@@ -1585,41 +1590,26 @@ function broadcastUserCount() {
           }
         });
 
-        // Handle disconnection
-        socket.on('close', (code?: number, reason?: Buffer) => {
+        // Handle disconnection (sur la socket brute, comme message/pong)
+        (messageTarget as any).on('close', (code?: number, reason?: Buffer) => {
           const hadEntry = connectedUsers.has(userId);
-          const sizeBefore = connectedUsers.size;
           const normalizedUsername = String(username).trim().toLowerCase();
-          const connectionsForUser = Array.from(connectedUsers.values()).filter(
-            (u) => String(u.username).trim().toLowerCase() === normalizedUsername
-          );
-          const wasOnlyConnectionForUser = connectionsForUser.length === 1;
           connectedUsers.delete(userId);
-          const sizeAfter = connectedUsers.size;
-          // #region agent log
-          fastify.log.info({ hypothesisId: 'H3', userId, username, sizeBefore, sizeAfter, hadEntry }, '[DEBUG] H3 WS close');
-          // #endregion
-          if (wasOnlyConnectionForUser) {
-            activeSessions.delete(normalizedUsername);
-            fastify.log.info(`Session libérée pour ${normalizedUsername} (déconnexion WebSocket)`);
-          }
-          fastify.log.info(`❌ WebSocket disconnected: ${username} (${userId}) hadEntry=${hadEntry} code=${code} reason=${reason?.toString() || ''}`);
+          activeSessions.delete(normalizedUsername);
+          fastify.log.info(`❌ WebSocket disconnected: ${username} (${userId}) hadEntry=${hadEntry} code=${code}`);
           console.log(`[CHAT] Déconnexion: ${username} (${userId}) | restants: ${connectedUsers.size}`);
 
           clearInterval(pingInterval);
           if (hadEntry) broadcastUserCount();
         });
 
-        // Handle errors (connexion fermée brutalement sans close frame, ex: reload) → retirer de connectedUsers
-        socket.on('error', (error: any) => {
-          fastify.log.error(`WebSocket error for ${username}: ${error.message}`);
+        // Handle errors (socket brute ; ex: reload sans close frame)
+        (messageTarget as any).on('error', (error: any) => {
+          fastify.log.error(`WebSocket error for ${username}: ${error?.message || error}`);
           connectedUsers.delete(userId);
-          clearInterval(pingInterval);
           const normalized = String(username).trim().toLowerCase();
-          const others = Array.from(connectedUsers.values()).filter(
-            (u) => String(u.username).trim().toLowerCase() === normalized
-          );
-          if (others.length === 0) activeSessions.delete(normalized);
+          activeSessions.delete(normalized);
+          clearInterval(pingInterval);
           broadcastUserCount();
         });
 
