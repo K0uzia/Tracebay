@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-package-lock.json
+# package-lock.json versionné pour que npm ci fonctionne en CI (build GitHub Actions)
 yarn.lock
 
 # Build outputs

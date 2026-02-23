@@ -280,7 +280,7 @@ class ChatManager {
         const renderResults = (gifs) => {
             resultsWrap.innerHTML = '';
             if (!this.giphyApiKey) {
-                resultsWrap.innerHTML = '<p class="chat-widget-gif-no-key">Ajoutez une clé API Giphy dans la config (giphyApiKey) pour rechercher des GIFs. <a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener">Créer une clé Giphy</a></p>';
+                resultsWrap.innerHTML = '<p class="chat-widget-gif-no-key">Ajoutez une cl\u00e9 API Giphy dans la config (giphyApiKey) pour rechercher des GIFs. <a href="https://developers.giphy.com/dashboard/" target="_blank" rel="noopener">Cr\u00e9er une cl\u00e9 Giphy</a></p>';
                 return;
             }
             if (gifs.length === 0) {
