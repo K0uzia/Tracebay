@@ -38,7 +38,7 @@ class ChatWebSocket {
     getWebSocketUrl() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
-        return `${protocol}//${host}`;
+        return `${protocol}//${host}/ws`;
     }
 
     connect() {
@@ -173,6 +173,9 @@ class ChatWebSocket {
                 count: typeof data.connectedUsers === 'number' ? data.connectedUsers : data.count,
                 users: data.users || []
             }));
+            // Si on a un token (ex: login après ouverture du WS), s'authentifier maintenant
+            const token = this.authToken || (typeof localStorage !== 'undefined' && localStorage.getItem('workspace_jwt'));
+            if (token) this.authenticate(token).catch(() => {});
             return;
         }
         if (data.type === 'success') {
