@@ -29,6 +29,9 @@ apps/client/build/dmg-background.png
 # Garder .env.example dans le repo
 !.env.example
 
+# Config locale client (clés API Giphy, etc.) — ne pas versionner
+apps/client/public/assets/js/config/app-config.local.js
+
 # Logs
 logs/
 *.log

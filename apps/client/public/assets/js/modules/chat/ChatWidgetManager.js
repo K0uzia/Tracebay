@@ -40,7 +40,8 @@ class ChatWidgetManager {
                 messagesContainerId: 'chat-widget-messages',
                 inputId: 'chat-widget-input',
                 sendButtonId: 'chat-widget-send',
-                securityConfig: options.securityConfig || {}
+                securityConfig: options.securityConfig || {},
+                giphyApiKey: (options.securityConfig && options.securityConfig.giphyApiKey) || ''
             });
             window.chatManager = this.chatManager;
         }

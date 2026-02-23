@@ -14,8 +14,8 @@ class ChatSecurityManager {
         this.blockedKeywords = options.blockedKeywords || [];
         this.allowedProtocols = options.allowedProtocols || ['http', 'https', 'mailto', 'ftp'];
         
-        // Regex pour détecter les URLs
-        this.urlRegex = /(https?:\/\/[^\s<>"\)]+|www\.[^\s<>"\)]+\.[a-z]{2,}|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi;
+        // Détection : http(s)://, www.xxx.tld, emails ; on retire la ponctuation finale du match
+        this.urlRegex = /(https?:\/\/[^\s<>"')]+|www\.[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-z]{2,}(?:\/[^\s<>"')]*)?|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi;
     }
 
     /**
@@ -85,36 +85,53 @@ class ChatSecurityManager {
         }
     }
 
-    /**
-     * Créer un élément lien sécurisé
-     */
-    createSafeLink(urlString) {
-        // Créer un bouton stylisé comme un lien au lieu d'un <a>
-        // Cela évite les problèmes de href et garantit que le click fonctionne
-        const button = document.createElement('button');
-        
-        // Normaliser l'URL
-        let url = urlString;
-        if (!url.match(/^[a-z][a-z0-9+.-]*:/i)) {
-            url = 'https://' + url;
+    isImageUrl(urlString) {
+        try {
+            let url = urlString;
+            if (!url.match(/^[a-z][a-z0-9+.-]*:/i)) url = 'https://' + url;
+            const u = new URL(url);
+            const path = u.pathname.toLowerCase();
+            const host = u.hostname.toLowerCase();
+            if (/\.(gif|webp|png|jpe?g|bmp|svg)(\?|$)/i.test(path)) return true;
+            if (host.includes('giphy.com') || host.includes('tenor.com') || host.includes('media.tenor.com')) return true;
+            return false;
+        } catch {
+            return false;
         }
-        
-        button.type = 'button';
-        button.textContent = urlString;
-        button.className = 'chat-link';
-        
-        // Au clic, ouvrir dans le navigateur système ou nouvel onglet
-        button.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
+    }
+
+    createLinkOrImage(urlString) {
+        let url = urlString;
+        if (!url.match(/^[a-z][a-z0-9+.-]*:/i)) url = 'https://' + url;
+        const openUrl = () => {
             if (window.electron && typeof window.electron.openExternal === 'function') {
                 window.electron.openExternal(url);
             } else {
                 window.open(url, '_blank', 'noopener,noreferrer');
             }
+        };
+        if (this.isImageUrl(urlString)) {
+            const wrap = document.createElement('span');
+            wrap.className = 'chat-link chat-image-link';
+            const img = document.createElement('img');
+            img.src = url;
+            img.alt = '';
+            img.loading = 'lazy';
+            img.className = 'chat-inline-image';
+            img.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); openUrl(); });
+            wrap.appendChild(img);
+            return wrap;
+        }
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = urlString;
+        button.className = 'chat-link';
+        button.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openUrl();
             return false;
         });
-        
         return button;
     }
 
@@ -146,18 +163,17 @@ class ChatSecurityManager {
         let match;
 
         while ((match = this.urlRegex.exec(text)) !== null) {
-            const url = match[0];
-            
-            // Ajouter le texte avant l'URL
+            let url = match[0];
+            url = url.replace(/[.,;:!?)]+$/, '');
+
             if (match.index > lastIndex) {
                 const textNode = document.createTextNode(text.substring(lastIndex, match.index));
                 fragment.appendChild(textNode);
             }
 
-            // Vérifier si l'URL est valide
             if (this.isValidUrl(url)) {
-                const link = this.createSafeLink(url);
-                fragment.appendChild(link);
+                const el = this.createLinkOrImage(url);
+                fragment.appendChild(el);
             } else {
                 // Si l'URL n'est pas valide, ajouter le texte brut
                 const textNode = document.createTextNode(url);
