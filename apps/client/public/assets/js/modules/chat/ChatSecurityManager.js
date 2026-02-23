@@ -16,6 +16,37 @@ class ChatSecurityManager {
         
         // Détection : http(s)://, www.xxx.tld, emails ; on retire la ponctuation finale du match
         this.urlRegex = /(https?:\/\/[^\s<>"')]+|www\.[a-zA-Z0-9][-a-zA-Z0-9.]*\.[a-z]{2,}(?:\/[^\s<>"')]*)?|[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/gi;
+
+        // \u00e9 = é pour éviter soucis d'encodage
+        // Ordre : formes longues d'abord pour \u00e9viter :-) remplac\u00e9 partiellement par :)
+        this.emoticonReplacements = [
+            [/:-?\)|=-?\)/g, '\uD83D\uDE0A'],   // :) :-) =) =-) -> 😊
+            [/:-?\(|=-?\(/g, '\uD83D\uDE1E'],   // :( :-( =( =-( -> 😞
+            [/:'-?\(|:'\(/g, '\uD83D\uDE22'],  // :'( :'-( -> 😢
+            [/;-?\)/g, '\uD83D\uDE09'],        // ;) ;-) -> 😉
+            [/:-?[Pp]|=-?[Pp]/g, '\uD83D\uDE1B'], // :P :p =P =p -> 😛
+            [/:-?[Oo]|=-?[Oo]/g, '\uD83D\uDE2E'], // :O :o -> 😮
+            [/<3/g, '\u2764\uFE0F'],           // <3 -> ❤️
+            [/<\/3/g, '\uD83D\uDC94'],         // </3 -> 💔
+            [/:-?\*|=\*/g, '\uD83D\uDE17'],    // :* :-* =* -> 😗
+            [/\b[xX][dD]|[xX][dD]\b/g, '\uD83D\uDE06'], // xD XD -> 😆
+            [/:-?\/|=-?\//g, '\uD83D\uDE15'],  // :/ :-/ -> 😕
+            [/:-?[Ss]|=-?[Ss]/g, '\uD83D\uDE16'], // :S :s -> 😖
+            [/\b[B8]-?\)|\b[B8]\)/g, '\uD83D\uDE0E'], // B) 8) B-) 8-) -> 😎
+            [/:-?\|/g, '\uD83D\uDE10'],        // :| :-| -> 😐
+        ];
+    }
+
+    /**
+     * Convertit les emoticons texte (: ) =) ;) etc.) en emoji pour l'affichage
+     */
+    replaceEmoticons(text) {
+        if (!text || typeof text !== 'string') return text;
+        let out = text;
+        for (const [regex, emoji] of this.emoticonReplacements) {
+            out = out.replace(regex, emoji);
+        }
+        return out;
     }
 
     /**
@@ -167,8 +198,8 @@ class ChatSecurityManager {
             url = url.replace(/[.,;:!?)]+$/, '');
 
             if (match.index > lastIndex) {
-                const textNode = document.createTextNode(text.substring(lastIndex, match.index));
-                fragment.appendChild(textNode);
+                const segment = this.replaceEmoticons(text.substring(lastIndex, match.index));
+                fragment.appendChild(document.createTextNode(segment));
             }
 
             if (this.isValidUrl(url)) {
@@ -183,10 +214,10 @@ class ChatSecurityManager {
             lastIndex = match.index + url.length;
         }
 
-        // Ajouter le texte restant
+        // Ajouter le texte restant (avec \u00e9motic\u00f4nes convertis)
         if (lastIndex < text.length) {
-            const textNode = document.createTextNode(text.substring(lastIndex));
-            fragment.appendChild(textNode);
+            const segment = this.replaceEmoticons(text.substring(lastIndex));
+            fragment.appendChild(document.createTextNode(segment));
         }
 
         // Retourner le fragment contenant les éléments DOM
