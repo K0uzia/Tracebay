@@ -21,52 +21,77 @@ let initialized = false;
  * @returns {Promise<void>}
  * @throws {Error} Si le chargement de la configuration échoue
  */
+/**
+ * Applique une config connexion (mode, env, SERVER_CONFIG, APP_CONFIG)
+ * @param {Object} cfg - Objet config (mode, environments, connection, endpoints)
+ */
+function applyConnectionConfig(cfg) {
+    const mode = cfg.mode || 'local';
+    const env = cfg.environments?.[mode] || cfg.environments?.local;
+    if (!env?.url) return false;
+
+    config = cfg;
+    window.SERVER_CONFIG = {
+        serverUrl: env.url,
+        serverWsUrl: env.ws,
+        environment: mode,
+        getEndpoint: (path) => getEndpointPath(path),
+        getFullUrl: (endpoint) => `${env.url}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`
+    };
+    window.APP_CONFIG = {
+        serverUrl: env.url,
+        serverWsUrl: env.ws,
+        healthCheckInterval: cfg.connection?.healthCheckInterval ?? 30000,
+        reconnectDelay: cfg.connection?.reconnectDelay ?? 3000,
+        maxReconnectAttempts: cfg.connection?.maxReconnectAttempts ?? 5
+    };
+    logger.info(`API Config initialisé: ${mode} -> ${env.url}`);
+    return true;
+}
+
 async function init() {
     if (initialized) return;
-    
+
     try {
         const response = await fetch('./config/connection.json');
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        config = await response.json();
-        const mode = config.mode || 'local';
-        const env = config.environments[mode] || config.environments.local;
-        
-        // Exposer globalement pour compatibilité
-        window.SERVER_CONFIG = {
-            serverUrl: env.url,
-            serverWsUrl: env.ws,
-            environment: mode,
-            getEndpoint: (path) => getEndpointPath(path),
-            getFullUrl: (endpoint) => `${env.url}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`
-        };
-        
-        window.APP_CONFIG = {
-            serverUrl: env.url,
-            serverWsUrl: env.ws,
-            healthCheckInterval: config.connection?.healthCheckInterval || 30000,
-            reconnectDelay: config.connection?.reconnectDelay || 3000,
-            maxReconnectAttempts: config.connection?.maxReconnectAttempts || 5
-        };
-        
-        initialized = true;
-        logger.info(`API Config initialisé: ${mode} -> ${env.url}`);
+
+        const cfg = await response.json();
+        if (applyConnectionConfig(cfg)) {
+            initialized = true;
+            return;
+        }
     } catch (error) {
         logger.error('Erreur chargement config', error);
-        // Fallback
-        const fallback = { url: 'http://localhost:8060', ws: 'ws://localhost:8060' };
-        window.SERVER_CONFIG = {
-            serverUrl: fallback.url,
-            serverWsUrl: fallback.ws,
-            getEndpoint: () => '',
-            getFullUrl: (endpoint) => `${fallback.url}${endpoint}`
-        };
-        window.APP_CONFIG = {
-            serverUrl: fallback.url,
-            serverWsUrl: fallback.ws
-        };
-        initialized = true;
     }
+
+    // En build (file://), fetch peut échouer : utiliser la config lue par le process principal
+    if (typeof window.electron?.invoke === 'function') {
+        try {
+            const cfg = await window.electron.invoke('get-connection-config');
+            if (cfg && applyConnectionConfig(cfg)) {
+                initialized = true;
+                logger.info('API Config chargée depuis le process principal (fallback build)');
+                return;
+            }
+        } catch (e) {
+            logger.warn('Fallback get-connection-config échoué', e);
+        }
+    }
+
+    // Dernier recours : localhost
+    const fallback = { url: 'http://localhost:8060', ws: 'ws://localhost:8060' };
+    window.SERVER_CONFIG = {
+        serverUrl: fallback.url,
+        serverWsUrl: fallback.ws,
+        getEndpoint: () => '',
+        getFullUrl: (endpoint) => `${fallback.url}${endpoint}`
+    };
+    window.APP_CONFIG = {
+        serverUrl: fallback.url,
+        serverWsUrl: fallback.ws
+    };
+    initialized = true;
 }
 
 /**
