@@ -189,7 +189,10 @@ class ChatWebSocket {
                 pseudo: d.username || d.pseudo,
                 text: d.text,
                 message: d.text,
-                created_at: d.createdAt || d.created_at
+                created_at: d.createdAt || d.created_at,
+                replyTo: d.replyTo ?? d.reply_to ?? d.parentId ?? null,
+                replyToPseudo: d.replyToPseudo ?? d.reply_to_pseudo ?? null,
+                replyToText: d.replyToText ?? d.reply_to_text ?? null
             };
             this.messageHandlers.forEach(handler => handler({
                 type: 'newMessage',
@@ -204,7 +207,10 @@ class ChatWebSocket {
                 pseudo: payload.username || payload.pseudo,
                 text: payload.text || payload.message,
                 message: payload.text || payload.message,
-                created_at: payload.createdAt || payload.created_at
+                created_at: payload.createdAt || payload.created_at,
+                replyTo: payload.replyTo ?? payload.reply_to ?? payload.parentId ?? null,
+                replyToPseudo: payload.replyToPseudo ?? payload.reply_to_pseudo ?? null,
+                replyToText: payload.replyToText ?? payload.reply_to_text ?? null
             };
             this.messageHandlers.forEach(handler => handler({
                 type: 'newMessage',
@@ -252,15 +258,19 @@ class ChatWebSocket {
 
     /**
      * Envoyer un message (le pseudo est celui du compte côté serveur)
+     * @param {string} text
+     * @param {string|number|null} [replyToId] - id du message auquel on répond
      */
-    sendMessage(text) {
+    sendMessage(text, replyToId = null) {
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
             logger.error('WebSocket non connecté');
             return Promise.reject(new Error('WebSocket non connecté'));
         }
         return new Promise((resolve, reject) => {
             try {
-                this.ws.send(JSON.stringify({ type: 'message', text }));
+                const payload = { type: 'message', text };
+                if (replyToId != null && replyToId !== '') payload.replyTo = String(replyToId);
+                this.ws.send(JSON.stringify(payload));
                 resolve();
             } catch (err) {
                 reject(err);

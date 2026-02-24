@@ -65,6 +65,14 @@ class ChatWidgetManager {
         
         // Syncer les messages
         this.syncMessages();
+
+        // Notifications OS + clignotement barre des tâches (nouveau message quand le panel est fermé)
+        window.addEventListener('chat-incoming-message', (e) => {
+            const pseudo = (e.detail && e.detail.pseudo) ? e.detail.pseudo : 'Quelqu\'un';
+            if (!this.isOpen && window.electron && typeof window.electron.send === 'function') {
+                window.electron.send('chat-new-message', { pseudo });
+            }
+        });
     }
 
     /**

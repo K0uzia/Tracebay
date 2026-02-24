@@ -2,7 +2,7 @@
  * Workspace Client - Electron Main Process
  * Gère la fenêtre d'application et la connexion au serveur distant
  */
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Notification } = require('electron');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
@@ -490,6 +490,47 @@ function createWindow() {
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
+
+    // Arrêter le clignotement de la barre des tâches quand l'utilisateur revient sur la fenêtre
+    mainWindow.on('focus', () => {
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.flashFrame(false);
+    });
+}
+
+/**
+ * Notifications chat : clignotement barre des tâches + notification OS (nouveau message non vu)
+ */
+function setupChatNotifications() {
+    ipcMain.on('chat-new-message', (_event, payload) => {
+        const pseudo = (payload && payload.pseudo) ? String(payload.pseudo) : 'Quelqu\'un';
+        const win = mainWindow;
+        if (!win || win.isDestroyed()) return;
+        // Ne pas notifier si la fenêtre a le focus (utilisateur déjà sur l'app)
+        if (win.isFocused()) return;
+        // Faire clignoter l'icône dans la barre des tâches (Linux/Windows) ou bounce dock (macOS)
+        try {
+            if (process.platform === 'darwin' && app.dock) {
+                app.dock.bounce('informational');
+            } else {
+                win.flashFrame(true);
+            }
+        } catch (_) {}
+        // Notification système (popup à droite sur la plupart des OS)
+        if (Notification.isSupported()) {
+            const iconPath = path.join(__dirname, 'build', 'icon.png');
+            const opts = { body: `${pseudo} a envoyé un message` };
+            if (fs.existsSync(iconPath)) opts.icon = iconPath;
+            const n = new Notification('Workspace - Chat', opts);
+            n.on('click', () => {
+                if (win && !win.isDestroyed()) {
+                    win.show();
+                    win.focus();
+                    win.flashFrame(false);
+                }
+            });
+            n.show();
+        }
+    });
 }
 
 /** Garde pour éviter le double lancement (ex. checkForUpdates rejette après update-not-available) */
@@ -521,6 +562,7 @@ app.on('ready', async () => {
     console.log(`🌍 Environnement: ${isProduction ? 'PRODUCTION' : 'DÉVELOPPEMENT'}`);
     console.log('ℹ️  La config réelle sera chargée par le client web');
 
+    setupChatNotifications();
     createSplashWindow();
 
     if (app.isPackaged) {
