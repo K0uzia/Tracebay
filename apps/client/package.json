@@ -46,7 +46,7 @@
     "appId": "com.workspace.client",
     "productName": "Workspace Client",
     "copyright": "Copyright © 2026 Sandersonn",
-    "electronVersion": "39.5.2",
+    "electronVersion": "39.2.4",
     "npmRebuild": false,
     "publish": {
       "provider": "github",

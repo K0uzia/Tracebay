@@ -1,4 +1,5 @@
 # Build client (Electron) sur push main → artefacts + GitHub Release pour mise à jour auto
+# Pour la publication Release : le secret doit s'appeler GH_TOKEN ou GITHUB_TOKEN (ou adapter les env ci‑dessous).
 name: Build & Publish Client
 
 on:
@@ -44,6 +45,7 @@ jobs:
       - name: Build client (Linux) & publish
         working-directory: apps/client
         env:
+          # Remplacer par votre nom de secret si différent (ex. secrets.PAT)
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           NODE_ENV: production
