@@ -600,9 +600,15 @@ app.on('ready', async () => {
                 setSplashProgress(null);
             });
             autoUpdater.on('update-available', (info) => {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
                 console.log('[Update] Mise à jour disponible:', info?.version);
                 setSplashMessage('Mise à jour trouvée');
                 setSplashProgress(0);
+                // Si le téléchargement dépasse 5 min (réseau lent/bloqué), lancer l'app quand même
+                timeoutId = setTimeout(done, 300000);
             });
             autoUpdater.on('download-progress', (p) => {
                 const percent = Math.round(p.percent || 0);
@@ -610,7 +616,10 @@ app.on('ready', async () => {
                 setSplashProgress(percent);
             });
             autoUpdater.on('update-downloaded', () => {
-                if (timeoutId) clearTimeout(timeoutId);
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
                 updateHandled = true;
                 setSplashProgress(null);
                 setSplashMessage('Installation');
@@ -618,20 +627,11 @@ app.on('ready', async () => {
                 try {
                     fs.writeFileSync(flagPath, Date.now().toString(), 'utf8');
                 } catch (_) {}
+                setSplashUpdateSuccess('Redémarrage…');
+                // Redémarrage systématique : on quitte et on installe la maj (pas de choix utilisateur)
                 setTimeout(() => {
-                    const REDIRECT_SECONDS = 3;
-                    setSplashUpdateSuccess(`Redémarrage dans ${REDIRECT_SECONDS} s…`);
-                    let left = REDIRECT_SECONDS;
-                    const t = setInterval(() => {
-                        left--;
-                        if (left > 0) {
-                            setSplashMessage(`Redémarrage dans ${left} s…`);
-                        } else {
-                            clearInterval(t);
-                            autoUpdater.quitAndInstall(false, true);
-                        }
-                    }, 1000);
-                }, 500);
+                    autoUpdater.quitAndInstall(false, true);
+                }, 800);
             });
             autoUpdater.on('update-not-available', (info) => {
                 console.log('[Update] À jour. Distant:', info?.version || '?');
@@ -643,6 +643,8 @@ app.on('ready', async () => {
             });
 
             setSplashMessage('Recherche de mise à jour…');
+            // Timeout uniquement pour la phase "vérification" : si pas de réponse en 12 s, on lance l'app
+            // (dès qu'une maj est trouvée, le timeout est annulé pour laisser le téléchargement aller au bout)
             timeoutId = setTimeout(done, 12000);
             await autoUpdater.checkForUpdates();
         } catch (e) {
