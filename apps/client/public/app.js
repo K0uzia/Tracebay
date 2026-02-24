@@ -164,7 +164,8 @@ class PageManager {
             });
 
             await this.loadAuthModal();
-            
+            await this.loadSettingsModal();
+
             // Attendre que le DOM soit complètement chargé
             setTimeout(() => {
                 const currentUser = this.authManager.getCurrentUser();
@@ -302,6 +303,7 @@ class PageManager {
         const btnLogin = document.getElementById('btnLogin');
         const btnRegister = document.getElementById('btnRegister');
         const btnLogout = document.getElementById('btnLogout');
+        const btnSettings = document.getElementById('btnSettings');
 
         if (!navProfile || !profileDropdown || !btnLogin || !btnRegister || !btnLogout) return;
 
@@ -330,6 +332,142 @@ class PageManager {
             this.authManager.logout();
             profileDropdown.classList.add('hidden');
         });
+
+        if (btnSettings) {
+            btnSettings.addEventListener('click', () => {
+                this.showSettingsModal();
+                profileDropdown.classList.add('hidden');
+            });
+        }
+    }
+
+    async loadSettingsModal() {
+        try {
+            const response = await fetch('./components/settings-modal.html');
+            if (!response.ok) throw new Error('Settings modal not found');
+            const html = await response.text();
+            const container = document.getElementById('settingsModalContainer');
+            if (container) container.innerHTML = html;
+            this.attachSettingsModalListeners();
+        } catch (error) {
+            this.logger.error('Erreur chargement settings modal', error);
+        }
+    }
+
+    showSettingsModal() {
+        if (!this.authManager || !this.authManager.isAuthenticated()) return;
+        const modal = document.getElementById('settingsModal');
+        if (!modal) return;
+        const user = this.authManager.getCurrentUser();
+        const usernameInput = document.getElementById('settingsNewUsername');
+        if (usernameInput && user) usernameInput.value = user.username || '';
+        const usernameError = document.getElementById('settingsUsernameError');
+        const passwordError = document.getElementById('settingsPasswordError');
+        const deleteError = document.getElementById('settingsDeleteError');
+        const deleteConfirmError = document.getElementById('settingsDeleteConfirmError');
+        const deleteConfirm = document.getElementById('settingsDeleteConfirm');
+        if (usernameError) { usernameError.classList.add('hidden'); usernameError.textContent = ''; }
+        if (passwordError) { passwordError.classList.add('hidden'); passwordError.textContent = ''; }
+        if (deleteError) { deleteError.classList.add('hidden'); deleteError.textContent = ''; }
+        if (deleteConfirmError) { deleteConfirmError.classList.add('hidden'); deleteConfirmError.textContent = ''; }
+        if (deleteConfirm) deleteConfirm.classList.add('hidden');
+        modal.classList.remove('hidden');
+    }
+
+    attachSettingsModalListeners() {
+        const modal = document.getElementById('settingsModal');
+        const overlay = document.getElementById('settingsModalOverlay');
+        const closeBtn = document.getElementById('settingsModalClose');
+        const formUsername = document.getElementById('settingsFormUsername');
+        const formPassword = document.getElementById('settingsFormPassword');
+        const btnDeleteAccount = document.getElementById('settingsBtnDeleteAccount');
+        const deleteConfirm = document.getElementById('settingsDeleteConfirm');
+        const deletePassword = document.getElementById('settingsDeletePassword');
+        const deleteConfirmBtn = document.getElementById('settingsDeleteConfirmBtn');
+        const deleteCancelBtn = document.getElementById('settingsDeleteCancelBtn');
+
+        if (!modal) return;
+
+        const hideModal = () => modal.classList.add('hidden');
+
+        if (closeBtn) closeBtn.addEventListener('click', hideModal);
+        if (overlay) overlay.addEventListener('click', hideModal);
+
+        if (formUsername) {
+            formUsername.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errEl = document.getElementById('settingsUsernameError');
+                const input = document.getElementById('settingsNewUsername');
+                const newUsername = (input && input.value || '').trim();
+                if (!newUsername || newUsername.length < 3) {
+                    if (errEl) { errEl.textContent = 'Le pseudo doit faire entre 3 et 20 caractères.'; errEl.classList.remove('hidden'); }
+                    return;
+                }
+                if (errEl) errEl.classList.add('hidden');
+                const result = await this.authManager.updateUsername(newUsername);
+                if (result.success) {
+                    hideModal();
+                    if (this.showNotification) this.showNotification('Pseudo mis à jour.', 'success');
+                } else {
+                    if (errEl) { errEl.textContent = result.message || 'Erreur'; errEl.classList.remove('hidden'); }
+                }
+            });
+        }
+
+        if (formPassword) {
+            formPassword.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const errEl = document.getElementById('settingsPasswordError');
+                const current = document.getElementById('settingsCurrentPassword').value;
+                const newPwd = document.getElementById('settingsNewPassword').value;
+                const confirm = document.getElementById('settingsNewPasswordConfirm').value;
+                if (newPwd !== confirm) {
+                    if (errEl) { errEl.textContent = 'Les deux mots de passe ne correspondent pas.'; errEl.classList.remove('hidden'); return; }
+                }
+                if (errEl) errEl.classList.add('hidden');
+                const result = await this.authManager.changePassword(current, newPwd);
+                if (result.success) {
+                    hideModal();
+                    if (this.showNotification) this.showNotification('Mot de passe modifié.', 'success');
+                    document.getElementById('settingsCurrentPassword').value = '';
+                    document.getElementById('settingsNewPassword').value = '';
+                    document.getElementById('settingsNewPasswordConfirm').value = '';
+                } else {
+                    if (errEl) { errEl.textContent = result.message || 'Erreur'; errEl.classList.remove('hidden'); }
+                }
+            });
+        }
+
+        if (btnDeleteAccount) {
+            btnDeleteAccount.addEventListener('click', () => {
+                document.getElementById('settingsDeleteError').classList.add('hidden');
+                if (deleteConfirm) deleteConfirm.classList.remove('hidden');
+                if (deletePassword) deletePassword.value = '';
+            });
+        }
+        if (deleteCancelBtn) {
+            deleteCancelBtn.addEventListener('click', () => {
+                if (deleteConfirm) deleteConfirm.classList.add('hidden');
+                document.getElementById('settingsDeleteConfirmError').classList.add('hidden');
+            });
+        }
+        if (deleteConfirmBtn && deletePassword) {
+            deleteConfirmBtn.addEventListener('click', async () => {
+                const errEl = document.getElementById('settingsDeleteConfirmError');
+                const password = deletePassword.value;
+                if (!password) {
+                    if (errEl) { errEl.textContent = 'Saisissez votre mot de passe.'; errEl.classList.remove('hidden'); return; }
+                }
+                if (errEl) errEl.classList.add('hidden');
+                const result = await this.authManager.deleteAccount(password);
+                if (result.success) {
+                    hideModal();
+                    window.location.reload();
+                } else {
+                    if (errEl) { errEl.textContent = result.message || 'Erreur'; errEl.classList.remove('hidden'); }
+                }
+            });
+        }
     }
 
     showAuthModal(mode) {
