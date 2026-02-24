@@ -40,6 +40,8 @@
     "build:win": "electron-forge make --platform win32",
     "build:mac": "electron-forge make --platform darwin",
     "build:linux": "npx electron-builder --linux",
+    "build:linux:publish": "node ../scripts/run-with-env.js npm run build:linux:publish:inner -w apps/client",
+    "build:linux:publish:inner": "NODE_ENV=production npx electron-builder --linux --publish=always",
     "lint": "eslint . --ext .js"
   },
   "build": {
