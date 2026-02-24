@@ -70,18 +70,20 @@ npm start
 
 Les scripts `build:prod`, `build:prod:linux`, `build:prod:win`, `build:prod:mac` construisent les artefacts et les publient sur les **Releases GitHub** pour que `electron-updater` puisse proposer les mises à jour aux clients.
 
-**Prérequis :** définir un **Personal Access Token** GitHub avec au moins le scope `repo` (ou `public_repo` si le dépôt est public).
+**Prérequis :** définir un **Personal Access Token** GitHub avec au moins le scope `repo` (ou `public_repo` si le dépôt est public). **Sans token, le build réussit mais aucune release n’est créée ou mise à jour.**
 
 1. Créer un token : GitHub → Settings → Developer settings → Personal access tokens → Generate new token (classic). Cocher **repo**.
-2. Exporter le token avant le build :
-
-```bash
-cd apps/client
-export GH_TOKEN=ghp_VotreTokenIci
-npm run build:prod:linux   # ou build:prod:win / build:prod:mac
-```
-
-Ou en une ligne : `GH_TOKEN=ghp_xxx npm run build:prod:linux`
+2. **Option A (recommandé)** : mettre le token dans le fichier `.env` à la racine (`GITHUB_TOKEN=ghp_xxx`), puis lancer depuis la racine (le script charge `.env` automatiquement) :
+   ```bash
+   npm run build:prod:linux   # ou build:prod:win / build:prod:mac
+   ```
+3. **Option B** : exporter le token avant le build depuis `apps/client` :
+   ```bash
+   cd apps/client
+   export GH_TOKEN=ghp_VotreTokenIci
+   npm run build:prod:linux
+   ```
+   Ou en une ligne : `GH_TOKEN=ghp_xxx npm run build:prod:linux`
 
 En CI/CD (GitHub Actions, etc.), ajouter `GH_TOKEN` dans les secrets du dépôt et l’exposer comme variable d’environnement pour la job de build.
 
