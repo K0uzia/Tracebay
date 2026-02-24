@@ -1,11 +1,13 @@
 <div class="settings-modal hidden" id="settingsModal">
     <div class="settings-modal-overlay" id="settingsModalOverlay"></div>
     <div class="settings-modal-container">
-        <button class="settings-modal-close" id="settingsModalClose" type="button" aria-label="Fermer">
-            <i class="fas fa-times"></i>
-        </button>
-        <h2 class="settings-modal-title"><i class="fas fa-cog"></i> Paramètres du compte</h2>
-
+        <div class="settings-modal-header">
+            <button class="settings-modal-close" id="settingsModalClose" type="button" aria-label="Fermer">
+                <i class="fas fa-times"></i>
+            </button>
+            <h2 class="settings-modal-title"><i class="fas fa-user-cog"></i> Paramètres du compte</h2>
+        </div>
+        <div class="settings-modal-body">
         <div class="settings-section">
             <h3>Changer le pseudo</h3>
             <form id="settingsFormUsername" class="settings-form">
@@ -56,6 +58,7 @@
                 <button type="button" id="settingsDeleteConfirmBtn" class="btn btn-danger">Confirmer la suppression</button>
                 <button type="button" id="settingsDeleteCancelBtn" class="btn btn-secondary">Annuler</button>
             </div>
+        </div>
         </div>
     </div>
 </div>

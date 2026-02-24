@@ -221,20 +221,34 @@ menu {
         position: fixed;
         top: var(--unit-6);
         right: 0;
-        width: 30%;
-        align-items: start;
+        width: min(320px, 85vw);
+        max-height: calc(100vh - var(--unit-6));
+        align-items: stretch;
         flex-direction: column;
         background-color: var(--bleu1);
         gap: 0;
         padding: 0;
         display: none;
         box-shadow: var(--shadow-medium);
+        overflow-y: auto;
+        border-radius: 0 0 0 var(--radius-large);
     }
 
     .nav-links.active {
         display: flex;
         padding: var(--unit-2);
         gap: var(--unit-1);
+    }
+
+    .nav-links .nav-btn {
+        padding: var(--unit-2) var(--unit-3);
+        justify-content: flex-start;
+        width: 100%;
+        border-radius: var(--radius-medium);
+    }
+
+    .nav-links .nav-btn:hover {
+        background-color: rgba(255, 255, 255, 0.1);
     }
 
     .nav-links a {
@@ -256,16 +270,51 @@ menu {
         margin-left: var(--unit-1);
     }
 
-    /* En responsive : uniquement ouverture par clic (pas hover) pour laisser le temps de cliquer sur Connexion/Créer un compte */
-    .profile-dropdown {
-        position: absolute;
-        top: calc(100% + var(--unit-1));
-        right: 0;
-        background-color: var(--bleu1);
+    /* Bloc Profil dans le menu responsive : pleine largeur, bien visible */
+    .nav-action {
+        position: static;
+        margin-top: var(--unit-1);
+        padding-top: var(--unit-2);
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        width: 100%;
+    }
+
+    .nav-action .nav-profile {
+        width: 100%;
+        justify-content: flex-start;
+        padding: var(--unit-2) var(--unit-3);
+    }
+
+    /* Dropdown profil en responsive : s'ouvre sous le bouton, pleine largeur du panneau */
+    .nav-action .profile-dropdown {
+        position: static;
+        top: auto;
+        right: auto;
+        min-width: 0;
+        width: 100%;
+        margin-top: var(--unit-1);
+        box-shadow: none;
+        background-color: rgba(0, 0, 0, 0.15);
         border-radius: var(--radius-medium);
-        box-shadow: var(--shadow-medium);
-        min-width: 200px;
-        z-index: 200;
-        padding: var(--unit-1);
+        padding: var(--unit-2);
+    }
+
+    .nav-action .profile-dropdown.hidden {
+        display: none;
+    }
+
+    .nav-action .profile-dropdown:not(.hidden) {
+        display: flex;
+    }
+
+    .nav-action .profile-btn {
+        width: 100%;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .nav-action .profile-username {
+        text-align: center;
+        margin-bottom: var(--unit-1);
     }
 }
