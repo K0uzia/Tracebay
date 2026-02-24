@@ -634,7 +634,8 @@ app.on('ready', async () => {
                 }, 800);
             });
             autoUpdater.on('update-not-available', (info) => {
-                console.log('[Update] À jour. Distant:', info?.version || '?');
+                const remoteVersion = info?.version || '?';
+                console.log('[Update] À jour. Version installée:', currentVersion, '| Dernière sur GitHub:', remoteVersion);
                 done();
             });
             autoUpdater.on('error', (err) => {
