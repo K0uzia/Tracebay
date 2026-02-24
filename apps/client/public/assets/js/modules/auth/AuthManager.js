@@ -253,6 +253,85 @@ class AuthManager {
         return this.user;
     }
 
+    /**
+     * Met à jour le pseudo de l'utilisateur connecté
+     * @async
+     * @param {string} newUsername - Nouveau nom d'utilisateur
+     * @returns {Promise<Object>} { success, message?, user? }
+     */
+    async updateUsername(newUsername) {
+        const token = this.getToken();
+        if (!token) {
+            return { success: false, message: 'Non connecté.' };
+        }
+        try {
+            const response = await api.put('user.updateUsername', { username: newUsername }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (data.success && data.user) {
+                this.setSession(data.user, token);
+            }
+            return data;
+        } catch (error) {
+            const handled = errorHandler.handleApiError(error, 'mise à jour du pseudo');
+            return { success: false, message: handled.userMessage };
+        }
+    }
+
+    /**
+     * Change le mot de passe de l'utilisateur connecté
+     * @async
+     * @param {string} currentPassword - Mot de passe actuel
+     * @param {string} newPassword - Nouveau mot de passe
+     * @returns {Promise<Object>} { success, message? }
+     */
+    async changePassword(currentPassword, newPassword) {
+        const token = this.getToken();
+        if (!token) {
+            return { success: false, message: 'Non connecté.' };
+        }
+        try {
+            const response = await api.post('user.changePassword', {
+                currentPassword,
+                newPassword
+            }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            const handled = errorHandler.handleApiError(error, 'changement de mot de passe');
+            return { success: false, message: handled.userMessage };
+        }
+    }
+
+    /**
+     * Supprime le compte de l'utilisateur connecté (avec confirmation par mot de passe)
+     * @async
+     * @param {string} password - Mot de passe pour confirmer
+     * @returns {Promise<Object>} { success, message? }
+     */
+    async deleteAccount(password) {
+        const token = this.getToken();
+        if (!token) {
+            return { success: false, message: 'Non connecté.' };
+        }
+        try {
+            const response = await api.post('user.deleteAccount', { password }, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await response.json();
+            if (data.success) {
+                this.clearSession();
+            }
+            return data;
+        } catch (error) {
+            const handled = errorHandler.handleApiError(error, 'suppression du compte');
+            return { success: false, message: handled.userMessage };
+        }
+    }
+
     on(event, callback) {
         this.listeners.push({ event, callback });
     }

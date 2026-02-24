@@ -1,24 +1,25 @@
+# Build client (Electron) sur push main → artefacts + GitHub Release pour mise à jour auto
 name: Build & Publish Client
 
 on:
-  workflow_dispatch:
-    inputs:
-      platform:
-        description: 'Plateforme à builder'
-        required: true
-        default: 'linux'
-        type: choice
-        options:
-          - linux
-          - win
-          - mac
-          - all
   push:
     branches: [main]
     paths:
       - 'apps/client/**'
       - 'package.json'
       - 'package-lock.json'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Plateforme à builder'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - linux
+          - win
+          - mac
+          - all
 
 jobs:
   build-linux:
@@ -43,15 +44,22 @@ jobs:
       - name: Build client (Linux) & publish
         working-directory: apps/client
         env:
-          # electron-builder utilise GH_TOKEN ou GITHUB_TOKEN pour publier sur GitHub Releases
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           NODE_ENV: production
         run: npm run build:prod:linux
 
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-linux
+          path: apps/client/dist/
+
   build-windows:
     runs-on: windows-latest
-    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'win' || github.event.inputs.platform == 'all')
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'win' || github.event.inputs.platform == 'all'))
     permissions:
       contents: write
     steps:
@@ -74,9 +82,17 @@ jobs:
           NODE_ENV: production
         run: npm run build:prod:win
 
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-windows
+          path: apps/client/dist/
+
   build-macos:
     runs-on: macos-latest
-    if: github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'mac' || github.event.inputs.platform == 'all')
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'mac' || github.event.inputs.platform == 'all'))
     permissions:
       contents: write
     steps:
@@ -98,3 +114,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           NODE_ENV: production
         run: npm run build:prod:mac
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: client-macos
+          path: apps/client/dist/
