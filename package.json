@@ -11,6 +11,10 @@
     "build": "npm run build --workspace=apps/client",
     "build:client": "npm run build --workspace=apps/client",
     "build:production": "node build-production.js",
+    "build:prod": "node scripts/run-with-env.js npm run build:prod -w apps/client",
+    "build:prod:linux": "node scripts/run-with-env.js npm run build:prod:linux -w apps/client",
+    "build:prod:win": "node scripts/run-with-env.js npm run build:prod:win -w apps/client",
+    "build:prod:mac": "node scripts/run-with-env.js npm run build:prod:mac -w apps/client",
     "start": "npm start --workspace=apps/client",
     "start:client": "npm start --workspace=apps/client",
     "start:with-update": "node scripts/auto-update-and-launch.js",
@@ -25,6 +29,7 @@
     "test:coverage": "jest --coverage"
   },
   "devDependencies": {
+    "dotenv": "^16.4.5",
     "@babel/core": "^7.29.0",
     "@babel/preset-env": "^7.29.0",
     "@types/node": "^18.19.0",
