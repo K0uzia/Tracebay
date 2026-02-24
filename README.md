@@ -89,6 +89,8 @@ En CI/CD (GitHub Actions, etc.), ajouter `GH_TOKEN` dans les secrets du dépôt 
 
 Pour un **build local sans publication** (artefacts uniquement dans `dist/`) : `npm run build:prod:linux:local`
 
+**Détection des mises à jour :** l’app n’affiche une mise à jour que si la **version sur GitHub est strictement supérieure** à la version installée (ex. installé en 3.0.1 → release 3.0.2). Après chaque publication, incrémenter `version` dans `apps/client/package.json` pour le prochain cycle. Vérifier sur GitHub que la release contient bien les fichiers (AppImage/deb + `latest-linux.yml`). En cas de problème, lancer l’app depuis un terminal et regarder les logs `[Update]` (erreur 404 = assets manquants, token, ou mauvais repo).
+
 ## 📁 Structure du projet
 
 ```

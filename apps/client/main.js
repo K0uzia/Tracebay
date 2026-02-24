@@ -524,13 +524,23 @@ app.on('ready', async () => {
     createSplashWindow();
 
     if (app.isPackaged) {
+        let timeoutId;
         try {
+            const currentVersion = app.getVersion();
+            console.log('[Update] Version installée:', currentVersion);
+
             const { autoUpdater } = require('electron-updater');
+            // URL du feed explicite (repo en minuscules comme dans l'URL GitHub)
+            autoUpdater.setFeedURL({
+                provider: 'github',
+                owner: 'SandersonnDev',
+                repo: 'workspace',
+                releaseType: 'release',
+            });
             autoUpdater.autoDownload = true;
             autoUpdater.autoInstallOnAppQuit = false;
 
             let updateHandled = false;
-            let timeoutId;
             const done = () => {
                 if (updateHandled) return;
                 updateHandled = true;
@@ -547,7 +557,8 @@ app.on('ready', async () => {
                 setSplashMessage('Recherche de mise à jour…');
                 setSplashProgress(null);
             });
-            autoUpdater.on('update-available', () => {
+            autoUpdater.on('update-available', (info) => {
+                console.log('[Update] Mise à jour disponible:', info?.version);
                 setSplashMessage('Mise à jour trouvée');
                 setSplashProgress(0);
             });
@@ -580,14 +591,20 @@ app.on('ready', async () => {
                     }, 1000);
                 }, 500);
             });
-            autoUpdater.on('update-not-available', done);
-            autoUpdater.on('error', () => done());
+            autoUpdater.on('update-not-available', (info) => {
+                console.log('[Update] À jour. Distant:', info?.version || '?');
+                done();
+            });
+            autoUpdater.on('error', (err) => {
+                console.error('[Update] Erreur:', err.message || err);
+                done();
+            });
 
             setSplashMessage('Recherche de mise à jour…');
             timeoutId = setTimeout(done, 12000);
             await autoUpdater.checkForUpdates();
         } catch (e) {
-            console.warn('Mise à jour auto non disponible:', e.message);
+            console.warn('[Update] Non disponible:', e.message);
             if (timeoutId) clearTimeout(timeoutId);
             await launchApp();
         }
