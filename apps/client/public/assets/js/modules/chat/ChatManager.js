@@ -29,6 +29,7 @@ class ChatManager {
         this.messages = [];
         this.userCount = 0;
         this.connectedUsers = [];
+        this.replyingTo = null;
         this.securityConfig = options.securityConfig || {};
         this.securityManager = new ChatSecurityManager(this.securityConfig);
 
@@ -55,7 +56,10 @@ class ChatManager {
                     text: msg.message || msg.text || '',
                     timestamp: this.formatTime(msg.created_at),
                     own: (msg.pseudo || msg.username) === this.pseudo,
-                    created_at: msg.created_at
+                    created_at: msg.created_at,
+                    replyTo: msg.replyTo ?? msg.reply_to ?? msg.parentId ?? null,
+                    replyToPseudo: msg.replyToPseudo ?? msg.reply_to_pseudo ?? null,
+                    replyToText: msg.replyToText ?? msg.reply_to_text ?? null
                 }));
                 this.renderMessages();
                 this.scrollToBottom();
@@ -89,10 +93,16 @@ class ChatManager {
                     text: messageText,
                     timestamp: this.formatTime(msg.created_at),
                     own: isOwn,
-                    created_at: msg.created_at
+                    created_at: msg.created_at,
+                    replyTo: msg.replyTo ?? msg.reply_to ?? msg.parentId ?? null,
+                    replyToPseudo: msg.replyToPseudo ?? msg.reply_to_pseudo ?? null,
+                    replyToText: msg.replyToText ?? msg.reply_to_text ?? null
                 });
                 this.renderMessages();
                 this.scrollToBottom();
+                if (!isOwn && typeof window !== 'undefined') {
+                    window.dispatchEvent(new CustomEvent('chat-incoming-message', { detail: { pseudo } }));
+                }
                 return;
             }
             if (data.type === 'chatCleared') {
@@ -167,7 +177,10 @@ class ChatManager {
                 text: msg.message || msg.text || '',
                 timestamp: this.formatTime(msg.created_at),
                 own: (msg.pseudo || msg.username) === this.pseudo,
-                created_at: msg.created_at
+                created_at: msg.created_at,
+                replyTo: msg.replyTo ?? msg.reply_to ?? msg.parent_id ?? null,
+                replyToPseudo: msg.replyToPseudo ?? msg.reply_to_pseudo ?? null,
+                replyToText: msg.replyToText ?? msg.reply_to_text ?? null
             })).reverse();
             this.renderMessages();
             this.scrollToBottom();
@@ -187,6 +200,49 @@ class ChatManager {
                     this.sendMessage();
                 }
             });
+        }
+        this.initReplyUI();
+    }
+
+    initReplyUI() {
+        this.replyPreviewId = 'chat-widget-reply-preview';
+        this.replyCancelId = 'chat-widget-reply-cancel';
+        const preview = document.getElementById(this.replyPreviewId);
+        const cancelBtn = document.getElementById(this.replyCancelId);
+        if (cancelBtn) cancelBtn.addEventListener('click', () => this.clearReplyingTo());
+    }
+
+    setReplyingTo(msg) {
+        const textExcerpt = (msg.text || '').trim();
+        this.replyingTo = {
+            id: msg.id,
+            pseudo: msg.pseudo || '',
+            textExcerpt: textExcerpt.length > 60 ? textExcerpt.slice(0, 57) + '...' : textExcerpt
+        };
+        this.renderReplyPreview();
+        document.getElementById(this.inputId)?.focus();
+    }
+
+    clearReplyingTo() {
+        this.replyingTo = null;
+        this.renderReplyPreview();
+    }
+
+    renderReplyPreview() {
+        const preview = document.getElementById(this.replyPreviewId || 'chat-widget-reply-preview');
+        if (!preview) return;
+        const pseudoEl = preview.querySelector('.chat-reply-preview-pseudo');
+        const textEl = preview.querySelector('.chat-reply-preview-text');
+        if (this.replyingTo) {
+            preview.classList.add('show');
+            preview.setAttribute('aria-hidden', 'false');
+            if (pseudoEl) pseudoEl.textContent = this.replyingTo.pseudo;
+            if (textEl) textEl.textContent = this.replyingTo.textExcerpt || '(message)';
+        } else {
+            preview.classList.remove('show');
+            preview.setAttribute('aria-hidden', 'true');
+            if (pseudoEl) pseudoEl.textContent = '';
+            if (textEl) textEl.textContent = '';
         }
     }
 
@@ -297,10 +353,9 @@ class ChatManager {
                 img.loading = 'lazy';
                 thumb.appendChild(img);
                 thumb.addEventListener('click', () => {
-                    const sep = input.value.trim() ? ' ' : '';
-                    input.value = input.value + sep + url;
                     picker.classList.remove('show');
-                    input.focus();
+                    input.value = url;
+                    this.sendMessage();
                 });
                 resultsWrap.appendChild(thumb);
             });
@@ -380,6 +435,7 @@ class ChatManager {
             return;
         }
 
+        const replyToId = this.replyingTo?.id ?? null;
         const now = new Date().toISOString();
         const tempId = 'temp-' + Date.now();
         this.messages.push({
@@ -388,20 +444,32 @@ class ChatManager {
             text,
             timestamp: this.formatTime(now),
             own: true,
-            created_at: now
+            created_at: now,
+            replyTo: replyToId,
+            replyToPseudo: this.replyingTo?.pseudo ?? null,
+            replyToText: this.replyingTo?.textExcerpt ?? null
         });
         this.renderMessages();
         this.scrollToBottom();
         input.value = '';
+        this.clearReplyingTo();
 
         try {
-            await this.webSocket.sendMessage(text);
+            await this.webSocket.sendMessage(text, replyToId);
         } catch (error) {
             logger.error('Erreur envoi message', error);
             const idx = this.messages.findIndex(m => m.own && m.text === text && m.id && String(m.id).startsWith('temp-'));
             if (idx !== -1) this.messages.splice(idx, 1);
             this.renderMessages();
         }
+    }
+
+    isGifOnlyMessage(text) {
+        const t = (text || '').trim();
+        if (!t) return false;
+        if (/^https?:\/\/[^\s]+\.gif(\?.*)?$/i.test(t)) return true;
+        if (/^https?:\/\/[^/]*giphy\.com\/[^\s]+$/i.test(t)) return true;
+        return false;
     }
 
     renderMessages() {
@@ -420,26 +488,59 @@ class ChatManager {
         this.messages.forEach(msg => {
             const wrap = document.createElement('div');
             wrap.className = msg.own ? 'chat-message own' : 'chat-message other';
+            wrap.dataset.msgId = msg.id;
+
+            const headerRow = document.createElement('div');
+            headerRow.className = 'chat-message-header';
 
             const pseudoEl = document.createElement('div');
             pseudoEl.className = 'chat-message-pseudo';
             pseudoEl.textContent = msg.pseudo || '';
 
+            const headerRight = document.createElement('div');
+            headerRight.className = 'chat-message-header-right';
+            const timeEl = document.createElement('div');
+            timeEl.className = 'chat-message-time';
+            timeEl.textContent = msg.timestamp || '';
+            const replyBtn = document.createElement('button');
+            replyBtn.type = 'button';
+            replyBtn.className = 'chat-message-reply-btn';
+            replyBtn.title = 'Répondre';
+            replyBtn.setAttribute('aria-label', 'Répondre à ce message');
+            replyBtn.innerHTML = '<i class="fas fa-reply"></i>';
+            replyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.setReplyingTo(msg);
+            });
+            headerRight.appendChild(timeEl);
+            headerRight.appendChild(replyBtn);
+
+            headerRow.appendChild(pseudoEl);
+            headerRow.appendChild(headerRight);
+
+            const isGif = this.isGifOnlyMessage(msg.text);
             const contentWrap = document.createElement('div');
-            contentWrap.className = 'chat-message-content';
+            contentWrap.className = 'chat-message-content' + (isGif ? ' is-gif' : '');
+
+            if (msg.replyTo != null || msg.replyToPseudo || msg.replyToText) {
+                const replyBlock = document.createElement('div');
+                replyBlock.className = 'chat-message-reply';
+                const orig = this.messages.find(m => String(m.id) === String(msg.replyTo));
+                const replyPseudo = msg.replyToPseudo || orig?.pseudo || '?';
+                const replyText = (msg.replyToText != null ? msg.replyToText : orig?.text) || '';
+                const excerpt = replyText.length > 80 ? replyText.slice(0, 77) + '...' : replyText;
+                replyBlock.innerHTML = `<span class="chat-message-reply-pseudo">${this.escapeHtml(replyPseudo)}</span><span class="chat-message-reply-text">${this.escapeHtml(excerpt)}</span>`;
+                contentWrap.appendChild(replyBlock);
+            }
+
             const textWrap = document.createElement('div');
             textWrap.className = 'chat-message-text';
             const fragment = this.securityManager.processMessage(msg.text);
             textWrap.appendChild(fragment);
             contentWrap.appendChild(textWrap);
 
-            const timeEl = document.createElement('div');
-            timeEl.className = 'chat-message-time';
-            timeEl.textContent = msg.timestamp || '';
-
-            wrap.appendChild(pseudoEl);
+            wrap.appendChild(headerRow);
             wrap.appendChild(contentWrap);
-            wrap.appendChild(timeEl);
             container.appendChild(wrap);
         });
 

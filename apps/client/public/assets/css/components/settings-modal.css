@@ -26,8 +26,9 @@
     background-color: var(--blanc);
     border-radius: var(--radius-large);
     box-shadow: var(--shadow-large);
+    scrollbar-width: thin;
     width: 100%;
-    max-width: 440px;
+    max-width: 500px;
     max-height: 90vh;
     overflow-y: auto;
     z-index: 1002;
@@ -40,7 +41,6 @@
     flex-shrink: 0;
     padding: var(--unit-4) var(--unit-4) var(--unit-3);
     background: linear-gradient(135deg, var(--bleu1) 0%, var(--bleu2) 100%);
-    border-radius: var(--radius-large) var(--radius-large) 0 0;
     color: var(--blanc);
 }
 
@@ -81,7 +81,6 @@
 
 /* Corps : sections en cartes */
 .settings-modal-body {
-    padding: var(--unit-3) var(--unit-4) var(--unit-4);
     display: flex;
     flex-direction: column;
     gap: var(--unit-4);
@@ -300,10 +299,6 @@
 
     .settings-modal-container .settings-modal-header {
         border-radius: var(--radius-large) var(--radius-large) 0 0;
-    }
-
-    .settings-modal-body {
-        padding: var(--unit-3);
     }
 
     .settings-section {
