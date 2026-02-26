@@ -1,197 +1,101 @@
-# Workspace v2.0
+# Workspace v3
 
-Application Electron client pour la gestion de workspace. Se connecte à un serveur backend déployé séparément (sur Proxmox).
+Application de bureau (Electron) conçue pour centraliser et gérer les activités quotidiennes d'une structure. Elle s'appuie sur un serveur backend déployé séparément (sur Proxmox) auquel elle se connecte via HTTP REST et WebSocket.
 
-## 🎯 Architecture
+---
 
-- **Monorepo** avec npm workspaces
-- **Client (Electron)**: Application Electron avec interface utilisateur Vanilla JS + Web Components
-- **Communication**: HTTP REST API + WebSocket temps réel via module API centralisé
-- **Déploiement**: Client déployé localement, serveur sur Proxmox (192.168.1.62:4000)
+## Ce que fait l'application
 
-### Vue d'ensemble
+Workspace est une interface unifiée qui regroupe plusieurs modules fonctionnels accessibles depuis un seul client :
+
+### Accueil
+Page principale affichant un tableau de bord avec l'heure et la date en temps réel, ainsi qu'un aperçu des informations importantes de la structure (La Capsule).
+
+### Agenda
+Calendrier interactif permettant de consulter et gérer les événements. Les vues semaine, mois et année sont disponibles. Les événements sont créés, modifiés et supprimés directement depuis l'interface.
+
+### Réception
+Module dédié à la gestion du matériel reconditionné, composé de quatre sous-sections :
+- **Entrée** : saisie des nouveaux lots de machines (numéros de série, marques, modèles)
+- **Inventaire** : état des stocks en cours, filtrage par état, assignation des techniciens
+- **Historique** : suivi de l'ensemble des mouvements de matériel
+- **Traçabilité** : lien entre les machines et leur historique de reconditionnement
+
+### Dossier interne
+Gestionnaire de fichiers donnant accès aux documents internes de la structure, organisés par entité.
+
+### Applications
+Raccourcis vers les applications internes regroupées par catégorie (Développement, Streaming, Bureautique, etc.), gérées dynamiquement depuis le serveur.
+
+### Raccourcis
+Accès rapide aux liens et outils fréquemment utilisés.
+
+### Options
+Paramètres de l'application : configuration de la connexion au serveur, préférences d'affichage et gestion du compte utilisateur.
+
+---
+
+## Architecture
+
+L'application suit une architecture client/serveur distincte :
+
+- Le **client Electron** tourne localement sur la machine de l'utilisateur. Il gère l'interface, les interactions utilisateur et toutes les communications avec le serveur via un module API centralisé (`api.js`).
+- Le **serveur backend** est déployé sur une machine Proxmox (192.168.1.62:4000). Il expose une API REST et un canal WebSocket pour les mises à jour en temps réel.
+
+La configuration de connexion (URL du serveur, endpoints) est centralisée dans un unique fichier `connection.json`, ce qui permet de basculer facilement entre les environnements local, Proxmox et production.
+
+L'authentification est gérée par JWT : chaque client s'authentifie et toutes les requêtes sont automatiquement signées par le module API.
 
 ```
-┌─────────────────────────────┐         HTTP/WS         ┌─────────────────────────────┐
-│  apps/client (Electron)     │  ◄──────────────────►   │  Serveur Backend            │
-│                             │                          │  (Proxmox - 192.168.1.62)  │
-│  ┌───────────────────────┐  │                          │                             │
-│  │  Interface            │  │                          │  ┌───────────────────────┐  │
-│  │  Utilisateur          │  │                          │  │  API REST + WebSocket │  │
-│  └───────────────────────┘  │                          │  └───────────────────────┘  │
-│                             │                          │                             │
-│  ┌───────────────────────┐  │    REST API (4000)       │                             │
-│  │  Module API           │──┼──────────────────────────┼─►                           │
-│  │  (api.js centralisé)  │  │                          │                             │
-│  └───────────────────────┘  │                          │                             │
-│                             │                          │                             │
-└─────────────────────────────┘                          └─────────────────────────────┘
-      Machine Cliente                                           Serveur Proxmox
+┌─────────────────────────┐        HTTP / WebSocket        ┌──────────────────────────┐
+│   Client Electron       │  ◄────────────────────────►    │   Serveur Backend        │
+│   (machine locale)      │                                 │   (Proxmox :4000)        │
+│                         │                                 │                          │
+│   Interface utilisateur │                                 │   API REST + WebSocket   │
+│   Module API centralisé │                                 │   Authentification JWT   │
+└─────────────────────────┘                                 └──────────────────────────┘
 ```
 
-## 🚀 Démarrage rapide
+---
 
-### Prérequis
-
-- Node.js 18+ LTS
-- npm 8+
-
-### Installation
-
-```bash
-# Installer toutes les dépendances
-npm install
-
-# Créer le fichier .env
-cp .env.example .env
-```
-
-### Développement
-
-```bash
-# Démarrer l'application client Electron
-npm run dev
-
-# Ou directement:
-npm start --workspace=apps/client
-```
-
-### Mode production
-
-```bash
-# Build de l'application client
-npm run build
-
-# Démarrer
-npm start
-```
-
-### Build avec publication (mises à jour automatiques)
-
-Les scripts `build:prod`, `build:prod:linux`, `build:prod:win`, `build:prod:mac` construisent les artefacts et les publient sur les **Releases GitHub** pour que `electron-updater` puisse proposer les mises à jour aux clients.
-
-**Prérequis :** définir un **Personal Access Token** GitHub avec au moins le scope `repo` (ou `public_repo` si le dépôt est public). **Sans token, le build réussit mais aucune release n’est créée ou mise à jour.**
-
-1. Créer un token : GitHub → Settings → Developer settings → Personal access tokens → Generate new token (classic). Cocher **repo**.
-2. **Option A (recommandé)** : mettre le token dans le fichier `.env` à la racine (`GITHUB_TOKEN=ghp_xxx`), puis lancer depuis la racine (le script charge `.env` automatiquement) :
-   ```bash
-   npm run build:prod:linux   # ou build:prod:win / build:prod:mac
-   ```
-3. **Option B** : exporter le token avant le build depuis `apps/client` :
-   ```bash
-   cd apps/client
-   export GH_TOKEN=ghp_VotreTokenIci
-   npm run build:prod:linux
-   ```
-   Ou en une ligne : `GH_TOKEN=ghp_xxx npm run build:prod:linux`
-
-En CI/CD (GitHub Actions, etc.), ajouter `GH_TOKEN` dans les secrets du dépôt et l’exposer comme variable d’environnement pour la job de build.
-
-Pour un **build local sans publication** (artefacts uniquement dans `dist/`) : `npm run build:prod:linux:local`
-
-**Détection des mises à jour :** l’app n’affiche une mise à jour que si la **version sur GitHub est strictement supérieure** à la version installée (ex. installé en 3.0.1 → release 3.0.2). Après chaque publication, incrémenter `version` dans `apps/client/package.json` pour le prochain cycle. Vérifier sur GitHub que la release contient bien les fichiers (AppImage/deb + `latest-linux.yml`). En cas de problème, lancer l’app depuis un terminal et regarder les logs `[Update]` (erreur 404 = assets manquants, token, ou mauvais repo).
-
-## 📁 Structure du projet
+## Structure du projet
 
 ```
 workspace/
 ├── apps/
-│   └── client/               # Application Electron Client
+│   └── client/                   Application Electron
 │       ├── public/
-│       │   ├── pages/        # Pages HTML
-│       │   ├── components/   # Composants HTML
-│       │   ├── assets/       # CSS, JS
+│       │   ├── pages/            Pages HTML de chaque section
+│       │   ├── components/       Composants réutilisables (header, footer, modales)
+│       │   ├── assets/
 │       │   │   └── js/
 │       │   │       ├── config/
-│       │   │       │   └── api.js  # Module API centralisé
-│       │   │       └── modules/    # Modules fonctionnels
-│       │   └── index.html    # Page principale
+│       │   │       │   └── api.js        Module API centralisé
+│       │   │       └── modules/          Modules fonctionnels (agenda, chat, reception…)
+│       │   └── index.html        Point d'entrée de l'interface
 │       ├── config/
-│       │   └── connection.json  # Configuration serveur centralisée
-│       ├── main.js           # Entry point Electron
-│       ├── preload.js        # Preload Electron
-│       └── package.json
+│       │   └── connection.json   Configuration serveur et endpoints
+│       ├── main.js               Point d'entrée Electron
+│       └── preload.js            Bridge sécurisé Electron/renderer
 │
-├── Jarvis/                   # Standards AI + patterns
-├── package.json              # Root + workspaces
-└── README.md                 # Cette documentation
+├── data/                         Données locales
+├── docs/                         Documentation complémentaire
+├── Jarvis/                       Standards et patterns du projet
+└── package.json                  Monorepo npm workspaces
 ```
 
-## 🔧 Configuration
+---
 
-La configuration du serveur est centralisée dans `apps/client/config/connection.json`.
+## Déploiement et mises à jour
 
-### Configuration de connexion
+Le client est distribué sous forme d'exécutable (AppImage sur Linux, installeur sur Windows/Mac). Les mises à jour sont gérées automatiquement par `electron-updater` : l'application détecte si une version plus récente est disponible sur les Releases GitHub et propose la mise à jour à l'utilisateur sans intervention manuelle.
 
-Modifier le fichier `apps/client/config/connection.json` pour changer l'environnement :
+---
 
-```json
-{
-  "mode": "proxmox",  // "local", "proxmox", ou "production"
-  "environments": {
-    "proxmox": {
-      "url": "http://192.168.1.62:4000",
-      "ws": "ws://192.168.1.62:4000"
-    }
-  }
-}
-```
+## Sécurité
 
-Tous les endpoints API sont également définis dans ce fichier.
+- **Content Security Policy (CSP)** configurée dans Electron pour limiter les ressources autorisées
+- **Authentification JWT** : chaque session est authentifiée, les tokens sont gérés automatiquement par le module API
+- **Preload Electron** : isolation stricte entre le processus principal et le renderer via contextBridge
 
-## 🧪 Tests
-
-```bash
-# Lancer tous les tests
-npm test
-
-# Tests avec coverage
-npm test -- --coverage
-```
-
-## 🔍 Qualité du code
-
-```bash
-# TypeScript compilation
-npm run type-check
-
-# Linting
-npm run lint
-
-# Formatting
-npm run format
-```
-
-## 📜 Historique
-
-Voir [CHANGELOG](./CHANGELOG-V2.md) pour les détails des versions.
-
-## 🤝 Contribution
-
-Voir [Jarvis/Instructions.mdc](./Jarvis/Instructions.mdc) pour les standards du projet.
-
-## 📄 Licence
-
-MIT
-
-## ✨ Avantages de cette architecture
-
-### Architecture simplifiée
-- **API centralisée**: Un seul module `api.js` pour toutes les requêtes HTTP
-- **Configuration unique**: Un seul fichier `connection.json` pour toute la config
-- **Code modulaire**: Modules ES6 bien organisés
-
-### Déploiement flexible
-- Client déployé localement sur chaque machine
-- Serveur déployé sur Proxmox (192.168.1.62:4000)
-- Configuration facile via `connection.json`
-
-### Sécurité
-- Content Security Policy (CSP) configurée
-- Authentification JWT pour chaque client
-- Module API centralisé avec authentification automatique
-
-### Maintenance
-- Configuration centralisée facile à modifier
-- Code simplifié et modulaire
-- Migration progressive vers le module API centralisé
+---
