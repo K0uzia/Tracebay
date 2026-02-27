@@ -45,6 +45,7 @@ services:
       WS_PORT: ${WS_PORT:-4000}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
       JWT_SECRET: ${JWT_SECRET:-change-me}
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-SECRET_RETIRE}
       DB_HOST: db
       DB_PORT: ${DB_PORT:-5432}
       DB_NAME: ${DB_NAME:-workspace_db}
