@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
 import nodemailer from 'nodemailer';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { registerMonitoringRoutes, incrementMessageCount } from './api/monitoring';
 import { registerClientErrorsRoutes } from './api/client-errors';
 import { registerAdminRoutes } from './api/admin';
@@ -211,6 +213,36 @@ function broadcastUserCount() {
       }
 
       const normalizedUsername = String(username).trim().toLowerCase();
+
+      let dbUser: { id: number; username: string; password_hash: string; role: string; created_at: string } | null = null;
+      try {
+        const result = await query(
+          'SELECT id, username, password_hash, role, created_at FROM users WHERE LOWER(username) = $1 AND deleted_at IS NULL',
+          [normalizedUsername]
+        );
+        dbUser = result.rows[0] || null;
+      } catch (err) {
+        fastify.log.error({ err }, 'login: DB error');
+        reply.statusCode = 500;
+        return { error: 'Erreur serveur' };
+      }
+
+      if (!dbUser) {
+        reply.statusCode = 401;
+        return { success: false, message: 'Identifiants incorrects' };
+      }
+
+      if (!dbUser.password_hash) {
+        reply.statusCode = 401;
+        return { success: false, message: 'Mot de passe non défini, contactez un administrateur' };
+      }
+
+      const passwordValid = await bcrypt.compare(String(password), dbUser.password_hash);
+      if (!passwordValid) {
+        reply.statusCode = 401;
+        return { success: false, message: 'Identifiants incorrects' };
+      }
+
       if (activeSessions.has(normalizedUsername)) {
         reply.statusCode = 200;
         return {
@@ -220,17 +252,22 @@ function broadcastUserCount() {
         };
       }
 
-      const userId = `user_${Date.now()}`;
-      const token = `jwt_${Buffer.from(JSON.stringify({ userId, username: normalizedUsername, iat: Date.now() })).toString('base64')}`;
+      const jwtSecret = process.env.JWT_SECRET || 'changeme';
+      const token = jwt.sign(
+        { id: dbUser.id, username: dbUser.username, role: dbUser.role },
+        jwtSecret,
+        { expiresIn: '7d' }
+      );
       activeSessions.add(normalizedUsername);
 
       return {
         success: true,
         token,
         user: {
-          id: userId,
-          username: normalizedUsername,
-          createdAt: new Date().toISOString()
+          id: dbUser.id,
+          username: dbUser.username,
+          role: dbUser.role,
+          createdAt: dbUser.created_at
         }
       };
     });
@@ -239,10 +276,11 @@ function broadcastUserCount() {
       let normalizedUsername: string | null = null;
       const authHeader = (request.headers as any).authorization || (request.headers as any).Authorization;
       const token = typeof authHeader === 'string' ? authHeader.replace(/Bearer\s+/i, '').trim() : '';
-      if (token && token.startsWith('jwt_')) {
+      if (token) {
         try {
-          const decoded = JSON.parse(Buffer.from(token.replace('jwt_', ''), 'base64').toString());
-          normalizedUsername = decoded.username && String(decoded.username).trim().toLowerCase();
+          const jwtSecret = process.env.JWT_SECRET || 'changeme';
+          const decoded = jwt.verify(token, jwtSecret) as { username?: string };
+          normalizedUsername = decoded.username ? String(decoded.username).trim().toLowerCase() : null;
         } catch {
           // ignore invalid token
         }
@@ -273,53 +311,56 @@ function broadcastUserCount() {
       return { success: true, message: 'Logged out successfully' };
     });
 
-    fastify.get('/api/auth/verify', async (request: FastifyRequest, reply: FastifyReply) => {
-      const token = request.headers.authorization?.replace('Bearer ', '');
+    const handleVerifyToken = async (request: FastifyRequest, reply: FastifyReply) => {
+      const authHeader = request.headers.authorization;
+      const token = authHeader?.replace(/^Bearer\s+/i, '').trim();
 
-      if (!token || !token.startsWith('jwt_')) {
+      if (!token) {
         reply.statusCode = 401;
-        return { error: 'Invalid token' };
+        return { error: 'Token manquant' };
+      }
+
+      let payload: { id?: number; username?: string; role?: string } = {};
+      try {
+        const jwtSecret = process.env.JWT_SECRET || 'changeme';
+        payload = jwt.verify(token, jwtSecret) as { id: number; username: string; role: string };
+      } catch {
+        reply.statusCode = 401;
+        return { error: 'Token invalide ou expiré' };
+      }
+
+      if (!payload.id) {
+        reply.statusCode = 401;
+        return { error: 'Token invalide' };
       }
 
       try {
-        // Decode simple token
-        const decoded = JSON.parse(Buffer.from(token.replace('jwt_', ''), 'base64').toString());
+        const result = await query(
+          'SELECT id, username, role, created_at FROM users WHERE id = $1 AND deleted_at IS NULL',
+          [payload.id]
+        );
+        const dbUser = result.rows[0];
+        if (!dbUser) {
+          reply.statusCode = 401;
+          return { error: 'Utilisateur introuvable' };
+        }
         return {
           valid: true,
-          userId: decoded.userId,
-          username: decoded.username,
-          expiresAt: new Date(decoded.iat + 7 * 24 * 60 * 60 * 1000).toISOString()
+          userId: dbUser.id,
+          username: dbUser.username,
+          role: dbUser.role,
+          expiresAt: new Date((payload as any).exp * 1000).toISOString()
         };
-      } catch (e) {
-        reply.statusCode = 401;
-        return { error: 'Invalid token format' };
+      } catch (err) {
+        fastify.log.error({ err }, 'verify: DB error');
+        reply.statusCode = 500;
+        return { error: 'Erreur serveur' };
       }
-    });
+    };
 
-    fastify.post('/api/auth/verify', async (request: FastifyRequest, reply: FastifyReply) => {
-      const token = request.headers.authorization?.replace('Bearer ', '');
+    fastify.get('/api/auth/verify', handleVerifyToken);
+    fastify.post('/api/auth/verify', handleVerifyToken);
 
-      if (!token || !token.startsWith('jwt_')) {
-        reply.statusCode = 401;
-        return { error: 'Invalid token' };
-      }
-
-      try {
-        // Decode simple token
-        const decoded = JSON.parse(Buffer.from(token.replace('jwt_', ''), 'base64').toString());
-        return {
-          valid: true,
-          userId: decoded.userId,
-          username: decoded.username,
-          expiresAt: new Date(decoded.iat + 7 * 24 * 60 * 60 * 1000).toISOString()
-        };
-      } catch (e) {
-        reply.statusCode = 401;
-        return { error: 'Invalid token format' };
-      }
-    });
-
-    // Mock register endpoint to avoid 404
     fastify.post('/api/auth/register', async (request: FastifyRequest, reply: FastifyReply) => {
       const { username, password } = request.body as { username: string; password: string };
 
@@ -328,26 +369,54 @@ function broadcastUserCount() {
         return { error: 'Username and password required' };
       }
 
-      if (username.length < 3 || username.length > 20) {
+      const trimmedUsername = String(username).trim();
+      const trimmedPassword = String(password);
+
+      if (trimmedUsername.length < 3 || trimmedUsername.length > 20) {
         reply.statusCode = 400;
-        return { error: 'Username must be between 3 and 20 characters' };
+        return { error: 'Le nom doit contenir entre 3 et 20 caractères' };
       }
 
-      if (password.length < 6) {
+      if (trimmedPassword.length < 6) {
         reply.statusCode = 400;
-        return { error: 'Password must be at least 6 characters' };
+        return { error: 'Le mot de passe doit contenir au moins 6 caractères' };
       }
 
-      const userId = `user_${Date.now()}`;
-      const token = `jwt_${Buffer.from(JSON.stringify({ userId, username, iat: Date.now() })).toString('base64')}`;
+      const passwordHash = await bcrypt.hash(trimmedPassword, 12);
+
+      let dbUser: { id: number; username: string; created_at: string } | null = null;
+      try {
+        const result = await query(
+          `INSERT INTO users (username, password_hash, role, created_at)
+           VALUES ($1, $2, 'user', NOW())
+           RETURNING id, username, created_at`,
+          [trimmedUsername, passwordHash]
+        );
+        dbUser = result.rows[0];
+      } catch (err: any) {
+        if (err?.code === '23505') {
+          reply.statusCode = 409;
+          return { success: false, message: 'Ce nom est déjà utilisé' };
+        }
+        fastify.log.error({ err }, 'register: DB error');
+        reply.statusCode = 500;
+        return { error: 'Erreur serveur' };
+      }
+
+      const jwtSecret = process.env.JWT_SECRET || 'changeme';
+      const token = jwt.sign(
+        { id: dbUser!.id, username: dbUser!.username, role: 'user' },
+        jwtSecret,
+        { expiresIn: '7d' }
+      );
 
       return {
         success: true,
         token,
         user: {
-          id: userId,
-          username,
-          createdAt: new Date().toISOString()
+          id: dbUser!.id,
+          username: dbUser!.username,
+          createdAt: dbUser!.created_at
         }
       };
     });
@@ -1468,19 +1537,16 @@ function broadcastUserCount() {
             case 'auth': {
               let tokenUsername: string | null = null;
               const raw = (message.token || message.data?.token || '').toString().replace(/^Bearer\s+/i, '').trim();
-              // #region agent log
-              fastify.log.info({ hypothesisId: 'H1', hasToken: raw.length > 0, tokenPrefix: raw.substring(0, 10) }, '[DEBUG] H1 auth message received');
-              // #endregion
+              fastify.log.info({ hasToken: raw.length > 0 }, '[WS] auth message received');
               try {
-                if (raw.startsWith('jwt_')) {
-                  const decoded = JSON.parse(Buffer.from(raw.slice(4), 'base64').toString());
-                  if (decoded && decoded.username) tokenUsername = String(decoded.username).trim().toLowerCase();
-                }
+                const jwtSecret = process.env.JWT_SECRET || 'changeme';
+                const decoded = jwt.verify(raw, jwtSecret) as { username?: string };
+                if (decoded && decoded.username) tokenUsername = String(decoded.username).trim().toLowerCase();
               } catch {
                 // ignore invalid token
               }
               if (!tokenUsername) {
-                fastify.log.info({ hypothesisId: 'H1' }, '[DEBUG] H1 auth rejected (Token invalide)');
+                fastify.log.warn('[WS] auth rejected: token invalide');
                 const r = getRawSocket(socket);
                 if (r) r.send(JSON.stringify({ type: 'error', message: 'Token invalide' }));
                 break;
@@ -1519,9 +1585,7 @@ function broadcastUserCount() {
                 } catch { /* ignore */ }
               }
               activeSessions.add(tokenUsername);
-              // #region agent log
-              fastify.log.info({ hypothesisId: 'H1', tokenUsername }, '[DEBUG] H1 auth success');
-              // #endregion
+              fastify.log.info({ tokenUsername }, '[CHAT] Auth OK');
               console.log(`[CHAT] Auth OK: ${tokenUsername} (${userId}) | total: ${connectedUsers.size}`);
               const rAck = getRawSocket(socket);
               if (rAck) rAck.send(JSON.stringify({ type: 'auth:ack', ok: true }));
@@ -1533,10 +1597,7 @@ function broadcastUserCount() {
             case 'message:send': {
               const isAuthenticated = username.startsWith('anon_') === false;
               // #region agent log
-              fastify.log.info({ hypothesisId: 'H2', messageType: message.type, isAuthenticated, username }, '[DEBUG] H2 message received');
-              // #endregion
               if (!isAuthenticated) {
-                fastify.log.info({ hypothesisId: 'H2' }, '[DEBUG] H2 message rejected (Authentification requise)');
                 const r = getRawSocket(socket);
                 if (r) r.send(JSON.stringify({ type: 'error', message: 'Authentification requise' }));
                 break;

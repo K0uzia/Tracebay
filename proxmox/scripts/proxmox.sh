@@ -339,6 +339,13 @@ ALTER TABLE modeles ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 -- Rôles utilisateurs
 UPDATE users SET role = 'admin' WHERE username = 'sandersonn' AND (role IS NULL OR role = 'user');
 
+-- Migration hash : les anciens hashes SHA256 (64 chars hex) sont incompatibles avec bcrypt.
+-- On les invalide pour forcer la réinitialisation du mot de passe via le panel admin.
+UPDATE users SET password_hash = NULL
+  WHERE password_hash IS NOT NULL
+    AND LENGTH(password_hash) = 64
+    AND password_hash ~ '^[0-9a-f]+$';
+
 -- Fix is_read, Lots, Shortcuts
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;
 ALTER TABLE lots ADD COLUMN IF NOT EXISTS name VARCHAR(255);

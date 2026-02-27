@@ -4,6 +4,7 @@ import { getServerLogs } from '../utils/server-log-buffer';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import bcrypt from 'bcryptjs';
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'SECRET_RETIRE';
 const JWT_SECRET = process.env.JWT_SECRET || 'SECRET_RETIRE';
@@ -79,7 +80,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // AUTH ADMIN
   // ─────────────────────────────────────────────
 
-  fastify.post('/api/admin/auth/login', async (request, reply) => {
+  fastify.post('/api/admin/auth/login', async (request: FastifyRequest, reply: FastifyReply) => {
     const { username, password } = request.body as any;
     if (!username || !password) {
       reply.statusCode = 400;
@@ -100,8 +101,12 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
         reply.statusCode = 403;
         return { error: 'Accès refusé : compte non administrateur' };
       }
-      const hash = crypto.createHash('sha256').update(password).digest('hex');
-      if (hash !== user.password_hash) {
+      if (!user.password_hash) {
+        reply.statusCode = 401;
+        return { error: 'Mot de passe non défini, contactez un administrateur' };
+      }
+      const passwordValid = await bcrypt.compare(String(password), user.password_hash);
+      if (!passwordValid) {
         reply.statusCode = 401;
         return { error: 'Identifiants incorrects' };
       }
@@ -118,7 +123,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // COMPTES UTILISATEURS
   // ─────────────────────────────────────────────
 
-  fastify.get('/api/admin/users', async (request, reply) => {
+  fastify.get('/api/admin/users', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     try {
       const result = await query(
@@ -132,7 +137,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.post('/api/admin/users', async (request, reply) => {
+  fastify.post('/api/admin/users', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { username, password, role } = request.body as any;
     if (!username?.trim() || !password) {
@@ -149,7 +154,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
     const userRole = role === 'admin' ? 'admin' : 'user';
     try {
-      const hash = crypto.createHash('sha256').update(password).digest('hex');
+      const hash = await bcrypt.hash(String(password), 12);
       const result = await query(
         `INSERT INTO users (username, password_hash, role, created_at) VALUES ($1, $2, $3, NOW())
          RETURNING id, username, role, created_at`,
@@ -167,7 +172,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.put('/api/admin/users/:id', async (request, reply) => {
+  fastify.put('/api/admin/users/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     const { username, password, email, role } = request.body as any;
@@ -177,7 +182,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     if (username !== undefined) { updates.push(`username = $${i++}`); params.push(String(username).trim().toLowerCase()); }
     if (email !== undefined) { updates.push(`email = $${i++}`); params.push(email || null); }
     if (password) {
-      const hash = crypto.createHash('sha256').update(password).digest('hex');
+      const hash = await bcrypt.hash(String(password), 12);
       updates.push(`password_hash = $${i++}`);
       params.push(hash);
     }
@@ -205,7 +210,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.delete('/api/admin/users/:id', async (request, reply) => {
+  fastify.delete('/api/admin/users/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
@@ -223,7 +228,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // AGENDA
   // ─────────────────────────────────────────────
 
-  fastify.get('/api/admin/agenda', async (request, reply) => {
+  fastify.get('/api/admin/agenda', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { search, from, to } = request.query as any;
     let sql = `SELECT id, user_id, username, title, start, "end", description, location, color, created_at FROM events WHERE 1=1`;
@@ -243,7 +248,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.post('/api/admin/agenda', async (request, reply) => {
+  fastify.post('/api/admin/agenda', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { title, start, end, description, location, color, username } = request.body as any;
     if (!title || !start || !end) {
@@ -265,7 +270,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.put('/api/admin/agenda/:id', async (request, reply) => {
+  fastify.put('/api/admin/agenda/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     const body = request.body as any;
@@ -292,7 +297,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.delete('/api/admin/agenda/:id', async (request, reply) => {
+  fastify.delete('/api/admin/agenda/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
@@ -310,7 +315,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // MESSAGES CHAT
   // ─────────────────────────────────────────────
 
-  fastify.get('/api/admin/messages', async (request, reply) => {
+  fastify.get('/api/admin/messages', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { search, user, limit = 100 } = request.query as any;
     let sql = `SELECT id, user_id, username, text, created_at FROM messages WHERE deleted_at IS NULL`;
@@ -329,7 +334,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.delete('/api/admin/messages/:id', async (request, reply) => {
+  fastify.delete('/api/admin/messages/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
@@ -343,7 +348,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.delete('/api/admin/messages', async (request, reply) => {
+  fastify.delete('/api/admin/messages', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     try {
       const result = await query('DELETE FROM messages');
@@ -359,7 +364,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // RÉCEPTION : MARQUES & MODÈLES
   // ─────────────────────────────────────────────
 
-  fastify.get('/api/admin/marques', async (request, reply) => {
+  fastify.get('/api/admin/marques', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     try {
       const result = await query(
@@ -375,7 +380,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.post('/api/admin/marques', async (request, reply) => {
+  fastify.post('/api/admin/marques', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { name } = request.body as any;
     if (!name?.trim()) { reply.statusCode = 400; return { error: 'name requis' }; }
@@ -390,7 +395,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.put('/api/admin/marques/:id', async (request, reply) => {
+  fastify.put('/api/admin/marques/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     const { name } = request.body as any;
@@ -406,7 +411,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.delete('/api/admin/marques/:id', async (request, reply) => {
+  fastify.delete('/api/admin/marques/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
@@ -420,7 +425,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.get('/api/admin/marques/:id/modeles', async (request, reply) => {
+  fastify.get('/api/admin/marques/:id/modeles', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
@@ -433,7 +438,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.post('/api/admin/marques/:id/modeles', async (request, reply) => {
+  fastify.post('/api/admin/marques/:id/modeles', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     const { name } = request.body as any;
@@ -448,7 +453,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.delete('/api/admin/modeles/:id', async (request, reply) => {
+  fastify.delete('/api/admin/modeles/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
@@ -466,7 +471,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // RÉCEPTION : LOTS
   // ─────────────────────────────────────────────
 
-  fastify.get('/api/admin/lots', async (request, reply) => {
+  fastify.get('/api/admin/lots', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { status, search } = request.query as any;
     let sql = `SELECT l.id, l.name, l.status, l.item_count, l.description, l.received_at, l.created_at, l.updated_at
@@ -486,7 +491,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.delete('/api/admin/lots/:id', async (request, reply) => {
+  fastify.delete('/api/admin/lots/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
@@ -505,7 +510,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // RACCOURCIS WEB
   // ─────────────────────────────────────────────
 
-  fastify.get('/api/admin/shortcuts', async (request, reply) => {
+  fastify.get('/api/admin/shortcuts', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     try {
       const result = await query(
@@ -525,7 +530,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.post('/api/admin/shortcuts', async (request, reply) => {
+  fastify.post('/api/admin/shortcuts', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { user_id, title, url, description, category_id } = request.body as any;
     if (!title?.trim() || !url?.trim() || !user_id) {
@@ -549,7 +554,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.put('/api/admin/shortcuts/:id', async (request, reply) => {
+  fastify.put('/api/admin/shortcuts/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     const { title, url, description, category_id } = request.body as any;
@@ -576,7 +581,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.delete('/api/admin/shortcuts/:id', async (request, reply) => {
+  fastify.delete('/api/admin/shortcuts/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
@@ -590,7 +595,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.get('/api/admin/shortcut-categories', async (request, reply) => {
+  fastify.get('/api/admin/shortcut-categories', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     try {
       const result = await query(
@@ -609,7 +614,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.post('/api/admin/shortcut-categories', async (request, reply) => {
+  fastify.post('/api/admin/shortcut-categories', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { user_id, name } = request.body as any;
     if (!name?.trim() || !user_id) {
@@ -631,7 +636,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.delete('/api/admin/shortcut-categories/:id', async (request, reply) => {
+  fastify.delete('/api/admin/shortcut-categories/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
@@ -650,7 +655,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // CONFIG CLIENT : APPLICATIONS
   // ─────────────────────────────────────────────
 
-  fastify.get('/api/admin/config/apps', async (request, reply) => {
+  fastify.get('/api/admin/config/apps', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     try {
       const filePath = resolveClientConfigPath('AppConfig.js');
@@ -667,7 +672,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.put('/api/admin/config/apps', async (request, reply) => {
+  fastify.put('/api/admin/config/apps', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { content } = request.body as any;
     if (!content || typeof content !== 'string') {
@@ -689,7 +694,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // CONFIG CLIENT : DOSSIERS
   // ─────────────────────────────────────────────
 
-  fastify.get('/api/admin/config/folders', async (request, reply) => {
+  fastify.get('/api/admin/config/folders', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     try {
       const filePath = resolveClientConfigPath('FolderConfig.js');
@@ -702,7 +707,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.put('/api/admin/config/folders', async (request, reply) => {
+  fastify.put('/api/admin/config/folders', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { content } = request.body as any;
     if (!content || typeof content !== 'string') {
@@ -724,7 +729,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // LOGS SÉPARÉS
   // ─────────────────────────────────────────────
 
-  fastify.get('/api/admin/logs/chat', async (request, reply) => {
+  fastify.get('/api/admin/logs/chat', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { limit = 100 } = request.query as any;
     try {
@@ -741,7 +746,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.get('/api/admin/logs/db', async (request, reply) => {
+  fastify.get('/api/admin/logs/db', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     try {
       const [users, messages, events, lots, shortcuts, lot_items, marques, modeles] = await Promise.all([
@@ -774,7 +779,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.get('/api/admin/logs/auth', async (request, reply) => {
+  fastify.get('/api/admin/logs/auth', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { limit = 100 } = request.query as any;
     try {
@@ -795,7 +800,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.get('/api/admin/logs/api', async (request, reply) => {
+  fastify.get('/api/admin/logs/api', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const logs = getServerLogs()
       .filter(l => /GET|POST|PUT|DELETE|PATCH|incoming request|request completed|\d{3}/i.test(l.text))
@@ -804,7 +809,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     return { success: true, logs };
   });
 
-  fastify.get('/api/admin/logs/reception', async (request, reply) => {
+  fastify.get('/api/admin/logs/reception', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { limit = 100 } = request.query as any;
     try {
@@ -832,7 +837,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.get('/api/admin/logs/raw', async (request, reply) => {
+  fastify.get('/api/admin/logs/raw', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const logs = getServerLogs().map(l => `[${l.time}] ${l.text}`).join('\n');
     return { success: true, logs };
