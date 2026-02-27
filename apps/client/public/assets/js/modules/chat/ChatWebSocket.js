@@ -156,6 +156,7 @@ class ChatWebSocket {
     async authenticate(token) {
         if (!token) return;
         this.authToken = token;
+        if (this._authAcked) return;
         if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
         try {
             this.ws.send(JSON.stringify({ type: 'auth', token }));
@@ -187,8 +188,8 @@ class ChatWebSocket {
             const payload = {
                 id: d.id,
                 pseudo: d.username || d.pseudo,
-                text: d.text,
-                message: d.text,
+                text: d.text || d.message,
+                message: d.text || d.message,
                 created_at: d.createdAt || d.created_at,
                 replyTo: d.replyTo ?? d.reply_to ?? d.parentId ?? null,
                 replyToPseudo: d.replyToPseudo ?? d.reply_to_pseudo ?? null,
@@ -247,8 +248,7 @@ class ChatWebSocket {
                 count: typeof data.connectedUsers === 'number' ? data.connectedUsers : data.count,
                 users: data.users || []
             }));
-            this._trySendAuth();
-            if (!this._authAcked) this._startAuthRetry();
+            // _trySendAuth et _startAuthRetry sont déjà lancés depuis l'event 'open'
             return;
         }
         if (data.type === 'success') {
