@@ -259,12 +259,11 @@
     <div class="sidebar-user">Connecté en tant que<strong id="sidebar-username">—</strong></div>
     <nav>
       <div class="nav-section">Tableau de bord</div>
-      <div class="nav-item active" data-page="dashboard"><span class="icon">📊</span> Dashboard</div>
+      <div class="nav-item active" data-page="dashboard"><span class="icon"><i class="fa-solid fa-gauge"></i></span> Dashboard</div>
       <div class="nav-section">Base de données</div>
       <div class="nav-item" data-page="users"><span class="icon"><i class="fa-solid fa-users"></i></span> Utilisateurs</div>
       <div class="nav-item" data-page="agenda"><span class="icon"><i class="fa-solid fa-calendar-days"></i></span> Agenda</div>
       <div class="nav-item" data-page="reception"><span class="icon"><i class="fa-solid fa-box-open"></i></span> Réception</div>
-      <div class="nav-item" data-page="shortcuts"><span class="icon"><i class="fa-solid fa-link"></i></span> Raccourcis web</div>
       <div class="nav-section">Configuration client</div>
       <div class="nav-item" data-page="config-apps"><span class="icon"><i class="fa-solid fa-desktop"></i></span> Applications</div>
       <div class="nav-item" data-page="config-folders"><span class="icon"><i class="fa-solid fa-folder"></i></span> Dossiers</div>
@@ -818,7 +817,7 @@ async function loadDashboard() {
       api('GET', '/api/admin/logs/db'),
     ]);
     if (stats) {
-      document.getElementById('ds-connected').textContent = stats.connectedUsers ?? '—';
+      document.getElementById('ds-connected').textContent = ws?.count ?? stats.connectedUsers ?? '—';
       const uptimeSec = stats.uptime ?? stats.systemHealth?.uptime;
       const up = uptimeSec ? formatUptime(uptimeSec) : '—';
       document.getElementById('ds-uptime').textContent = up;
@@ -830,11 +829,11 @@ async function loadDashboard() {
       document.getElementById('ds-shortcuts').textContent = db.stats.shortcuts;
     }
     const tbody = document.getElementById('dash-users-table');
-    const users = ws && ws.users ? ws.users : (stats && stats.connectedUsersList ? stats.connectedUsersList : []);
+    const users = (ws && ws.connectedUsers) ? ws.connectedUsers : [];
     if (!users.length) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="2">Aucun utilisateur connecté</td></tr>';
     } else {
-      tbody.innerHTML = users.map(u => `<tr><td>${escHtml(u.username||u)}</td><td>${fmtDate(u.connectedAt||u.connected_at)}</td></tr>`).join('');
+      tbody.innerHTML = users.map(u => `<tr><td>${escHtml(u.username || '—')}</td><td>${fmtDate(u.connectedAt)}</td></tr>`).join('');
     }
   } catch(e) { console.error(e); }
 }
@@ -867,7 +866,7 @@ function renderUsers(list) {
   tbody.innerHTML = list.map(u => `
     <tr>
       <td>${u.id}</td>
-      <td><strong>${escHtml(u.username)}</strong></td>
+      <td><strong>${escHtml(u.username)}</strong>${u.has_password === false || u.has_password === 'false' ? ' <span class="badge badge-warning" title="Aucun mot de passe — connexion impossible">Mdp requis</span>' : ''}</td>
       <td>${escHtml(u.email||'—')}</td>
       <td><span class="badge badge-${u.role==='admin'?'admin':'user'}">${u.role||'user'}</span></td>
       <td>${fmtDate(u.created_at)}</td>

@@ -68,6 +68,44 @@ function checkAdminAuth(request: FastifyRequest, reply: FastifyReply): boolean {
 // Chemin vers les configs client
 // ─────────────────────────────────────────────
 
+/**
+ * Extrait un objet JS (notation littérale) depuis un fichier de config JS.
+ * Utilise require() après avoir converti les exports ES6 en CommonJS,
+ * avec fallback regex JSON si require() échoue.
+ */
+function parseConfigField(content: string, field: string): any {
+  try {
+    const tmp = require('os').tmpdir() + '/ws_cfg_' + field + '_' + Date.now() + '.js';
+    const cjs = content
+      .replace(/export\s+const\s+\w+\s*=/g, 'module.exports =')
+      .replace(/export\s+default\s+\w+;?/g, '')
+      .replace(/export\s+\{[^}]*\};?/g, '');
+    require('fs').writeFileSync(tmp, cjs, 'utf-8');
+    // Purge le cache require pour forcer le rechargement
+    delete require.cache[tmp];
+    const mod = require(tmp);
+    require('fs').unlinkSync(tmp);
+    const cfg = mod?.[field] !== undefined ? mod : (mod?.default || mod);
+    return cfg?.[field] ?? null;
+  } catch {
+    // Fallback: regex sur le contenu brut
+    const rx = new RegExp(field + '\\s*:\\s*(\\{[\\s\\S]*?\\}(?=\\s*[,\\n]|\\s*\\}))', 'm');
+    const m = content.match(rx);
+    if (!m) return null;
+    try { return JSON.parse(m[1]); } catch { return null; }
+  }
+}
+
+/**
+ * Extrait un tableau JS simple depuis un fichier de config.
+ */
+function parseConfigArray(content: string, field: string): any[] {
+  const rx = new RegExp(field + '\\s*:\\s*(\\[[^\\]]*\\])', 'm');
+  const m = content.match(rx);
+  if (!m) return [];
+  try { return JSON.parse(m[1]); } catch { return []; }
+}
+
 function resolveClientConfigPath(filename: string): string {
   // En dev : proxmox/app/src/api -> proxmox/app/src/config
   // En prod Docker : /app/dist/api -> /app/src/config (copié par le Dockerfile)
@@ -130,7 +168,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     if (!checkAdminAuth(request, reply)) return;
     try {
       const result = await query(
-        `SELECT id, username, email, role, created_at, deleted_at FROM users ORDER BY created_at DESC`
+        `SELECT id, username, email, role, created_at, deleted_at, (password_hash IS NOT NULL) AS has_password FROM users ORDER BY created_at DESC`
       );
       return { success: true, users: result.rows };
     } catch (err: any) {
@@ -666,15 +704,8 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     try {
       const filePath = resolveClientConfigPath('AppConfig.js');
       const content = fs.readFileSync(filePath, 'utf-8');
-      // Évaluation du module ES6 via extraction de l'objet exporté
-      const vm = require('vm');
-      const mod: any = { exports: {} };
-      const wrapped = `(function(module, exports) { ${content.replace(/export\s+(default\s+)?/g, 'module.exports = ')} })(mod, mod.exports)`;
-      try {
-        vm.runInNewContext(wrapped, { mod, module: mod, exports: mod.exports });
-      } catch { /* ignore eval errors */ }
-      const cfg = mod.exports?.appManagers ? mod.exports : mod.exports?.default || mod.exports;
-      return { success: true, appManagers: cfg?.appManagers || null, raw: content };
+      const appManagers = parseConfigField(content, 'appManagers');
+      return { success: true, appManagers, raw: content };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin GET /config/apps');
       reply.statusCode = 500;
@@ -708,21 +739,11 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     try {
       const filePath = resolveClientConfigPath('FolderConfig.js');
       const content = fs.readFileSync(filePath, 'utf-8');
-      const vm = require('vm');
-      const mod: any = { exports: {} };
-      const wrapped = `(function(module, exports) { ${content.replace(/export\s+(default\s+)?/g, 'module.exports = ')} })(mod, mod.exports)`;
-      try {
-        vm.runInNewContext(wrapped, { mod, module: mod, exports: mod.exports });
-      } catch { /* ignore eval errors */ }
-      const cfg = mod.exports?.fileManagers ? mod.exports : mod.exports?.default || mod.exports;
-      return {
-        success: true,
-        fileManagers: cfg?.fileManagers || null,
-        blacklist: cfg?.blacklist || [],
-        ignoreSuffixes: cfg?.ignoreSuffixes || [],
-        ignoreExtensions: cfg?.ignoreExtensions || [],
-        raw: content
-      };
+      const fileManagers = parseConfigField(content, 'fileManagers');
+      const blacklist = parseConfigArray(content, 'blacklist');
+      const ignoreSuffixes = parseConfigArray(content, 'ignoreSuffixes');
+      const ignoreExtensions = parseConfigArray(content, 'ignoreExtensions');
+      return { success: true, fileManagers, blacklist, ignoreSuffixes, ignoreExtensions, raw: content };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin GET /config/folders');
       reply.statusCode = 500;
