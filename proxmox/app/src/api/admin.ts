@@ -784,9 +784,9 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
         [Math.min(Number(limit), 500)]
       );
       const logs = getServerLogs()
-        .split('\n')
-        .filter(l => /auth|login|logout|jwt|token|ws.*auth/i.test(l))
-        .slice(-200);
+        .filter(l => /auth|login|logout|jwt|token|ws.*auth/i.test(l.text))
+        .slice(-200)
+        .map(l => `[${l.time}] ${l.text}`);
       return { success: true, db_users: result.rows, server_logs: logs };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin GET /logs/auth');
@@ -798,9 +798,9 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   fastify.get('/api/admin/logs/api', async (request, reply) => {
     if (!checkAdminAuth(request, reply)) return;
     const logs = getServerLogs()
-      .split('\n')
-      .filter(l => /GET|POST|PUT|DELETE|PATCH|incoming request|request completed|\d{3}/i.test(l))
-      .slice(-300);
+      .filter(l => /GET|POST|PUT|DELETE|PATCH|incoming request|request completed|\d{3}/i.test(l.text))
+      .slice(-300)
+      .map(l => `[${l.time}] ${l.text}`);
     return { success: true, logs };
   });
 
@@ -834,7 +834,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
 
   fastify.get('/api/admin/logs/raw', async (request, reply) => {
     if (!checkAdminAuth(request, reply)) return;
-    const logs = getServerLogs();
+    const logs = getServerLogs().map(l => `[${l.time}] ${l.text}`).join('\n');
     return { success: true, logs };
   });
 
