@@ -69,9 +69,12 @@ function checkAdminAuth(request: FastifyRequest, reply: FastifyReply): boolean {
 // ─────────────────────────────────────────────
 
 function resolveClientConfigPath(filename: string): string {
-  // proxmox/app/src/api -> proxmox/app -> proxmox -> workspace root
-  const root = path.resolve(__dirname, '..', '..', '..', '..');
-  return path.join(root, 'apps', 'client', 'public', 'assets', 'js', 'config', filename);
+  // En dev : proxmox/app/src/api -> proxmox/app/src/config
+  // En prod Docker : /app/dist/api -> /app/src/config (copié par le Dockerfile)
+  const srcConfig = path.resolve(__dirname, '..', 'config', filename);
+  if (fs.existsSync(srcConfig)) return srcConfig;
+  // Fallback dist (si le fichier est copié dans dist/config)
+  return path.resolve(__dirname, 'config', filename);
 }
 
 export async function registerAdminRoutes(fastify: FastifyInstance): Promise<void> {
@@ -655,16 +658,23 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // CONFIG CLIENT : APPLICATIONS
   // ─────────────────────────────────────────────
 
+  // ─────────────────────────────────────────────
+  // CONFIG CLIENT : APPLICATIONS
+  // ─────────────────────────────────────────────
+
   fastify.get('/api/admin/config/apps', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     try {
       const filePath = resolveClientConfigPath('AppConfig.js');
       const content = fs.readFileSync(filePath, 'utf-8');
-      // Extraire la config JSON depuis le fichier JS
-      const match = content.match(/appManagers\s*:\s*(\{[\s\S]*?\})\s*\}/);
-      if (!match) return { success: true, raw: content, parsed: null };
-      // Retourner le contenu brut + la structure parsée via eval sécurisé
-      return { success: true, raw: content };
+      // Évaluation du module ES6 via extraction de l'objet exporté
+      const vm = require('vm');
+      const mod: any = { exports: {} };
+      const wrapped = `(function(module, exports) { ${content.replace(/export\s+(default\s+)?/g, 'module.exports = ')} })(mod, mod.exports)`;
+      try {
+        vm.runInNewContext(wrapped, { mod, module: mod, exports: mod.exports });
+      } catch { /* ignore eval errors */ }
+      const cfg = mod.exports?.appManagers ? mod.exports : mod.exports?.default || mod.exports;
+      return { success: true, appManagers: cfg?.appManagers || null, raw: content };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin GET /config/apps');
       reply.statusCode = 500;
@@ -695,11 +705,24 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // ─────────────────────────────────────────────
 
   fastify.get('/api/admin/config/folders', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     try {
       const filePath = resolveClientConfigPath('FolderConfig.js');
       const content = fs.readFileSync(filePath, 'utf-8');
-      return { success: true, raw: content };
+      const vm = require('vm');
+      const mod: any = { exports: {} };
+      const wrapped = `(function(module, exports) { ${content.replace(/export\s+(default\s+)?/g, 'module.exports = ')} })(mod, mod.exports)`;
+      try {
+        vm.runInNewContext(wrapped, { mod, module: mod, exports: mod.exports });
+      } catch { /* ignore eval errors */ }
+      const cfg = mod.exports?.fileManagers ? mod.exports : mod.exports?.default || mod.exports;
+      return {
+        success: true,
+        fileManagers: cfg?.fileManagers || null,
+        blacklist: cfg?.blacklist || [],
+        ignoreSuffixes: cfg?.ignoreSuffixes || [],
+        ignoreExtensions: cfg?.ignoreExtensions || [],
+        raw: content
+      };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin GET /config/folders');
       reply.statusCode = 500;

@@ -22,9 +22,11 @@ COPY proxmox/app/src ./src
 RUN echo "Cache buster: ${CACHE_BUSTER}" \
     && npm ci \
     && npm run build \
-    && mkdir -p dist/db dist/views \
+    && mkdir -p dist/db dist/views dist/config \
     && cp src/db/schema.sql dist/db/schema.sql \
-    && cp src/views/monitoring.html dist/views/monitoring.html 2>/dev/null || true
+    && cp src/views/monitoring.html dist/views/monitoring.html 2>/dev/null || true \
+    && cp src/config/AppConfig.js dist/config/AppConfig.js 2>/dev/null || true \
+    && cp src/config/FolderConfig.js dist/config/FolderConfig.js 2>/dev/null || true
 
 ENV NODE_ENV=production
 ENV PORT=4000

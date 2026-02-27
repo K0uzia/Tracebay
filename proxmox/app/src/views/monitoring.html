@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Administration — Workspace</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -193,6 +194,12 @@
       border: 1px solid var(--border); border-radius: 8px; resize: vertical;
     }
     .config-hint { font-size: 12px; color: var(--text-muted); margin-top: 8px; }
+    .config-preset-card {
+      border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; background: #f9fafb;
+    }
+    .preset-header { display: flex; justify-content: space-between; align-items: center; }
+    .preset-header strong { font-size: 1rem; text-transform: capitalize; }
+    .loading-inline { color: var(--text-muted); font-size: .9rem; }
 
     /* ── Sub-tabs (reception) ── */
     .sub-tabs { display: flex; gap: 2px; margin-bottom: 16px; border-bottom: 2px solid var(--border); }
@@ -254,15 +261,15 @@
       <div class="nav-section">Tableau de bord</div>
       <div class="nav-item active" data-page="dashboard"><span class="icon">📊</span> Dashboard</div>
       <div class="nav-section">Base de données</div>
-      <div class="nav-item" data-page="users"><span class="icon">👤</span> Utilisateurs</div>
-      <div class="nav-item" data-page="agenda"><span class="icon">📅</span> Agenda</div>
-      <div class="nav-item" data-page="reception"><span class="icon">📦</span> Réception</div>
-      <div class="nav-item" data-page="shortcuts"><span class="icon">🔗</span> Raccourcis web</div>
+      <div class="nav-item" data-page="users"><span class="icon"><i class="fa-solid fa-users"></i></span> Utilisateurs</div>
+      <div class="nav-item" data-page="agenda"><span class="icon"><i class="fa-solid fa-calendar-days"></i></span> Agenda</div>
+      <div class="nav-item" data-page="reception"><span class="icon"><i class="fa-solid fa-box-open"></i></span> Réception</div>
+      <div class="nav-item" data-page="shortcuts"><span class="icon"><i class="fa-solid fa-link"></i></span> Raccourcis web</div>
       <div class="nav-section">Configuration client</div>
-      <div class="nav-item" data-page="config-apps"><span class="icon">🖥</span> Applications</div>
-      <div class="nav-item" data-page="config-folders"><span class="icon">📁</span> Dossiers</div>
+      <div class="nav-item" data-page="config-apps"><span class="icon"><i class="fa-solid fa-desktop"></i></span> Applications</div>
+      <div class="nav-item" data-page="config-folders"><span class="icon"><i class="fa-solid fa-folder"></i></span> Dossiers</div>
       <div class="nav-section">Supervision</div>
-      <div class="nav-item" data-page="logs"><span class="icon">📋</span> Logs</div>
+      <div class="nav-item" data-page="logs"><span class="icon"><i class="fa-solid fa-list"></i></span> Logs</div>
     </nav>
     <div class="sidebar-footer">
       <button class="btn-logout" onclick="doLogout()">Déconnexion</button>
@@ -284,7 +291,7 @@
         <div class="stat-card green"><div class="label">Uptime</div><div class="value" id="ds-uptime" style="font-size:18px">—</div></div>
       </div>
       <div class="card">
-        <div class="card-header"><h2>Utilisateurs connectés (WebSocket)</h2><button class="btn btn-secondary btn-sm" onclick="loadDashboard()">↻ Rafraîchir</button></div>
+        <div class="card-header"><h2>Utilisateurs connectés (WebSocket)</h2><button class="btn btn-secondary btn-sm" onclick="loadDashboard()"><i class="fa-solid fa-rotate-right"></i> Rafraîchir</button></div>
         <div class="table-wrap">
           <table><thead><tr><th>Pseudo</th><th>Connecté depuis</th></tr></thead>
           <tbody id="dash-users-table"><tr class="empty-row"><td colspan="2">Chargement…</td></tr></tbody></table>
@@ -418,36 +425,44 @@
 
     <!-- ── Config Applications ── -->
     <div class="page" id="page-config-apps">
-      <div class="page-header"><h1>Configuration Applications</h1><p>Éditeur du fichier <code>AppConfig.js</code> côté client</p></div>
+      <div class="page-header">
+        <h1>Configuration Applications</h1>
+        <p>Gérez les presets d'applications lancées depuis le client</p>
+      </div>
       <div class="card">
         <div class="card-header">
-          <h2>AppConfig.js</h2>
-          <div class="flex-gap">
-            <button class="btn btn-secondary btn-sm" onclick="loadAppConfig()">↻ Recharger</button>
-            <button class="btn btn-primary btn-sm" onclick="saveAppConfig()">💾 Sauvegarder</button>
-          </div>
+          <h2>Presets</h2>
+          <button class="btn btn-primary btn-sm" onclick="showAddAppPresetModal()"><i class="fa-solid fa-plus"></i> Nouveau preset</button>
         </div>
-        <div class="card-body">
-          <textarea class="code-editor" id="app-config-editor"></textarea>
-          <p class="config-hint">Modifiez le fichier JS directement. Les presets disponibles sont : <code>dev</code>, <code>stream</code>, <code>texte</code>, <code>office</code>. Les modifications sont appliquées immédiatement au prochain rechargement du client.</p>
+        <div class="card-body" id="app-presets-container">
+          <div class="loading-inline">Chargement…</div>
         </div>
       </div>
     </div>
 
     <!-- ── Config Dossiers ── -->
     <div class="page" id="page-config-folders">
-      <div class="page-header"><h1>Configuration Dossiers</h1><p>Éditeur du fichier <code>FolderConfig.js</code> côté client</p></div>
+      <div class="page-header">
+        <h1>Configuration Dossiers</h1>
+        <p>Gérez les presets de dossiers accessibles depuis le client</p>
+      </div>
       <div class="card">
         <div class="card-header">
-          <h2>FolderConfig.js</h2>
-          <div class="flex-gap">
-            <button class="btn btn-secondary btn-sm" onclick="loadFolderConfig()">↻ Recharger</button>
-            <button class="btn btn-primary btn-sm" onclick="saveFolderConfig()">💾 Sauvegarder</button>
-          </div>
+          <h2>Presets</h2>
+          <button class="btn btn-primary btn-sm" onclick="showAddFolderPresetModal()"><i class="fa-solid fa-plus"></i> Nouveau preset</button>
         </div>
+        <div class="card-body" id="folder-presets-container">
+          <div class="loading-inline">Chargement…</div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <div class="card-header"><h2>Filtres globaux</h2></div>
         <div class="card-body">
-          <textarea class="code-editor" id="folder-config-editor"></textarea>
-          <p class="config-hint">Presets disponibles : <code>team</code>, <code>guest</code>, <code>development</code>, <code>capsule</code>. Modifiez <code>basePath</code> et <code>blacklist</code> selon vos besoins.</p>
+          <label class="form-label">Extensions ignorées (séparées par des virgules)</label>
+          <input type="text" class="form-input" id="folder-ignore-ext" placeholder=".tmp, .bak, .log">
+          <label class="form-label" style="margin-top:.75rem">Suffixes ignorés (séparées par des virgules)</label>
+          <input type="text" class="form-input" id="folder-ignore-suffix" placeholder=".tmp, .bak, ~">
+          <button class="btn btn-primary btn-sm" style="margin-top:.75rem" onclick="saveFolderGlobals()"><i class="fa-solid fa-floppy-disk"></i> Sauvegarder filtres</button>
         </div>
       </div>
     </div>
@@ -456,19 +471,19 @@
     <div class="page" id="page-logs">
       <div class="page-header"><h1>Logs</h1><p>Supervision par catégorie</p></div>
       <div class="log-tabs">
-        <div class="log-tab active" data-log="chat">💬 Chat</div>
-        <div class="log-tab" data-log="db">🗄 Base de données</div>
-        <div class="log-tab" data-log="auth">🔐 Auth</div>
-        <div class="log-tab" data-log="api">🌐 API</div>
-        <div class="log-tab" data-log="reception">📦 Réception</div>
-        <div class="log-tab" data-log="errors">⚠ Erreurs clients</div>
+        <div class="log-tab active" data-log="chat"><i class="fa-solid fa-comments"></i> Chat</div>
+        <div class="log-tab" data-log="db"><i class="fa-solid fa-database"></i> Base de données</div>
+        <div class="log-tab" data-log="auth"><i class="fa-solid fa-lock"></i> Auth</div>
+        <div class="log-tab" data-log="api"><i class="fa-solid fa-globe"></i> API</div>
+        <div class="log-tab" data-log="reception"><i class="fa-solid fa-box-open"></i> Réception</div>
+        <div class="log-tab" data-log="errors"><i class="fa-solid fa-triangle-exclamation"></i> Erreurs clients</div>
         <div class="log-tab" data-log="raw">📄 Logs bruts</div>
       </div>
 
       <!-- Chat -->
       <div class="log-panel active" id="log-chat">
         <div class="card">
-          <div class="card-header"><h2>Messages chat récents</h2><button class="btn btn-secondary btn-sm" onclick="loadLogChat()">↻</button></div>
+          <div class="card-header"><h2>Messages chat récents</h2><button class="btn btn-secondary btn-sm" onclick="loadLogChat()"><i class="fa-solid fa-rotate-right"></i></button></div>
           <div class="table-wrap">
             <table class="log-table"><thead><tr><th>#</th><th>Utilisateur</th><th>Message</th><th>Date</th><th></th></tr></thead>
             <tbody id="log-chat-table"></tbody></table>
@@ -484,7 +499,7 @@
       <!-- Auth -->
       <div class="log-panel" id="log-auth">
         <div class="card">
-          <div class="card-header"><h2>Événements d'authentification</h2><button class="btn btn-secondary btn-sm" onclick="loadLogAuth()">↻</button></div>
+          <div class="card-header"><h2>Événements d'authentification</h2><button class="btn btn-secondary btn-sm" onclick="loadLogAuth()"><i class="fa-solid fa-rotate-right"></i></button></div>
           <div class="table-wrap">
             <table class="log-table"><thead><tr><th>Utilisateur</th><th>Créé le</th></tr></thead>
             <tbody id="log-auth-table"></tbody></table>
@@ -499,7 +514,7 @@
       <!-- API -->
       <div class="log-panel" id="log-api">
         <div class="card">
-          <div class="card-header"><h2>Requêtes HTTP</h2><button class="btn btn-secondary btn-sm" onclick="loadLogApi()">↻</button></div>
+          <div class="card-header"><h2>Requêtes HTTP</h2><button class="btn btn-secondary btn-sm" onclick="loadLogApi()"><i class="fa-solid fa-rotate-right"></i></button></div>
           <div class="card-body"><div class="log-terminal" id="log-api-terminal"></div></div>
         </div>
       </div>
@@ -507,7 +522,7 @@
       <!-- Réception -->
       <div class="log-panel" id="log-reception">
         <div class="card">
-          <div class="card-header"><h2>Activité lots</h2><button class="btn btn-secondary btn-sm" onclick="loadLogReception()">↻</button></div>
+          <div class="card-header"><h2>Activité lots</h2><button class="btn btn-secondary btn-sm" onclick="loadLogReception()"><i class="fa-solid fa-rotate-right"></i></button></div>
           <div class="table-wrap">
             <table class="log-table"><thead><tr><th>#</th><th>Nom</th><th>Statut</th><th>Articles</th><th>Mis à jour</th></tr></thead>
             <tbody id="log-reception-table"></tbody></table>
@@ -524,7 +539,7 @@
               <select id="err-filter-status" onchange="loadLogErrors()"><option value="">Tous</option><option value="unresolved">Non résolues</option><option value="resolved">Résolues</option></select>
               <input type="text" id="err-filter-type" placeholder="Type d'erreur" oninput="loadLogErrors()">
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="loadLogErrors()">↻</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadLogErrors()"><i class="fa-solid fa-rotate-right"></i></button>
           </div>
           <div class="table-wrap">
             <table class="log-table"><thead><tr><th>#</th><th>Type</th><th>Message</th><th>Client</th><th>Date</th><th>Statut</th><th></th></tr></thead>
@@ -540,7 +555,7 @@
             <h2>Logs serveur bruts</h2>
             <div class="flex-gap">
               <input type="text" id="raw-filter" placeholder="Filtrer…" oninput="filterRawLogs()" style="min-width:200px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px">
-              <button class="btn btn-secondary btn-sm" onclick="loadLogRaw()">↻</button>
+              <button class="btn btn-secondary btn-sm" onclick="loadLogRaw()"><i class="fa-solid fa-rotate-right"></i></button>
             </div>
           </div>
           <div class="card-body"><div class="log-terminal" id="log-raw-terminal"></div></div>
@@ -804,7 +819,8 @@ async function loadDashboard() {
     ]);
     if (stats) {
       document.getElementById('ds-connected').textContent = stats.connectedUsers ?? '—';
-      const up = stats.uptime ? formatUptime(stats.uptime) : '—';
+      const uptimeSec = stats.uptime ?? stats.systemHealth?.uptime;
+      const up = uptimeSec ? formatUptime(uptimeSec) : '—';
       document.getElementById('ds-uptime').textContent = up;
     }
     if (db && db.stats) {
@@ -856,8 +872,8 @@ function renderUsers(list) {
       <td><span class="badge badge-${u.role==='admin'?'admin':'user'}">${u.role||'user'}</span></td>
       <td>${fmtDate(u.created_at)}</td>
       <td><div class="actions-cell">
-        <button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="openUserModal(${u.id})">✏</button>
-        <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteUser(${u.id},'${escHtml(u.username)}')">🗑</button>
+        <button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="openUserModal(${u.id})"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteUser(${u.id},'${escHtml(u.username)}')"><i class="fa-solid fa-trash"></i></button>
       </div></td>
     </tr>`).join('');
 }
@@ -932,8 +948,8 @@ async function loadAgenda() {
       <td>${fmtDate(e.end)}</td>
       <td>${escHtml(e.location||'—')}</td>
       <td><div class="actions-cell">
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="openAgendaModal(${e.id})">✏</button>
-        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteAgenda(${e.id})">🗑</button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="openAgendaModal(${e.id})"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteAgenda(${e.id})"><i class="fa-solid fa-trash"></i></button>
       </div></td>
     </tr>`).join('');
 }
@@ -1010,7 +1026,7 @@ async function loadLots() {
       <td>${statusBadge(l.status)}</td>
       <td>${l.item_count}</td>
       <td>${fmtDate(l.received_at)}</td>
-      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deleteLot(${l.id})">🗑</button></td>
+      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deleteLot(${l.id})"><i class="fa-solid fa-trash"></i></button></td>
     </tr>`).join('');
 }
 
@@ -1033,8 +1049,8 @@ async function loadMarques() {
       <td><strong>${escHtml(m.name)}</strong></td>
       <td><span class="badge badge-info">${m.modele_count}</span></td>
       <td><div class="actions-cell">
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();openMarqueModal(${m.id},'${escHtml(m.name)}')">✏</button>
-        <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deleteMarque(${m.id})">🗑</button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="event.stopPropagation();openMarqueModal(${m.id},'${escHtml(m.name)}')"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="event.stopPropagation();deleteMarque(${m.id})"><i class="fa-solid fa-trash"></i></button>
       </div></td>
     </tr>`).join('');
 }
@@ -1055,7 +1071,7 @@ async function loadModeles(marqueId) {
     <tr>
       <td>${m.id}</td>
       <td>${escHtml(m.name)}</td>
-      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deleteModele(${m.id})">🗑</button></td>
+      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deleteModele(${m.id})"><i class="fa-solid fa-trash"></i></button></td>
     </tr>`).join('');
 }
 
@@ -1120,7 +1136,7 @@ async function loadCategories() {
       <td>${escHtml(c.username||'—')}</td>
       <td>${escHtml(c.name)}</td>
       <td><span class="badge badge-info">${c.shortcut_count}</span></td>
-      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deleteCat(${c.id})">🗑</button></td>
+      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deleteCat(${c.id})"><i class="fa-solid fa-trash"></i></button></td>
     </tr>`).join('');
 }
 
@@ -1137,8 +1153,8 @@ async function loadShortcutLinks() {
       <td><a href="${escHtml(s.url)}" target="_blank" rel="noopener" style="color:var(--info);text-decoration:none">${escHtml(s.url.length>40?s.url.slice(0,40)+'…':s.url)}</a></td>
       <td>${escHtml(s.category_name||'—')}</td>
       <td><div class="actions-cell">
-        <button class="btn btn-secondary btn-sm btn-icon" onclick="openShortcutModal(${s.id})">✏</button>
-        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteShortcut(${s.id})">🗑</button>
+        <button class="btn btn-secondary btn-sm btn-icon" onclick="openShortcutModal(${s.id})"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-danger btn-sm btn-icon" onclick="deleteShortcut(${s.id})"><i class="fa-solid fa-trash"></i></button>
       </div></td>
     </tr>`).join('');
 }
@@ -1227,32 +1243,189 @@ async function deleteShortcut(id) {
   loadShortcutLinks();
 }
 
-// ── Config ───────────────────────────────────────────────────────────────────
+// ── Config Applications ──────────────────────────────────────────────────────
+let _appConfig = null;
+
 async function loadAppConfig() {
   const data = await api('GET', '/api/admin/config/apps');
-  if (data.raw) document.getElementById('app-config-editor').value = data.raw;
-  else document.getElementById('app-config-editor').value = data.error || 'Erreur chargement';
+  if (!data.appManagers) { document.getElementById('app-presets-container').innerHTML = `<p class="text-muted">${data.error || 'Impossible de charger la config'}</p>`; return; }
+  _appConfig = data;
+  renderAppPresets(data.appManagers);
 }
 
-async function saveAppConfig() {
-  const content = document.getElementById('app-config-editor').value;
+function renderAppPresets(appManagers) {
+  const container = document.getElementById('app-presets-container');
+  if (!appManagers || !Object.keys(appManagers).length) {
+    container.innerHTML = '<p class="text-muted">Aucun preset configuré.</p>'; return;
+  }
+  container.innerHTML = Object.entries(appManagers).map(([key, preset]) => `
+    <div class="config-preset-card" id="app-preset-${key}">
+      <div class="preset-header">
+        <strong>${key}</strong>
+        <div class="flex-gap">
+          <button class="btn btn-secondary btn-sm" onclick="showAddAppModal('${key}')"><i class="fa-solid fa-plus"></i> App</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteAppPreset('${key}')"><i class="fa-solid fa-trash"></i> Preset</button>
+        </div>
+      </div>
+      <table class="data-table" style="margin-top:.5rem">
+        <thead><tr><th>Nom</th><th>Commande</th><th>Icône</th><th></th></tr></thead>
+        <tbody>
+          ${(preset.apps || []).map((app, i) => `
+            <tr>
+              <td>${escHtml(app.name)}</td>
+              <td><code>${escHtml(app.command)}</code></td>
+              <td>${escHtml(app.icon || '')}</td>
+              <td>
+                <button class="btn btn-secondary btn-sm btn-icon" onclick="editApp('${key}', ${i})"><i class="fa-solid fa-pen"></i></button>
+                <button class="btn btn-danger btn-sm btn-icon" onclick="deleteApp('${key}', ${i})"><i class="fa-solid fa-trash"></i></button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`).join('');
+}
+
+function showAddAppPresetModal() {
+  openModal('Nouveau preset', `
+    <div class="form-group"><label class="form-label">Nom du preset (ex: dev, office)</label>
+    <input type="text" class="form-input" id="new-preset-key" placeholder="monpreset"></div>
+  `, async () => {
+    const key = document.getElementById('new-preset-key').value.trim().toLowerCase();
+    if (!key) { toast('Nom requis', 'error'); return false; }
+    if (_appConfig.appManagers[key]) { toast('Ce preset existe déjà', 'error'); return false; }
+    _appConfig.appManagers[key] = { apps: [] };
+    await saveAppConfigToServer();
+    return true;
+  });
+}
+
+function showAddAppModal(presetKey, editIndex = null) {
+  const existing = editIndex !== null ? (_appConfig.appManagers[presetKey]?.apps[editIndex] || {}) : {};
+  openModal(editIndex !== null ? 'Modifier l\'application' : 'Ajouter une application', `
+    <div class="form-group"><label class="form-label">Nom</label><input type="text" class="form-input" id="app-name" value="${escHtml(existing.name || '')}"></div>
+    <div class="form-group"><label class="form-label">Commande</label><input type="text" class="form-input" id="app-command" value="${escHtml(existing.command || '')}"></div>
+    <div class="form-group"><label class="form-label">Icône FontAwesome (ex: fa-code)</label><input type="text" class="form-input" id="app-icon" value="${escHtml(existing.icon || '')}"></div>
+    <div class="form-group"><label class="form-label">Arguments (séparés par des espaces)</label><input type="text" class="form-input" id="app-args" value="${escHtml((existing.args || []).join(' '))}"></div>
+  `, async () => {
+    const name = document.getElementById('app-name').value.trim();
+    const command = document.getElementById('app-command').value.trim();
+    if (!name || !command) { toast('Nom et commande requis', 'error'); return false; }
+    const app = { name, command, icon: document.getElementById('app-icon').value.trim() || 'fa-rocket', args: document.getElementById('app-args').value.trim().split(/\s+/).filter(Boolean) };
+    if (editIndex !== null) _appConfig.appManagers[presetKey].apps[editIndex] = app;
+    else _appConfig.appManagers[presetKey].apps.push(app);
+    await saveAppConfigToServer();
+    return true;
+  });
+}
+
+function editApp(presetKey, index) { showAddAppModal(presetKey, index); }
+
+async function deleteApp(presetKey, index) {
+  if (!confirm('Supprimer cette application ?')) return;
+  _appConfig.appManagers[presetKey].apps.splice(index, 1);
+  await saveAppConfigToServer();
+}
+
+async function deleteAppPreset(key) {
+  if (!confirm(`Supprimer le preset "${key}" et toutes ses applications ?`)) return;
+  delete _appConfig.appManagers[key];
+  await saveAppConfigToServer();
+}
+
+async function saveAppConfigToServer() {
+  const content = buildAppConfigJs(_appConfig.appManagers);
   const data = await api('PUT', '/api/admin/config/apps', { content });
   if (data.error) { toast(data.error, 'error'); return; }
-  toast('AppConfig.js sauvegardé');
+  toast('Applications sauvegardées');
+  renderAppPresets(_appConfig.appManagers);
 }
+
+function buildAppConfigJs(appManagers) {
+  const json = JSON.stringify(appManagers, null, 8).replace(/"([^"]+)":/g, '$1:').replace(/"/g, "'");
+  return `/**\n * Configuration pour le lancement d'applications\n * Géré via le panel monitoring — ne pas modifier manuellement\n */\n\nexport const appConfig = {\n    appManagers: ${json},\n\n    resolvePreset(name) {\n        if (!name) return null;\n        const key = name.toLowerCase();\n        return this.appManagers?.[key] || null;\n    }\n};\n\nexport default appConfig;\n`;
+}
+
+// ── Config Dossiers ──────────────────────────────────────────────────────────
+let _folderConfig = null;
 
 async function loadFolderConfig() {
   const data = await api('GET', '/api/admin/config/folders');
-  if (data.raw) document.getElementById('folder-config-editor').value = data.raw;
-  else document.getElementById('folder-config-editor').value = data.error || 'Erreur chargement';
+  if (!data.fileManagers) { document.getElementById('folder-presets-container').innerHTML = `<p class="text-muted">${data.error || 'Impossible de charger la config'}</p>`; return; }
+  _folderConfig = data;
+  renderFolderPresets(data.fileManagers);
+  document.getElementById('folder-ignore-ext').value = (data.ignoreExtensions || []).join(', ');
+  document.getElementById('folder-ignore-suffix').value = (data.ignoreSuffixes || []).join(', ');
 }
 
-async function saveFolderConfig() {
-  const content = document.getElementById('folder-config-editor').value;
+function renderFolderPresets(fileManagers) {
+  const container = document.getElementById('folder-presets-container');
+  if (!fileManagers || !Object.keys(fileManagers).length) {
+    container.innerHTML = '<p class="text-muted">Aucun preset configuré.</p>'; return;
+  }
+  container.innerHTML = Object.entries(fileManagers).map(([key, preset]) => `
+    <div class="config-preset-card" id="folder-preset-${key}">
+      <div class="preset-header">
+        <strong>${key}</strong>
+        <div class="flex-gap">
+          <button class="btn btn-secondary btn-sm" onclick="showEditFolderPresetModal('${key}')"><i class="fa-solid fa-pen"></i> Modifier</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteFolderPreset('${key}')"><i class="fa-solid fa-trash"></i> Supprimer</button>
+        </div>
+      </div>
+      <div style="margin-top:.5rem;font-size:.9rem;color:var(--text2)">
+        <div><strong>Chemin :</strong> <code>${escHtml(preset.basePath || '')}</code></div>
+        ${preset.blacklist?.length ? `<div><strong>Blacklist :</strong> ${preset.blacklist.map(b => `<code>${escHtml(b)}</code>`).join(' ')}</div>` : ''}
+      </div>
+    </div>`).join('');
+}
+
+function showAddFolderPresetModal() { showEditFolderPresetModal(null); }
+
+function showEditFolderPresetModal(editKey) {
+  const existing = editKey ? (_folderConfig.fileManagers[editKey] || {}) : {};
+  openModal(editKey ? `Modifier "${editKey}"` : 'Nouveau preset dossier', `
+    <div class="form-group"><label class="form-label">Nom du preset</label>
+    <input type="text" class="form-input" id="fp-key" value="${escHtml(editKey || '')}" ${editKey ? 'readonly' : ''}></div>
+    <div class="form-group"><label class="form-label">Chemin de base</label>
+    <input type="text" class="form-input" id="fp-path" value="${escHtml(existing.basePath || '')}" placeholder="/mnt/team/#TEAM/"></div>
+    <div class="form-group"><label class="form-label">Blacklist (séparée par des virgules)</label>
+    <input type="text" class="form-input" id="fp-blacklist" value="${escHtml((existing.blacklist || []).join(', '))}"></div>
+  `, async () => {
+    const key = document.getElementById('fp-key').value.trim().toLowerCase();
+    const basePath = document.getElementById('fp-path').value.trim();
+    if (!key || !basePath) { toast('Nom et chemin requis', 'error'); return false; }
+    const blacklist = document.getElementById('fp-blacklist').value.split(',').map(s => s.trim()).filter(Boolean);
+    _folderConfig.fileManagers[key] = { basePath, ...(blacklist.length ? { blacklist } : {}) };
+    await saveFolderConfigToServer();
+    return true;
+  });
+}
+
+async function deleteFolderPreset(key) {
+  if (!confirm(`Supprimer le preset "${key}" ?`)) return;
+  delete _folderConfig.fileManagers[key];
+  await saveFolderConfigToServer();
+}
+
+async function saveFolderGlobals() {
+  _folderConfig.ignoreExtensions = document.getElementById('folder-ignore-ext').value.split(',').map(s => s.trim()).filter(Boolean);
+  _folderConfig.ignoreSuffixes = document.getElementById('folder-ignore-suffix').value.split(',').map(s => s.trim()).filter(Boolean);
+  await saveFolderConfigToServer();
+}
+
+async function saveFolderConfigToServer() {
+  const content = buildFolderConfigJs(_folderConfig);
   const data = await api('PUT', '/api/admin/config/folders', { content });
   if (data.error) { toast(data.error, 'error'); return; }
-  toast('FolderConfig.js sauvegardé');
+  toast('Dossiers sauvegardés');
+  renderFolderPresets(_folderConfig.fileManagers);
 }
+
+function buildFolderConfigJs(cfg) {
+  const fm = JSON.stringify(cfg.fileManagers, null, 8).replace(/"([^"]+)":/g, '$1:').replace(/"/g, "'");
+  const bl = JSON.stringify(cfg.blacklist || []);
+  const is = JSON.stringify(cfg.ignoreSuffixes || []);
+  const ie = JSON.stringify(cfg.ignoreExtensions || []);
+  return `/**\n * Configuration générique pour l'ouverture de dossiers\n * Géré via le panel monitoring — ne pas modifier manuellement\n */\n\nexport const folderConfig = {\n    fileManagers: ${fm},\n\n    blacklist: ${bl},\n    ignoreSuffixes: ${is},\n    ignoreExtensions: ${ie},\n\n    isBlacklisted(name) {\n        if (this.blacklist.includes(name)) return true;\n        if (name.startsWith('~\$')) return true;\n        if (name.startsWith('.') && name !== '.' && name !== '..') return true;\n        for (const suffix of this.ignoreSuffixes) { if (name.endsWith(suffix)) return true; }\n        for (const ext of this.ignoreExtensions) { if (name.endsWith(ext)) return true; }\n        return false;\n    },\n\n    resolvePreset(name) {\n        if (!name) return this;\n        const key = name.toLowerCase();\n        const preset = this.fileManagers?.[key];\n        if (!preset) return this;\n        return { ...this, ...preset, blacklist: preset.blacklist !== undefined ? preset.blacklist : this.blacklist, ignoreSuffixes: preset.ignoreSuffixes || this.ignoreSuffixes, ignoreExtensions: preset.ignoreExtensions || this.ignoreExtensions };\n    }\n};\n\nexport default folderConfig;\n`;\n}
 
 // ── Logs ─────────────────────────────────────────────────────────────────────
 async function loadLogChat() {
@@ -1266,7 +1439,7 @@ async function loadLogChat() {
       <td>${escHtml(m.username)}</td>
       <td>${escHtml(m.text)}</td>
       <td>${fmtDate(m.created_at)}</td>
-      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deleteMessage(${m.id})">🗑</button></td>
+      <td><button class="btn btn-danger btn-sm btn-icon" onclick="deleteMessage(${m.id})"><i class="fa-solid fa-trash"></i></button></td>
     </tr>`).join('');
 }
 
