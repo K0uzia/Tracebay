@@ -73,21 +73,36 @@ function checkAdminAuth(request: FastifyRequest, reply: FastifyReply): boolean {
  * Utilise require() après avoir converti les exports ES6 en CommonJS,
  * avec fallback regex JSON si require() échoue.
  */
+/**
+ * Extrait un champ objet depuis un fichier de config JS en utilisant
+ * une approche par comptage de parenthèses — robuste face aux méthodes ES6.
+ */
 function parseConfigField(content: string, field: string): any {
+  // Trouver "field: {" puis extraire l'objet en comptant les accolades
+  const start = content.indexOf(field + ':');
+  if (start === -1) return null;
+  const braceStart = content.indexOf('{', start);
+  if (braceStart === -1) return null;
+  let depth = 0;
+  let i = braceStart;
+  for (; i < content.length; i++) {
+    if (content[i] === '{') depth++;
+    else if (content[i] === '}') {
+      depth--;
+      if (depth === 0) break;
+    }
+  }
+  const raw = content.slice(braceStart, i + 1);
+  // Convertir JS object literal → JSON valide
   try {
-    const os = require('os');
-    const nodefs = require('fs');
-    const tmp = path.join(os.tmpdir(), 'ws_cfg_' + field + '_' + Date.now() + '.js');
-    const cjs = content
-      .replace(/export\s+const\s+\w+\s*=/g, 'module.exports =')
-      .replace(/export\s+default\s+\w+;?/g, '')
-      .replace(/export\s+\{[^}]*\};?/g, '');
-    nodefs.writeFileSync(tmp, cjs, 'utf-8');
-    delete require.cache[require.resolve(tmp)];
-    const mod = require(tmp);
-    try { nodefs.unlinkSync(tmp); } catch { /* ignore */ }
-    // mod est l'objet exporté {appManagers:..., resolvePreset:...}
-    return mod?.[field] ?? null;
+    // Supprimer les méthodes shorthand (ex: resolvePreset(name) { ... })
+    const noMethods = raw.replace(/,?\s*\w+\s*\([^)]*\)\s*\{[^}]*(?:\{[^}]*\}[^}]*)?\}/g, '');
+    // Convertir clés non-quotées en clés JSON
+    const jsonLike = noMethods
+      .replace(/([{,]\s*)([a-zA-Z_$][a-zA-Z0-9_$]*)\s*:/g, '$1"$2":')
+      .replace(/'/g, '"')
+      .replace(/,\s*([}\]])/g, '$1'); // trailing commas
+    return JSON.parse(jsonLike);
   } catch {
     return null;
   }
@@ -97,10 +112,23 @@ function parseConfigField(content: string, field: string): any {
  * Extrait un tableau JS simple depuis un fichier de config.
  */
 function parseConfigArray(content: string, field: string): any[] {
-  const rx = new RegExp(field + '\\s*:\\s*(\\[[^\\]]*\\])', 'm');
-  const m = content.match(rx);
-  if (!m) return [];
-  try { return JSON.parse(m[1]); } catch { return []; }
+  const start = content.indexOf(field + ':');
+  if (start === -1) return [];
+  const arrStart = content.indexOf('[', start);
+  if (arrStart === -1) return [];
+  let depth = 0;
+  let i = arrStart;
+  for (; i < content.length; i++) {
+    if (content[i] === '[') depth++;
+    else if (content[i] === ']') { depth--; if (depth === 0) break; }
+  }
+  const raw = content.slice(arrStart, i + 1);
+  try {
+    const jsonLike = raw
+      .replace(/'/g, '"')
+      .replace(/,\s*([}\]])/g, '$1');
+    return JSON.parse(jsonLike);
+  } catch { return []; }
 }
 
 function resolveClientConfigPath(filename: string): string {
