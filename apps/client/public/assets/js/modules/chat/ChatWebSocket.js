@@ -1,384 +1,318 @@
 /**
- * ChatWebSocket - Communication en temps réel via WebSocket
- * Remplace le polling HTTP par WebSocket pour plus de réactivité
+ * ChatWebSocket - Communication temps réel avec le serveur chat
+ * Pseudo = username du compte (auth via token). Pas de setPseudo.
  */
+console.log('[Chat WS] Module chargé (auth + retry activés)');
 
-let logoutPatchInstalled = false;
-function installLogoutPatch(instanceRef) {
-  if (typeof window === 'undefined' || logoutPatchInstalled) return;
-  logoutPatchInstalled = true;
-  const originalRemoveItem = localStorage.removeItem.bind(localStorage);
-  localStorage.removeItem = function (key) {
-    if (key === 'workspace_jwt' || key === 'workspace_username') {
-      const token = localStorage.getItem('workspace_jwt');
-      const ws = instanceRef.current;
-      if (ws) {
-        ws.close(true);
-      }
-      const baseUrl = (window.APP_CONFIG && window.APP_CONFIG.serverUrl) || (window.SERVER_CONFIG && window.SERVER_CONFIG.serverUrl) || 'http://localhost:4000';
-      const logoutUrl = baseUrl.replace(/\/$/, '') + '/api/auth/logout';
-      if (token) {
-        fetch(logoutUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
-        }).catch(() => {});
-      }
-      originalRemoveItem('workspace_jwt');
-      originalRemoveItem('workspace_username');
-      originalRemoveItem('workspace_user_id');
-      return;
-    }
-    originalRemoveItem(key);
-  };
+import getLogger from '../../config/Logger.js';
+import getErrorHandler from '../../config/ErrorHandler.js';
+
+const logger = getLogger();
+const errorHandler = getErrorHandler();
+
+let sharedInstance = null;
+
+function getSharedChatWebSocket(options = {}) {
+    if (sharedInstance) return sharedInstance;
+    sharedInstance = new ChatWebSocket(options);
+    return sharedInstance;
 }
-
-const currentInstance = { current: null };
 
 class ChatWebSocket {
-  constructor(options = {}) {
-    currentInstance.current = this;
-    installLogoutPatch(currentInstance);
-    // Utiliser l'URL WebSocket depuis APP_CONFIG si disponible (le backend expose la route /ws)
-    let base = options.wsUrl || (window.APP_CONFIG && window.APP_CONFIG.serverWsUrl) || this.getWebSocketUrl();
-    this.wsUrl = this.normalizeWsUrl(base);
-    this.ws = null;
-    this.messageHandlers = [];
-    this.errorHandlers = [];
-    this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 10; // Augmenté de 5 à 10
-    this.baseReconnectDelay = 1000; // Délai de base pour exponential backoff
-    this.maxReconnectDelay = 30000; // Délai max 30s
-    this.authToken = null;
-    this.reconnectTimeout = null;
-    this.heartbeatInterval = null;
-    /** Si true, ne pas tenter de reconnexion au prochain 'close' (ex: logout) */
-    this.skipReconnect = false;
-
-    console.log('🔌 ChatWebSocket initialisé avec:', this.wsUrl);
-    this.connect();
-  }
-
-  /**
-   * S'assurer que l'URL WebSocket pointe vers la route /ws (backend Fastify)
-   */
-  normalizeWsUrl(url) {
-    if (!url || typeof url !== 'string') return this.getWebSocketUrl();
-    const u = url.trim().replace(/\/+$/, '');
-    return u.endsWith('/ws') ? u : `${u}/ws`;
-  }
-
-  /**
-   * Déterminer l'URL WebSocket à partir de l'URL actuelle (fallback)
-   */
-  getWebSocketUrl() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    return `${protocol}//${host}/ws`;
-  }
-
-  /**
-     * Connecter au serveur WebSocket
-     */
-  connect() {
-    try {
-      // Ajouter le username en query param (requis par le serveur Proxmox)
-      const username = localStorage.getItem('workspace_username') || `Guest_${Math.random().toString(36).substr(2, 9)}`;
-      const wsUrlWithParams = `${this.wsUrl}?username=${encodeURIComponent(username)}`;
-      
-      console.log(`🔗 Tentative de connexion à ${wsUrlWithParams}...`);
-      this.ws = new WebSocket(wsUrlWithParams);
-
-      this.ws.addEventListener('open', () => {
-        console.log('✅ WebSocket connecté');
+    constructor(options = {}) {
+        if (sharedInstance && sharedInstance !== this) {
+            logger.warn('ChatWebSocket: réutilisation de l’instance partagée');
+            return sharedInstance;
+        }
+        const base = options.wsUrl || (window.APP_CONFIG && window.APP_CONFIG.serverWsUrl) || this.getWebSocketUrl();
+        this.wsUrl = this.normalizeWsUrl(base);
+        this.ws = null;
+        this.messageHandlers = [];
+        this.errorHandlers = [];
         this.reconnectAttempts = 0;
-        this.startHeartbeat();
-        // Authentifier avec le token en mémoire ou celui en localStorage (ex: déjà connecté ou refresh après login)
+        this.maxReconnectAttempts = 5;
+        this.reconnectDelay = 3000;
+        this.authToken = null;
+        this._authAcked = false;
+        this._authRetryCount = 0;
+        this._authRetryTimer = null;
+        this._authLogged = false;
+        logger.info(`ChatWebSocket initialisé avec: ${this.wsUrl}`);
+        this.connect();
+    }
+
+    getWebSocketUrl() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        return `${protocol}//${host}/ws`;
+    }
+
+    /** S'assurer que l'URL pointe vers la route /ws du backend */
+    normalizeWsUrl(url) {
+        if (!url || typeof url !== 'string') return this.getWebSocketUrl();
+        const u = url.trim().replace(/\/+$/, '');
+        return u.endsWith('/ws') ? u : `${u}/ws`;
+    }
+
+    connect() {
+        this._skipReconnect = false;
+        try {
+            this.ws = new WebSocket(this.wsUrl);
+
+            this.ws.addEventListener('open', () => {
+                console.log('[Chat WS] Connecté à', this.wsUrl);
+                logger.info('WebSocket connecté');
+                this.reconnectAttempts = 0;
+                this._authAcked = false;
+                this._authRetryCount = 0;
+                this._authLogged = false;
+                this._trySendAuth();
+                this._startAuthRetry();
+            });
+
+            this.ws.addEventListener('message', (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    this.handleMessage(data);
+                } catch (err) {
+                    logger.error('Erreur parsing WebSocket', err);
+                }
+            });
+
+            this.ws.addEventListener('close', () => {
+                this._stopAuthRetry();
+                if (this._skipReconnect) {
+                    logger.info('WebSocket fermé (déconnexion volontaire), pas de reconnexion');
+                    return;
+                }
+                logger.warn('WebSocket fermé, reconnexion...');
+                this.reconnect();
+            });
+
+            this.ws.addEventListener('error', (err) => {
+                errorHandler.handleWebSocketError(err);
+                this.errorHandlers.forEach(handler => handler(err));
+            });
+        } catch (err) {
+            logger.error('Erreur connexion WebSocket', err);
+            this.reconnect();
+        }
+    }
+
+    reconnect() {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+            logger.error('Impossible de se reconnecter');
+            return;
+        }
+        this.reconnectAttempts++;
+        logger.info(`Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+        setTimeout(() => this.connect(), this.reconnectDelay);
+    }
+
+    _trySendAuth() {
         const token = this.authToken || (typeof localStorage !== 'undefined' && localStorage.getItem('workspace_jwt'));
-        if (token) {
-          this.authenticate(token).catch(() => {});
+        if (this._authAcked) return;
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
+        if (!token) {
+            if (this._authRetryCount === 1) {
+                console.warn('[Chat WS] Pas de token (workspace_jwt vide). Connectez-vous pour envoyer des messages.');
+                logger.warn('Auth WebSocket: pas de token dans localStorage (workspace_jwt)');
+            }
+            return;
         }
-      });
-
-      this.ws.addEventListener('message', (event) => {
         try {
-          const data = JSON.parse(event.data);
-          this.handleMessage(data);
+            this.ws.send(JSON.stringify({ type: 'auth', token }));
+            if (!this._authLogged) {
+                this._authLogged = true;
+                console.log('[Chat WS] Auth envoyée au serveur (token jwt_...)');
+            }
+            logger.info('Auth WebSocket envoyée (token présent)');
         } catch (err) {
-          console.error('❌ Erreur parsing WebSocket:', err);
+            console.error('[Chat WS] Erreur envoi auth:', err);
+            logger.error('Erreur envoi auth WS', err);
         }
-      });
+    }
 
-      this.ws.addEventListener('close', (event) => {
-        this.stopHeartbeat();
-        if (this.skipReconnect) {
-          this.skipReconnect = false;
-          console.log('🔌 WebSocket fermé (logout), pas de reconnexion.');
-          return;
+    _startAuthRetry() {
+        this._stopAuthRetry();
+        const maxAttempts = 15;
+        this._authRetryTimer = setInterval(() => {
+            if (this._authAcked || this._authRetryCount >= maxAttempts) {
+                this._stopAuthRetry();
+                return;
+            }
+            this._authRetryCount++;
+            this._trySendAuth();
+        }, 2000);
+    }
+
+    _stopAuthRetry() {
+        if (this._authRetryTimer) {
+            clearInterval(this._authRetryTimer);
+            this._authRetryTimer = null;
         }
-        console.warn(`⚠️ WebSocket fermé (code: ${event.code}), reconnexion dans ${this.getReconnectDelay()}ms...`);
-        this.reconnect();
-      });
-
-      this.ws.addEventListener('error', (err) => {
-        console.error('❌ Erreur WebSocket:', err);
-        this.errorHandlers.forEach(handler => handler(err));
-      });
-    } catch (err) {
-      console.error('❌ Erreur création WebSocket:', err);
-      this.reconnect();
-    }
-  }
-
-  /**
-     * Calculer le délai de reconnexion avec exponential backoff
-     */
-  getReconnectDelay() {
-    // Exponential backoff: délai = base * 2^tentatives (avec max)
-    const delay = this.baseReconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-    return Math.min(delay, this.maxReconnectDelay);
-  }
-
-  /**
-     * Reconnecter après déconnexion
-     */
-  reconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error(`❌ Impossible de se reconnecter après ${this.maxReconnectAttempts} tentatives`);
-      this.errorHandlers.forEach(handler => handler('Reconnexion échouée'));
-      return;
     }
 
-    this.reconnectAttempts++;
-    const delay = this.getReconnectDelay();
-    console.log(`🔄 Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts} dans ${delay}ms`);
-
-    // Annuler le timeout précédent s'il existe
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-    }
-
-    this.reconnectTimeout = setTimeout(() => {
-      this.connect();
-    }, delay);
-  }
-
-  /**
-     * Démarrer un heartbeat pour détecter les connexions mortes
-     */
-  startHeartbeat() {
-    this.stopHeartbeat();
-    this.heartbeatInterval = setInterval(() => {
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+    async authenticate(token) {
+        if (!token) return;
+        this.authToken = token;
+        if (this._authAcked) return;
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
         try {
-          this.ws.send(JSON.stringify({ type: 'ping' }));
+            this.ws.send(JSON.stringify({ type: 'auth', token }));
+            console.log('[Chat WS] Auth envoyée (authenticate)');
+            logger.info('Auth WebSocket envoyée (authenticate)');
         } catch (err) {
-          console.warn('⚠️ Erreur envoi heartbeat:', err);
+            console.error('[Chat WS] Erreur envoi auth:', err);
+            logger.error('Erreur envoi auth WS', err);
         }
-      }
-    }, 30000); // Ping toutes les 30s
-  }
-
-  /**
-     * Arrêter le heartbeat
-     */
-  stopHeartbeat() {
-    if (this.heartbeatInterval) {
-      clearInterval(this.heartbeatInterval);
-      this.heartbeatInterval = null;
-    }
-  }
-
-  /**
-     * Authentifier la connexion WebSocket avec un token JWT
-     */
-  async authenticate(token) {
-    if (!token) return;
-    this.authToken = token;
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) return;
-    try {
-      this.ws.send(JSON.stringify({ type: 'auth', token }));
-    } catch (err) {
-      console.error('❌ Erreur envoi auth WS:', err);
-    }
-  }
-
-  /**
-     * Gérer les messages reçus
-     */
-  handleMessage(data) {
-    console.log('📨 Message WebSocket reçu:', data.type);
-    
-    if (data.type === 'connected') {
-      // Bienvenue du serveur
-      console.log('✅ Connecté au serveur WebSocket:', data.userId, data.username);
-      return;
-    } else if (data.type === 'auth:ack') {
-      // Authentification OK
-      console.log('✅ Authentifié');
-      return;
-    } else if (data.type === 'message:new') {
-      // #region agent log
-      try {
-        fetch('http://127.0.0.1:7358/ingest/69ea8e5d-a460-4f0f-88de-271ea6ec34a1',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b1c6ff'},body:JSON.stringify({sessionId:'b1c6ff',location:'ChatWebSocket.js:message:new',message:'message:new received',data:{handlers:this.messageHandlers.length},hypothesisId:'H2',timestamp:Date.now()})}).catch(()=>{});
-      } catch (_) {}
-      // #endregion
-      const raw = data.data || data;
-      const payload = {
-        ...raw,
-        pseudo: raw.username ?? raw.pseudo,
-        text: raw.text ?? raw.message,
-        created_at: raw.createdAt ?? raw.created_at
-      };
-      this.messageHandlers.forEach(handler => handler({
-        type: 'newMessage',
-        message: payload
-      }));
-    } else if (data.type === 'message' || data.type === 'message:send') {
-      // Message de chat (anciens formats)
-      const payload = data.message || data.data || data;
-      this.messageHandlers.forEach(handler => handler({
-        type: 'newMessage',
-        message: payload
-      }));
-    } else if (data.type === 'presence:update') {
-      // Changement de présence utilisateur
-      const payload = data.data || data;
-      this.messageHandlers.forEach(handler => handler({
-        type: 'presence:update',
-        user: payload
-      }));
-    } else if (data.type === 'userCount') {
-      // Mise à jour du nombre d'utilisateurs
-      this.messageHandlers.forEach(handler => handler({
-        type: 'userCount',
-        count: data.count,
-        users: data.users
-      }));
-    } else if (data.type === 'error') {
-      // Erreur du serveur
-      const msg = data.message || data.text || 'Erreur inconnue';
-      console.error('❌ Erreur serveur:', msg);
-      this.errorHandlers.forEach(handler => handler(msg));
-    } else if (data.type === 'ping') {
-      // Heartbeat - répondre avec pong
-      try {
-        this.ws.send(JSON.stringify({ type: 'pong' }));
-      } catch (err) {
-        console.warn('⚠️ Erreur réponse pong:', err);
-      }
-    } else {
-      console.log('📌 Message WebSocket non géré:', data.type, data);
-    }
-  }
-
-  /**
-     * Envoyer un message (type 'message:send' pour Proxmox)
-     */
-  sendMessage(message) {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.error('❌ WebSocket non connecté');
-      return Promise.reject(new Error('WebSocket non connecté'));
     }
 
-    return new Promise((resolve, reject) => {
-      try {
-        const payload = {
-          type: 'message:send', // Type attendu par le serveur Proxmox
-          text: message,
-          timestamp: Date.now(),
-          username: localStorage.getItem('workspace_username') || 'Guest'
-        };
-        console.log('📤 Envoi message:', payload.type, message.substring(0, 50));
-        this.ws.send(JSON.stringify(payload));
-        resolve();
-      } catch (err) {
-        console.error('❌ Erreur envoi message:', err);
-        reject(err);
-      }
-    });
-  }
-
-  /**
-     * Envoyer le pseudo (connexion utilisateur)
-     */
-  setPseudo(pseudo) {
-    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-      console.error('❌ WebSocket non connecté, impossible d\'envoyer le pseudo');
-      return Promise.reject(new Error('WebSocket non connecté'));
+    handleMessage(data) {
+        if (data.type === 'auth:ack') {
+            this._authAcked = true;
+            this._stopAuthRetry();
+            this.messageHandlers.forEach(handler => handler({ type: 'auth:ack', ok: data.ok }));
+            console.log('[Chat WS] Auth confirmée par le serveur – vous pouvez envoyer des messages');
+            logger.info('Auth WebSocket confirmée par le serveur');
+            return;
+        }
+        if (data.type === 'error') {
+            const code = data.code || null;
+            const msg = data.message || data.text || 'Erreur inconnue';
+            this.errorHandlers.forEach(handler => handler({ code, message: msg }));
+            return;
+        }
+        if (data.type === 'message:new') {
+            const d = data.data || data;
+            const payload = {
+                id: d.id,
+                pseudo: d.username || d.pseudo,
+                text: d.text || d.message,
+                message: d.text || d.message,
+                created_at: d.createdAt || d.created_at,
+                replyTo: d.replyTo ?? d.reply_to ?? d.parentId ?? null,
+                replyToPseudo: d.replyToPseudo ?? d.reply_to_pseudo ?? null,
+                replyToText: d.replyToText ?? d.reply_to_text ?? null
+            };
+            this.messageHandlers.forEach(handler => handler({
+                type: 'newMessage',
+                message: payload
+            }));
+            return;
+        }
+        if (data.type === 'message' || data.type === 'newMessage') {
+            const payload = data.message || data.data || data;
+            const normalized = {
+                id: payload.id,
+                pseudo: payload.username || payload.pseudo,
+                text: payload.text || payload.message,
+                message: payload.text || payload.message,
+                created_at: payload.createdAt || payload.created_at,
+                replyTo: payload.replyTo ?? payload.reply_to ?? payload.parentId ?? null,
+                replyToPseudo: payload.replyToPseudo ?? payload.reply_to_pseudo ?? null,
+                replyToText: payload.replyToText ?? payload.reply_to_text ?? null
+            };
+            this.messageHandlers.forEach(handler => handler({
+                type: 'newMessage',
+                message: normalized
+            }));
+            return;
+        }
+        if (data.type === 'history') {
+            this.messageHandlers.forEach(handler => handler({
+                type: 'history',
+                messages: data.messages || []
+            }));
+            return;
+        }
+        if (data.type === 'userCount') {
+            this.messageHandlers.forEach(handler => handler({
+                type: 'userCount',
+                count: data.count,
+                users: data.users
+            }));
+            return;
+        }
+        if (data.type === 'chatCleared') {
+            this.messageHandlers.forEach(handler => handler({
+                type: 'chatCleared',
+                clearedBy: data.clearedBy,
+                timestamp: data.timestamp
+            }));
+            return;
+        }
+        if (data.type === 'connected') {
+            this.messageHandlers.forEach(handler => handler({
+                type: 'userCount',
+                count: typeof data.connectedUsers === 'number' ? data.connectedUsers : data.count,
+                users: data.users || []
+            }));
+            // _trySendAuth et _startAuthRetry sont déjà lancés depuis l'event 'open'
+            return;
+        }
+        if (data.type === 'success') {
+            logger.info(`Succès serveur: ${data.message || data.text}`);
+        }
     }
 
-    return new Promise((resolve, reject) => {
-      try {
-        this.ws.send(JSON.stringify({
-          type: 'setPseudo',
-          pseudo
-        }));
-        resolve();
-      } catch (err) {
-        reject(err);
-      }
-    });
-  }
-
-  /**
-     * Enregistrer un handler pour les messages
+    /**
+     * Envoyer un message (le pseudo est celui du compte côté serveur)
+     * @param {string} text
+     * @param {string|number|null} [replyToId] - id du message auquel on répond
      */
-  onMessage(handler) {
-    this.messageHandlers.push(handler);
-  }
-
-  /**
-     * Enregistrer un handler pour les erreurs
-     */
-  onError(handler) {
-    this.errorHandlers.push(handler);
-  }
-
-  /**
-     * Vérifier si connecté
-     */
-  isConnected() {
-    return this.ws && this.ws.readyState === WebSocket.OPEN;
-  }
-
-  /**
-   * Fermer la connexion.
-   * @param {boolean} [skipReconnect=false] - Si true, ne pas reconnecter au 'close' (à utiliser au logout).
-   */
-  close(skipReconnect = false) {
-    this.skipReconnect = !!skipReconnect;
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
+    sendMessage(text, replyToId = null) {
+        if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            logger.error('WebSocket non connecté');
+            return Promise.reject(new Error('WebSocket non connecté'));
+        }
+        return new Promise((resolve, reject) => {
+            try {
+                const payload = { type: 'message', text };
+                if (replyToId != null && replyToId !== '') payload.replyTo = String(replyToId);
+                this.ws.send(JSON.stringify(payload));
+                resolve();
+            } catch (err) {
+                reject(err);
+            }
+        });
     }
-    this.stopHeartbeat();
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
-    if (skipReconnect && currentInstance.current === this) {
-      currentInstance.current = null;
-    }
-  }
 
-  /**
-   * Alias pour close(). Pour un logout, appeler disconnect(true) pour éviter une reconnexion.
-   */
-  disconnect(skipReconnect = false) {
-    this.close(!!skipReconnect);
-  }
+    onMessage(handler) {
+        this.messageHandlers.push(handler);
+    }
+
+    onError(handler) {
+        this.errorHandlers.push(handler);
+    }
+
+    isConnected() {
+        return this.ws && this.ws.readyState === WebSocket.OPEN;
+    }
+
+    close(skipReconnect = false) {
+        this._skipReconnect = skipReconnect;
+        if (this.ws) {
+            this.ws.close();
+            this.ws = null;
+        }
+        if (!skipReconnect && sharedInstance === this) {
+            sharedInstance = null;
+        }
+    }
+
+    disconnect() {
+        this.close(true);
+    }
 }
 
-// Permettre au code de login (même onglet) d'authentifier le WebSocket après un login réussi
+// Permettre à AuthManager (login) d'authentifier le WebSocket dans le même onglet
 if (typeof window !== 'undefined') {
-  window.workspaceChatAuthenticate = (token) => {
-    const ws = currentInstance.current;
-    if (ws && token) ws.authenticate(token);
-  };
-  window.addEventListener('workspace-login', (e) => {
-    const token = e.detail && e.detail.token;
-    if (token) window.workspaceChatAuthenticate(token);
-  });
+    window.workspaceChatAuthenticate = (token) => {
+        const ws = getSharedChatWebSocket();
+        if (ws && token) ws.authenticate(token);
+    };
 }
 
+export { getSharedChatWebSocket };
 export default ChatWebSocket;

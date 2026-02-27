@@ -2,7 +2,7 @@
  * Workspace Client - Electron Main Process
  * Gère la fenêtre d'application et la connexion au serveur distant
  */
-const { app, BrowserWindow, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Notification } = require('electron');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
@@ -10,11 +10,51 @@ const os = require('os');
 const { exec } = require('child_process');
 const PDFDocument = require('pdfkit');
 
+// #region agent log (bootstrap debug log pour AppImage sur autres machines)
+function getAppImageDebugLogPath() {
+    try {
+        if (app.isPackaged) {
+            return path.join(app.getPath('userData'), 'debug.log');
+        }
+        return path.join(__dirname, '..', '..', '.cursor', 'debug.log');
+    } catch (_) {
+        return path.join(os.homedir(), '.config', 'workspace-client-debug.log');
+    }
+}
+function writeAppImageDebugLog(payload) {
+    try {
+        const logPath = getAppImageDebugLogPath();
+        const dir = path.dirname(logPath);
+        if (!fs.existsSync(dir)) {
+            try { fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+        }
+        fs.appendFileSync(logPath, JSON.stringify({ ...payload, timestamp: Date.now() }) + '\n');
+    } catch (_) {}
+}
+try {
+    writeAppImageDebugLog({
+        hypothesisId: 'H4-H5',
+        location: 'main.js:bootstrap',
+        message: 'main_started',
+        data: {
+            platform: process.platform,
+            arch: process.arch,
+            nodeVersion: process.version,
+            packaged: app.isPackaged,
+            execPath: process.execPath ? path.basename(process.execPath) : ''
+        }
+    });
+} catch (_) {}
+process.on('uncaughtException', (err) => {
+    writeAppImageDebugLog({ hypothesisId: 'H4', location: 'uncaughtException', message: String(err && err.message), data: { stack: err && err.stack } });
+});
+process.on('unhandledRejection', (reason) => {
+    writeAppImageDebugLog({ hypothesisId: 'H4', location: 'unhandledRejection', message: String(reason) });
+});
+// #endregion
+
 // Import ClientDiscovery
 const ClientDiscovery = require('./lib/ClientDiscovery.js');
-
-// Import AutoUpdater
-const getAutoUpdater = require('./lib/AutoUpdater.js');
 
 // Détection environnement (production vs développement)
 const isProduction = process.env.NODE_ENV === 'production' || app.isPackaged;
@@ -185,6 +225,7 @@ const MAX_RETRY_ATTEMPTS = 10;
 const RETRY_INTERVAL = 500;
 
 let mainWindow;
+let splashWindow = null;
 let pdfWindows = new Map();
 let serverConnected = false;
 let discoveredServer = null;
@@ -212,7 +253,7 @@ function checkServerConnection(retries = 0) {
     return new Promise((resolve) => {
         const req = http.get(SERVER_HEALTH_ENDPOINT, { timeout: 3000 }, (res) => {
             if (res.statusCode === 200) {
-                console.log(`✅ Connecté au serveur: ${SERVER_URL}`);
+                if (!serverConnected) console.log(`✅ Connecté au serveur: ${SERVER_URL}`);
                 serverConnected = true;
                 resolve(true);
             } else if (retries < MAX_RETRY_ATTEMPTS) {
@@ -254,9 +295,141 @@ function checkServerConnection(retries = 0) {
 }
 
 /**
- * Créer la fenêtre principale
+ * Écran de démarrage (splash) affiché pendant le chargement
+ */
+function createSplashWindow() {
+    const splashHtml = `
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: linear-gradient(145deg, #1a237e 0%, #0d47a1 100%);
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+  }
+  .logo { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; letter-spacing: 0.02em; }
+  .tagline { font-size: 0.9rem; opacity: 0.85; margin-bottom: 2rem; }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid rgba(255,255,255,0.25);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .message { margin-top: 1.25rem; font-size: 0.85rem; opacity: 0.9; }
+  .progress-wrap { margin-top: 1rem; width: 100%; max-width: 260px; display: none; }
+  .progress-wrap.visible { display: block; }
+  .progress-bar { height: 8px; background: rgba(255,255,255,0.25); border-radius: 4px; overflow: hidden; }
+  .progress-fill { height: 100%; width: 0%; background: rgba(255,255,255,0.9); border-radius: 4px; transition: width 0.2s ease; }
+</style></head><body>
+  <div class="logo">Workspace</div>
+  <div class="tagline">By Sandersonn</div>
+  <div class="spinner"></div>
+  <p class="message">Chargement en cours…</p>
+  <div class="progress-wrap" id="splash-progress">
+    <div class="progress-bar"><div class="progress-fill" id="splash-progress-fill"></div></div>
+  </div>
+</body></html>`;
+    const win = new BrowserWindow({
+        width: 380,
+        height: 280,
+        frame: true,
+        transparent: false,
+        resizable: false,
+        show: false,
+        alwaysOnTop: true,
+        webPreferences: { nodeIntegration: false, contextIsolation: true }
+    });
+    win.setMenuBarVisibility(false);
+    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(splashHtml));
+    win.once('ready-to-show', () => win.show());
+    splashWindow = win;
+    win.on('closed', () => { splashWindow = null; });
+    return win;
+}
+
+/**
+ * Mettre à jour le message affiché sur l'écran de démarrage (splash)
+ */
+function setSplashMessage(text) {
+    if (splashWindow && !splashWindow.isDestroyed() && splashWindow.webContents) {
+        splashWindow.webContents.executeJavaScript(
+            `(function(){ var el = document.querySelector('.message'); if (el) el.textContent = ${JSON.stringify(text)}; })();`
+        ).catch(() => {});
+    }
+}
+
+/**
+ * Afficher ou masquer la barre de progression (percent: 0-100, ou null pour masquer)
+ */
+function setSplashProgress(percent) {
+    if (!splashWindow || splashWindow.isDestroyed() || !splashWindow.webContents) return;
+    const show = typeof percent === 'number';
+    const value = Math.min(100, Math.max(0, percent));
+    splashWindow.webContents.executeJavaScript(
+        `(function(){
+            var wrap = document.getElementById('splash-progress');
+            var fill = document.getElementById('splash-progress-fill');
+            if (wrap) wrap.classList.toggle('visible', ${show});
+            if (fill) fill.style.width = ${JSON.stringify(value)} + '%';
+        })();`
+    ).catch(() => {});
+}
+
+/**
+ * Afficher l'état succès sur le splash (icône check, pas de spinner) et masquer la barre de progression
+ */
+function setSplashUpdateSuccess(text) {
+    if (splashWindow && !splashWindow.isDestroyed() && splashWindow.webContents) {
+        splashWindow.webContents.executeJavaScript(
+            `(function(){
+                var spinner = document.querySelector('.spinner');
+                var msg = document.querySelector('.message');
+                var progressWrap = document.getElementById('splash-progress');
+                if (spinner) { spinner.style.display = 'none'; }
+                if (progressWrap) { progressWrap.classList.remove('visible'); }
+                var wrap = document.querySelector('.message-wrap');
+                if (!wrap && msg) {
+                    wrap = document.createElement('div');
+                    wrap.className = 'message-wrap';
+                    msg.parentNode.insertBefore(wrap, msg);
+                    wrap.appendChild(msg);
+                }
+                if (wrap) wrap.innerHTML = '<div class="splash-success"><span class="splash-check">✓</span></div><p class="message">' + ${JSON.stringify(text)} + '</p>';
+                var style = document.createElement('style');
+                style.textContent = '.splash-success { margin-top: 1rem; }.splash-check { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: rgba(76, 175, 80, 0.9); color: #fff; border-radius: 50%; font-size: 1.5rem; font-weight: bold; }.message-wrap .message { margin-top: 0.75rem; }';
+                if (!document.querySelector('#splash-success-style')) { style.id = 'splash-success-style'; document.head.appendChild(style); }
+            })();`
+        ).catch(() => {});
+    }
+}
+
+/**
+ * Fermer l'écran de démarrage (splash)
+ */
+function closeSplashWindow() {
+    if (splashWindow && !splashWindow.isDestroyed()) {
+        splashWindow.close();
+        splashWindow = null;
+    }
+}
+
+/**
+ * Créer la fenêtre principale (une seule instance)
  */
 function createWindow() {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.show();
+        mainWindow.focus();
+        return;
+    }
     mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
@@ -270,9 +443,30 @@ function createWindow() {
         }
     });
 
-    // Charger l'index.html directement
+    // Charger l'index.html ; afficher la fenêtre et fermer le splash une fois prêt
     mainWindow.loadURL(`file://${path.join(__dirname, 'public', 'index.html')}`);
-    mainWindow.show();
+    let showMainCalled = false;
+    let showMainFallbackId;
+    const showMainAndCloseSplash = () => {
+        if (showMainCalled) return;
+        showMainCalled = true;
+        if (showMainFallbackId) clearTimeout(showMainFallbackId);
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+        closeSplashWindow();
+        const flagPath = path.join(app.getPath('userData'), 'workspace-update-installed.flag');
+        if (fs.existsSync(flagPath)) {
+            try {
+                fs.unlinkSync(flagPath);
+            } catch (_) {}
+            setTimeout(() => {
+                if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
+                    mainWindow.webContents.send('update-was-installed');
+                }
+            }, 800);
+        }
+    };
+    mainWindow.webContents.once('did-finish-load', showMainAndCloseSplash);
+    showMainFallbackId = setTimeout(showMainAndCloseSplash, 15000);
 
     // DevTools uniquement en développement
     if (!isProduction) {
@@ -296,6 +490,66 @@ function createWindow() {
     mainWindow.on('closed', () => {
         mainWindow = null;
     });
+
+    // Arrêter le clignotement de la barre des tâches quand l'utilisateur revient sur la fenêtre
+    mainWindow.on('focus', () => {
+        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.flashFrame(false);
+    });
+}
+
+/**
+ * Notifications chat : clignotement barre des tâches + notification OS (nouveau message non vu)
+ */
+function setupChatNotifications() {
+    ipcMain.on('chat-new-message', (_event, payload) => {
+        const pseudo = (payload && payload.pseudo) ? String(payload.pseudo) : 'Quelqu\'un';
+        const win = mainWindow;
+        if (!win || win.isDestroyed()) return;
+        // Ne pas notifier si la fenêtre a le focus (utilisateur déjà sur l'app)
+        if (win.isFocused()) return;
+        // Faire clignoter l'icône dans la barre des tâches (Linux/Windows) ou bounce dock (macOS)
+        try {
+            if (process.platform === 'darwin' && app.dock) {
+                app.dock.bounce('informational');
+            } else {
+                win.flashFrame(true);
+            }
+        } catch (_) {}
+        // Notification système (popup à droite sur la plupart des OS)
+        if (Notification.isSupported()) {
+            const iconPath = path.join(__dirname, 'build', 'icon.png');
+            const opts = { body: `${pseudo} a envoyé un message` };
+            if (fs.existsSync(iconPath)) opts.icon = iconPath;
+            const n = new Notification('Workspace - Chat', opts);
+            n.on('click', () => {
+                if (win && !win.isDestroyed()) {
+                    win.show();
+                    win.focus();
+                    win.flashFrame(false);
+                }
+            });
+            n.show();
+        }
+    });
+}
+
+/** Garde pour éviter le double lancement (ex. checkForUpdates rejette après update-not-available) */
+let appLaunched = false;
+
+/**
+ * Lancer l'application (fenêtre principale après éventuelle mise à jour)
+ */
+async function launchApp() {
+    if (appLaunched) return;
+    appLaunched = true;
+    setSplashMessage('Chargement en cours…');
+    await checkServerConnection();
+    if (!serverConnected) {
+        console.log('🔌 Mode hors-ligne: Le client démarre sans connexion serveur');
+    }
+    createWindow();
+    console.log('✅ Interface graphique lancée');
+    console.log('✨ Application prête');
 }
 
 /**
@@ -307,29 +561,101 @@ app.on('ready', async () => {
     console.log(`🔗 Serveur par défaut: ${SERVER_URL}`);
     console.log(`🌍 Environnement: ${isProduction ? 'PRODUCTION' : 'DÉVELOPPEMENT'}`);
     console.log('ℹ️  La config réelle sera chargée par le client web');
-    
-    // Tenter la connexion au serveur (non-bloquant)
-    await checkServerConnection();
-    
-    if (!serverConnected) {
-        console.log('🔌 Mode hors-ligne: Le client démarre sans connexion serveur');
+
+    setupChatNotifications();
+    createSplashWindow();
+
+    if (app.isPackaged) {
+        let timeoutId;
+        try {
+            const currentVersion = app.getVersion();
+            console.log('[Update] Version installée:', currentVersion);
+
+            const { autoUpdater } = require('electron-updater');
+            // URL du feed explicite (repo en minuscules comme dans l'URL GitHub)
+            autoUpdater.setFeedURL({
+                provider: 'github',
+                owner: 'SandersonnDev',
+                repo: 'workspace',
+                releaseType: 'release',
+            });
+            autoUpdater.autoDownload = true;
+            autoUpdater.autoInstallOnAppQuit = false;
+
+            let updateHandled = false;
+            const done = () => {
+                if (updateHandled) return;
+                updateHandled = true;
+                if (timeoutId) clearTimeout(timeoutId);
+                setSplashMessage('Aucune mise à jour');
+                setSplashProgress(null);
+                setTimeout(() => {
+                    setSplashMessage('Lancement…');
+                    setTimeout(launchApp, 400);
+                }, 600);
+            };
+
+            autoUpdater.on('checking-for-update', () => {
+                setSplashMessage('Recherche de mise à jour…');
+                setSplashProgress(null);
+            });
+            autoUpdater.on('update-available', (info) => {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                console.log('[Update] Mise à jour disponible:', info?.version);
+                setSplashMessage('Mise à jour trouvée');
+                setSplashProgress(0);
+                // Si le téléchargement dépasse 5 min (réseau lent/bloqué), lancer l'app quand même
+                timeoutId = setTimeout(done, 300000);
+            });
+            autoUpdater.on('download-progress', (p) => {
+                const percent = Math.round(p.percent || 0);
+                setSplashMessage('Téléchargement');
+                setSplashProgress(percent);
+            });
+            autoUpdater.on('update-downloaded', () => {
+                if (timeoutId) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                updateHandled = true;
+                setSplashProgress(null);
+                setSplashMessage('Installation');
+                const flagPath = path.join(app.getPath('userData'), 'workspace-update-installed.flag');
+                try {
+                    fs.writeFileSync(flagPath, Date.now().toString(), 'utf8');
+                } catch (_) {}
+                setSplashUpdateSuccess('Redémarrage…');
+                // Redémarrage systématique : on quitte et on installe la maj (pas de choix utilisateur)
+                setTimeout(() => {
+                    autoUpdater.quitAndInstall(false, true);
+                }, 800);
+            });
+            autoUpdater.on('update-not-available', (info) => {
+                const remoteVersion = info?.version || '?';
+                console.log('[Update] À jour. Version installée:', currentVersion, '| Dernière sur GitHub:', remoteVersion);
+                done();
+            });
+            autoUpdater.on('error', (err) => {
+                console.error('[Update] Erreur:', err.message || err);
+                done();
+            });
+
+            setSplashMessage('Recherche de mise à jour…');
+            // Timeout uniquement pour la phase "vérification" : si pas de réponse en 12 s, on lance l'app
+            // (dès qu'une maj est trouvée, le timeout est annulé pour laisser le téléchargement aller au bout)
+            timeoutId = setTimeout(done, 12000);
+            await autoUpdater.checkForUpdates();
+        } catch (e) {
+            console.warn('[Update] Non disponible:', e.message);
+            if (timeoutId) clearTimeout(timeoutId);
+            await launchApp();
+        }
+    } else {
+        await launchApp();
     }
-    
-    // Créer la fenêtre principale
-    createWindow();
-    
-    // Initialiser l'auto-updater APRÈS la création de la fenêtre (si production)
-    if (isProduction) {
-        const autoUpdater = getAutoUpdater({
-            enabled: true,
-            owner: 'SandersonnDev',
-            repo: 'Workspace'
-        });
-        autoUpdater.init(isProduction, mainWindow);
-    }
-    
-    console.log('✅ Interface graphique lancée');
-    console.log('✨ Application prête');
 });
 
 // IPC: lister les dossiers d'un chemin
@@ -350,7 +676,7 @@ ipcMain.handle('list-folders', async (_event, payload) => {
     }
 });
 
-// IPC: ouvrir un chemin local (dossier/fichier) via shell.openPath
+// IPC: ouvrir un chemin local (fichier ou dossier) avec l'app par défaut
 ipcMain.handle('open-path', async (_event, payload) => {
     const targetPath = typeof payload === 'string' ? payload : payload?.path;
     if (!targetPath) throw new Error('path is required');
@@ -358,39 +684,39 @@ ipcMain.handle('open-path', async (_event, payload) => {
     try {
         const resolved = path.resolve(targetPath);
         
-        // Vérifier si le chemin existe
         if (!fs.existsSync(resolved)) {
             return { success: false, error: 'Path does not exist' };
         }
         
-        // Throttle: attendre avant d'ouvrir si nécessaire
         const now = Date.now();
         const elapsed = now - lastOpenTime;
         if (elapsed < MIN_OPEN_INTERVAL) {
-            const waitTime = MIN_OPEN_INTERVAL - elapsed;
-            await new Promise(resolve => setTimeout(resolve, waitTime));
+            await new Promise(resolve => setTimeout(resolve, MIN_OPEN_INTERVAL - elapsed));
         }
         lastOpenTime = Date.now();
         
-        // Ouvrir avec le gestionnaire de fichiers natif
+        const stat = fs.statSync(resolved);
+        if (stat.isFile()) {
+            const err = await shell.openPath(resolved);
+            if (err) {
+                console.error('❌ open-path (fichier):', err);
+                return { success: false, error: err };
+            }
+            return { success: true, path: resolved };
+        }
+        
         const platform = process.platform;
         let cmd;
-        
         if (platform === 'win32') {
             cmd = `explorer "${resolved}"`;
         } else if (platform === 'darwin') {
             cmd = `open "${resolved}"`;
         } else {
-            // Linux - utiliser xdg-open ou nautilus
             cmd = `xdg-open "${resolved}" || nautilus "${resolved}" || dolphin "${resolved}"`;
         }
-        
         exec(cmd, (error) => {
-            if (error) {
-                console.error('❌ Erreur ouverture explorateur:', error.message);
-            }
+            if (error) console.error('❌ Erreur ouverture dossier:', error.message);
         });
-        
         return { success: true, path: resolved };
     } catch (error) {
         console.error('❌ Erreur open-path:', error);
@@ -690,23 +1016,191 @@ ipcMain.handle('open-pdf-window', async (event, data) => {
     }
 });
 
-/** Base path pour les PDF de traçabilité (client a accès, pas le serveur) */
+/** Dossier de backup PDF traçabilité : /mnt/team/#TEAM/#TRAÇABILITÉ (exactement comme demandé) */
 const TRACABILITE_PDF_BASE = '/mnt/team/#TEAM/#TRAÇABILITÉ';
 
 /**
- * Générer le PDF d'un lot et l'enregistrer localement (dossier traçabilité)
- * Payload: { lotId, lotName, date, items, basePath? }
- * items: [{ id, serial_number, type, marque_name, modele_name, state, technician }]
+ * Formater une date ISO en "jj/mm/aaaa HH:mm" pour le PDF
+ */
+function formatDateForPdf(iso) {
+    if (!iso || typeof iso !== 'string') return '-';
+    try {
+        const d = new Date(iso);
+        if (isNaN(d.getTime())) return '-';
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        const h = String(d.getHours()).padStart(2, '0');
+        const m = String(d.getMinutes()).padStart(2, '0');
+        return `${day}/${month}/${year} ${h}:${m}`;
+    } catch (_) {
+        return '-';
+    }
+}
+
+/** Échapper pour affichage dans le HTML du template PDF */
+function escapeHtml(s) {
+    if (s == null) return '';
+    const str = String(s);
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/** Libellés français pour les types (code API -> affichage PDF) */
+const TYPE_LABELS = { portable: 'Portable', fixe: 'Fixe', ecran: 'Écran', autres: 'Autres' };
+function typeLabel(code) {
+    if (!code || typeof code !== 'string') return 'Non défini';
+    const c = code.trim().toLowerCase();
+    return TYPE_LABELS[c] || (code.trim() || 'Non défini');
+}
+
+/**
+ * Formater date/heure item pour le PDF (created_at, state_changed_at, updated_at, ou date+time)
+ */
+function formatItemDateForPdf(it) {
+    const iso = it.created_at || it.createdAt || it.state_changed_at || it.stateChangedAt || it.updated_at || it.updatedAt;
+    if (iso) return formatDateForPdf(iso);
+    if (it.date && it.time) {
+        const d = it.date + 'T' + (String(it.time).length === 5 ? it.time + ':00' : it.time);
+        return formatDateForPdf(d);
+    }
+    if (it.date && /^\d{4}-\d{2}-\d{2}/.test(String(it.date))) return formatDateForPdf(it.date + 'T00:00:00');
+    // Chaîne type "YYYY-MM-DD HH:mm:ss" ou "YYYY-MM-DD"
+    const dateStr = it.date || it.date_changed;
+    if (dateStr && /^\d{4}-\d{2}-\d{2}/.test(String(dateStr))) return formatDateForPdf(String(dateStr).replace(' ', 'T').slice(0, 19) || dateStr + 'T00:00:00');
+    return '-';
+}
+
+/** Construire le bloc HTML du résumé PDF : total + types en ligne, puis cartes par état */
+function buildPdfSummaryBlock(totalItems, typeEntries, stateEntries) {
+    const typeParts = typeEntries.map(([typeName, count]) => `${escapeHtml(typeLabel(typeName))} ${count}`).join(', ');
+    const totalLine = `<p class="pdf-summary-total-line"><i class="fa-solid fa-laptop-code"></i> <strong>${escapeHtml(String(totalItems))} machine(s)</strong>${typeParts ? ` (${typeParts})` : ''}</p>`;
+    const stateCards = stateEntries
+        .map(([stateName, count]) => `<span class="pdf-summary-state-card"><span class="pdf-summary-state-name">${escapeHtml(stateName)}</span><span class="pdf-summary-state-count">${escapeHtml(String(count))}</span></span>`)
+        .join('\n');
+    return `${totalLine}\n<div class="pdf-summary-state-cards">${stateCards}</div>`;
+}
+
+/**
+ * Générer le PDF d'un lot via le template HTML/CSS si présent, sinon PDFKit.
+ * Template : apps/client/public/pdf-templates/lot.html + lot.css
+ * Placeholders : {{lotId}}, {{lotName}}, {{created_at}}, {{finished_at}}, {{recovered_at}},
+ * {{summary_block}}, {{items_rows}}
+ */
+async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, typeEntries, totalItems) {
+    const templateDir = path.join(__dirname, 'public', 'pdf-templates');
+    const htmlPath = path.join(templateDir, 'lot.html');
+    const cssPath = path.join(templateDir, 'lot.css');
+    if (!fs.existsSync(htmlPath) || !fs.existsSync(cssPath)) {
+        return null;
+    }
+    const {
+        lotId,
+        lotName,
+        items = [],
+        created_at,
+        finished_at,
+        recovered_at
+    } = payload;
+
+    const css = fs.readFileSync(cssPath, 'utf8');
+    let html = fs.readFileSync(htmlPath, 'utf8');
+
+    const summaryBlock = buildPdfSummaryBlock(totalItems, typeEntries, stateEntries);
+    const itemsRows = items
+        .map((it, idx) => {
+            const num = it.numero != null ? it.numero : idx + 1;
+            const sn = escapeHtml(it.serial_number || it.serialNumber || '-');
+            const type = escapeHtml(typeLabel(it.type));
+            const marque = escapeHtml(it.marque_name || it.marqueName || '-');
+            const modele = escapeHtml(it.modele_name || it.modeleName || '-');
+            const state = escapeHtml(it.state || '-');
+            const tech = escapeHtml(it.technician || it.technicien || '-');
+            const dateHeure = escapeHtml(formatItemDateForPdf(it));
+            return `<tr><td class="col-num">${num}</td><td class="col-sn">${sn}</td><td class="col-type">${type}</td><td class="col-marque">${marque}</td><td class="col-modele">${modele}</td><td class="col-date">${dateHeure}</td><td class="col-state">${state}</td><td class="col-tech">${tech}</td></tr>`;
+        })
+        .join('\n');
+
+    const replacements = [
+        [/\{\{\s*lotId\s*\}\}/g, escapeHtml(lotId)],
+        [/\{\{\s*lotName\s*\}\}/g, escapeHtml(lotName || '-')],
+        [/\{\{\s*created_at\s*\}\}/g, escapeHtml(formatDateForPdf(created_at))],
+        [/\{\{\s*finished_at\s*\}\}/g, escapeHtml(formatDateForPdf(finished_at))],
+        [/\{\{\s*recovered_at\s*\}\}/g, escapeHtml(formatDateForPdf(recovered_at))],
+        [/\{\{\s*totalItems\s*\}\}/g, String(totalItems)],
+        [/\{\{\s*summary_block\s*\}\}/g, summaryBlock],
+        [/\{\{\s*items_rows\s*\}\}/g, itemsRows]
+    ];
+    replacements.forEach(([regex, value]) => { html = html.replace(regex, value); });
+
+    html = html.replace(
+        /<link\s+rel="stylesheet"\s+href="lot\.css"\s*\/?>/i,
+        `<style>${css}</style>`
+    );
+
+    // FontAwesome : lien relatif valide quand on charge depuis un fichier dans pdf-templates
+    const fontawesomeLink = '<link rel="stylesheet" href="../assets/css/fontawesome-local.css">';
+    if (!html.includes('fontawesome')) {
+        html = html.replace('</head>', `${fontawesomeLink}\n</head>`);
+    }
+
+    const outputPath = path.join(templateDir, '.lot-pdf-output.html');
+    try {
+        fs.writeFileSync(outputPath, html, 'utf8');
+    } catch (e) {
+        console.error('❌ generate-lot-pdf write temp HTML:', e.message);
+        return null;
+    }
+
+    const win = new BrowserWindow({
+        show: false,
+        webPreferences: { offscreen: true }
+    });
+    try {
+        await win.loadFile(outputPath);
+        // Marges gérées par @page dans lot.css ; pas de custom margins pour éviter l'erreur Chromium
+        const pdfBuffer = await win.webContents.printToPDF({
+            printBackground: true,
+            pageSize: 'A4',
+            preferCSSPageSize: true
+        });
+        fs.writeFileSync(fullPath, pdfBuffer);
+        return { success: true, pdf_path: path.resolve(fullPath) };
+    } finally {
+        win.close();
+        try { fs.unlinkSync(outputPath); } catch (_) {}
+    }
+}
+
+/**
+ * Générer le PDF d'un lot et l'enregistrer localement dans le dossier traçabilité.
+ * Payload: { lotId, lotName, date, items, created_at?, finished_at?, recovered_at?, basePath? }
  */
 ipcMain.handle('generate-lot-pdf', async (_event, payload) => {
-    const { lotId, lotName, date, items = [], basePath = TRACABILITE_PDF_BASE } = payload || {};
+    const {
+        lotId,
+        lotName,
+        date,
+        items = [],
+        created_at,
+        finished_at,
+        recovered_at,
+        basePath = TRACABILITE_PDF_BASE
+    } = payload || {};
     if (!lotId) {
         return { success: false, error: 'lotId requis' };
     }
-    const dateStr = (date && /^\d{4}-\d{2}-\d{2}$/.test(String(date))) ? String(date) : new Date().toISOString().slice(0, 10);
+    const rawDate = date ? String(date).trim() : (finished_at ? String(finished_at).slice(0, 10) : '');
+    const dateStr = /^\d{4}-\d{2}-\d{2}/.test(rawDate) ? rawDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
     const year = dateStr.slice(0, 4);
-    const month = dateStr.slice(5, 7);
-    const dirPath = path.join(basePath, year, month);
+    const monthNum = parseInt(dateStr.slice(5, 7), 10) || 1;
+    const MOIS_TRACABILITE = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+    const nomMois = MOIS_TRACABILITE[Math.max(0, monthNum - 1)];
+    const dirPath = path.join(basePath, year, nomMois);
     try {
         fs.mkdirSync(dirPath, { recursive: true });
     } catch (e) {
@@ -718,26 +1212,120 @@ ipcMain.handle('generate-lot-pdf', async (_event, payload) => {
     const fileName = `${sanitizedName}_${dateStr}.pdf`;
     const fullPath = path.join(dirPath, fileName);
 
+    const totalItems = items.length;
+    const stateCounts = {};
+    const typeCounts = {};
+    items.forEach((it) => {
+        const s = (it.state && String(it.state).trim()) || 'Non défini';
+        stateCounts[s] = (stateCounts[s] || 0) + 1;
+        const t = (it.type && String(it.type).trim()) || 'Non défini';
+        typeCounts[t] = (typeCounts[t] || 0) + 1;
+    });
+    const STATE_ORDER = ['Reconditionnés', 'Pour pièces', 'HS', 'Non défini'];
+    const stateEntries = STATE_ORDER.map((name) => [name, stateCounts[name] || 0]);
+    const typeEntries = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+
+    try {
+        const htmlResult = await generateLotPdfFromHtmlTemplate(
+            { lotId, lotName, date, items, created_at, finished_at, recovered_at },
+            fullPath,
+            stateEntries,
+            typeEntries,
+            totalItems
+        );
+        if (htmlResult) return htmlResult;
+    } catch (err) {
+        console.error('❌ generate-lot-pdf (template HTML):', err.message);
+    }
+
+    const margin = 50;
+    const pageWidth = 595;
+    const contentWidth = pageWidth - margin * 2;
+
     return new Promise((resolve) => {
-        const doc = new PDFDocument({ margin: 50 });
+        const doc = new PDFDocument({ margin, size: 'A4' });
         const stream = fs.createWriteStream(fullPath);
         doc.pipe(stream);
-        doc.fontSize(20).text(`Lot #${lotId}`, { underline: true });
-        doc.fontSize(10).text(`Nom: ${lotName || '-'} | Terminé: ${dateStr}`, 50, doc.y + 10);
-        doc.moveDown(2);
-        doc.fontSize(12).text('Détail des articles', { underline: true });
-        doc.moveDown(0.5);
-        let y = doc.y;
-        doc.fontSize(9).text('N°', 50, y); doc.text('Série', 80, y); doc.text('Type', 180, y);
-        doc.text('Marque', 250, y); doc.text('Modèle', 320, y); doc.text('État', 400, y); doc.text('Technicien', 450, y);
-        doc.moveTo(50, y + 15).lineTo(550, y + 15).stroke();
-        y = y + 22;
+
+        let y = margin;
+
+        // ---- En-tête ----
+        doc.fontSize(22).font('Helvetica-Bold').text(`Lot #${lotId}`, margin, y);
+        y = doc.y + 4;
+        doc.fontSize(11).font('Helvetica').fillColor('#333333').text(lotName || '-', margin, y);
+        y = doc.y + 16;
+
+        // ---- Bloc Infos (créé / terminé / récupéré) - style type icônes (symboles Unicode) ----
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#1a1a1a').text('Informations du lot', margin, y);
+        y += 18;
+        const lineH = 16;
+        const bulletX = margin;
+        const labelX = margin + 14;
+        const valueX = labelX + 82;
+        doc.font('Helvetica').fontSize(10);
+        doc.fillColor('#2e7d32').text('\u2022', bulletX, y); doc.fillColor('#444444').text('Créé le', labelX, y); doc.fillColor('#1a1a1a').text(formatDateForPdf(created_at), valueX, y);
+        y += lineH;
+        doc.fillColor('#2e7d32').text('\u2022', bulletX, y); doc.fillColor('#444444').text('Terminé le', labelX, y); doc.fillColor('#1a1a1a').text(formatDateForPdf(finished_at), valueX, y);
+        y += lineH;
+        doc.fillColor('#2e7d32').text('\u2022', bulletX, y); doc.fillColor('#444444').text('Récupéré le', labelX, y); doc.fillColor(recovered_at ? '#1a1a1a' : '#888888').text(recovered_at ? formatDateForPdf(recovered_at) : '-', valueX, y);
+        y += lineH + 8;
+
+        // ---- Résumé (total + par état) ----
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#1a1a1a').text('Résumé', margin, y);
+        y += 18;
+        doc.font('Helvetica').fontSize(10);
+        doc.fillColor('#1565c0').text('\u2022', bulletX, y); doc.fillColor('#444444').text(`Total : ${totalItems} machine${totalItems !== 1 ? 's' : ''}`, labelX, y);
+        y += lineH;
+        stateEntries.forEach(([stateName, count]) => {
+            doc.fillColor('#1565c0').text('\u2022', bulletX, y); doc.fillColor('#444444').text(`${stateName} : ${count}`, labelX, y);
+            y += lineH;
+        });
+        y += 12;
+
+        // ---- Tableau détail ----
+        doc.fontSize(11).font('Helvetica-Bold').fillColor('#1a1a1a').text('Détail des articles', margin, y);
+        y += 16;
+        const colN = 38;
+        const colSn = 38;
+        const colType = 70;
+        const colMarque = 75;
+        const colModele = 85;
+        const colState = 75;
+        const colTech = 90;
+        const tableLeft = margin;
+        const headerY = y;
+        doc.fontSize(9).font('Helvetica-Bold').fillColor('#333333');
+        doc.text('N°', tableLeft, headerY);
+        doc.text('S/N', tableLeft + colN, headerY);
+        doc.text('Type', tableLeft + colN + colSn, headerY);
+        doc.text('Marque', tableLeft + colN + colSn + colType, headerY);
+        doc.text('Modèle', tableLeft + colN + colSn + colType + colMarque, headerY);
+        doc.text('État', tableLeft + colN + colSn + colType + colMarque + colModele, headerY);
+        doc.text('Technicien', tableLeft + colN + colSn + colType + colMarque + colModele + colState, headerY);
+        y += 14;
+        doc.moveTo(tableLeft, y).lineTo(tableLeft + contentWidth, y).strokeColor('#cccccc').stroke();
+        y += 10;
+        doc.font('Helvetica').fontSize(9).fillColor('#1a1a1a');
+        let rowNum = 1;
         for (const it of items) {
-            doc.text(String(it.id || ''), 50, y); doc.text(it.serial_number || '-', 80, y);
-            doc.text(it.type || '-', 180, y); doc.text(it.marque_name || '-', 250, y);
-            doc.text(it.modele_name || '-', 320, y); doc.text(it.state || '-', 400, y); doc.text(it.technician || '-', 450, y);
-            y += 18;
+            const num = String(it.numero != null ? it.numero : rowNum);
+            rowNum += 1;
+            const sn = String(it.serial_number || '-').slice(0, 18);
+            const type = String(it.type || '-').slice(0, 10);
+            const marque = String(it.marque_name || '-').slice(0, 12);
+            const modele = String(it.modele_name || '-').slice(0, 14);
+            const state = String(it.state || '-').slice(0, 12);
+            const tech = String(it.technician || '-').slice(0, 14);
+            doc.text(num, tableLeft, y);
+            doc.text(sn, tableLeft + colN, y);
+            doc.text(type, tableLeft + colN + colSn, y);
+            doc.text(marque, tableLeft + colN + colSn + colType, y);
+            doc.text(modele, tableLeft + colN + colSn + colType + colMarque, y);
+            doc.text(state, tableLeft + colN + colSn + colType + colMarque + colModele, y);
+            doc.text(tech, tableLeft + colN + colSn + colType + colMarque + colModele + colState, y);
+            y += 15;
         }
+
         doc.end();
         stream.on('finish', () => resolve({ success: true, pdf_path: path.resolve(fullPath) }));
         stream.on('error', (err) => {
@@ -752,7 +1340,7 @@ ipcMain.handle('generate-lot-pdf', async (_event, payload) => {
 });
 
 /**
- * Lire un fichier et retourner son contenu en base64 (pour envoi du PDF au serveur)
+ * Lire un fichier et retourner son contenu en base64 (pour envoi du PDF au serveur).
  */
 ipcMain.handle('read-file-as-base64', async (_event, payload) => {
     const filePath = typeof payload === 'string' ? payload : payload?.path;
@@ -789,65 +1377,11 @@ ipcMain.handle('get-app-config', async () => {
 });
 
 /**
- * Vérifier manuellement les mises à jour
+ * Obtenir la configuration connexion complète (connection.json) lue depuis le disque.
+ * Utilisée par le renderer quand fetch('./config/connection.json') échoue (ex. en build avec file://).
  */
-ipcMain.handle('check-for-updates', async () => {
-    if (!isProduction) {
-        return { success: false, message: 'Auto-updater désactivé en développement' };
-    }
-    
-    try {
-        const autoUpdater = getAutoUpdater();
-        await autoUpdater.checkForUpdates();
-        return { success: true };
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
-});
-
-/**
- * Installer la mise à jour téléchargée
- */
-ipcMain.handle('install-update', async () => {
-    if (!isProduction) {
-        return { success: false, message: 'Auto-updater désactivé en développement' };
-    }
-    
-    try {
-        const autoUpdater = getAutoUpdater();
-        await autoUpdater.installUpdate();
-        return { success: true };
-    } catch (error) {
-        return { success: false, error: error.message };
-    }
-});
-
-/**
- * Obtenir les informations sur les mises à jour
- */
-ipcMain.handle('get-update-info', async () => {
-    if (!isProduction) {
-        return {
-            enabled: false,
-            currentVersion: app.getVersion(),
-            updateAvailable: false,
-            updateDownloaded: false
-        };
-    }
-    
-    try {
-        const autoUpdater = getAutoUpdater();
-        const info = autoUpdater.getUpdateInfo();
-        return {
-            enabled: true,
-            ...info
-        };
-    } catch (error) {
-        return {
-            enabled: true,
-            error: error.message
-        };
-    }
+ipcMain.handle('get-connection-config', async () => {
+    return serverConfig;
 });
 
 /**
