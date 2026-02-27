@@ -79,6 +79,10 @@
     },
     "agenda": {
       "events": "/api/agenda/events"
+    },
+    "config": {
+      "apps": "/api/admin/config/apps",
+      "folders": "/api/admin/config/folders"
     }
   }
 }

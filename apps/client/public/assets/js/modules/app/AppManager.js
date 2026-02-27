@@ -9,14 +9,16 @@ const logger = getLogger();
 
 export default class AppManager {
     constructor(options = {}) {
-        this.config = appConfig.resolvePreset(options.preset);
+        this.preset = options.preset;
+        this.config = null;
         this.scope = options.scope || document;
         this.container = this.scope.classList?.contains('app-manager') ? this.scope : this.scope.querySelector('.app-manager');
         this.isLaunching = false;
         this.init();
     }
 
-    init() {
+    async init() {
+        this.config = await this._loadConfig();
         if (!this.container || !this.config) {
             console.warn('⚠️ AppManager: conteneur ou config introuvable', {
                 container: this.container,
@@ -27,6 +29,29 @@ export default class AppManager {
 
         logger.debug('✅ AppManager init:', this.config?.apps?.length, 'apps');
         this.render().catch(err => logger.error('Erreur render:', err));
+    }
+
+    async _loadConfig() {
+        try {
+            const serverUrl = window.SERVER_CONFIG?.serverUrl || window.APP_CONFIG?.serverUrl;
+            if (serverUrl) {
+                const res = await fetch(`${serverUrl}/api/admin/config/apps`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data?.appManagers) {
+                        const key = (this.preset || '').toLowerCase();
+                        const preset = data.appManagers[key];
+                        if (preset) {
+                            logger.debug('✅ AppManager config chargée depuis serveur, preset:', this.preset);
+                            return preset;
+                        }
+                    }
+                }
+            }
+        } catch {
+            // Serveur inaccessible ou route non disponible — fallback local silencieux
+        }
+        return appConfig.resolvePreset(this.preset);
     }
 
     async render() {
