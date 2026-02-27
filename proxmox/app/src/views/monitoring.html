@@ -1342,7 +1342,25 @@ async function saveAppConfigToServer() {
 
 function buildAppConfigJs(appManagers) {
   const json = JSON.stringify(appManagers, null, 8).replace(/"([^"]+)":/g, '$1:').replace(/"/g, "'");
-  return `/**\n * Configuration pour le lancement d'applications\n * Géré via le panel monitoring — ne pas modifier manuellement\n */\n\nexport const appConfig = {\n    appManagers: ${json},\n\n    resolvePreset(name) {\n        if (!name) return null;\n        const key = name.toLowerCase();\n        return this.appManagers?.[key] || null;\n    }\n};\n\nexport default appConfig;\n`;
+  return [
+    "/**",
+    " * Configuration pour le lancement d'applications",
+    " * Géré via le panel monitoring — ne pas modifier manuellement",
+    " */",
+    "",
+    "export const appConfig = {",
+    "    appManagers: " + json + ",",
+    "",
+    "    resolvePreset(name) {",
+    "        if (!name) return null;",
+    "        const key = name.toLowerCase();",
+    "        return this.appManagers?.[key] || null;",
+    "    }",
+    "};",
+    "",
+    "export default appConfig;",
+    ""
+  ].join("\n");
 }
 
 // ── Config Dossiers ──────────────────────────────────────────────────────────
@@ -1425,7 +1443,41 @@ function buildFolderConfigJs(cfg) {
   const bl = JSON.stringify(cfg.blacklist || []);
   const is = JSON.stringify(cfg.ignoreSuffixes || []);
   const ie = JSON.stringify(cfg.ignoreExtensions || []);
-  return `/**\n * Configuration générique pour l'ouverture de dossiers\n * Géré via le panel monitoring — ne pas modifier manuellement\n */\n\nexport const folderConfig = {\n    fileManagers: ${fm},\n\n    blacklist: ${bl},\n    ignoreSuffixes: ${is},\n    ignoreExtensions: ${ie},\n\n    isBlacklisted(name) {\n        if (this.blacklist.includes(name)) return true;\n        if (name.startsWith('~\$')) return true;\n        if (name.startsWith('.') && name !== '.' && name !== '..') return true;\n        for (const suffix of this.ignoreSuffixes) { if (name.endsWith(suffix)) return true; }\n        for (const ext of this.ignoreExtensions) { if (name.endsWith(ext)) return true; }\n        return false;\n    },\n\n    resolvePreset(name) {\n        if (!name) return this;\n        const key = name.toLowerCase();\n        const preset = this.fileManagers?.[key];\n        if (!preset) return this;\n        return { ...this, ...preset, blacklist: preset.blacklist !== undefined ? preset.blacklist : this.blacklist, ignoreSuffixes: preset.ignoreSuffixes || this.ignoreSuffixes, ignoreExtensions: preset.ignoreExtensions || this.ignoreExtensions };\n    }\n};\n\nexport default folderConfig;\n`;\n}
+  return [
+    "/**",
+    " * Configuration générique pour l'ouverture de dossiers",
+    " * Géré via le panel monitoring — ne pas modifier manuellement",
+    " */",
+    "",
+    "export const folderConfig = {",
+    "    fileManagers: " + fm + ",",
+    "",
+    "    blacklist: " + bl + ",",
+    "    ignoreSuffixes: " + is + ",",
+    "    ignoreExtensions: " + ie + ",",
+    "",
+    "    isBlacklisted(name) {",
+    "        if (this.blacklist.includes(name)) return true;",
+    "        if (name.startsWith('~$')) return true;",
+    "        if (name.startsWith('.') && name !== '.' && name !== '..') return true;",
+    "        for (const suffix of this.ignoreSuffixes) { if (name.endsWith(suffix)) return true; }",
+    "        for (const ext of this.ignoreExtensions) { if (name.endsWith(ext)) return true; }",
+    "        return false;",
+    "    },",
+    "",
+    "    resolvePreset(name) {",
+    "        if (!name) return this;",
+    "        const key = name.toLowerCase();",
+    "        const preset = this.fileManagers?.[key];",
+    "        if (!preset) return this;",
+    "        return { ...this, ...preset, blacklist: preset.blacklist !== undefined ? preset.blacklist : this.blacklist, ignoreSuffixes: preset.ignoreSuffixes || this.ignoreSuffixes, ignoreExtensions: preset.ignoreExtensions || this.ignoreExtensions };",
+    "    }",
+    "};",
+    "",
+    "export default folderConfig;",
+    ""
+  ].join("\n");
+}
 
 // ── Logs ─────────────────────────────────────────────────────────────────────
 async function loadLogChat() {
