@@ -8,6 +8,7 @@ import * as path from 'path';
 import nodemailer from 'nodemailer';
 import { registerMonitoringRoutes, incrementMessageCount } from './api/monitoring';
 import { registerClientErrorsRoutes } from './api/client-errors';
+import { registerAdminRoutes } from './api/admin';
 import { registerCompression } from './middleware/compression';
 import { registerRateLimit } from './middleware/rate-limit';
 import { registerMonitoring } from './middleware/monitoring';
@@ -162,6 +163,9 @@ function broadcastUserCount() {
     
     // Register client errors monitoring routes
     await registerClientErrorsRoutes(fastify);
+
+    // Register admin routes
+    await registerAdminRoutes(fastify);
 
     // Health check endpoint
     fastify.get('/api/health', async (request: FastifyRequest, reply: FastifyReply) => {

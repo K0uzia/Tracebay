@@ -43,43 +43,47 @@ require_root() {
 get_ip() { hostname -I | awk '{print $1}'; }
 
 stop_and_clean() {
-  warn "Arrêt et Nettoyage complet..."
+  local reset_db="${1:-false}"
+  warn "Arrêt et Nettoyage..."
   systemctl stop "$SERVICE_NAME" 2>/dev/null || true
-  
+
   if [[ -f "$DOCKER_DIR/docker-compose.yml" ]]; then
     cd "$DOCKER_DIR"
-    docker compose down -v --remove-orphans 2>/dev/null || true
+    if [[ "$reset_db" == "true" ]]; then
+      warn "Option --reset-db : suppression des volumes (données perdues)..."
+      docker compose down -v --remove-orphans 2>/dev/null || true
+    else
+      docker compose down --remove-orphans 2>/dev/null || true
+    fi
   fi
-  
-  if docker volume ls -q | grep -q proxmox_postgres_data; then
-    info "Suppression du volume persistant 'proxmox_postgres_data'..."
+
+  if [[ "$reset_db" == "true" ]] && docker volume ls -q | grep -q proxmox_postgres_data; then
+    warn "Suppression du volume 'proxmox_postgres_data' (--reset-db)..."
     docker volume rm proxmox_postgres_data 2>/dev/null || true
   fi
-  
-  # Nettoyer les images Docker inutilisées pour libérer de l'espace
+
   info "Nettoyage des images Docker inutilisées..."
   docker image prune -a -f 2>/dev/null || true
   docker builder prune -a -f 2>/dev/null || true
-  
-  # Nettoyer les conteneurs arrêtés
   docker container prune -f 2>/dev/null || true
-  
-  # Nettoyer les volumes non utilisés
-  docker volume prune -f 2>/dev/null || true
-  
-  # Nettoyer les logs Docker (peuvent prendre beaucoup d'espace)
+
+  # Volumes non utilisés — exclure explicitement le volume de la DB
+  if [[ "$reset_db" == "true" ]]; then
+    docker volume prune -f 2>/dev/null || true
+  else
+    docker volume prune -f --filter "label!=com.docker.compose.volume=postgres_data" 2>/dev/null || true
+  fi
+
   info "Nettoyage des logs Docker..."
   find /var/lib/docker/containers/ -type f -name "*.log" -exec truncate -s 0 {} \; 2>/dev/null || true
-  
-  # Nettoyer les fichiers temporaires système
+
   info "Nettoyage des fichiers temporaires..."
   apt-get clean 2>/dev/null || true
   rm -rf /tmp/* 2>/dev/null || true
   rm -rf /var/tmp/* 2>/dev/null || true
-  
-  # Nettoyer les logs système anciens
+
   journalctl --vacuum-time=7d 2>/dev/null || true
-  
+
   ok "Nettoyage terminé."
 }
 
@@ -105,6 +109,9 @@ generate_env() {
   local jwt_secret
   jwt_secret=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p -c 64)
   [[ -z "$jwt_secret" ]] && jwt_secret="change-me-$(date +%s)-$(openssl rand -hex 8 2>/dev/null || echo fallback)"
+  local admin_token
+  admin_token=$(openssl rand -hex 24 2>/dev/null || head -c 24 /dev/urandom | xxd -p -c 48)
+  [[ -z "$admin_token" ]] && admin_token="admin-$(date +%s)"
 
   cat > "$ENV_FILE" <<EOF
 # Configuration générée automatiquement par proxmox.sh — rien à modifier pour démarrer
@@ -120,6 +127,9 @@ ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,http://${ct_ip}:3000
 
 # JWT (généré à l'install)
 JWT_SECRET=${jwt_secret}
+
+# Token d'accès à la page de monitoring/admin (généré à l'install)
+ADMIN_TOKEN=${admin_token}
 
 # Base de données (Docker)
 DB_HOST=db
@@ -311,6 +321,7 @@ DO $$ BEGIN
 END $$;
 
 -- Ajout Colonnes manquantes standard
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE events ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
@@ -324,6 +335,9 @@ ALTER TABLE lot_items ADD COLUMN IF NOT EXISTS state_changed_at TIMESTAMP;
 ALTER TABLE lot_items ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW();
 ALTER TABLE marques ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE modeles ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
+
+-- Rôles utilisateurs
+UPDATE users SET role = 'admin' WHERE username = 'sandersonn' AND (role IS NULL OR role = 'user');
 
 -- Fix is_read, Lots, Shortcuts
 ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE;
@@ -776,8 +790,18 @@ CLISCRIPT
 # =============== Main ===============
 cmd_install() {
   require_root
-  log "=== INSTALLATION V11.1 (FIX LOGS DOCKER) ==="
-  stop_and_clean
+  local reset_db="false"
+  for arg in "$@"; do
+    [[ "$arg" == "--reset-db" ]] && reset_db="true"
+  done
+
+  if [[ "$reset_db" == "true" ]]; then
+    log "=== INSTALLATION V11.2 — RESET DB ACTIVÉ (données effacées) ==="
+  else
+    log "=== INSTALLATION V11.2 — données existantes conservées ==="
+  fi
+
+  stop_and_clean "$reset_db"
   ensure_paths
   git_update
   generate_env
@@ -790,6 +814,9 @@ cmd_install() {
   echo ""
   echo -e "${GREEN}Pour démarrer le serveur :${RESET}  ${BOLD}proxmox start${RESET}"
   echo -e "Puis statut / logs :  ${BOLD}proxmox status${RESET}  |  ${BOLD}proxmox logs${RESET}"
+  if [[ "$reset_db" == "false" ]]; then
+    echo -e "${YELLOW}Note :${RESET} les données de la DB ont été conservées. Pour tout réinitialiser : ${BOLD}$0 install --reset-db${RESET}"
+  fi
   echo ""
 }
 
@@ -798,14 +825,24 @@ cmd_stop() { require_root; systemctl stop "$SERVICE_NAME"; ok "Arrêté."; }
 cmd_restart() { require_root; systemctl restart "$SERVICE_NAME"; sleep 3; /usr/local/bin/proxmox status; }
 cmd_status() { /usr/local/bin/proxmox status; }
 cmd_test() { /usr/local/bin/proxmox test-api; }
+cmd_reset_db() {
+  require_root
+  warn "=== RESET DB : toutes les données seront supprimées ==="
+  if [[ -t 0 ]]; then
+    read -r -p "Confirmer la suppression de la base de données ? [o/N] " reply
+    [[ ! "$reply" =~ ^[oOyY] ]] && { info "Annulé."; exit 0; }
+  fi
+  cmd_install --reset-db
+}
 
 COMMAND="${1:-help}"
 case "$COMMAND" in
-  install) cmd_install ;;
+  install) shift; cmd_install "$@" ;;
   start) cmd_start ;;
   stop) cmd_stop ;;
   restart) cmd_restart ;;
   status) cmd_status ;;
   test-api|api-test) cmd_test ;;
-  *) echo "Usage: $0 [install|start|stop|restart|status|test-api]" ;;
+  reset-db) cmd_reset_db ;;
+  *) echo "Usage: $0 [install|install --reset-db|start|stop|restart|status|test-api|reset-db]" ;;
 esac
