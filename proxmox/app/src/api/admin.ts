@@ -75,24 +75,21 @@ function checkAdminAuth(request: FastifyRequest, reply: FastifyReply): boolean {
  */
 function parseConfigField(content: string, field: string): any {
   try {
-    const tmp = require('os').tmpdir() + '/ws_cfg_' + field + '_' + Date.now() + '.js';
+    const os = require('os');
+    const nodefs = require('fs');
+    const tmp = path.join(os.tmpdir(), 'ws_cfg_' + field + '_' + Date.now() + '.js');
     const cjs = content
       .replace(/export\s+const\s+\w+\s*=/g, 'module.exports =')
       .replace(/export\s+default\s+\w+;?/g, '')
       .replace(/export\s+\{[^}]*\};?/g, '');
-    require('fs').writeFileSync(tmp, cjs, 'utf-8');
-    // Purge le cache require pour forcer le rechargement
-    delete require.cache[tmp];
+    nodefs.writeFileSync(tmp, cjs, 'utf-8');
+    delete require.cache[require.resolve(tmp)];
     const mod = require(tmp);
-    require('fs').unlinkSync(tmp);
-    const cfg = mod?.[field] !== undefined ? mod : (mod?.default || mod);
-    return cfg?.[field] ?? null;
+    try { nodefs.unlinkSync(tmp); } catch { /* ignore */ }
+    // mod est l'objet exporté {appManagers:..., resolvePreset:...}
+    return mod?.[field] ?? null;
   } catch {
-    // Fallback: regex sur le contenu brut
-    const rx = new RegExp(field + '\\s*:\\s*(\\{[\\s\\S]*?\\}(?=\\s*[,\\n]|\\s*\\}))', 'm');
-    const m = content.match(rx);
-    if (!m) return null;
-    try { return JSON.parse(m[1]); } catch { return null; }
+    return null;
   }
 }
 
