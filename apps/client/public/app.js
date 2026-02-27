@@ -920,6 +920,7 @@ class PageManager {
                     scope: container,
                     buttonSelector: '.folder-open-btn',
                     listSelector: '.folders-list',
+                    preset: key,
                     config: cfg
                 });
                 window.folderManagers.push(manager);

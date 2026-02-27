@@ -253,7 +253,7 @@ function checkServerConnection(retries = 0) {
     return new Promise((resolve) => {
         const req = http.get(SERVER_HEALTH_ENDPOINT, { timeout: 3000 }, (res) => {
             if (res.statusCode === 200) {
-                console.log(`✅ Connecté au serveur: ${SERVER_URL}`);
+                if (!serverConnected) console.log(`✅ Connecté au serveur: ${SERVER_URL}`);
                 serverConnected = true;
                 resolve(true);
             } else if (retries < MAX_RETRY_ATTEMPTS) {

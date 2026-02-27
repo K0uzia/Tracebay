@@ -6,6 +6,7 @@ import folderConfig from '../../config/FolderConfig.js';
 
 export default class FolderManager {
     constructor(options = {}) {
+        this.preset = options.preset;
         this.config = { ...folderConfig, ...(options.config || {}) };
         this.buttonSelector = options.buttonSelector || '.folder-open-btn';
         this.listSelector = options.listSelector || '.folders-list';
@@ -17,7 +18,8 @@ export default class FolderManager {
         this.init();
     }
 
-    init() {
+    async init() {
+        this.config = await this._loadConfig();
         this.buttons = Array.from(this.scope.querySelectorAll(this.buttonSelector));
         this.listContainer = this.scope.querySelector(this.listSelector);
 
@@ -28,6 +30,41 @@ export default class FolderManager {
 
         this.attachListeners();
         this.loadAndRender();
+    }
+
+    async _loadConfig() {
+        try {
+            const serverUrl = window.SERVER_CONFIG?.serverUrl || window.APP_CONFIG?.serverUrl;
+            if (serverUrl) {
+                const res = await fetch(`${serverUrl}/api/admin/config/folders`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data?.fileManagers) {
+                        const key = (this.preset || '').toLowerCase();
+                        const preset = data.fileManagers[key];
+                        const base = {
+                            ...folderConfig,
+                            blacklist: data.blacklist ?? folderConfig.blacklist,
+                            ignoreSuffixes: data.ignoreSuffixes || folderConfig.ignoreSuffixes,
+                            ignoreExtensions: data.ignoreExtensions || folderConfig.ignoreExtensions,
+                        };
+                        if (preset) {
+                            console.log('✅ FolderManager config chargée depuis serveur, preset:', this.preset);
+                            return {
+                                ...base,
+                                ...preset,
+                                blacklist: preset.blacklist !== undefined ? preset.blacklist : base.blacklist,
+                            };
+                        }
+                        return base;
+                    }
+                }
+            }
+        } catch {
+            // Serveur inaccessible ou route non disponible — fallback local silencieux
+        }
+        if (this.preset) return folderConfig.resolvePreset(this.preset);
+        return { ...folderConfig };
     }
 
     attachListeners() {
@@ -92,7 +129,9 @@ export default class FolderManager {
 
     async listFolders(pathOverride) {
         const path = pathOverride || this.getListPath();
-        
+
+        if (!path) return [];
+
         if (this.cache.has(path)) {
             return this.cache.get(path);
         }
