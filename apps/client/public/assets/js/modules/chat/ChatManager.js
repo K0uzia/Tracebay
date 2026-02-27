@@ -55,7 +55,7 @@ class ChatManager {
                     pseudo: msg.pseudo || msg.username,
                     text: msg.message || msg.text || '',
                     timestamp: this.formatTime(msg.created_at),
-                    own: (msg.pseudo || msg.username) === this.pseudo,
+                    own: (msg.pseudo || msg.username || '').toLowerCase() === (this.pseudo || '').toLowerCase(),
                     created_at: msg.created_at,
                     replyTo: msg.replyTo ?? msg.reply_to ?? msg.parentId ?? null,
                     replyToPseudo: msg.replyToPseudo ?? msg.reply_to_pseudo ?? null,
@@ -69,23 +69,23 @@ class ChatManager {
                 const msg = data.message;
                 const messageText = typeof msg.message === 'string' ? msg.message : (msg.text || '');
                 const pseudo = msg.pseudo || msg.username || 'Anonyme';
-                const isOwn = pseudo === this.pseudo;
-                const recent = Date.now() - 15000;
-                const isDuplicate = isOwn && this.messages.some(m =>
-                    m.own && m.pseudo === pseudo && m.text === messageText && m.created_at && new Date(m.created_at).getTime() > recent
-                );
-                if (isDuplicate) {
-                    const idx = this.messages.findIndex(m =>
-                        m.own && m.pseudo === pseudo && m.text === messageText && m.created_at && new Date(m.created_at).getTime() > recent
+                const isOwn = pseudo.toLowerCase() === (this.pseudo || '').toLowerCase();
+
+                // Remplace le message temporaire (optimiste) correspondant s'il existe
+                if (isOwn) {
+                    const tempIdx = this.messages.findIndex(m =>
+                        m.own && String(m.id).startsWith('temp-') && m.text === messageText
                     );
-                    if (idx !== -1 && this.messages[idx].id && String(this.messages[idx].id).startsWith('temp-')) {
-                        this.messages[idx].id = msg.id || this.messages[idx].id;
-                        this.messages[idx].created_at = msg.created_at;
-                        this.messages[idx].timestamp = this.formatTime(msg.created_at);
+                    if (tempIdx !== -1) {
+                        this.messages[tempIdx].id = msg.id || this.messages[tempIdx].id;
+                        this.messages[tempIdx].created_at = msg.created_at;
+                        this.messages[tempIdx].timestamp = this.formatTime(msg.created_at);
+                        this.renderMessages();
+                        this.scrollToBottom();
+                        return;
                     }
-                    this.renderMessages();
-                    this.scrollToBottom();
-                    return;
+                    // Ignorer les doublons exacts déjà confirmés (même id serveur)
+                    if (msg.id && this.messages.some(m => m.id === msg.id)) return;
                 }
                 this.messages.push({
                     id: msg.id || Date.now(),
@@ -132,14 +132,19 @@ class ChatManager {
             const token = e.detail?.token;
             this.pseudo = user ? user.username : null;
             this.displayPseudo();
-            if (token) {
-                if (!this.webSocket.isConnected()) this.webSocket.connect();
-                this.webSocket.authenticate(token);
-            } else {
+            if (!token) {
+                this.messages = [];
+                this.renderMessages();
                 this.webSocket.disconnect();
             }
+            // L'authentification WebSocket est gérée par workspaceChatAuthenticate (AuthManager)
+            // et par _trySendAuth/_startAuthRetry (ChatWebSocket) — pas besoin de la relancer ici
         });
 
+        if (!this.getStoredToken()) {
+            this.pseudo = null;
+            this.messages = [];
+        }
         this.displayPseudo();
         this.renderMessages();
         this.attachEventListeners();
@@ -148,16 +153,9 @@ class ChatManager {
             this.initGifPicker();
         });
 
-        const connectAndRestoreSession = () => {
-            if (this.webSocket.isConnected()) {
-                const token = this.getStoredToken();
-                if (token) this.webSocket.authenticate(token);
-                if (this.pseudo) this.fetchHistory();
-            } else {
-                setTimeout(connectAndRestoreSession, 500);
-            }
-        };
-        connectAndRestoreSession();
+        // L'auth WebSocket est déjà gérée par workspaceChatAuthenticate (appelé depuis AuthManager.setSession)
+        // et par _trySendAuth/_startAuthRetry au moment de l'ouverture du WebSocket.
+        // Rien à faire ici.
     }
 
     getStoredToken() {
@@ -165,6 +163,7 @@ class ChatManager {
     }
 
     async fetchHistory() {
+        if (!this.pseudo || !this.getStoredToken()) return;
         try {
             const res = await api.get('messages.list', { useCache: false });
             if (!res.ok) return;
@@ -176,7 +175,7 @@ class ChatManager {
                 pseudo: msg.pseudo || msg.username || 'Anonyme',
                 text: msg.message || msg.text || '',
                 timestamp: this.formatTime(msg.created_at),
-                own: (msg.pseudo || msg.username) === this.pseudo,
+                own: (msg.pseudo || msg.username || '').toLowerCase() === (this.pseudo || '').toLowerCase(),
                 created_at: msg.created_at,
                 replyTo: msg.replyTo ?? msg.reply_to ?? msg.parent_id ?? null,
                 replyToPseudo: msg.replyToPseudo ?? msg.reply_to_pseudo ?? null,
