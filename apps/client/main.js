@@ -430,11 +430,16 @@ function createWindow() {
         mainWindow.focus();
         return;
     }
+    const appIconPath = path.join(__dirname, 'build',
+        process.platform === 'win32' ? 'icon.ico' :
+        process.platform === 'darwin' ? 'icon.icns' : 'icon.png'
+    );
     mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
         show: false,
         autoHideMenuBar: true,  // Masquer la barre de menu
+        icon: fs.existsSync(appIconPath) ? appIconPath : undefined,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
