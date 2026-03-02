@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Administration — Workspace</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="icon" type="image/x-icon" href="favicon.png">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -289,11 +290,20 @@
         <div class="stat-card orange"><div class="label">Lots</div><div class="value" id="ds-lots">—</div></div>
         <div class="stat-card green"><div class="label">Uptime</div><div class="value" id="ds-uptime" style="font-size:18px">—</div></div>
       </div>
-      <div class="card">
-        <div class="card-header"><h2>Utilisateurs connectés (WebSocket)</h2><button class="btn btn-secondary btn-sm" onclick="loadDashboard()"><i class="fa-solid fa-rotate-right"></i> Rafraîchir</button></div>
-        <div class="table-wrap">
-          <table><thead><tr><th>Pseudo</th><th>IP</th><th>Connecté depuis</th></tr></thead>
-          <tbody id="dash-users-table"><tr class="empty-row"><td colspan="3">Chargement…</td></tr></tbody></table>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="card">
+          <div class="card-header"><h2>Clients connectés <span id="dash-auth-count" class="badge badge-success" style="font-size:12px;margin-left:6px">0</span></h2><button class="btn btn-secondary btn-sm" onclick="loadDashboard()"><i class="fa-solid fa-rotate-right"></i></button></div>
+          <div class="table-wrap">
+            <table><thead><tr><th>Pseudo</th><th>IP</th><th>Connecté depuis</th></tr></thead>
+            <tbody id="dash-users-table"><tr class="empty-row"><td colspan="3">Chargement…</td></tr></tbody></table>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h2>Connexions anonymes <span id="dash-anon-count" class="badge" style="font-size:12px;margin-left:6px;background:#64748b;color:#fff">0</span></h2></div>
+          <div class="table-wrap">
+            <table><thead><tr><th>IP</th><th>Connecté depuis</th></tr></thead>
+            <tbody id="dash-anon-table"><tr class="empty-row"><td colspan="2">Chargement…</td></tr></tbody></table>
+          </div>
         </div>
       </div>
     </div>
@@ -524,7 +534,7 @@
         <div class="log-tab" data-log="auth"><i class="fa-solid fa-lock"></i> Auth</div>
         <div class="log-tab" data-log="api"><i class="fa-solid fa-globe"></i> API</div>
         <div class="log-tab" data-log="reception"><i class="fa-solid fa-box-open"></i> Réception</div>
-        <div class="log-tab" data-log="errors"><i class="fa-solid fa-triangle-exclamation"></i> Erreurs clients</div>
+        <div class="log-tab" data-log="errors"><i class="fa-solid fa-circle-exclamation"></i> Issues</div>
         <div class="log-tab" data-log="raw">📄 Logs bruts</div>
       </div>
 
@@ -585,19 +595,29 @@
         </div>
       </div>
 
-      <!-- Erreurs clients -->
+      <!-- Issues (erreurs auto + feedback utilisateurs) -->
       <div class="log-panel" id="log-errors">
         <div class="stats-row" id="err-stats-row"></div>
         <div class="card">
           <div class="card-header">
             <div class="toolbar">
-              <select id="err-filter-status" onchange="loadLogErrors()"><option value="">Tous</option><option value="unresolved">Non résolues</option><option value="resolved">Résolues</option></select>
-              <input type="text" id="err-filter-type" placeholder="Type d'erreur" oninput="loadLogErrors()">
+              <select id="err-filter-status" onchange="loadLogErrors()">
+                <option value="">Tous statuts</option>
+                <option value="unresolved">Non résolues</option>
+                <option value="resolved">Résolues</option>
+              </select>
+              <select id="err-filter-type" onchange="loadLogErrors()">
+                <option value="">Tous types</option>
+                <option value="feedback">Feedback</option>
+                <option value="bug_report">Bug report</option>
+                <option value="uncaught_error">Erreur JS</option>
+                <option value="unhandled_rejection">Promise rejetée</option>
+              </select>
             </div>
             <button class="btn btn-secondary btn-sm" onclick="loadLogErrors()"><i class="fa-solid fa-rotate-right"></i></button>
           </div>
           <div class="table-wrap">
-            <table class="log-table"><thead><tr><th>#</th><th>Type</th><th>Message</th><th>Client</th><th>Date</th><th>Statut</th><th></th></tr></thead>
+            <table class="log-table"><thead><tr><th>#</th><th>Type</th><th>Message / Retour utilisateur</th><th>Client</th><th>Date</th><th>Statut</th><th></th></tr></thead>
             <tbody id="log-errors-table"></tbody></table>
           </div>
         </div>
@@ -909,12 +929,26 @@ async function loadDashboard() {
       document.getElementById('ds-messages').textContent = db.stats.messages;
       document.getElementById('ds-lots').textContent = db.stats.lots;
     }
+    const authenticated = (ws && ws.connectedUsers) ? ws.connectedUsers : [];
+    const anonymous = (ws && ws.anonymousConnections) ? ws.anonymousConnections : [];
+
+    const authCount = document.getElementById('dash-auth-count');
+    const anonCount = document.getElementById('dash-anon-count');
+    if (authCount) authCount.textContent = authenticated.length;
+    if (anonCount) anonCount.textContent = anonymous.length;
+
     const tbody = document.getElementById('dash-users-table');
-    const users = (ws && ws.connectedUsers) ? ws.connectedUsers : [];
-    if (!users.length) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucun utilisateur connecté</td></tr>';
+    if (!authenticated.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucun client connecté</td></tr>';
     } else {
-      tbody.innerHTML = users.map(u => `<tr><td>${escHtml(u.username || '—')}</td><td><code>${escHtml(u.ip || '—')}</code></td><td>${fmtDate(u.connectedAt)}</td></tr>`).join('');
+      tbody.innerHTML = authenticated.map(u => `<tr><td>${escHtml(u.username || '—')}</td><td><code>${escHtml(u.ip || '—')}</code></td><td>${fmtDate(u.connectedAt)}</td></tr>`).join('');
+    }
+
+    const tbodyAnon = document.getElementById('dash-anon-table');
+    if (!anonymous.length) {
+      tbodyAnon.innerHTML = '<tr class="empty-row"><td colspan="2">Aucune connexion anonyme</td></tr>';
+    } else {
+      tbodyAnon.innerHTML = anonymous.map(u => `<tr><td><code>${escHtml(u.ip || '—')}</code></td><td>${fmtDate(u.connectedAt)}</td></tr>`).join('');
     }
   } catch(e) { console.error(e); }
 }
@@ -1676,26 +1710,38 @@ async function loadLogErrors() {
   const s = statsData || {};
   const row = document.getElementById('err-stats-row');
   row.innerHTML = `
-    <div class="stat-card red"><div class="label">Total erreurs</div><div class="value">${s.total||0}</div></div>
-    <div class="stat-card orange"><div class="label">Non résolues</div><div class="value">${s.unresolved||0}</div></div>
+    <div class="stat-card red"><div class="label">Total issues</div><div class="value">${s.total||0}</div></div>
+    <div class="stat-card orange"><div class="label">Ouvertes</div><div class="value">${s.unresolved||0}</div></div>
     <div class="stat-card blue"><div class="label">Dernières 24h</div><div class="value">${s.last24h||0}</div></div>
     <div class="stat-card green"><div class="label">Derniers 7j</div><div class="value">${s.last7d||0}</div></div>
   `;
 
-  const errors = errData.errors || [];
+  const errors = errData.data || errData.errors || [];
   const tbody = document.getElementById('log-errors-table');
+
+  const typeLabels = { feedback: '💬 Feedback', bug_report: '🐛 Bug', uncaught_error: '⚡ Erreur JS', unhandled_rejection: '⚠ Promise' };
+  const getTypeLabel = t => typeLabels[t] || t || '—';
+
   tbody.innerHTML = errors.length
-    ? errors.map(e => `
-      <tr>
-        <td>${e.id}</td>
-        <td><code style="font-size:11px">${escHtml(e.error_type)}</code></td>
-        <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(e.error_message)}</td>
-        <td>${escHtml(e.client_id||'—')}</td>
-        <td>${fmtDate(e.timestamp)}</td>
-        <td><span class="badge ${e.resolved?'badge-success':'badge-danger'}">${e.resolved?'Résolue':'Non résolue'}</span></td>
-        <td><button class="btn btn-secondary btn-sm" onclick="toggleResolve(${e.id},${e.resolved})">${e.resolved?'Rouvrir':'Résoudre'}</button></td>
-      </tr>`).join('')
-    : '<tr class="empty-row"><td colspan="7">Aucune erreur</td></tr>';
+    ? errors.map(e => {
+        const isFeedback = e.error_type === 'feedback' || e.error_type === 'bug_report';
+        const mainText = isFeedback
+          ? (e.user_message || e.error_message || '—')
+          : (e.error_message || '—');
+        const detail = isFeedback && e.error_message && e.error_message !== e.user_message
+          ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">${escHtml(e.error_message.substring(0, 80))}</div>`
+          : '';
+        return `<tr>
+          <td style="font-size:11px;color:var(--text-muted)">#${e.id}</td>
+          <td><code style="font-size:11px">${escHtml(getTypeLabel(e.error_type))}</code></td>
+          <td style="max-width:320px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(mainText)}</div>${detail}</td>
+          <td style="font-size:11px">${escHtml(e.client_id||'—')}</td>
+          <td style="font-size:11px">${fmtDate(e.timestamp)}</td>
+          <td><span class="badge ${e.resolved?'badge-success':'badge-danger'}">${e.resolved?'Résolue':'Ouverte'}</span></td>
+          <td><button class="btn btn-secondary btn-sm" onclick="toggleResolve(${e.id},${e.resolved})">${e.resolved?'Rouvrir':'Résoudre'}</button></td>
+        </tr>`;
+      }).join('')
+    : '<tr class="empty-row"><td colspan="7">Aucune issue</td></tr>';
 }
 
 async function toggleResolve(id, resolved) {

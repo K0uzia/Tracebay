@@ -225,3 +225,25 @@ CREATE TABLE IF NOT EXISTS app_settings (
   value TEXT,
   updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Client errors and issues (auto-captured JS errors + manual feedback/issues)
+CREATE TABLE IF NOT EXISTS client_errors (
+  id SERIAL PRIMARY KEY,
+  client_id VARCHAR(255),
+  client_version VARCHAR(50),
+  platform VARCHAR(50),
+  error_type VARCHAR(100),
+  error_message TEXT,
+  error_stack TEXT,
+  context TEXT,
+  user_message TEXT,
+  url TEXT,
+  user_agent TEXT,
+  timestamp TIMESTAMPTZ DEFAULT now(),
+  resolved BOOLEAN DEFAULT false,
+  resolved_at TIMESTAMPTZ,
+  notes TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_client_errors_timestamp ON client_errors(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_client_errors_resolved ON client_errors(resolved);
+CREATE INDEX IF NOT EXISTS idx_client_errors_type ON client_errors(error_type);

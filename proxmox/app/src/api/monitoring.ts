@@ -227,19 +227,31 @@ export async function registerMonitoringRoutes(
    */
   fastify.get('/api/monitoring/users', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const connectedUsersList = Array.from(connectedUsers.values())
+      const now = Date.now();
+      const authenticated = Array.from(connectedUsers.values())
         .filter(user => !String(user.username).startsWith('anon_'))
         .map(user => ({
           id: user.id,
           username: user.username,
           ip: user.ip || null,
           connectedAt: user.connectedAt,
-          connectedDuration: Date.now() - user.connectedAt.getTime()
+          connectedDuration: now - user.connectedAt.getTime()
+        }));
+
+      const anonymous = Array.from(connectedUsers.values())
+        .filter(user => String(user.username).startsWith('anon_'))
+        .map(user => ({
+          id: user.id,
+          ip: user.ip || null,
+          connectedAt: user.connectedAt,
+          connectedDuration: now - user.connectedAt.getTime()
         }));
 
       return {
-        connectedUsers: connectedUsersList,
-        count: connectedUsersList.length
+        connectedUsers: authenticated,
+        anonymousConnections: anonymous,
+        count: authenticated.length,
+        anonymousCount: anonymous.length
       };
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : String(error);
