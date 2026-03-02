@@ -26,10 +26,10 @@ function writeAppImageDebugLog(payload) {
         const logPath = getAppImageDebugLogPath();
         const dir = path.dirname(logPath);
         if (!fs.existsSync(dir)) {
-            try { fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+            try { fs.mkdirSync(dir, { recursive: true }); } catch (_) { }
         }
         fs.appendFileSync(logPath, JSON.stringify({ ...payload, timestamp: Date.now() }) + '\n');
-    } catch (_) {}
+    } catch (_) { }
 }
 try {
     writeAppImageDebugLog({
@@ -44,7 +44,7 @@ try {
             execPath: process.execPath ? path.basename(process.execPath) : ''
         }
     });
-} catch (_) {}
+} catch (_) { }
 process.on('uncaughtException', (err) => {
     writeAppImageDebugLog({ hypothesisId: 'H4', location: 'uncaughtException', message: String(err && err.message), data: { stack: err && err.stack } });
 });
@@ -65,7 +65,7 @@ const isProduction = process.env.NODE_ENV === 'production' || app.isPackaged;
 function getLocalNetworkIPs() {
     const interfaces = os.networkInterfaces();
     const ips = [];
-    
+
     for (const name of Object.keys(interfaces)) {
         for (const iface of interfaces[name]) {
             // IPv4, non-interne
@@ -118,10 +118,10 @@ function testServerConnection(ip, port = 8060, timeout = 1000) {
  */
 async function discoverServer(port = 8060) {
     console.log('🔍 Recherche du serveur via beacons UDP...');
-    
+
     // D'abord, essayer la découverte via beacons UDP
     const discovery = new ClientDiscovery();
-    
+
     try {
         const server = await discovery.findServer(5000);  // Timeout de 5 secondes
         if (server) {
@@ -130,15 +130,15 @@ async function discoverServer(port = 8060) {
     } catch (err) {
         console.warn('⚠️  Erreur lors de la découverte UDP:', err.message);
     }
-    
+
     console.log('🔍 Fallback: Recherche manuelle du serveur sur le réseau...');
-    
+
     const networks = getLocalNetworkIPs();
     if (networks.length === 0) {
         console.warn('⚠️  Aucune interface réseau détectée');
         return null;
     }
-    
+
     // Tester d'abord localhost
     console.log('🔍 Test localhost...');
     const localhostTest = await testServerConnection('localhost', port, 500);
@@ -146,7 +146,7 @@ async function discoverServer(port = 8060) {
         console.log('✅ Serveur trouvé sur localhost');
         return { url: localhostTest.url, ws: `ws://localhost:${port}` };
     }
-    
+
     // Ensuite tester notre propre IP
     for (const network of networks) {
         console.log(`🔍 Test ${network.myIp}...`);
@@ -156,19 +156,19 @@ async function discoverServer(port = 8060) {
             return { url: selfTest.url, ws: `ws://${network.myIp}:${port}` };
         }
     }
-    
+
     // Scanner le sous-réseau (en parallèle pour plus de rapidité)
     for (const network of networks) {
         console.log(`🔍 Scan du réseau ${network.subnet}.0/24...`);
         const promises = [];
-        
+
         for (let i = 1; i <= 254; i++) {
             const ip = `${network.subnet}.${i}`;
             if (ip !== network.myIp) {  // Skip notre propre IP déjà testée
                 promises.push(testServerConnection(ip, port, 800));
             }
         }
-        
+
         const results = await Promise.all(promises);
         for (let i = 0; i < results.length; i++) {
             if (results[i].found) {
@@ -178,7 +178,7 @@ async function discoverServer(port = 8060) {
             }
         }
     }
-    
+
     console.warn('⚠️  Aucun serveur trouvé sur le réseau');
     return null;
 }
@@ -345,7 +345,8 @@ function createSplashWindow() {
         resizable: false,
         show: false,
         alwaysOnTop: true,
-        webPreferences: { nodeIntegration: false, contextIsolation: true }
+        webPreferences: { nodeIntegration: false, contextIsolation: true },
+        icon: path.join(__dirname, 'assets', 'icon.png'),
     });
     win.setMenuBarVisibility(false);
     win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(splashHtml));
@@ -362,7 +363,7 @@ function setSplashMessage(text) {
     if (splashWindow && !splashWindow.isDestroyed() && splashWindow.webContents) {
         splashWindow.webContents.executeJavaScript(
             `(function(){ var el = document.querySelector('.message'); if (el) el.textContent = ${JSON.stringify(text)}; })();`
-        ).catch(() => {});
+        ).catch(() => { });
     }
 }
 
@@ -380,7 +381,7 @@ function setSplashProgress(percent) {
             if (wrap) wrap.classList.toggle('visible', ${show});
             if (fill) fill.style.width = ${JSON.stringify(value)} + '%';
         })();`
-    ).catch(() => {});
+    ).catch(() => { });
 }
 
 /**
@@ -407,7 +408,7 @@ function setSplashUpdateSuccess(text) {
                 style.textContent = '.splash-success { margin-top: 1rem; }.splash-check { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background: rgba(76, 175, 80, 0.9); color: #fff; border-radius: 50%; font-size: 1.5rem; font-weight: bold; }.message-wrap .message { margin-top: 0.75rem; }';
                 if (!document.querySelector('#splash-success-style')) { style.id = 'splash-success-style'; document.head.appendChild(style); }
             })();`
-        ).catch(() => {});
+        ).catch(() => { });
     }
 }
 
@@ -430,9 +431,9 @@ function createWindow() {
         mainWindow.focus();
         return;
     }
-    const appIconPath = path.join(__dirname, 'build',
+    const appIconPath = path.join(__dirname, 'assets',
         process.platform === 'win32' ? 'icon.ico' :
-        process.platform === 'darwin' ? 'icon.icns' : 'icon.png'
+            process.platform === 'darwin' ? 'icon.icns' : 'icon.png'
     );
     mainWindow = new BrowserWindow({
         width: 1200,
@@ -462,7 +463,7 @@ function createWindow() {
         if (fs.existsSync(flagPath)) {
             try {
                 fs.unlinkSync(flagPath);
-            } catch (_) {}
+            } catch (_) { }
             setTimeout(() => {
                 if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
                     mainWindow.webContents.send('update-was-installed');
@@ -480,8 +481,8 @@ function createWindow() {
 
     // Logs console Electron (filtrer le bruit)
     mainWindow.webContents.on('console-message', (level, message) => {
-        if (typeof message === 'string' && 
-            !message.includes('Autofill') && 
+        if (typeof message === 'string' &&
+            !message.includes('Autofill') &&
             !message.includes('atom_cache') &&
             !message.includes('privileged')) {
             console.log(`[Renderer] ${message}`);
@@ -519,7 +520,7 @@ function setupChatNotifications() {
             } else {
                 win.flashFrame(true);
             }
-        } catch (_) {}
+        } catch (_) { }
         // Notification système (popup à droite sur la plupart des OS)
         if (Notification.isSupported()) {
             const iconPath = path.join(__dirname, 'build', 'icon.png');
@@ -566,7 +567,7 @@ app.on('ready', async () => {
     console.log(`🔗 Serveur par défaut: ${SERVER_URL}`);
     console.log(`🌍 Environnement: ${isProduction ? 'PRODUCTION' : 'DÉVELOPPEMENT'}`);
     console.log('ℹ️  La config réelle sera chargée par le client web');
-
+    
     setupChatNotifications();
     createSplashWindow();
 
@@ -631,7 +632,7 @@ app.on('ready', async () => {
                 const flagPath = path.join(app.getPath('userData'), 'workspace-update-installed.flag');
                 try {
                     fs.writeFileSync(flagPath, Date.now().toString(), 'utf8');
-                } catch (_) {}
+                } catch (_) { }
                 setSplashUpdateSuccess('Redémarrage…');
                 // Redémarrage systématique : on quitte et on installe la maj (pas de choix utilisateur)
                 setTimeout(() => {
@@ -685,21 +686,21 @@ ipcMain.handle('list-folders', async (_event, payload) => {
 ipcMain.handle('open-path', async (_event, payload) => {
     const targetPath = typeof payload === 'string' ? payload : payload?.path;
     if (!targetPath) throw new Error('path is required');
-    
+
     try {
         const resolved = path.resolve(targetPath);
-        
+
         if (!fs.existsSync(resolved)) {
             return { success: false, error: 'Path does not exist' };
         }
-        
+
         const now = Date.now();
         const elapsed = now - lastOpenTime;
         if (elapsed < MIN_OPEN_INTERVAL) {
             await new Promise(resolve => setTimeout(resolve, MIN_OPEN_INTERVAL - elapsed));
         }
         lastOpenTime = Date.now();
-        
+
         const stat = fs.statSync(resolved);
         if (stat.isFile()) {
             const err = await shell.openPath(resolved);
@@ -709,7 +710,7 @@ ipcMain.handle('open-path', async (_event, payload) => {
             }
             return { success: true, path: resolved };
         }
-        
+
         const platform = process.platform;
         let cmd;
         if (platform === 'win32') {
@@ -733,11 +734,11 @@ ipcMain.handle('open-path', async (_event, payload) => {
 ipcMain.handle('get-app-icon', async (_event, payload) => {
     const { command, appName } = payload || {};
     if (!command) return { success: false, icon: null };
-    
+
     try {
         // Extraire la commande de base (avant les flags)
         const baseCommand = command.split(' ')[0];
-        
+
         // D'abord chercher dans /usr/share/applications avec la commande
         let desktopFiles = [
             `/usr/share/applications/${command}.desktop`,
@@ -747,7 +748,7 @@ ipcMain.handle('get-app-icon', async (_event, payload) => {
             `${os.homedir()}/.local/share/applications/${command}.desktop`,
             `${os.homedir()}/.local/share/applications/${baseCommand}.desktop`
         ];
-        
+
         // Pour LibreOffice, détecter le type spécifique depuis la commande
         if (baseCommand === 'libreoffice' && command.includes('--')) {
             const flag = command.match(/--(\w+)/)?.[1];
@@ -755,7 +756,7 @@ ipcMain.handle('get-app-icon', async (_event, payload) => {
                 desktopFiles.unshift(`/usr/share/applications/libreoffice-${flag}.desktop`);
             }
         }
-        
+
         // Ajouter des variantes courantes basées sur le nom de l'app
         if (appName) {
             const nameLower = appName.toLowerCase().replace(/\s+/g, '');
@@ -771,7 +772,7 @@ ipcMain.handle('get-app-icon', async (_event, payload) => {
                 `/usr/share/applications/org.${nameLower}.${nameLower}.desktop`
             );
         }
-        
+
         // Chercher aussi les .desktop contenant la commande (grep)
         try {
             const result = execSync(`grep -l "Exec=.*${baseCommand}" /usr/share/applications/*.desktop 2>/dev/null | head -5`, {
@@ -782,7 +783,7 @@ ipcMain.handle('get-app-icon', async (_event, payload) => {
         } catch (e) {
             // Pas d'erreur si rien trouvé
         }
-        
+
         // Pour les apps Flatpak, extraire l'ID
         let flatpakId = null;
         if (command.startsWith('flatpak') || command.includes('com.') || command.includes('io.')) {
@@ -793,19 +794,19 @@ ipcMain.handle('get-app-icon', async (_event, payload) => {
                 `${os.homedir()}/.local/share/flatpak/app/${flatpakId}/current/active/files/share/applications/${flatpakId}.desktop`
             );
         }
-        
+
         // Déduplicatif et filtre
         desktopFiles = [...new Set(desktopFiles)].filter(f => f && f.includes('.desktop'));
-        
+
         for (const desktopFile of desktopFiles) {
             if (fs.existsSync(desktopFile)) {
                 try {
                     const content = fs.readFileSync(desktopFile, 'utf8');
                     const iconMatch = content.match(/Icon=(.+)/);
-                    
+
                     if (iconMatch) {
                         const iconName = iconMatch[1].trim();
-                        
+
                         // Chercher l'icône - augmenter la couverture de recherche
                         const iconPaths = [
                             // Hicolor (standard)
@@ -852,7 +853,7 @@ ipcMain.handle('get-app-icon', async (_event, payload) => {
                             `/usr/share/icons/Adwaita/256x256/apps/${iconName.replace(/_/g, '-')}.svg`,
                             `/usr/share/icons/Mint-Y/apps/256/${iconName.replace(/_/g, '-')}.png`
                         ];
-                        
+
                         // Pour Flatpak
                         if (flatpakId) {
                             iconPaths.push(
@@ -861,7 +862,7 @@ ipcMain.handle('get-app-icon', async (_event, payload) => {
                                 `${os.homedir()}/.local/share/flatpak/app/${flatpakId}/current/active/files/share/icons/hicolor/256x256/apps/${iconName}.png`
                             );
                         }
-                        
+
                         for (const iconPath of iconPaths) {
                             if (fs.existsSync(iconPath)) {
                                 console.log('✅ Icône trouvée:', iconPath);
@@ -874,7 +875,7 @@ ipcMain.handle('get-app-icon', async (_event, payload) => {
                 }
             }
         }
-        
+
         console.warn('⚠️ Icône non trouvée pour:', command, 'avec appName:', appName);
         return { success: false, icon: null };
     } catch (error) {
@@ -887,12 +888,12 @@ ipcMain.handle('get-app-icon', async (_event, payload) => {
 ipcMain.handle('launch-app', async (_event, payload) => {
     const { command, args = [] } = payload || {};
     if (!command) throw new Error('command is required');
-    
+
     try {
         // Construire la commande avec les arguments
         const cmdArgs = args.map(arg => `"${arg}"`).join(' ');
         const fullCmd = cmdArgs ? `${command} ${cmdArgs}` : command;
-        
+
         exec(fullCmd, (error, stdout, stderr) => {
             if (error) {
                 console.error('❌ Erreur lancement app:', error.message);
@@ -903,7 +904,7 @@ ipcMain.handle('launch-app', async (_event, payload) => {
             }
             console.log('✅ Application lancée:', command);
         });
-        
+
         return { success: true, command };
     } catch (error) {
         console.error('❌ Erreur launch-app:', error);
@@ -971,23 +972,23 @@ ipcMain.handle('open-external', async (event, url) => {
 ipcMain.handle('open-pdf-window', async (event, data) => {
     try {
         const { pdfFile, title } = data;
-        
+
         // Validation
         if (!pdfFile || typeof pdfFile !== 'string') {
             throw new Error('Nom de fichier invalide');
         }
-        
+
         // Sécurité : empêcher les path traversal attacks
         if (pdfFile.includes('..') || pdfFile.includes('/') || pdfFile.includes('\\')) {
             throw new Error('Chemin de fichier non autorisé');
         }
-        
+
         const pdfPath = path.join(__dirname, 'public', 'src', 'pdf', pdfFile);
-        
+
         if (!fs.existsSync(pdfPath)) {
             throw new Error(`Fichier PDF introuvable: ${pdfFile}`);
         }
-        
+
         const pdfWindow = new BrowserWindow({
             width: 900,
             height: 700,
@@ -997,23 +998,23 @@ ipcMain.handle('open-pdf-window', async (event, data) => {
                 preload: path.join(__dirname, 'preload.js')
             }
         });
-        
+
         pdfWindow.loadURL(`file://${pdfPath}`);
         pdfWindow.webContents.setWindowOpenHandler(({ url }) => {
             shell.openExternal(url);
             return { action: 'deny' };
         });
-        
+
         pdfWindow.setTitle(title || 'PDF Viewer');
-        
+
         const windowId = `pdf-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
         pdfWindow.id = windowId;
         pdfWindows.set(windowId, pdfWindow);
-        
+
         pdfWindow.on('closed', () => {
             pdfWindows.delete(windowId);
         });
-        
+
         return { success: true, windowId };
     } catch (error) {
         console.error('❌ Erreur ouverture PDF:', error.message);
@@ -1177,7 +1178,7 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
         return { success: true, pdf_path: path.resolve(fullPath) };
     } finally {
         win.close();
-        try { fs.unlinkSync(outputPath); } catch (_) {}
+        try { fs.unlinkSync(outputPath); } catch (_) { }
     }
 }
 
@@ -1397,7 +1398,7 @@ ipcMain.handle('get-server-config', async () => {
     if (discoveredServer) {
         currentConfig = { url: SERVER_URL, ws: SERVER_WS_URL };
     }
-    
+
     return {
         mode: MODE,
         config: currentConfig,
@@ -1441,14 +1442,14 @@ ipcMain.handle('get-system-info', async () => {
     let ifaceName = null;
     let address = null;
     let connectionType = 'unknown';
-    
+
     for (const [name, list] of Object.entries(interfaces)) {
         if (!Array.isArray(list)) continue;
         const found = list.find((i) => i.family === 'IPv4' && !i.internal);
         if (found) {
             ifaceName = name;
             address = found.address;
-            
+
             // Déterminer le type de connexion selon le nom de l'interface
             const lowerName = name.toLowerCase();
             if (lowerName.includes('wl') || lowerName.includes('wi-fi') || lowerName.includes('wifi') || lowerName.includes('wlan')) {

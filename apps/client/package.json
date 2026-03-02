@@ -92,7 +92,7 @@
           ]
         }
       ],
-      "icon": "build/icon.ico",
+      "icon": "assets/icon.ico",
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "nsis": {
@@ -120,7 +120,7 @@
           ]
         }
       ],
-      "icon": "build/icon.icns",
+      "icon": "assets/icon.icns",
       "category": "public.app-category.productivity",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "hardenedRuntime": true,
@@ -166,7 +166,7 @@
           ]
         }
       ],
-      "icon": "build/icon.png",
+      "icon": "assets/icon.png",
       "category": "Utility",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "desktop": {
