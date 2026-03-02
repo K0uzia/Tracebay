@@ -64,10 +64,10 @@ export function getMessageRate(): number {
 }
 
 /**
- * Get current connected user count
+ * Get current connected user count (authenticated only, excludes anonymous WS connections)
  */
 export function getConnectedUserCount(connectedUsers: Map<string, any>): number {
-  return connectedUsers.size;
+  return Array.from(connectedUsers.values()).filter(u => !String(u.username).startsWith('anon_')).length;
 }
 
 /**
@@ -227,12 +227,15 @@ export async function registerMonitoringRoutes(
    */
   fastify.get('/api/monitoring/users', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const connectedUsersList = Array.from(connectedUsers.values()).map(user => ({
-        id: user.id,
-        username: user.username,
-        connectedAt: user.connectedAt,
-        connectedDuration: Date.now() - user.connectedAt.getTime()
-      }));
+      const connectedUsersList = Array.from(connectedUsers.values())
+        .filter(user => !String(user.username).startsWith('anon_'))
+        .map(user => ({
+          id: user.id,
+          username: user.username,
+          ip: user.ip || null,
+          connectedAt: user.connectedAt,
+          connectedDuration: Date.now() - user.connectedAt.getTime()
+        }));
 
       return {
         connectedUsers: connectedUsersList,

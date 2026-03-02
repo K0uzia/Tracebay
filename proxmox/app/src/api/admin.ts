@@ -5,6 +5,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import bcrypt from 'bcryptjs';
+import nodemailer from 'nodemailer';
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'SECRET_RETIRE';
 const JWT_SECRET = process.env.JWT_SECRET || 'SECRET_RETIRE';
@@ -426,6 +427,24 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
+  fastify.post('/api/admin/messages/bulk-delete', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { ids } = request.body as { ids?: number[] };
+    if (!Array.isArray(ids) || ids.length === 0) {
+      reply.statusCode = 400;
+      return { error: 'ids array requis' };
+    }
+    try {
+      const placeholders = ids.map((_: any, i: number) => `$${i + 1}`).join(',');
+      const result = await query(`DELETE FROM messages WHERE id IN (${placeholders})`, ids);
+      return { success: true, deleted: result.rowCount };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin POST /messages/bulk-delete');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
   // ─────────────────────────────────────────────
   // RÉCEPTION : MARQUES & MODÈLES
   // ─────────────────────────────────────────────
@@ -791,6 +810,92 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       fastify.log.error({ err }, 'admin PUT /config/folders');
       reply.statusCode = 500;
       return { error: 'Impossible d\'écrire FolderConfig.js' };
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // CONFIG SMTP (stockée en base, fallback .env)
+  // ─────────────────────────────────────────────
+
+  const SMTP_KEYS = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'MAIL_FROM'];
+
+  async function getSmtpConfig(): Promise<Record<string, string>> {
+    const defaults: Record<string, string> = {
+      SMTP_HOST: process.env.SMTP_HOST || '',
+      SMTP_PORT: process.env.SMTP_PORT || '587',
+      SMTP_SECURE: process.env.SMTP_SECURE || 'false',
+      SMTP_USER: process.env.SMTP_USER || '',
+      SMTP_PASS: process.env.SMTP_PASS || '',
+      MAIL_FROM: process.env.MAIL_FROM || process.env.SMTP_FROM || process.env.SMTP_USER || '',
+    };
+    try {
+      const result = await query('SELECT key, value FROM app_settings WHERE key = ANY($1)', [SMTP_KEYS]);
+      for (const row of result.rows) {
+        defaults[row.key] = row.value ?? '';
+      }
+    } catch (_) {}
+    return defaults;
+  }
+
+  fastify.get('/api/admin/config/smtp', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    try {
+      const config = await getSmtpConfig();
+      return { success: true, config: { ...config, SMTP_PASS: config.SMTP_PASS ? '***' : '' } };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin GET /config/smtp');
+      reply.statusCode = 500;
+      return { error: 'Erreur lecture config SMTP' };
+    }
+  });
+
+  fastify.put('/api/admin/config/smtp', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const body = request.body as Record<string, string>;
+    try {
+      for (const key of SMTP_KEYS) {
+        if (key in body) {
+          const value = body[key];
+          if (key === 'SMTP_PASS' && value === '***') continue;
+          await query(
+            'INSERT INTO app_settings (key, value, updated_at) VALUES ($1, $2, now()) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = now()',
+            [key, value]
+          );
+        }
+      }
+      return { success: true };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin PUT /config/smtp');
+      reply.statusCode = 500;
+      return { error: 'Erreur sauvegarde config SMTP' };
+    }
+  });
+
+  fastify.post('/api/admin/config/smtp/test', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { to } = request.body as { to?: string };
+    if (!to) { reply.statusCode = 400; return { error: 'Adresse destinataire requise' }; }
+    try {
+      const config = await getSmtpConfig();
+      if (!config.SMTP_HOST) { reply.statusCode = 400; return { error: 'SMTP_HOST non configuré' }; }
+      const transporter = nodemailer.createTransport({
+        host: config.SMTP_HOST,
+        port: parseInt(config.SMTP_PORT || '587', 10),
+        secure: config.SMTP_SECURE === 'true',
+        auth: config.SMTP_USER ? { user: config.SMTP_USER, pass: config.SMTP_PASS || '' } : undefined,
+      });
+      await transporter.sendMail({
+        from: config.MAIL_FROM || config.SMTP_USER || 'noreply@localhost',
+        to,
+        subject: 'Test SMTP — Workspace Admin',
+        text: 'Ceci est un email de test envoyé depuis le panel admin Workspace.',
+        html: '<p>Ceci est un email de test envoyé depuis le <strong>panel admin Workspace</strong>.</p>',
+      });
+      return { success: true, message: `Email de test envoyé à ${to}` };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin POST /config/smtp/test');
+      reply.statusCode = 500;
+      return { error: `Erreur envoi: ${err.message}` };
     }
   });
 

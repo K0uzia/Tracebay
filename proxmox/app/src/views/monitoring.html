@@ -269,6 +269,7 @@
       <div class="nav-item" data-page="config-folders"><span class="icon"><i class="fa-solid fa-folder"></i></span> Dossiers</div>
       <div class="nav-section">Supervision</div>
       <div class="nav-item" data-page="logs"><span class="icon"><i class="fa-solid fa-list"></i></span> Logs</div>
+      <div class="nav-item" data-page="config-smtp"><span class="icon"><i class="fa-solid fa-envelope-open-text"></i></span> Email</div>
     </nav>
     <div class="sidebar-footer">
       <button class="btn-logout" onclick="doLogout()">Déconnexion</button>
@@ -286,14 +287,13 @@
         <div class="stat-card green"><div class="label">Utilisateurs</div><div class="value" id="ds-users">—</div></div>
         <div class="stat-card info" style="--info:#8b5cf6"><div class="label">Messages chat</div><div class="value" id="ds-messages">—</div></div>
         <div class="stat-card orange"><div class="label">Lots</div><div class="value" id="ds-lots">—</div></div>
-        <div class="stat-card blue"><div class="label">Raccourcis</div><div class="value" id="ds-shortcuts">—</div></div>
         <div class="stat-card green"><div class="label">Uptime</div><div class="value" id="ds-uptime" style="font-size:18px">—</div></div>
       </div>
       <div class="card">
         <div class="card-header"><h2>Utilisateurs connectés (WebSocket)</h2><button class="btn btn-secondary btn-sm" onclick="loadDashboard()"><i class="fa-solid fa-rotate-right"></i> Rafraîchir</button></div>
         <div class="table-wrap">
-          <table><thead><tr><th>Pseudo</th><th>Connecté depuis</th></tr></thead>
-          <tbody id="dash-users-table"><tr class="empty-row"><td colspan="2">Chargement…</td></tr></tbody></table>
+          <table><thead><tr><th>Pseudo</th><th>IP</th><th>Connecté depuis</th></tr></thead>
+          <tbody id="dash-users-table"><tr class="empty-row"><td colspan="3">Chargement…</td></tr></tbody></table>
         </div>
       </div>
     </div>
@@ -466,6 +466,55 @@
       </div>
     </div>
 
+    <!-- ── Config Email (SMTP) ── -->
+    <div class="page" id="page-config-smtp">
+      <div class="page-header">
+        <h1>Configuration Email</h1>
+        <p>Paramètres SMTP pour l'envoi des PDFs et notifications</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>Serveur SMTP</h2></div>
+        <div class="card-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="form-group">
+              <label class="form-label">Hôte SMTP</label>
+              <input type="text" class="form-input" id="smtp-host" placeholder="smtp.gmail.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Port</label>
+              <input type="number" class="form-input" id="smtp-port" placeholder="587">
+            </div>
+          </div>
+          <div class="form-group" style="margin-top:.5rem">
+            <label class="form-label">Utilisateur (login)</label>
+            <input type="text" class="form-input" id="smtp-user" placeholder="user@example.com" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mot de passe</label>
+            <input type="password" class="form-input" id="smtp-pass" placeholder="••••••••" autocomplete="new-password">
+            <div class="config-hint">Laissez vide pour conserver le mot de passe actuel.</div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Adresse expéditeur (MAIL_FROM)</label>
+            <input type="text" class="form-input" id="smtp-mail-from" placeholder='"Workspace" &lt;noreply@example.com&gt;'>
+            <div class="config-hint">Adresse affichée chez le destinataire.</div>
+          </div>
+          <div class="form-group" style="display:flex;align-items:center;gap:10px;margin-top:.5rem">
+            <input type="checkbox" id="smtp-secure" style="width:16px;height:16px;cursor:pointer">
+            <label for="smtp-secure" class="form-label" style="margin:0;cursor:pointer">TLS / SSL (port 465)</label>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:1rem">
+            <button class="btn btn-primary" onclick="saveSmtpConfig()"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
+            <button class="btn btn-secondary" onclick="showSmtpTestModal()"><i class="fa-solid fa-paper-plane"></i> Tester l'envoi</button>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:1rem" id="smtp-status-card" style="display:none">
+        <div class="card-header"><h2>Statut du dernier test</h2></div>
+        <div class="card-body" id="smtp-status-body"></div>
+      </div>
+    </div>
+
     <!-- ── Logs ── -->
     <div class="page" id="page-logs">
       <div class="page-header"><h1>Logs</h1><p>Supervision par catégorie</p></div>
@@ -482,9 +531,16 @@
       <!-- Chat -->
       <div class="log-panel active" id="log-chat">
         <div class="card">
-          <div class="card-header"><h2>Messages chat récents</h2><button class="btn btn-secondary btn-sm" onclick="loadLogChat()"><i class="fa-solid fa-rotate-right"></i></button></div>
+          <div class="card-header">
+            <h2>Messages chat récents</h2>
+            <div class="flex-gap">
+              <button class="btn btn-secondary btn-sm" onclick="toggleSelectAllChat()"><i class="fa-solid fa-check-double"></i> Tout sélectionner</button>
+              <button class="btn btn-danger btn-sm" id="btn-delete-selected" style="display:none" onclick="deleteSelectedMessages()"><i class="fa-solid fa-trash"></i> Supprimer la sélection</button>
+              <button class="btn btn-secondary btn-sm" onclick="loadLogChat()"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+          </div>
           <div class="table-wrap">
-            <table class="log-table"><thead><tr><th>#</th><th>Utilisateur</th><th>Message</th><th>Date</th><th></th></tr></thead>
+            <table class="log-table"><thead><tr><th style="width:32px"><input type="checkbox" id="chat-select-all" onchange="onChatSelectAll(this)"></th><th>#</th><th>Utilisateur</th><th>Message</th><th>Date</th><th></th></tr></thead>
             <tbody id="log-chat-table"></tbody></table>
           </div>
         </div>
@@ -715,6 +771,32 @@ function fmtDate(s) {
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+function openDynamicModal(title, bodyHtml, onConfirm) {
+  const existing = document.getElementById('dynamic-modal-overlay');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'dynamic-modal-overlay';
+  overlay.className = 'modal-overlay open';
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal-header"><h3>${escHtml(title)}</h3><button class="modal-close" onclick="closeDynamicModal()">×</button></div>
+      <div class="modal-body">${bodyHtml}</div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeDynamicModal()">Annuler</button>
+        <button class="btn btn-primary" id="dynamic-modal-confirm">Confirmer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('dynamic-modal-confirm').onclick = async () => {
+    const result = await onConfirm();
+    if (result !== false) closeDynamicModal();
+  };
+}
+function closeDynamicModal() {
+  const el = document.getElementById('dynamic-modal-overlay');
+  if (el) el.remove();
+}
+
 function statusBadge(s) {
   const map = { received:'info', in_progress:'warning', finished:'success', recovered:'success' };
   const label = { received:'Reçu', in_progress:'En cours', finished:'Terminé', recovered:'Récupéré' };
@@ -778,7 +860,7 @@ document.querySelectorAll('.nav-item').forEach(el => {
 function navigateTo(page) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
   document.querySelectorAll('.page').forEach(el => el.classList.toggle('active', el.id === 'page-' + page));
-  const loaders = { dashboard: loadDashboard, users: loadUsers, agenda: loadAgenda, reception: loadReception, shortcuts: loadShortcuts, 'config-apps': loadAppConfig, 'config-folders': loadFolderConfig, logs: () => loadLogChat() };
+  const loaders = { dashboard: loadDashboard, users: loadUsers, agenda: loadAgenda, reception: loadReception, shortcuts: loadShortcuts, 'config-apps': loadAppConfig, 'config-folders': loadFolderConfig, 'config-smtp': loadSmtpConfig, logs: () => loadLogChat() };
   if (loaders[page]) loaders[page]();
 }
 
@@ -826,14 +908,13 @@ async function loadDashboard() {
       document.getElementById('ds-users').textContent = db.stats.users;
       document.getElementById('ds-messages').textContent = db.stats.messages;
       document.getElementById('ds-lots').textContent = db.stats.lots;
-      document.getElementById('ds-shortcuts').textContent = db.stats.shortcuts;
     }
     const tbody = document.getElementById('dash-users-table');
     const users = (ws && ws.connectedUsers) ? ws.connectedUsers : [];
     if (!users.length) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="2">Aucun utilisateur connecté</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucun utilisateur connecté</td></tr>';
     } else {
-      tbody.innerHTML = users.map(u => `<tr><td>${escHtml(u.username || '—')}</td><td>${fmtDate(u.connectedAt)}</td></tr>`).join('');
+      tbody.innerHTML = users.map(u => `<tr><td>${escHtml(u.username || '—')}</td><td><code>${escHtml(u.ip || '—')}</code></td><td>${fmtDate(u.connectedAt)}</td></tr>`).join('');
     }
   } catch(e) { console.error(e); }
 }
@@ -1285,7 +1366,7 @@ function renderAppPresets(appManagers) {
 }
 
 function showAddAppPresetModal() {
-  openModal('Nouveau preset', `
+  openDynamicModal('Nouveau preset', `
     <div class="form-group"><label class="form-label">Nom du preset (ex: dev, office)</label>
     <input type="text" class="form-input" id="new-preset-key" placeholder="monpreset"></div>
   `, async () => {
@@ -1300,7 +1381,7 @@ function showAddAppPresetModal() {
 
 function showAddAppModal(presetKey, editIndex = null) {
   const existing = editIndex !== null ? (_appConfig.appManagers[presetKey]?.apps[editIndex] || {}) : {};
-  openModal(editIndex !== null ? 'Modifier l\'application' : 'Ajouter une application', `
+  openDynamicModal(editIndex !== null ? 'Modifier l\'application' : 'Ajouter une application', `
     <div class="form-group"><label class="form-label">Nom</label><input type="text" class="form-input" id="app-name" value="${escHtml(existing.name || '')}"></div>
     <div class="form-group"><label class="form-label">Commande</label><input type="text" class="form-input" id="app-command" value="${escHtml(existing.command || '')}"></div>
     <div class="form-group"><label class="form-label">Icône FontAwesome (ex: fa-code)</label><input type="text" class="form-input" id="app-icon" value="${escHtml(existing.icon || '')}"></div>
@@ -1399,7 +1480,7 @@ function showAddFolderPresetModal() { showEditFolderPresetModal(null); }
 
 function showEditFolderPresetModal(editKey) {
   const existing = editKey ? (_folderConfig.fileManagers[editKey] || {}) : {};
-  openModal(editKey ? `Modifier "${editKey}"` : 'Nouveau preset dossier', `
+  openDynamicModal(editKey ? `Modifier "${editKey}"` : 'Nouveau preset dossier', `
     <div class="form-group"><label class="form-label">Nom du preset</label>
     <input type="text" class="form-input" id="fp-key" value="${escHtml(editKey || '')}" ${editKey ? 'readonly' : ''}></div>
     <div class="form-group"><label class="form-label">Chemin de base</label>
@@ -1483,15 +1564,47 @@ async function loadLogChat() {
   const data = await api('GET', '/api/admin/logs/chat?limit=200');
   const logs = data.logs || [];
   const tbody = document.getElementById('log-chat-table');
-  if (!logs.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Aucun message</td></tr>'; return; }
+  document.getElementById('chat-select-all').checked = false;
+  document.getElementById('btn-delete-selected').style.display = 'none';
+  if (!logs.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun message</td></tr>'; return; }
   tbody.innerHTML = logs.map(m => `
     <tr>
+      <td><input type="checkbox" class="chat-row-check" data-id="${m.id}" onchange="updateChatDeleteBtn()"></td>
       <td>${m.id}</td>
       <td>${escHtml(m.username)}</td>
       <td>${escHtml(m.text)}</td>
       <td>${fmtDate(m.created_at)}</td>
       <td><button class="btn btn-danger btn-sm btn-icon" onclick="deleteMessage(${m.id})"><i class="fa-solid fa-trash"></i></button></td>
     </tr>`).join('');
+}
+
+function onChatSelectAll(cb) {
+  document.querySelectorAll('.chat-row-check').forEach(c => { c.checked = cb.checked; });
+  updateChatDeleteBtn();
+}
+
+function toggleSelectAllChat() {
+  const all = document.querySelectorAll('.chat-row-check');
+  const anyUnchecked = Array.from(all).some(c => !c.checked);
+  all.forEach(c => { c.checked = anyUnchecked; });
+  document.getElementById('chat-select-all').checked = anyUnchecked;
+  updateChatDeleteBtn();
+}
+
+function updateChatDeleteBtn() {
+  const checked = document.querySelectorAll('.chat-row-check:checked').length;
+  document.getElementById('btn-delete-selected').style.display = checked > 0 ? '' : 'none';
+  document.getElementById('chat-select-all').checked = checked > 0 && checked === document.querySelectorAll('.chat-row-check').length;
+}
+
+async function deleteSelectedMessages() {
+  const ids = Array.from(document.querySelectorAll('.chat-row-check:checked')).map(c => parseInt(c.dataset.id));
+  if (!ids.length) return;
+  if (!confirm(`Supprimer ${ids.length} message(s) ?`)) return;
+  const data = await api('POST', '/api/admin/messages/bulk-delete', { ids });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast(`${data.deleted} message(s) supprimé(s)`);
+  loadLogChat();
 }
 
 async function deleteMessage(id) {
@@ -1633,6 +1746,60 @@ if (TOKEN) {
 setInterval(() => {
   if (document.getElementById('page-dashboard').classList.contains('active')) loadDashboard();
 }, 30000);
+
+// ── Config SMTP ───────────────────────────────────────────────────────────────
+async function loadSmtpConfig() {
+  const data = await api('GET', '/api/admin/config/smtp');
+  if (data.error) { toast(data.error, 'error'); return; }
+  const c = data.config || {};
+  document.getElementById('smtp-host').value = c.SMTP_HOST || '';
+  document.getElementById('smtp-port').value = c.SMTP_PORT || '587';
+  document.getElementById('smtp-user').value = c.SMTP_USER || '';
+  document.getElementById('smtp-pass').value = '';
+  document.getElementById('smtp-mail-from').value = c.MAIL_FROM || '';
+  document.getElementById('smtp-secure').checked = c.SMTP_SECURE === 'true';
+}
+
+async function saveSmtpConfig() {
+  const pass = document.getElementById('smtp-pass').value;
+  const body = {
+    SMTP_HOST: document.getElementById('smtp-host').value.trim(),
+    SMTP_PORT: document.getElementById('smtp-port').value.trim() || '587',
+    SMTP_SECURE: document.getElementById('smtp-secure').checked ? 'true' : 'false',
+    SMTP_USER: document.getElementById('smtp-user').value.trim(),
+    MAIL_FROM: document.getElementById('smtp-mail-from').value.trim(),
+  };
+  if (pass) body.SMTP_PASS = pass;
+  const data = await api('PUT', '/api/admin/config/smtp', body);
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Configuration email enregistrée');
+  document.getElementById('smtp-pass').value = '';
+}
+
+function showSmtpTestModal() {
+  openDynamicModal('Tester l\'envoi email', `
+    <div class="form-group">
+      <label class="form-label">Adresse destinataire du test</label>
+      <input type="email" class="form-input" id="smtp-test-to" placeholder="test@example.com">
+    </div>
+  `, async () => {
+    const to = document.getElementById('smtp-test-to').value.trim();
+    if (!to) { toast('Adresse requise', 'error'); return false; }
+    const statusCard = document.getElementById('smtp-status-card');
+    const statusBody = document.getElementById('smtp-status-body');
+    statusCard.style.display = '';
+    statusBody.innerHTML = '<span style="color:var(--text-muted)">Envoi en cours…</span>';
+    const data = await api('POST', '/api/admin/config/smtp/test', { to });
+    if (data.error) {
+      statusBody.innerHTML = `<span style="color:#dc2626"><i class="fa-solid fa-circle-xmark"></i> Échec : ${escHtml(data.error)}</span>`;
+      toast(data.error, 'error');
+    } else {
+      statusBody.innerHTML = `<span style="color:#15803d"><i class="fa-solid fa-circle-check"></i> ${escHtml(data.message)}</span>`;
+      toast(data.message || 'Email de test envoyé');
+    }
+    return true;
+  });
+}
 </script>
 </body>
 </html>

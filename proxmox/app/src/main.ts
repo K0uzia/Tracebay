@@ -72,6 +72,7 @@ interface WebSocketUser {
   username: string;
   socket: any;
   connectedAt: Date;
+  ip?: string;
 }
 
 // Global state
@@ -1420,20 +1421,32 @@ function broadcastUserCount() {
           return { error: 'PDF file not found', message: 'Fichier PDF introuvable.' };
         }
 
+        // Lire la config SMTP depuis la DB (priorité) avec fallback sur .env
+        const smtpKeys = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'MAIL_FROM'];
+        const smtpCfg: Record<string, string> = {
+          SMTP_HOST: process.env.SMTP_HOST || 'localhost',
+          SMTP_PORT: process.env.SMTP_PORT || '25',
+          SMTP_SECURE: process.env.SMTP_SECURE || 'false',
+          SMTP_USER: process.env.SMTP_USER || '',
+          SMTP_PASS: process.env.SMTP_PASS || '',
+          MAIL_FROM: process.env.MAIL_FROM || process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@localhost',
+        };
+        try {
+          const smtpRows = await query('SELECT key, value FROM app_settings WHERE key = ANY($1)', [smtpKeys]);
+          for (const row of smtpRows.rows) { smtpCfg[row.key] = row.value ?? smtpCfg[row.key]; }
+        } catch (_) {}
+
         const transporter = nodemailer.createTransport({
-          host: process.env.SMTP_HOST || 'localhost',
-          port: parseInt(process.env.SMTP_PORT || '25', 10),
-          secure: process.env.SMTP_SECURE === 'true',
-          auth: process.env.SMTP_USER ? {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS || ''
-          } : undefined
+          host: smtpCfg.SMTP_HOST,
+          port: parseInt(smtpCfg.SMTP_PORT, 10),
+          secure: smtpCfg.SMTP_SECURE === 'true',
+          auth: smtpCfg.SMTP_USER ? { user: smtpCfg.SMTP_USER, pass: smtpCfg.SMTP_PASS } : undefined
         });
         const fileName = path.basename(filePath);
         // Lire le fichier en buffer pour éviter problèmes de stream avec nodemailer
         const pdfBuffer = fs.readFileSync(filePath);
         await transporter.sendMail({
-          from: process.env.MAIL_FROM || process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@localhost',
+          from: smtpCfg.MAIL_FROM,
           to: email,
           subject,
           text: message || `PDF du lot #${id} en pièce jointe.`,
@@ -1463,11 +1476,13 @@ function broadcastUserCount() {
         const heartbeat = () => { isAlive = true; };
 
         // Store connected user
+        const clientIp = request?.ip || request?.headers?.['x-forwarded-for'] || request?.socket?.remoteAddress || null;
         connectedUsers.set(userId, {
           id: userId,
           username,
           socket,
-          connectedAt: new Date()
+          connectedAt: new Date(),
+          ip: clientIp ? String(clientIp).split(',')[0].trim() : undefined
         });
 
         fastify.log.info(`✅ WebSocket connected: ${username} (${userId})`);

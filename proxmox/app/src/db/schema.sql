@@ -218,3 +218,10 @@ ALTER TABLE IF EXISTS shortcuts
   ADD COLUMN IF NOT EXISTS category_id INTEGER REFERENCES shortcut_categories(id) ON DELETE CASCADE;
 
 CREATE INDEX IF NOT EXISTS idx_shortcuts_category_id ON shortcuts(category_id);
+
+-- Application settings (key/value store for server config, e.g. SMTP)
+CREATE TABLE IF NOT EXISTS app_settings (
+  key TEXT PRIMARY KEY,
+  value TEXT,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
