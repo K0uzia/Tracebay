@@ -347,11 +347,15 @@ export default class ShortcutManager {
         try {
             const urlObj = new URL(url);
             const domain = urlObj.hostname;
-            // Essayer plusieurs sources de favicon avec fallback
-            // 1. Essayer le service Cravatar (très fiable, pas de problèmes CORS)
+            // #region agent log
+            const isLocal = /^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/.test(domain);
+            fetch('http://127.0.0.1:7475/ingest/b9448150-f1e8-40a5-a65b-b79718dab2f2',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0937cc'},body:JSON.stringify({sessionId:'0937cc',location:'ShortcutManager.js:getFaviconUrl',message:'getFaviconUrl appelé',data:{url,domain,isLocal},timestamp:Date.now(),hypothesisId:'H-A'})}).catch(()=>{});
+            // #endregion
+            if (isLocal) {
+                return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1 1%22%3E%3C/svg%3E';
+            }
             return `https://www.google.com/s2/favicons?sz=32&domain=${domain}`;
         } catch (error) {
-            // Si l'URL n'est pas valide, retourner un placeholder vide
             return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1 1%22%3E%3C/svg%3E';
         }
     }
