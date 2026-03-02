@@ -54,6 +54,9 @@ class PageManager {
         // Exposer l'instance App globalement
         window.app = this;
 
+        // Capture automatique des erreurs JS non gérées → monitoring admin
+        this.setupClientErrorReporting();
+
         // Toast "Mise à jour installée" après redémarrage post-update
         if (typeof window.electron !== 'undefined' && window.electron.on) {
             window.electron.on('update-was-installed', () => {
@@ -84,6 +87,72 @@ class PageManager {
         const lastPage = this.getLastPage();
         const pageToLoad = lastPage && this.pagesConfig[lastPage] ? lastPage : 'home';
         this.loadPage(pageToLoad);
+    }
+
+    /**
+     * Branche window.onerror et unhandledrejection sur le monitoring admin.
+     * Filtre les erreurs provenant de bibliothèques tierces non actionnables
+     * (emoji-picker, favicon gstatic) pour ne pas polluer le panel.
+     */
+    setupClientErrorReporting() {
+        const serverUrl = this.serverUrl || '';
+        const endpoint = `${serverUrl}/api/monitoring/errors`;
+        const clientId = localStorage.getItem('workspace_client_id') || (() => {
+            const id = `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            localStorage.setItem('workspace_client_id', id);
+            return id;
+        })();
+
+        const IGNORED_PATTERNS = [
+            /gstatic\.com/,
+            /faviconV2/,
+            /emoji-picker-element/,
+            /picker\.js.*Emoji support detection/,
+            /checkZwjSupport/,
+        ];
+
+        const shouldIgnore = (msg) => {
+            if (!msg) return false;
+            return IGNORED_PATTERNS.some(p => p.test(String(msg)));
+        };
+
+        const send = (payload) => {
+            if (shouldIgnore(payload.errorMessage)) return;
+            try {
+                const blob = new Blob([JSON.stringify({
+                    clientId,
+                    clientVersion: typeof this.getAppVersion === 'function' ? this.getAppVersion() : '1.0',
+                    platform: navigator.platform || '',
+                    ...payload
+                })], { type: 'application/json' });
+                if (navigator.sendBeacon) {
+                    navigator.sendBeacon(endpoint, blob);
+                } else {
+                    fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: blob, keepalive: true }).catch(() => {});
+                }
+            } catch (_) {}
+        };
+
+        window.onerror = (message, source, lineno, colno, error) => {
+            send({
+                errorType: 'js_error',
+                errorMessage: String(message),
+                errorStack: error?.stack || null,
+                context: `${source || ''}:${lineno}:${colno}`
+            });
+            return false;
+        };
+
+        window.addEventListener('unhandledrejection', (event) => {
+            const reason = event.reason;
+            const msg = reason?.message || String(reason);
+            send({
+                errorType: 'promise_rejection',
+                errorMessage: msg,
+                errorStack: reason?.stack || null,
+                context: 'Unhandled Promise Rejection'
+            });
+        });
     }
 
     async initializeServerConnection() {
@@ -1044,7 +1113,8 @@ class PageManager {
     }
 
     /**
-     * Envoie le formulaire de feedback vers le système de monitoring
+     * Envoie le formulaire de feedback en créant une issue dans le panel admin.
+     * Affiche un numéro de confirmation à l'utilisateur après succès.
      */
     async submitFeedback() {
         const messageEl = document.getElementById('feedback-message');
@@ -1057,13 +1127,19 @@ class PageManager {
         const endpoint = `${serverUrl}/api/monitoring/errors`;
         const submitBtn = document.getElementById('feedback-submit-btn');
         if (submitBtn) submitBtn.disabled = true;
+
+        const clientId = localStorage.getItem('workspace_client_id') || 'web-' + (navigator.userAgent || '').slice(0, 50);
+        const issueTitle = feedbackType === 'bug_report'
+            ? `[Bug] ${message.substring(0, 80)}`
+            : `[Feedback] ${message.substring(0, 80)}`;
+
         try {
             const payload = {
-                clientId: window.app?.connectionConfig?.clientId || 'web-' + (navigator.userAgent || '').slice(0, 50),
-                clientVersion: typeof window.app?.getAppVersion === 'function' ? window.app.getAppVersion() : '1.0',
+                clientId,
+                clientVersion: typeof this.getAppVersion === 'function' ? this.getAppVersion() : '1.0',
                 platform: navigator.platform || '',
                 errorType: feedbackType,
-                errorMessage: message.substring(0, 1000),
+                errorMessage: issueTitle,
                 context: 'Formulaire « Faire un retour »',
                 userMessage: message.substring(0, 500)
             };
@@ -1073,10 +1149,16 @@ class PageManager {
                 body: JSON.stringify(payload)
             });
             if (res.ok) {
+                const data = await res.json().catch(() => ({}));
+                const issueId = data?.id || data?.issueId || null;
+                const confirmMsg = issueId
+                    ? `Merci ! Votre retour a été enregistré (référence #${issueId}).`
+                    : 'Merci, votre retour a bien été envoyé.';
                 window.modalManager?.close('modal-feedback');
                 messageEl.value = '';
-                document.getElementById('feedback-char-count').textContent = '0';
-                this.showNotification?.('Merci, votre retour a bien été envoyé.', 'success');
+                const charCount = document.getElementById('feedback-char-count');
+                if (charCount) charCount.textContent = '0';
+                this.showNotification?.(confirmMsg, 'success');
             } else {
                 const err = await res.text();
                 this.showNotification?.(`Envoi impossible : ${res.status}. Réessayez plus tard.`, 'error');
