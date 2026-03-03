@@ -77,6 +77,25 @@
         <div class="stat-card orange"><div class="label">Lots</div><div class="value" id="ds-lots">—</div></div>
         <div class="stat-card green"><div class="label">Uptime</div><div class="value" id="ds-uptime" style="font-size:18px">—</div></div>
       </div>
+
+      <div class="card server-control-card">
+        <div class="card-header">
+          <h2><i class="fa-solid fa-server"></i> Serveur (proxmox)</h2>
+          <div class="server-control-actions">
+            <button class="btn btn-secondary btn-sm" onclick="loadServerStatus()" title="Rafraîchir"><i class="fa-solid fa-rotate-right"></i></button>
+            <button class="btn btn-success btn-sm" onclick="serverAction('start')" title="Démarrer"><i class="fa-solid fa-play"></i> Démarrer</button>
+            <button class="btn btn-danger btn-sm" onclick="serverAction('stop')" title="Arrêter"><i class="fa-solid fa-stop"></i> Arrêter</button>
+            <button class="btn btn-warning btn-sm" onclick="serverAction('restart')" title="Redémarrer"><i class="fa-solid fa-arrows-rotate"></i> Redémarrer</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="server-status-grid" id="server-status-grid">
+            <div class="loading-inline">Chargement du statut…</div>
+          </div>
+          <p class="text-muted server-status-url" id="server-status-url" style="margin-top:10px;font-size:12px"></p>
+        </div>
+      </div>
+
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
         <div class="card">
           <div class="card-header"><h2>Clients connectés <span id="dash-auth-count" class="badge badge-success" style="font-size:12px;margin-left:6px">0</span></h2><button class="btn btn-secondary btn-sm" onclick="loadDashboard()"><i class="fa-solid fa-rotate-right"></i></button></div>
@@ -97,16 +116,17 @@
 
     <!-- ── Utilisateurs ── -->
     <div class="page" id="page-users">
-      <div class="page-header"><h1>Utilisateurs</h1><p>Gérer les comptes</p></div>
+      <div class="page-header"><h1>Utilisateurs</h1><p>Gérer les comptes — l’ID est attribué par la base (ordre de création)</p></div>
       <div class="card">
         <div class="card-header">
           <div class="toolbar">
             <input type="text" id="user-search" placeholder="Rechercher…" oninput="filterUsers()">
+            <label class="checkbox-inline"><input type="checkbox" id="user-show-deleted" onchange="filterUsers()"> Afficher les comptes supprimés</label>
           </div>
           <button class="btn btn-primary btn-sm" onclick="openUserModal()">+ Ajouter</button>
         </div>
         <div class="table-wrap">
-          <table><thead><tr><th>#</th><th>Pseudo</th><th>Email</th><th>Rôle</th><th>Créé le</th><th>Actions</th></tr></thead>
+          <table><thead><tr><th>ID</th><th>Pseudo</th><th>Email</th><th>Rôle</th><th>Créé le</th><th>Actions</th></tr></thead>
           <tbody id="users-table"><tr class="empty-row"><td colspan="6">Chargement…</td></tr></tbody></table>
         </div>
       </div>
@@ -222,14 +242,10 @@
     <!-- ── Config Applications ── -->
     <div class="page" id="page-config-apps">
       <div class="page-header">
-        <h1>Configuration Applications</h1>
-        <p>Gérez les presets d'applications lancées depuis le client</p>
+        <h1>Applications</h1>
+        <p>Applications lancées depuis le client (par preset)</p>
       </div>
-      <div class="card">
-        <div class="card-header">
-          <h2>Presets</h2>
-          <button class="btn btn-primary btn-sm" onclick="showAddAppPresetModal()"><i class="fa-solid fa-plus"></i> Nouveau preset</button>
-        </div>
+      <div class="card config-card-apps">
         <div class="card-body config-presets-grid" id="app-presets-container">
           <div class="loading-inline">Chargement…</div>
         </div>
@@ -239,14 +255,10 @@
     <!-- ── Config Dossiers ── -->
     <div class="page" id="page-config-folders">
       <div class="page-header">
-        <h1>Configuration Dossiers</h1>
-        <p>Gérez les presets de dossiers accessibles depuis le client</p>
+        <h1>Dossiers</h1>
+        <p>Dossiers accessibles depuis le client (par preset)</p>
       </div>
-      <div class="card">
-        <div class="card-header">
-          <h2>Presets</h2>
-          <button class="btn btn-primary btn-sm" onclick="showAddFolderPresetModal()"><i class="fa-solid fa-plus"></i> Nouveau preset</button>
-        </div>
+      <div class="card config-card-folders">
         <div class="card-body config-presets-grid" id="folder-presets-container">
           <div class="loading-inline">Chargement…</div>
         </div>
@@ -318,9 +330,9 @@
 
     <!-- ── Issues ── -->
     <div class="page" id="page-errors">
-      <div class="page-header"><h1>Issues</h1><p>Erreurs clients et feedback utilisateurs</p></div>
+      <div class="page-header"><h1>Issues</h1><p>Feedback, bug reports et erreurs clients</p></div>
       <div class="stats-row" id="err-stats-row"></div>
-      <div class="card">
+      <div class="card issues-toolbar-card">
         <div class="card-header">
           <div class="toolbar">
             <select id="err-filter-status" onchange="loadLogErrors()">
@@ -328,19 +340,32 @@
               <option value="unresolved">Non résolues</option>
               <option value="resolved">Résolues</option>
             </select>
-            <select id="err-filter-type" onchange="loadLogErrors()">
-              <option value="">Tous types</option>
-              <option value="feedback">Feedback</option>
-              <option value="bug_report">Bug report</option>
-              <option value="uncaught_error">Erreur JS</option>
-              <option value="unhandled_rejection">Promise rejetée</option>
-            </select>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="loadLogErrors()"><i class="fa-solid fa-rotate-right"></i></button>
+          <button class="btn btn-secondary btn-sm" onclick="loadLogErrors()"><i class="fa-solid fa-rotate-right"></i> Actualiser</button>
         </div>
+      </div>
+
+      <div class="card issues-section-card">
+        <div class="card-header"><h2><i class="fa-solid fa-comment"></i> Feedback</h2><span class="badge badge-info" id="err-feedback-count">0</span></div>
         <div class="table-wrap">
-          <table class="log-table"><thead><tr><th>#</th><th>Type</th><th>Message / Retour utilisateur</th><th>Client</th><th>Date</th><th>Statut</th><th></th></tr></thead>
-          <tbody id="log-errors-table"></tbody></table>
+          <table class="log-table"><thead><tr><th>#</th><th>Message</th><th>Client</th><th>Date</th><th>Statut</th><th></th></tr></thead>
+          <tbody id="log-errors-feedback-table"></tbody></table>
+        </div>
+      </div>
+
+      <div class="card issues-section-card">
+        <div class="card-header"><h2><i class="fa-solid fa-bug"></i> Bug reports</h2><span class="badge badge-warning" id="err-bugs-count">0</span></div>
+        <div class="table-wrap">
+          <table class="log-table"><thead><tr><th>#</th><th>Message / Détail</th><th>Client</th><th>Date</th><th>Statut</th><th></th></tr></thead>
+          <tbody id="log-errors-bugs-table"></tbody></table>
+        </div>
+      </div>
+
+      <div class="card issues-section-card">
+        <div class="card-header"><h2><i class="fa-solid fa-bolt"></i> Erreurs techniques (JS, Promise)</h2><span class="badge badge-danger" id="err-other-count">0</span></div>
+        <div class="table-wrap">
+          <table class="log-table"><thead><tr><th>#</th><th>Type</th><th>Message</th><th>Client</th><th>Date</th><th>Statut</th><th></th></tr></thead>
+          <tbody id="log-errors-other-table"></tbody></table>
         </div>
       </div>
     </div>
@@ -566,27 +591,37 @@
   </div>
 </div>
 
-<!-- Lot modal (edit) -->
+<!-- Lot modal (edit + items) -->
 <div class="modal-overlay" id="lot-modal">
-  <div class="modal">
+  <div class="modal" style="max-width:720px">
     <div class="modal-header"><h3>Modifier le lot</h3><button class="modal-close" onclick="closeModal('lot-modal')">×</button></div>
     <div class="modal-body">
       <input type="hidden" id="lot-edit-id">
-      <div class="form-group"><label>Nom</label><input type="text" id="lot-form-name" placeholder="Nom du lot"></div>
-      <div class="form-group"><label>Statut</label>
-        <select id="lot-form-status">
-          <option value="received">Reçu</option>
-          <option value="in_progress">En cours</option>
-          <option value="finished">Terminé</option>
-          <option value="recovered">Récupéré</option>
-        </select>
+      <div class="lot-form-header">
+        <div class="form-group"><label>Nom</label><input type="text" id="lot-form-name" placeholder="Nom du lot"></div>
+        <div class="form-group"><label>Statut</label>
+          <select id="lot-form-status">
+            <option value="received">Reçu</option>
+            <option value="in_progress">En cours</option>
+            <option value="finished">Terminé</option>
+            <option value="recovered">Récupéré</option>
+          </select>
+        </div>
       </div>
-      <div class="form-group"><label>Description</label><textarea id="lot-form-description" placeholder="Description (optionnel)"></textarea></div>
       <div class="form-group"><label>Chemin PDF</label><div id="lot-form-pdf-path-display" class="pdf-path-readonly" title="">—</div></div>
+      <div class="lot-items-section">
+        <h4>Articles</h4>
+        <div class="table-wrap">
+          <table class="data-table" id="lot-items-table">
+            <thead><tr><th>#</th><th>N° série / Type</th><th>Marque / Modèle</th><th>État</th><th>Technicien</th><th></th></tr></thead>
+            <tbody id="lot-items-tbody"></tbody>
+          </table>
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('lot-modal')">Annuler</button>
-      <button class="btn btn-primary" onclick="saveLot()">Enregistrer</button>
+      <button class="btn btn-secondary" onclick="closeModal('lot-modal')">Fermer</button>
+      <button class="btn btn-primary" onclick="saveLot()">Enregistrer le lot</button>
     </div>
   </div>
 </div>
@@ -618,6 +653,25 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('shortcut-modal')">Annuler</button>
       <button class="btn btn-primary" onclick="saveShortcut()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Issue response modal (réponse / notes par type de demande) -->
+<div class="modal-overlay" id="issue-response-modal">
+  <div class="modal">
+    <div class="modal-header"><h3>Réponse / Notes</h3><button class="modal-close" onclick="closeModal('issue-response-modal')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="issue-response-id">
+      <p class="text-muted" style="font-size:12px;margin-bottom:10px">Réponse ou note interne pour cette demande (feedback, bug, etc.).</p>
+      <div class="form-group">
+        <label class="form-label">Notes</label>
+        <textarea id="issue-response-notes" rows="4" placeholder="Votre réponse ou note…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('issue-response-modal')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveIssueResponse()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -796,9 +850,49 @@ document.querySelectorAll('.log-tab').forEach(el => {
   });
 });
 
+// ── Serveur (proxmox status / start / stop / restart) ───────────────────────
+async function loadServerStatus() {
+  const grid = document.getElementById('server-status-grid');
+  const urlEl = document.getElementById('server-status-url');
+  try {
+    const data = await api('GET', '/api/admin/server/status');
+    if (data.error || !data.status) {
+      grid.innerHTML = '<span class="text-muted">' + (data.error || 'Indisponible') + '</span>';
+      if (urlEl) urlEl.textContent = '';
+      return;
+    }
+    const s = data.status;
+    const label = (key, val) => {
+      const v = (val || '').toLowerCase();
+      const ok = v === 'active' || v === 'running' || v === 'online';
+      return `<div class="server-status-item"><span class="server-status-label">${key}</span><span class="server-status-value ${ok ? 'ok' : 'nok'}">${(val || '—')}</span></div>`;
+    };
+    grid.innerHTML = label('Systemd', s.systemd) + label('Container API', s.containerApi) + label('Container DB', s.containerDb) + label('API HTTP', s.apiHttp) + label('WebSocket', s.websocket);
+    if (urlEl) urlEl.textContent = 'Accès : ' + (s.accessUrl || '');
+  } catch (e) {
+    grid.innerHTML = '<span class="text-muted">Erreur de chargement</span>';
+    if (urlEl) urlEl.textContent = '';
+  }
+}
+
+async function serverAction(action) {
+  const msg = { start: 'Démarrer le serveur ?', stop: 'Arrêter le serveur ? La connexion sera coupée.', restart: 'Redémarrer le serveur ? La connexion sera coupée quelques secondes.' };
+  if (!confirm(msg[action])) return;
+  try {
+    const data = await api('POST', '/api/admin/server/' + action);
+    if (data.error) { toast(data.error, 'error'); return; }
+    toast(data.message || 'Commande envoyée.');
+    if (action === 'start') setTimeout(loadServerStatus, 3000);
+    if (action === 'restart') setTimeout(() => { loadServerStatus(); loadDashboard(); }, 6000);
+  } catch (e) {
+    toast('Erreur réseau ou serveur arrêté.', 'error');
+  }
+}
+
 // ── Dashboard ───────────────────────────────────────────────────────────────
 async function loadDashboard() {
   try {
+    loadServerStatus();
     const [stats, ws, db] = await Promise.all([
       api('GET', '/api/monitoring/stats'),
       api('GET', '/api/monitoring/users', null),
@@ -853,29 +947,35 @@ async function loadAllUsers() {
 async function loadUsers() {
   const data = await api('GET', '/api/admin/users');
   allUsers = data.users || [];
-  renderUsers(allUsers);
+  filterUsers();
 }
 
 function filterUsers() {
   const q = document.getElementById('user-search').value.toLowerCase();
-  renderUsers(allUsers.filter(u => u.username.includes(q) || (u.email||'').includes(q)));
+  const showDeleted = document.getElementById('user-show-deleted') && document.getElementById('user-show-deleted').checked;
+  let list = allUsers.filter(u => u.username.toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q));
+  if (!showDeleted) list = list.filter(u => !u.deleted_at);
+  renderUsers(list);
 }
 
 function renderUsers(list) {
   const tbody = document.getElementById('users-table');
   if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun utilisateur</td></tr>'; return; }
-  tbody.innerHTML = list.map(u => `
-    <tr>
-      <td>${u.id}</td>
-      <td><strong>${escHtml(u.username)}</strong>${u.has_password === false || u.has_password === 'false' ? ' <span class="badge badge-warning" title="Aucun mot de passe — connexion impossible">Mdp requis</span>' : ''}</td>
+  tbody.innerHTML = list.map(u => {
+    const deleted = !!u.deleted_at;
+    const deletedBadge = deleted ? ' <span class="badge badge-danger">Supprimé</span>' : '';
+    return `<tr class="${deleted ? 'user-row-deleted' : ''}">
+      <td><strong class="user-id">${u.id}</strong></td>
+      <td><strong>${escHtml(u.username)}</strong>${deletedBadge}${u.has_password === false || u.has_password === 'false' ? ' <span class="badge badge-warning" title="Aucun mot de passe">Mdp requis</span>' : ''}</td>
       <td>${escHtml(u.email||'—')}</td>
       <td><span class="badge badge-${u.role==='admin'?'admin':'user'}">${u.role||'user'}</span></td>
       <td>${fmtDate(u.created_at)}</td>
       <td><div class="actions-cell">
-        <button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="openUserModal(${u.id})"><i class="fa-solid fa-pen"></i></button>
-        <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteUser(${u.id},'${escHtml(u.username)}')"><i class="fa-solid fa-trash"></i></button>
+        ${!deleted ? `<button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="openUserModal(${u.id})"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteUser(${u.id},'${escHtml(u.username)}')"><i class="fa-solid fa-trash"></i></button>` : '—'}
       </div></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
 function openUserModal(id) {
@@ -1042,26 +1142,45 @@ async function loadLots() {
 }
 
 function openLotModal(id) {
-  const lots = Array.from(document.querySelectorAll('#lots-table tr')).filter(tr => !tr.classList.contains('empty-row'));
-  const row = lots.find(tr => parseInt(tr.cells[0].textContent) === id);
-  if (!row) return;
   document.getElementById('lot-edit-id').value = id;
-  document.getElementById('lot-form-name').value = row.cells[1].textContent.trim() || '';
-  const statusBadgeEl = row.cells[2].querySelector('.badge');
-  const statusMap = { 'Reçu':'received', 'En cours':'in_progress', 'Terminé':'finished', 'Récupéré':'recovered' };
-  document.getElementById('lot-form-status').value = statusMap[row.cells[2].textContent.trim()] || 'received';
-  document.getElementById('lot-form-description').value = '';
   const pathEl = document.getElementById('lot-form-pdf-path-display');
   if (pathEl) { pathEl.textContent = '—'; pathEl.title = ''; }
-  api('GET', '/api/admin/lots?status=all').then(data => {
-    const lot = (data.lots || []).find(l => l.id === id);
-    if (lot) {
-      document.getElementById('lot-form-name').value = lot.name || '';
-      document.getElementById('lot-form-status').value = lot.status || 'received';
-      document.getElementById('lot-form-description').value = lot.description || '';
-      if (pathEl) { pathEl.textContent = lot.pdf_path || '—'; pathEl.title = lot.pdf_path || ''; }
+  document.getElementById('lot-items-tbody').innerHTML = '<tr><td colspan="6" class="text-muted">Chargement…</td></tr>';
+  openModal('lot-modal');
+  api('GET', '/api/admin/lots/' + id).then(data => {
+    if (data.error) { toast(data.error, 'error'); return; }
+    const lot = data.lot;
+    document.getElementById('lot-form-name').value = lot.name || '';
+    document.getElementById('lot-form-status').value = lot.status || 'received';
+    if (pathEl) { pathEl.textContent = lot.pdf_path || '—'; pathEl.title = lot.pdf_path || ''; }
+    const items = lot.items || [];
+    const tbody = document.getElementById('lot-items-tbody');
+    if (!items.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun article</td></tr>';
+    } else {
+      const states = ['', 'Reconditionnés', 'HS', 'Pour pièces'];
+      tbody.innerHTML = items.map(it => {
+        const stateOpts = states.map(s => `<option value="${escHtml(s)}" ${(it.state || '') === s ? 'selected' : ''}>${s || '—'}</option>`).join('');
+        return `<tr data-item-id="${it.id}">
+          <td>${it.id}</td>
+          <td>${escHtml(it.serial_number || it.type || '—')}</td>
+          <td>${escHtml([it.marque_name, it.modele_name].filter(Boolean).join(' / ') || '—')}</td>
+          <td><select class="lot-item-state form-input" data-id="${it.id}">${stateOpts}</select></td>
+          <td><input type="text" class="lot-item-technician form-input" data-id="${it.id}" value="${escHtml(it.technician || '')}" placeholder="Technicien"></td>
+          <td><button class="btn btn-secondary btn-sm" onclick="saveLotItemRow(${it.id})">Sauvegarder</button></td>
+        </tr>`;
+      }).join('');
     }
-    openModal('lot-modal');
+  });
+}
+function saveLotItemRow(id) {
+  const row = document.querySelector(`#lot-items-tbody tr[data-item-id="${id}"]`);
+  if (!row) return;
+  const state = row.querySelector('.lot-item-state').value || null;
+  const technician = (row.querySelector('.lot-item-technician').value || '').trim() || null;
+  api('PUT', '/api/admin/lots/items/' + id, { state, technician }).then(data => {
+    if (data.error) toast(data.error, 'error');
+    else toast('Article mis à jour');
   });
 }
 
@@ -1070,7 +1189,6 @@ async function saveLot() {
   const body = {
     name: document.getElementById('lot-form-name').value.trim() || null,
     status: document.getElementById('lot-form-status').value,
-    description: document.getElementById('lot-form-description').value.trim() || null,
   };
   const data = await api('PUT', `/api/admin/lots/${id}`, body);
   if (data.error) { toast(data.error, 'error'); return; }
@@ -1335,44 +1453,27 @@ function renderAppPresets(appManagers) {
   container.innerHTML = Object.entries(appManagers).map(([key, preset]) => `
     <div class="config-preset-card" id="app-preset-${key}">
       <div class="preset-header">
-        <strong>${key}</strong>
-        <div class="flex-gap">
-          <button class="btn btn-secondary btn-sm" onclick="showAddAppModal('${key}')"><i class="fa-solid fa-plus"></i> App</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteAppPreset('${key}')"><i class="fa-solid fa-trash"></i> Preset</button>
-        </div>
+        <span class="preset-name">${escHtml(key)}</span>
+        <button class="btn btn-primary btn-sm" onclick="showAddAppModal('${key}')"><i class="fa-solid fa-plus"></i> App</button>
       </div>
       <div class="table-wrap">
         <table class="data-table">
           <thead><tr><th>Nom</th><th>Commande</th><th>Icône</th><th></th></tr></thead>
           <tbody>
-            ${(preset.apps || []).map((app, i) => `
+            ${(preset.apps || []).length ? (preset.apps || []).map((app, i) => `
               <tr>
                 <td>${escHtml(app.name)}</td>
                 <td><code>${escHtml(app.command)}</code></td>
                 <td>${escHtml(app.icon || '')}</td>
-                <td>
-                  <button class="btn btn-secondary btn-sm btn-icon" onclick="editApp('${key}', ${i})"><i class="fa-solid fa-pen"></i></button>
-                  <button class="btn btn-danger btn-sm btn-icon" onclick="deleteApp('${key}', ${i})"><i class="fa-solid fa-trash"></i></button>
+                <td class="actions-cell">
+                  <button class="btn btn-secondary btn-sm btn-icon" onclick="editApp('${key}', ${i})" title="Modifier"><i class="fa-solid fa-pen"></i></button>
+                  <button class="btn btn-danger btn-sm btn-icon" onclick="deleteApp('${key}', ${i})" title="Supprimer"><i class="fa-solid fa-trash"></i></button>
                 </td>
-              </tr>`).join('')}
+              </tr>`).join('') : '<tr><td colspan="4" class="text-muted">Aucune application</td></tr>'}
           </tbody>
         </table>
       </div>
     </div>`).join('');
-}
-
-function showAddAppPresetModal() {
-  openDynamicModal('Nouveau preset', `
-    <div class="form-group"><label class="form-label">Nom du preset (ex: dev, office)</label>
-    <input type="text" class="form-input" id="new-preset-key" placeholder="monpreset"></div>
-  `, async () => {
-    const key = document.getElementById('new-preset-key').value.trim().toLowerCase();
-    if (!key) { toast('Nom requis', 'error'); return false; }
-    if (_appConfig.appManagers[key]) { toast('Ce preset existe déjà', 'error'); return false; }
-    _appConfig.appManagers[key] = { apps: [] };
-    await saveAppConfigToServer();
-    return true;
-  });
 }
 
 function showAddAppModal(presetKey, editIndex = null) {
@@ -1399,12 +1500,6 @@ function editApp(presetKey, index) { showAddAppModal(presetKey, index); }
 async function deleteApp(presetKey, index) {
   if (!confirm('Supprimer cette application ?')) return;
   _appConfig.appManagers[presetKey].apps.splice(index, 1);
-  await saveAppConfigToServer();
-}
-
-async function deleteAppPreset(key) {
-  if (!confirm(`Supprimer le preset "${key}" et toutes ses applications ?`)) return;
-  delete _appConfig.appManagers[key];
   await saveAppConfigToServer();
 }
 
@@ -1459,20 +1554,15 @@ function renderFolderPresets(fileManagers) {
   container.innerHTML = Object.entries(fileManagers).map(([key, preset]) => `
     <div class="config-preset-card" id="folder-preset-${key}">
       <div class="preset-header">
-        <strong>${key}</strong>
-        <div class="flex-gap">
-          <button class="btn btn-secondary btn-sm" onclick="showEditFolderPresetModal('${key}')"><i class="fa-solid fa-pen"></i> Modifier</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteFolderPreset('${key}')"><i class="fa-solid fa-trash"></i> Supprimer</button>
-        </div>
+        <span class="preset-name">${escHtml(key)}</span>
+        <button class="btn btn-secondary btn-sm" onclick="showEditFolderPresetModal('${key}')"><i class="fa-solid fa-pen"></i> Modifier</button>
       </div>
       <div class="config-preset-body">
-        <div><strong>Chemin :</strong> <code>${escHtml(preset.basePath || '')}</code></div>
-        ${preset.blacklist?.length ? `<div><strong>Blacklist :</strong> ${preset.blacklist.map(b => `<code>${escHtml(b)}</code>`).join(' ')}</div>` : ''}
+        <div class="preset-path"><span class="label">Chemin</span> <code>${escHtml(preset.basePath || '')}</code></div>
+        ${preset.blacklist?.length ? `<div class="preset-blacklist"><span class="label">Blacklist</span> ${preset.blacklist.map(b => `<code>${escHtml(b)}</code>`).join(' ')}</div>` : ''}
       </div>
     </div>`).join('');
 }
-
-function showAddFolderPresetModal() { showEditFolderPresetModal(null); }
 
 function showEditFolderPresetModal(editKey) {
   const existing = editKey ? (_folderConfig.fileManagers[editKey] || {}) : {};
@@ -1492,12 +1582,6 @@ function showEditFolderPresetModal(editKey) {
     await saveFolderConfigToServer();
     return true;
   });
-}
-
-async function deleteFolderPreset(key) {
-  if (!confirm(`Supprimer le preset "${key}" ?`)) return;
-  delete _folderConfig.fileManagers[key];
-  await saveFolderConfigToServer();
 }
 
 async function saveFolderGlobals() {
@@ -1749,54 +1833,94 @@ async function loadLogReception() {
   term.scrollTop = term.scrollHeight;
 }
 
+function renderIssueRow(e, showType) {
+  const isFeedback = e.error_type === 'feedback' || e.error_type === 'bug_report';
+  const mainText = isFeedback ? (e.user_message || e.error_message || '—') : (e.error_message || '—');
+  const detail = isFeedback && e.error_message && e.error_message !== e.user_message
+    ? `<div class="issue-detail">${escHtml(String(e.error_message).substring(0, 80))}</div>` : '';
+  const notes = e.notes ? `<div class="issue-notes" title="${escHtml(e.notes)}">${escHtml(String(e.notes).substring(0, 60))}${e.notes.length > 60 ? '…' : ''}</div>` : '';
+  const notesEsc = (e.notes || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const typeLabels = { uncaught_error: '⚡ Erreur JS', unhandled_rejection: '⚠ Promise' };
+  const typeCell = showType ? `<td><code class="issue-type">${escHtml(typeLabels[e.error_type] || e.error_type || '—')}</code></td>` : '';
+  return `<tr data-id="${e.id}" data-notes="${notesEsc}">
+    <td class="issue-id">#${e.id}</td>${typeCell}
+    <td class="issue-message"><div class="issue-main">${escHtml(mainText)}</div>${detail}${notes}</td>
+    <td class="issue-client">${escHtml(e.client_id||'—')}</td>
+    <td class="issue-date">${fmtDate(e.timestamp)}</td>
+    <td><span class="badge ${e.resolved?'badge-success':'badge-danger'}">${e.resolved?'Résolue':'Ouverte'}</span></td>
+    <td class="issue-actions">
+      <button class="btn btn-secondary btn-sm" onclick="openIssueResponseModal(${e.id})" title="Répondre / Notes">Répondre</button>
+      <button class="btn btn-secondary btn-sm" onclick="toggleResolve(${e.id},${!!e.resolved})">${e.resolved?'Rouvrir':'Résoudre'}</button>
+    </td>
+  </tr>`;
+}
+
 async function loadLogErrors() {
   const status = document.getElementById('err-filter-status').value;
-  const type = document.getElementById('err-filter-type').value;
-  let url = '/api/monitoring/errors?limit=100';
+  let url = '/api/monitoring/errors?limit=200';
   if (status === 'resolved') url += '&resolved=true';
   if (status === 'unresolved') url += '&resolved=false';
-  if (type) url += `&errorType=${encodeURIComponent(type)}`;
   const [statsData, errData] = await Promise.all([
     api('GET', '/api/monitoring/errors/stats'),
     api('GET', url),
   ]);
 
-  // Stats
-  const s = statsData || {};
+  const s = (statsData && statsData.stats) ? statsData.stats : (statsData || {});
   const row = document.getElementById('err-stats-row');
-  row.innerHTML = `
-    <div class="stat-card red"><div class="label">Total issues</div><div class="value">${s.total||0}</div></div>
-    <div class="stat-card orange"><div class="label">Ouvertes</div><div class="value">${s.unresolved||0}</div></div>
-    <div class="stat-card blue"><div class="label">Dernières 24h</div><div class="value">${s.last24h||0}</div></div>
-    <div class="stat-card green"><div class="label">Derniers 7j</div><div class="value">${s.last7d||0}</div></div>
-  `;
+  if (row) {
+    row.innerHTML = `
+      <div class="stat-card red"><div class="label">Total</div><div class="value">${s.total||0}</div></div>
+      <div class="stat-card orange"><div class="label">Ouvertes</div><div class="value">${s.unresolved||0}</div></div>
+      <div class="stat-card blue"><div class="label">24h</div><div class="value">${s.last24h||0}</div></div>
+      <div class="stat-card green"><div class="label">7j</div><div class="value">${s.last7d||0}</div></div>
+    `;
+  }
 
-  const errors = errData.data || errData.errors || [];
-  const tbody = document.getElementById('log-errors-table');
+  const errors = (errData && errData.data) ? errData.data : (errData.errors || []);
+  const feedbackList = errors.filter(e => e.error_type === 'feedback');
+  const bugsList = errors.filter(e => e.error_type === 'bug_report');
+  const otherList = errors.filter(e => e.error_type !== 'feedback' && e.error_type !== 'bug_report');
 
-  const typeLabels = { feedback: '💬 Feedback', bug_report: '🐛 Bug', uncaught_error: '⚡ Erreur JS', unhandled_rejection: '⚠ Promise' };
-  const getTypeLabel = t => typeLabels[t] || t || '—';
+  const feedbackTbody = document.getElementById('log-errors-feedback-table');
+  const bugsTbody = document.getElementById('log-errors-bugs-table');
+  const otherTbody = document.getElementById('log-errors-other-table');
 
-  tbody.innerHTML = errors.length
-    ? errors.map(e => {
-        const isFeedback = e.error_type === 'feedback' || e.error_type === 'bug_report';
-        const mainText = isFeedback
-          ? (e.user_message || e.error_message || '—')
-          : (e.error_message || '—');
-        const detail = isFeedback && e.error_message && e.error_message !== e.user_message
-          ? `<div style="font-size:10px;color:var(--text-muted);margin-top:2px">${escHtml(e.error_message.substring(0, 80))}</div>`
-          : '';
-        return `<tr>
-          <td style="font-size:11px;color:var(--text-muted)">#${e.id}</td>
-          <td><code style="font-size:11px">${escHtml(getTypeLabel(e.error_type))}</code></td>
-          <td style="max-width:320px"><div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escHtml(mainText)}</div>${detail}</td>
-          <td style="font-size:11px">${escHtml(e.client_id||'—')}</td>
-          <td style="font-size:11px">${fmtDate(e.timestamp)}</td>
-          <td><span class="badge ${e.resolved?'badge-success':'badge-danger'}">${e.resolved?'Résolue':'Ouverte'}</span></td>
-          <td><button class="btn btn-secondary btn-sm" onclick="toggleResolve(${e.id},${e.resolved})">${e.resolved?'Rouvrir':'Résoudre'}</button></td>
-        </tr>`;
-      }).join('')
-    : '<tr class="empty-row"><td colspan="7">Aucune issue</td></tr>';
+  if (feedbackTbody) {
+    document.getElementById('err-feedback-count').textContent = feedbackList.length;
+    feedbackTbody.innerHTML = feedbackList.length
+      ? feedbackList.map(e => renderIssueRow(e, false)).join('')
+      : '<tr class="empty-row"><td colspan="6">Aucun feedback</td></tr>';
+  }
+  if (bugsTbody) {
+    document.getElementById('err-bugs-count').textContent = bugsList.length;
+    bugsTbody.innerHTML = bugsList.length
+      ? bugsList.map(e => renderIssueRow(e, false)).join('')
+      : '<tr class="empty-row"><td colspan="6">Aucun bug report</td></tr>';
+  }
+  if (otherTbody) {
+    document.getElementById('err-other-count').textContent = otherList.length;
+    otherTbody.innerHTML = otherList.length
+      ? otherList.map(e => renderIssueRow(e, true)).join('')
+      : '<tr class="empty-row"><td colspan="7">Aucune erreur technique</td></tr>';
+  }
+}
+
+function openIssueResponseModal(id) {
+  const row = document.querySelector(`#page-errors tr[data-id="${id}"]`);
+  const notes = row ? (row.getAttribute('data-notes') || '').replace(/&quot;/g, '"').replace(/&lt;/g, '<') : '';
+  document.getElementById('issue-response-id').value = id;
+  document.getElementById('issue-response-notes').value = notes;
+  openModal('issue-response-modal');
+}
+
+async function saveIssueResponse() {
+  const id = document.getElementById('issue-response-id').value;
+  const notes = document.getElementById('issue-response-notes').value.trim();
+  const data = await api('PATCH', `/api/monitoring/errors/${id}/resolve`, { resolved: undefined, notes: notes || null });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Notes enregistrées');
+  closeModal('issue-response-modal');
+  loadLogErrors();
 }
 
 async function toggleResolve(id, resolved) {

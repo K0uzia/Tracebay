@@ -5,8 +5,12 @@ import { getServerLogs } from '../utils/server-log-buffer';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as child_process from 'child_process';
 import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
+
+const SERVICE_NAME = process.env.SERVICE_NAME || 'proxmox-backend';
+const PROXMOX_CLI = process.env.PROXMOX_CLI || '/usr/local/bin/proxmox';
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'SECRET_RETIRE';
 const JWT_SECRET = process.env.JWT_SECRET || 'SECRET_RETIRE';
@@ -618,6 +622,67 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       return { success: true };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin DELETE /lots/:id');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.get('/api/admin/lots/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    try {
+      const lotResult = await query(
+        `SELECT l.id, l.name, l.status, l.item_count, l.received_at, l.pdf_path
+         FROM lots l WHERE l.id = $1 AND l.deleted_at IS NULL`,
+        [id]
+      );
+      if (lotResult.rowCount === 0) { reply.statusCode = 404; return { error: 'Lot introuvable' }; }
+      const lot = lotResult.rows[0];
+      const itemsResult = await query(
+        `SELECT li.id, li.serial_number, li.type, li.state, li.technician, li.state_changed_at,
+                m.name as marque_name, mo.name as modele_name
+         FROM lot_items li
+         LEFT JOIN marques m ON li.marque_id = m.id
+         LEFT JOIN modeles mo ON li.modele_id = mo.id
+         WHERE li.lot_id = $1 AND (li.deleted_at IS NULL)
+         ORDER BY li.id ASC`,
+        [id]
+      );
+      return { success: true, lot: { ...lot, items: itemsResult.rows } };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin GET /lots/:id');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.put('/api/admin/lots/items/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    const { state, technician } = request.body as { state?: string | null; technician?: string | null };
+    const updates: string[] = [];
+    const values: any[] = [];
+    let i = 1;
+    if (state !== undefined) {
+      updates.push(`state = $${i++}`, `state_changed_at = NOW()`);
+      values.push(state === null || (typeof state === 'string' && state.trim() === '') ? null : state);
+    }
+    if (technician !== undefined) {
+      updates.push(`technician = $${i++}`);
+      values.push(technician === null || (typeof technician === 'string' && technician.trim() === '') ? null : technician);
+    }
+    if (updates.length === 0) { reply.statusCode = 400; return { error: 'state ou technician requis' }; }
+    updates.push('updated_at = NOW()');
+    values.push(id);
+    try {
+      const result = await query(
+        `UPDATE lot_items SET ${updates.join(', ')} WHERE id = $${i} RETURNING id, lot_id, state, technician, state_changed_at`,
+        values
+      );
+      if (result.rowCount === 0) { reply.statusCode = 404; return { error: 'Article introuvable' }; }
+      return { success: true, item: result.rows[0] };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin PUT /lots/items/:id');
       reply.statusCode = 500;
       return { error: 'Database error' };
     }
@@ -1261,6 +1326,154 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     if (!checkAdminAuth(request, reply)) return;
     const logs = getServerLogs().map(l => `[${l.time}] ${l.text}`).join('\n');
     return { success: true, logs };
+  });
+
+  // ─────────────────────────────────────────────
+  // CONTRÔLE SERVEUR (équivalent proxmox status / start / stop / restart)
+  // ─────────────────────────────────────────────
+
+  function getServerStatus(): {
+    systemd: string;
+    containerApi: string;
+    containerDb: string;
+    apiHttp: string;
+    websocket: string;
+    accessUrl: string;
+  } {
+    let systemd = 'unknown';
+    let containerApi = 'stopped';
+    let containerDb = 'stopped';
+    const apiHttp = 'online'; // si on répond, l'API est up
+    const websocket = 'online';
+    const apiPort = process.env.API_PORT || '4000';
+    const accessUrl = `http://localhost:${apiPort}`;
+
+    try {
+      const out = child_process.execSync(`systemctl is-active ${SERVICE_NAME} 2>/dev/null || echo unknown`, {
+        encoding: 'utf8',
+        timeout: 3000,
+      });
+      systemd = (out || '').trim().toLowerCase() || 'unknown';
+    } catch {
+      // non-Linux ou pas de droits
+    }
+
+    try {
+      const psOut = child_process.execSync('docker ps -a --format "{{.Names}}\t{{.Status}}" 2>/dev/null || true', {
+        encoding: 'utf8',
+        timeout: 5000,
+      });
+      const lines = (psOut || '').trim().split('\n').filter(Boolean);
+      for (const line of lines) {
+        const [name = '', status = ''] = line.split('\t');
+        if (/workspace-proxmox|proxmox.*api/i.test(name)) {
+          containerApi = /up|running/i.test(status) ? 'running' : 'stopped';
+        }
+        if (/workspace-db|proxmox.*db/i.test(name)) {
+          containerDb = /up|running/i.test(status) ? 'running' : 'stopped';
+        }
+      }
+    } catch {
+      // docker non dispo ou pas de droits
+    }
+
+    return {
+      systemd: systemd === 'active' ? 'active' : systemd,
+      containerApi,
+      containerDb,
+      apiHttp,
+      websocket,
+      accessUrl,
+    };
+  }
+
+  fastify.get('/api/admin/server/status', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    try {
+      const status = getServerStatus();
+      return { success: true, status };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin GET /server/status');
+      reply.statusCode = 500;
+      return { error: 'Erreur lors de la récupération du statut' };
+    }
+  });
+
+  fastify.post('/api/admin/server/start', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    try {
+      reply.send({ success: true, message: 'Démarrage en cours.' });
+      setImmediate(() => {
+        try {
+          child_process.spawn(PROXMOX_CLI, ['start'], {
+            stdio: 'ignore',
+            detached: true,
+            env: process.env,
+          }).unref();
+        } catch {
+          try {
+            child_process.spawn('systemctl', ['start', SERVICE_NAME], { stdio: 'ignore', detached: true }).unref();
+          } catch {
+            // ignore
+          }
+        }
+      });
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin POST /server/start');
+      reply.statusCode = 500;
+      return { error: err?.message || 'Échec du démarrage' };
+    }
+  });
+
+  fastify.post('/api/admin/server/stop', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    try {
+      // Répondre avant d'arrêter (sinon la réponse ne part pas)
+      reply.send({ success: true, message: 'Arrêt en cours.' });
+      setImmediate(() => {
+        try {
+          child_process.spawnSync('systemctl', ['stop', SERVICE_NAME], {
+            stdio: 'ignore',
+            timeout: 10000,
+          });
+        } catch {
+          try {
+            child_process.spawnSync(PROXMOX_CLI, ['stop'], { stdio: 'ignore', timeout: 10000 });
+          } catch {
+            // ignore
+          }
+        }
+      });
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin POST /server/stop');
+      reply.statusCode = 500;
+      return { error: err?.message || 'Échec de l\'arrêt' };
+    }
+  });
+
+  fastify.post('/api/admin/server/restart', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    try {
+      reply.send({ success: true, message: 'Redémarrage en cours…' });
+      setTimeout(() => {
+        try {
+          child_process.spawnSync('systemctl', ['restart', SERVICE_NAME], {
+            stdio: 'ignore',
+            timeout: 15000,
+          });
+        } catch {
+          try {
+            child_process.spawnSync(PROXMOX_CLI, ['restart'], { stdio: 'ignore', timeout: 15000 });
+          } catch {
+            // ignore
+          }
+        }
+      }, 1500);
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin POST /server/restart');
+      reply.statusCode = 500;
+      return { error: err?.message || 'Échec du redémarrage' };
+    }
   });
 
   fastify.log.info('✅ Admin routes registered (v2 — auth admin JWT)');

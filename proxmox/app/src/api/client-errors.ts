@@ -8,6 +8,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { query } from '../db';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import * as crypto from 'crypto';
 
 // Rate limiting simple (sans dépendance externe)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -81,14 +82,34 @@ async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promis
     return true;
   }
 
-  // Accepter le JWT de l'app (même format que /api/auth) pour les utilisateurs connectés
   const raw = token.replace(/^Bearer\s+/i, '').trim();
+
+  // Accepter le JWT admin (même format que /api/admin/auth/login : header.body.sig)
+  if (raw.includes('.') && raw.split('.').length === 3) {
+    try {
+      const parts = raw.split('.');
+      const [headerB64, bodyB64, sig] = parts;
+      const jwtSecret = process.env.JWT_SECRET || 'SECRET_RETIRE';
+      const expected = crypto.createHmac('sha256', jwtSecret).update(`${headerB64}.${bodyB64}`).digest('base64url');
+      if (sig === expected) {
+        const payload = JSON.parse(Buffer.from(bodyB64, 'base64url').toString());
+        if (payload.exp != null && payload.exp < Math.floor(Date.now() / 1000)) {
+          reply.statusCode = 401;
+          reply.send({ success: false, error: 'Token expiré' });
+          return false;
+        }
+        if (payload.admin === true) return true;
+      }
+    } catch {
+      // invalid JWT
+    }
+  }
+
+  // Ancien format JWT (jwt_ + base64) pour rétrocompat
   if (raw.startsWith('jwt_')) {
     try {
       const decoded = JSON.parse(Buffer.from(raw.slice(4), 'base64').toString());
-      if (decoded && decoded.username) {
-        return true;
-      }
+      if (decoded && decoded.username) return true;
     } catch {
       // token invalide
     }
@@ -389,21 +410,33 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
 
     try {
       const { id } = request.params as { id: string };
-      const { resolved = true, notes } = request.body as { resolved?: boolean; notes?: string };
+      const body = (request.body as { resolved?: boolean; notes?: string }) || {};
+      const { resolved, notes } = body;
 
+      const updates: string[] = [];
+      const values: any[] = [];
+      let i = 1;
+      if (resolved !== undefined) {
+        updates.push(`resolved = $${i++}`, `resolved_at = $${i++}`);
+        values.push(resolved, resolved ? new Date().toISOString() : null);
+      }
+      if (notes !== undefined) {
+        updates.push(`notes = $${i++}`);
+        values.push(notes || null);
+      }
+      if (updates.length === 0) {
+        reply.statusCode = 400;
+        return reply.send({ success: false, error: 'resolved ou notes requis' });
+      }
+      values.push(id);
       await query(
-        `UPDATE client_errors SET resolved = $1, resolved_at = $2, notes = $3 WHERE id = $4`,
-        [
-          resolved,
-          resolved ? new Date().toISOString() : null,
-          notes || null,
-          id
-        ]
+        `UPDATE client_errors SET ${updates.join(', ')} WHERE id = $${i}`,
+        values
       );
 
       return reply.send({
         success: true,
-        message: `Erreur ${id} ${resolved ? 'marquée comme résolue' : 'marquée comme non résolue'}`
+        message: notes !== undefined ? 'Notes enregistrées' : (resolved ? 'Marquée résolue' : 'Marquée ouverte')
       });
 
     } catch (error: unknown) {
