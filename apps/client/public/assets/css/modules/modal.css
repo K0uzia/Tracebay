@@ -82,6 +82,12 @@ dialog:has(.modal-content.modal-lg) {
     max-height: inherit;
 }
 
+/* Le contenu remplit l'espace pour que le body scrolle si contenu trop haut */
+.universal-modal > .modal-content {
+    flex: 1 1 0;
+    min-height: 0;
+}
+
 .universal-modal::-webkit-scrollbar {
     width: var(--unit-1);
 }
@@ -127,6 +133,10 @@ dialog:has(.modal-content.modal-lg) {
     margin: 0;
     color: var(--h2);
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* Close Button */
