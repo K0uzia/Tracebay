@@ -6,7 +6,7 @@
   <title>Panel Admin - Workspace</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha512-Evv84Mr4kqVGRNSgIGL/F/aIDqQb7xQ2vcrdIwxfjThSH8CSR7PBEakCr51Ck+w+/U6swU2Im1vVX0SVk9ABhg==" crossorigin="anonymous" referrerpolicy="no-referrer">
   <link rel="stylesheet" href="/monitoring/assets/monitoring.css">
-  <link rel="icon" type="image/png" href="/proxmox/app/src/views/favicon.png">
+  <link rel="icon" type="image/png" href="/monitoring/assets/favicon.png">
 </head>
 <body>
 
@@ -35,8 +35,10 @@
   <aside class="sidebar">
     <div class="sidebar-logo">
       <img src="/monitoring/assets/favicon.png" alt="" class="sidebar-logo-img">
-      <div class="title">Admin Panel</div>
-      <div class="sub">Workspace Backend</div>
+      <div class="sidebar-logo-text">
+        <div class="title">Admin Panel</div>
+        <div class="sub">Workspace Backend</div>
+      </div>
     </div>
     <div class="sidebar-user">Connecté en tant que<strong id="sidebar-username">—</strong></div>
     <nav>
@@ -63,6 +65,7 @@
 
   <!-- Main -->
   <main class="main">
+    <div class="main-inner">
 
     <!-- ── Dashboard ── -->
     <div class="page active" id="page-dashboard">
@@ -248,14 +251,18 @@
           <div class="loading-inline">Chargement…</div>
         </div>
       </div>
-      <div class="card" style="margin-top:1rem">
+      <div class="card config-card-secondary">
         <div class="card-header"><h2>Filtres globaux</h2></div>
         <div class="card-body">
-          <label class="form-label">Extensions ignorées (séparées par des virgules)</label>
-          <input type="text" class="form-input" id="folder-ignore-ext" placeholder=".tmp, .bak, .log">
-          <label class="form-label" style="margin-top:.75rem">Suffixes ignorés (séparées par des virgules)</label>
-          <input type="text" class="form-input" id="folder-ignore-suffix" placeholder=".tmp, .bak, ~">
-          <button class="btn btn-primary btn-sm" style="margin-top:.75rem" onclick="saveFolderGlobals()"><i class="fa-solid fa-floppy-disk"></i> Sauvegarder filtres</button>
+          <div class="form-group">
+            <label class="form-label">Extensions ignorées (séparées par des virgules)</label>
+            <input type="text" class="form-input" id="folder-ignore-ext" placeholder=".tmp, .bak, .log">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Suffixes ignorés (séparées par des virgules)</label>
+            <input type="text" class="form-input" id="folder-ignore-suffix" placeholder=".tmp, .bak, ~">
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveFolderGlobals()"><i class="fa-solid fa-floppy-disk"></i> Sauvegarder filtres</button>
         </div>
       </div>
     </div>
@@ -465,6 +472,7 @@
       </div>
     </div>
 
+    </div>
   </main>
 </div>
 
@@ -574,7 +582,7 @@
         </select>
       </div>
       <div class="form-group"><label>Description</label><textarea id="lot-form-description" placeholder="Description (optionnel)"></textarea></div>
-      <div class="form-group"><label>Chemin PDF</label><input type="text" id="lot-form-pdf-path" placeholder="Chemin fichier PDF (optionnel)"></div>
+      <div class="form-group"><label>Chemin PDF</label><div id="lot-form-pdf-path-display" class="pdf-path-readonly" title="">—</div></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('lot-modal')">Annuler</button>
@@ -610,6 +618,20 @@
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('shortcut-modal')">Annuler</button>
       <button class="btn btn-primary" onclick="saveShortcut()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- PDF preview modal (affiche le PDF ou "Fichier introuvable" + chemin) -->
+<div class="modal-overlay" id="pdf-preview-modal">
+  <div class="modal" style="max-width:90vw;width:800px;max-height:90vh;display:flex;flex-direction:column">
+    <div class="modal-header"><h3>Aperçu PDF</h3><button class="modal-close" onclick="closeModal('pdf-preview-modal')">×</button></div>
+    <div class="modal-body" style="flex:1;min-height:0;display:flex;flex-direction:column;padding:0">
+      <iframe id="pdf-preview-iframe" style="flex:1;width:100%;min-height:400px;border:none"></iframe>
+      <div id="pdf-preview-fallback" class="pdf-preview-fallback" style="display:none;padding:20px">
+        <p class="text-muted">Fichier introuvable sur le serveur.</p>
+        <p><strong>Chemin :</strong> <code id="pdf-preview-path"></code></p>
+      </div>
     </div>
   </div>
 </div>
@@ -999,9 +1021,11 @@ async function loadLots() {
   if (!lots.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Aucun lot</td></tr>'; return; }
   const base = window.location.origin;
   tbody.innerHTML = lots.map(l => {
+    const pathEsc = l.pdf_path ? escHtml(l.pdf_path) : '';
+    const pathTitle = l.pdf_path ? ` title="${escHtml(l.pdf_path)}"` : '';
     const pdfCell = l.pdf_path
-      ? `<a href="${base}/api/lots/${l.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm">Voir</a>`
-      : '—';
+      ? `<span class="pdf-path-cell"><span class="pdf-path"${pathTitle}>${pathEsc}</span> <button type="button" class="btn btn-secondary btn-sm" onclick="openPdfPreview(this)" data-lot-id="${l.id}" data-pdf-path="${(l.pdf_path||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}">Voir</button> <a href="${base}/api/lots/${l.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="Ouvrir dans un nouvel onglet">↗</a></span>`
+      : '<span class="pdf-path">—</span>';
     return `<tr>
       <td>${l.id}</td>
       <td>${escHtml(l.name||'—')}</td>
@@ -1027,14 +1051,15 @@ function openLotModal(id) {
   const statusMap = { 'Reçu':'received', 'En cours':'in_progress', 'Terminé':'finished', 'Récupéré':'recovered' };
   document.getElementById('lot-form-status').value = statusMap[row.cells[2].textContent.trim()] || 'received';
   document.getElementById('lot-form-description').value = '';
-  document.getElementById('lot-form-pdf-path').value = '';
+  const pathEl = document.getElementById('lot-form-pdf-path-display');
+  if (pathEl) { pathEl.textContent = '—'; pathEl.title = ''; }
   api('GET', '/api/admin/lots?status=all').then(data => {
     const lot = (data.lots || []).find(l => l.id === id);
     if (lot) {
       document.getElementById('lot-form-name').value = lot.name || '';
       document.getElementById('lot-form-status').value = lot.status || 'received';
       document.getElementById('lot-form-description').value = lot.description || '';
-      document.getElementById('lot-form-pdf-path').value = lot.pdf_path || '';
+      if (pathEl) { pathEl.textContent = lot.pdf_path || '—'; pathEl.title = lot.pdf_path || ''; }
     }
     openModal('lot-modal');
   });
@@ -1046,7 +1071,6 @@ async function saveLot() {
     name: document.getElementById('lot-form-name').value.trim() || null,
     status: document.getElementById('lot-form-status').value,
     description: document.getElementById('lot-form-description').value.trim() || null,
-    pdf_path: document.getElementById('lot-form-pdf-path').value.trim() || null,
   };
   const data = await api('PUT', `/api/admin/lots/${id}`, body);
   if (data.error) { toast(data.error, 'error'); return; }
@@ -1061,6 +1085,31 @@ async function deleteLot(id) {
   if (data.error) { toast(data.error, 'error'); return; }
   toast('Lot supprimé');
   loadLots();
+}
+
+function openPdfPreview(btn) {
+  const lotId = btn.getAttribute('data-lot-id');
+  const pdfPath = (btn.getAttribute('data-pdf-path') || '').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+  const iframe = document.getElementById('pdf-preview-iframe');
+  const fallback = document.getElementById('pdf-preview-fallback');
+  const pathEl = document.getElementById('pdf-preview-path');
+  if (!iframe || !fallback || !pathEl) return;
+  iframe.style.display = 'none';
+  iframe.src = '';
+  fallback.style.display = 'none';
+  pathEl.textContent = pdfPath || '—';
+  openModal('pdf-preview-modal');
+  const url = BASE + '/api/lots/' + lotId + '/pdf';
+  fetch(url, { credentials: 'include' }).then(function (r) {
+    if (r.ok) {
+      iframe.src = url;
+      iframe.style.display = 'block';
+    } else {
+      fallback.style.display = 'block';
+    }
+  }).catch(function () {
+    fallback.style.display = 'block';
+  });
 }
 
 async function loadMarques() {
@@ -1292,21 +1341,23 @@ function renderAppPresets(appManagers) {
           <button class="btn btn-danger btn-sm" onclick="deleteAppPreset('${key}')"><i class="fa-solid fa-trash"></i> Preset</button>
         </div>
       </div>
-      <table class="data-table" style="margin-top:.5rem">
-        <thead><tr><th>Nom</th><th>Commande</th><th>Icône</th><th></th></tr></thead>
-        <tbody>
-          ${(preset.apps || []).map((app, i) => `
-            <tr>
-              <td>${escHtml(app.name)}</td>
-              <td><code>${escHtml(app.command)}</code></td>
-              <td>${escHtml(app.icon || '')}</td>
-              <td>
-                <button class="btn btn-secondary btn-sm btn-icon" onclick="editApp('${key}', ${i})"><i class="fa-solid fa-pen"></i></button>
-                <button class="btn btn-danger btn-sm btn-icon" onclick="deleteApp('${key}', ${i})"><i class="fa-solid fa-trash"></i></button>
-              </td>
-            </tr>`).join('')}
-        </tbody>
-      </table>
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Nom</th><th>Commande</th><th>Icône</th><th></th></tr></thead>
+          <tbody>
+            ${(preset.apps || []).map((app, i) => `
+              <tr>
+                <td>${escHtml(app.name)}</td>
+                <td><code>${escHtml(app.command)}</code></td>
+                <td>${escHtml(app.icon || '')}</td>
+                <td>
+                  <button class="btn btn-secondary btn-sm btn-icon" onclick="editApp('${key}', ${i})"><i class="fa-solid fa-pen"></i></button>
+                  <button class="btn btn-danger btn-sm btn-icon" onclick="deleteApp('${key}', ${i})"><i class="fa-solid fa-trash"></i></button>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
     </div>`).join('');
 }
 
@@ -1414,7 +1465,7 @@ function renderFolderPresets(fileManagers) {
           <button class="btn btn-danger btn-sm" onclick="deleteFolderPreset('${key}')"><i class="fa-solid fa-trash"></i> Supprimer</button>
         </div>
       </div>
-      <div style="margin-top:.5rem;font-size:.9rem;color:var(--text2)">
+      <div class="config-preset-body">
         <div><strong>Chemin :</strong> <code>${escHtml(preset.basePath || '')}</code></div>
         ${preset.blacklist?.length ? `<div><strong>Blacklist :</strong> ${preset.blacklist.map(b => `<code>${escHtml(b)}</code>`).join(' ')}</div>` : ''}
       </div>

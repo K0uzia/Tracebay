@@ -148,7 +148,8 @@ function broadcastUserCount() {
       contentSecurityPolicy: false
     });
 
-    // CORS
+    // CORS : autoriser l'origine du client (web/Electron) pour POST /api/monitoring/errors (feedback).
+    // Exemple : ALLOWED_ORIGINS=http://localhost:3000,https://app.example.com ou * pour tout autoriser.
     const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(',').map(o => o.trim());
     
     await fastify.register(cors, {

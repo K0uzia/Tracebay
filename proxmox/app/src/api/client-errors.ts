@@ -207,7 +207,12 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
         ]
       );
 
-      fastify.log.info(`[Monitoring] Erreur enregistrée: ${sanitized.errorType} - ${sanitized.errorMessage.substring(0, 50)}...`);
+      const isFeedback = sanitized.errorType === 'feedback' || sanitized.errorType === 'bug_report';
+      fastify.log.info(
+        isFeedback
+          ? `[Monitoring] Feedback reçu (${sanitized.errorType}): ${sanitized.errorMessage.substring(0, 80)}${sanitized.errorMessage.length > 80 ? '…' : ''}`
+          : `[Monitoring] Erreur enregistrée: ${sanitized.errorType} - ${sanitized.errorMessage.substring(0, 50)}…`
+      );
 
       return reply.send({
         success: true,
