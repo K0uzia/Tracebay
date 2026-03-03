@@ -621,12 +621,13 @@ app.on('ready', async () => {
 
     if (app.isPackaged) {
         let timeoutId;
+        /** Une fois true, on ne réagit plus aux événements de mise à jour (évite lancement puis MAJ tardive) */
+        let updateCheckFinished = false;
         try {
             const currentVersion = app.getVersion();
             console.log('[Update] Version installée:', currentVersion);
 
             const { autoUpdater } = require('electron-updater');
-            // URL du feed explicite (repo en minuscules comme dans l'URL GitHub)
             autoUpdater.setFeedURL({
                 provider: 'github',
                 owner: 'SandersonnDev',
@@ -636,53 +637,52 @@ app.on('ready', async () => {
             autoUpdater.autoDownload = true;
             autoUpdater.autoInstallOnAppQuit = false;
 
-            let updateHandled = false;
             const done = () => {
-                if (updateHandled) return;
-                updateHandled = true;
+                if (updateCheckFinished) return;
+                updateCheckFinished = true;
                 if (timeoutId) clearTimeout(timeoutId);
-                setSplashMessage('Aucune mise à jour');
+                timeoutId = null;
                 setSplashProgress(null);
-                setTimeout(() => {
-                    setSplashMessage('Lancement…');
-                    setTimeout(launchApp, 400);
-                }, 600);
+                setSplashMessage('À jour. Lancement…');
+                setTimeout(launchApp, 500);
             };
 
             autoUpdater.on('checking-for-update', () => {
+                if (updateCheckFinished) return;
                 setSplashMessage('Recherche de mise à jour…');
                 setSplashProgress(null);
             });
             autoUpdater.on('update-available', (info) => {
+                if (updateCheckFinished) return;
                 if (timeoutId) {
                     clearTimeout(timeoutId);
                     timeoutId = null;
                 }
                 console.log('[Update] Mise à jour disponible:', info?.version);
-                setSplashMessage('Mise à jour trouvée');
+                setSplashMessage('Mise à jour trouvée. Téléchargement…');
                 setSplashProgress(0);
-                // Si le téléchargement dépasse 5 min (réseau lent/bloqué), lancer l'app quand même
                 timeoutId = setTimeout(done, 300000);
             });
             autoUpdater.on('download-progress', (p) => {
+                if (updateCheckFinished) return;
                 const percent = Math.round(p.percent || 0);
-                setSplashMessage('Téléchargement');
+                setSplashMessage(percent < 100 ? `Téléchargement… ${percent} %` : 'Téléchargement terminé.');
                 setSplashProgress(percent);
             });
             autoUpdater.on('update-downloaded', () => {
+                if (updateCheckFinished) return;
+                updateCheckFinished = true;
                 if (timeoutId) {
                     clearTimeout(timeoutId);
                     timeoutId = null;
                 }
-                updateHandled = true;
                 setSplashProgress(null);
-                setSplashMessage('Installation');
+                setSplashMessage('Installation et redémarrage…');
                 const flagPath = path.join(app.getPath('userData'), 'workspace-update-installed.flag');
                 try {
                     fs.writeFileSync(flagPath, Date.now().toString(), 'utf8');
                 } catch (_) { }
-                setSplashUpdateSuccess('Redémarrage…');
-                // Redémarrage systématique : on quitte et on installe la maj (pas de choix utilisateur)
+                setSplashUpdateSuccess('Redémarrage en cours…');
                 setTimeout(() => {
                     autoUpdater.quitAndInstall(false, true);
                 }, 800);
@@ -698,9 +698,7 @@ app.on('ready', async () => {
             });
 
             setSplashMessage('Recherche de mise à jour…');
-            // Timeout uniquement pour la phase "vérification" : si pas de réponse en 12 s, on lance l'app
-            // (dès qu'une maj est trouvée, le timeout est annulé pour laisser le téléchargement aller au bout)
-            timeoutId = setTimeout(done, 12000);
+            timeoutId = setTimeout(done, 15000);
             await autoUpdater.checkForUpdates();
         } catch (e) {
             console.warn('[Update] Non disponible:', e.message);
