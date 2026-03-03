@@ -13,11 +13,12 @@
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.8.3",
-    "@electron-forge/plugin-webpack": "^7.11.1",
     "@electron-forge/maker-deb": "^7.10.2",
     "@electron-forge/maker-squirrel": "^7.10.2",
     "@electron-forge/maker-zip": "^7.10.2",
+    "@electron-forge/plugin-webpack": "^7.11.1",
     "@electron-forge/publisher-github": "^7.10.2",
+    "cross-env": "^7.0.3",
     "electron": "^39.2.4",
     "electron-builder": "^26.0.12"
   },
@@ -32,17 +33,17 @@
     "build:dev:win": "NODE_ENV=development npx electron-builder --dir --win",
     "build:dev:mac": "NODE_ENV=development npx electron-builder --dir --mac",
     "build:dev:linux": "NODE_ENV=development npx electron-builder --dir --linux",
-    "build:prod": "NODE_ENV=production npx electron-builder --publish=always",
-    "build:prod:win": "NODE_ENV=production npx electron-builder --win --publish=always",
-    "build:prod:mac": "NODE_ENV=production npx electron-builder --mac --publish=always",
-    "build:prod:linux": "NODE_ENV=production npx electron-builder --linux --publish=always",
-    "build:prod:linux:local": "NODE_ENV=production npx electron-builder --linux --publish=never",
+    "build:prod": "cross-env NODE_ENV=production npx electron-builder --publish=always",
+    "build:prod:win": "cross-env NODE_ENV=production npx electron-builder --win --publish=always",
+    "build:prod:mac": "cross-env NODE_ENV=production npx electron-builder --mac --publish=always",
+    "build:prod:linux": "cross-env NODE_ENV=production npx electron-builder --linux --publish=always",
+    "build:prod:linux:local": "cross-env NODE_ENV=production npx electron-builder --linux --publish=never",
     "build:win": "electron-forge make --platform win32",
     "build:mac": "electron-forge make --platform darwin",
     "build:linux": "npx electron-builder --linux",
-    "build:linux:release": "NODE_ENV=production npx electron-builder --linux --publish=always",
+    "build:linux:release": "cross-env NODE_ENV=production npx electron-builder --linux --publish=always",
     "build:linux:publish": "node ../scripts/run-with-env.js npm run build:linux:publish:inner -w apps/client",
-    "build:linux:publish:inner": "NODE_ENV=production npx electron-builder --linux --publish=always",
+    "build:linux:publish:inner": "cross-env NODE_ENV=production npx electron-builder --linux --publish=always",
     "install-desktop-dev": "node scripts/install-desktop-dev.js",
     "lint": "eslint . --ext .js"
   },
@@ -184,7 +185,15 @@
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "deb": {
-      "depends": ["libgtk-3-0", "libnotify4", "libnss3", "libxss1", "xdg-utils", "libatspi2.0-0", "libsecret-1-0"],
+      "depends": [
+        "libgtk-3-0",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "xdg-utils",
+        "libatspi2.0-0",
+        "libsecret-1-0"
+      ],
       "priority": "optional",
       "category": "Utility",
       "artifactName": "${productName}-${version}-${arch}.${ext}"
