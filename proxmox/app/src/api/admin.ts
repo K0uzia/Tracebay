@@ -559,7 +559,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   fastify.get('/api/admin/lots', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { status, search } = request.query as any;
-    let sql = `SELECT l.id, l.name, l.status, l.item_count, l.description, l.received_at, l.created_at, l.updated_at
+    let sql = `SELECT l.id, l.name, l.status, l.item_count, l.description, l.received_at, l.created_at, l.updated_at, l.pdf_path
                FROM lots l WHERE l.deleted_at IS NULL`;
     const params: any[] = [];
     let i = 1;
@@ -571,6 +571,37 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       return { success: true, lots: result.rows };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin GET /lots');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.put('/api/admin/lots/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    const updates: string[] = [];
+    const values: any[] = [];
+    let i = 1;
+    if (body.name !== undefined) { updates.push(`name = $${i++}`); values.push(body.name); }
+    if (body.status !== undefined) { updates.push(`status = $${i++}`); values.push(body.status); }
+    if (body.description !== undefined) { updates.push(`description = $${i++}`); values.push(body.description); }
+    if (body.pdf_path !== undefined) { updates.push(`pdf_path = $${i++}`); values.push(body.pdf_path || null); }
+    if (!updates.length) {
+      reply.statusCode = 400;
+      return { error: 'Aucun champ à mettre à jour' };
+    }
+    updates.push('updated_at = NOW()');
+    values.push(id);
+    try {
+      const result = await query(
+        `UPDATE lots SET ${updates.join(', ')} WHERE id = $${i} RETURNING id, name, status, item_count, description, received_at, updated_at, pdf_path`,
+        values
+      );
+      if (result.rowCount === 0) { reply.statusCode = 404; return { error: 'Lot introuvable' }; }
+      return { success: true, lot: result.rows[0] };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin PUT /lots/:id');
       reply.statusCode = 500;
       return { error: 'Database error' };
     }
@@ -924,14 +955,14 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     if (!checkAdminAuth(request, reply)) return;
     try {
       const [users, messages, events, lots, shortcuts, lot_items, marques, modeles] = await Promise.all([
-        query('SELECT COUNT(*) FROM users WHERE deleted_at IS NULL'),
-        query('SELECT COUNT(*) FROM messages WHERE deleted_at IS NULL'),
+        query('SELECT COUNT(*) FROM users'),
+        query('SELECT COUNT(*) FROM messages'),
         query('SELECT COUNT(*) FROM events WHERE deleted_at IS NULL'),
         query('SELECT COUNT(*) FROM lots WHERE deleted_at IS NULL'),
         query('SELECT COUNT(*) FROM shortcuts WHERE deleted_at IS NULL'),
         query('SELECT COUNT(*) FROM lot_items WHERE deleted_at IS NULL'),
-        query('SELECT COUNT(*) FROM marques WHERE deleted_at IS NULL'),
-        query('SELECT COUNT(*) FROM modeles WHERE deleted_at IS NULL'),
+        query('SELECT COUNT(*) FROM marques'),
+        query('SELECT COUNT(*) FROM modeles'),
       ]);
       return {
         success: true,
@@ -952,6 +983,113 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       return { error: 'Database error' };
     }
   });
+
+  // ─────────────────────────────────────────────
+  // BASE DE DONNÉES : tables (lecture / édition)
+  // ─────────────────────────────────────────────
+
+  const DB_TABLES_WHITELIST = [
+    'users', 'marques', 'modeles', 'messages', 'events', 'activity_logs',
+    'shortcut_categories', 'shortcuts', 'lots', 'lot_items', 'client_errors', 'app_settings',
+  ];
+
+  fastify.get('/api/admin/db/tables', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    try {
+      const result = await query(
+        `SELECT table_name FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+         AND table_name = ANY($1::text[]) ORDER BY table_name`,
+        [DB_TABLES_WHITELIST]
+      );
+      return { success: true, tables: result.rows.map((r: any) => r.table_name) };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin GET /db/tables');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.get<{ Params: { table: string }; Querystring: { limit?: string; offset?: string } }>(
+    '/api/admin/db/tables/:table',
+    async (request, reply) => {
+      if (!checkAdminAuth(request, reply)) return;
+      const { table } = request.params;
+      const limit = Math.min(Number(request.query.limit) || 50, 200);
+      const offset = Math.max(0, Number(request.query.offset) || 0);
+      if (!DB_TABLES_WHITELIST.includes(table)) {
+        reply.statusCode = 400;
+        return { error: 'Table non autorisée' };
+      }
+      try {
+        const safeTable = table.replace(/[^a-z0-9_]/gi, '');
+        const countResult = await query(`SELECT COUNT(*) FROM ${safeTable}`);
+        const total = parseInt((countResult.rows[0] as any).count, 10);
+        const result = await query(
+          `SELECT * FROM ${safeTable} LIMIT $1 OFFSET $2`,
+          [limit, offset]
+        );
+        const columns = result.rows.length ? Object.keys(result.rows[0] as object) : [];
+        return { success: true, columns, rows: result.rows, total };
+      } catch (err: any) {
+        fastify.log.error({ err, table }, 'admin GET /db/tables/:table');
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    }
+  );
+
+  fastify.put<{ Params: { table: string; id: string }; Body: Record<string, unknown> }>(
+    '/api/admin/db/tables/:table/rows/:id',
+    async (request, reply) => {
+      if (!checkAdminAuth(request, reply)) return;
+      const { table, id } = request.params;
+      const body = request.body as Record<string, unknown>;
+      if (!DB_TABLES_WHITELIST.includes(table)) {
+        reply.statusCode = 400;
+        return { error: 'Table non autorisée' };
+      }
+      const safeTable = table.replace(/[^a-z0-9_]/gi, '');
+      if (!body || typeof body !== 'object') {
+        reply.statusCode = 400;
+        return { error: 'Body attendu' };
+      }
+      try {
+        const colResult = await query(
+          `SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = $1`,
+          [safeTable]
+        );
+        const allowedCols = (colResult.rows as { column_name: string }[]).map(r => r.column_name);
+        const forbidden = ['id', 'password_hash'];
+        const updates: string[] = [];
+        const values: unknown[] = [];
+        let i = 1;
+        for (const [key, value] of Object.entries(body)) {
+          if (!allowedCols.includes(key) || forbidden.includes(key)) continue;
+          updates.push(`"${key}" = $${i++}`);
+          values.push(value);
+        }
+        if (!updates.length) {
+          reply.statusCode = 400;
+          return { error: 'Aucun champ à mettre à jour' };
+        }
+        values.push(id);
+        const result = await query(
+          `UPDATE ${safeTable} SET ${updates.join(', ')} WHERE id = $${i} RETURNING *`,
+          values
+        );
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Ligne introuvable' };
+        }
+        return { success: true, row: result.rows[0] };
+      } catch (err: any) {
+        fastify.log.error({ err, table, id }, 'admin PUT /db/tables/:table/rows/:id');
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    }
+  );
 
   fastify.get('/api/admin/logs/auth', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;

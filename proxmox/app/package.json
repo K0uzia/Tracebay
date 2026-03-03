@@ -5,7 +5,8 @@
   "main": "dist/main.js",
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "build": "tsc",
+    "build": "tsc && npm run build:copy-views",
+    "build:copy-views": "mkdir -p dist/views && cp -f src/views/monitoring.html src/views/monitoring.css src/views/favicon.png dist/views/ 2>/dev/null || true",
     "start": "node dist/main.js",
     "test": "echo \"No tests for proxmox\"",
     "type-check": "tsc --noEmit",

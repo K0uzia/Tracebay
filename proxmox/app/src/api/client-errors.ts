@@ -412,41 +412,65 @@ export async function registerClientErrorsRoutes(fastify: FastifyInstance): Prom
     }
   });
 
+  const monitoringViewsBase = [
+    path.join(__dirname, '..', 'views'),
+    path.join(__dirname, '..', '..', 'src', 'views'),
+    path.join(process.cwd(), 'dist', 'views'),
+    path.join(process.cwd(), 'src', 'views'),
+    path.join(process.cwd(), 'proxmox', 'app', 'src', 'views'),
+    path.join(process.cwd(), 'proxmox', 'app', 'dist', 'views'),
+    path.join(process.cwd(), 'views'),
+    '/app/dist/views',
+    '/app/src/views',
+  ];
+
+  async function resolveMonitoringAsset(filename: string): Promise<string | null> {
+    for (const base of monitoringViewsBase) {
+      const fullPath = path.join(base, filename);
+      try {
+        await fs.access(fullPath);
+        return fullPath;
+      } catch {
+        continue;
+      }
+    }
+    return null;
+  }
+
+  // GET /monitoring/assets/:asset - CSS, favicon, etc.
+  fastify.get<{ Params: { asset: string } }>('/monitoring/assets/:asset', async (request, reply) => {
+    const { asset } = request.params;
+    if (!asset || !/^[a-z0-9_.-]+\.(css|png|ico|svg|woff2?)$/i.test(asset)) {
+      reply.statusCode = 400;
+      return { error: 'Invalid asset' };
+    }
+    const fullPath = await resolveMonitoringAsset(asset);
+    if (!fullPath) {
+      reply.statusCode = 404;
+      return reply.send({ error: 'Asset not found' });
+    }
+    const ext = path.extname(asset).toLowerCase();
+    const types: Record<string, string> = {
+      '.css': 'text/css',
+      '.png': 'image/png',
+      '.ico': 'image/x-icon',
+      '.svg': 'image/svg+xml',
+      '.woff': 'font/woff',
+      '.woff2': 'font/woff2',
+    };
+    reply.type(types[ext] || 'application/octet-stream');
+    return reply.send(await fs.readFile(fullPath));
+  });
+
   // GET /monitoring - Page HTML du dashboard
   fastify.get('/monitoring', async (request: FastifyRequest, reply: FastifyReply) => {
 
     try {
-      // Essayer plusieurs chemins possibles selon la structure du serveur
-      // Après compilation, __dirname pointe vers dist/api/, donc dist/views/ pour le fichier copié
-      const possiblePaths = [
-        path.join(__dirname, '..', 'views', 'monitoring.html'), // dist/views/monitoring.html (après build)
-        path.join(__dirname, '..', '..', 'src', 'views', 'monitoring.html'), // src/views/monitoring.html (dev)
-        path.join(process.cwd(), 'dist', 'views', 'monitoring.html'),
-        path.join(process.cwd(), 'src', 'views', 'monitoring.html'),
-        path.join(process.cwd(), 'proxmox', 'app', 'src', 'views', 'monitoring.html'),
-        path.join(process.cwd(), 'proxmox', 'app', 'dist', 'views', 'monitoring.html'),
-        path.join(process.cwd(), 'views', 'monitoring.html'),
-        '/app/dist/views/monitoring.html', // Dans Docker
-        '/app/src/views/monitoring.html' // Dans Docker (dev)
-      ];
-      
-      let html: string | null = null;
-      let lastError: Error | null = null;
-      
-      for (const dashboardPath of possiblePaths) {
-        try {
-          html = await fs.readFile(dashboardPath, 'utf8');
-          break;
-        } catch (error) {
-          lastError = error instanceof Error ? error : new Error(String(error));
-          continue;
-        }
+      const htmlPath = await resolveMonitoringAsset('monitoring.html');
+      if (!htmlPath) {
+        throw new Error('Fichier monitoring.html introuvable');
       }
-      
-      if (!html) {
-        throw lastError || new Error('Fichier monitoring.html introuvable');
-      }
-      
+      const html = await fs.readFile(htmlPath, 'utf8');
       reply.type('text/html');
       return reply.send(html);
     } catch (error: unknown) {
