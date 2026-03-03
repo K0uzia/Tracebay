@@ -227,6 +227,8 @@ const RETRY_INTERVAL = 500;
 
 let mainWindow;
 let splashWindow = null;
+/** true pendant quitAndInstall pour ne pas retarder la sortie (before-quit) */
+let quittingForUpdate = false;
 let pdfWindows = new Map();
 let serverConnected = false;
 let discoveredServer = null;
@@ -683,9 +685,13 @@ app.on('ready', async () => {
                     fs.writeFileSync(flagPath, Date.now().toString(), 'utf8');
                 } catch (_) { }
                 setSplashUpdateSuccess('Redémarrage en cours…');
-                setTimeout(() => {
-                    autoUpdater.quitAndInstall(false, true);
-                }, 800);
+                setImmediate(() => {
+                    setTimeout(() => {
+                        quittingForUpdate = true;
+                        // isSilent=true : pas de dialogue, isForceRunAfter=true : relancer l'app après l'install
+                        autoUpdater.quitAndInstall(true, true);
+                    }, 500);
+                });
             });
             autoUpdater.on('update-not-available', (info) => {
                 const remoteVersion = info?.version || '?';
@@ -980,6 +986,9 @@ app.on('activate', () => {
  * Avant la fermeture de l'application
  */
 app.on('before-quit', () => {
+    if (quittingForUpdate) {
+        return;
+    }
     console.log('⏹️  Arrêt de Workspace Client');
     pdfWindows.forEach((win) => {
         if (win && !win.isDestroyed()) {
