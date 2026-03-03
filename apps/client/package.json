@@ -40,6 +40,7 @@
     "build:win": "electron-forge make --platform win32",
     "build:mac": "electron-forge make --platform darwin",
     "build:linux": "npx electron-builder --linux",
+    "build:linux:release": "NODE_ENV=production npx electron-builder --linux --publish=always",
     "build:linux:publish": "node ../scripts/run-with-env.js npm run build:linux:publish:inner -w apps/client",
     "build:linux:publish:inner": "NODE_ENV=production npx electron-builder --linux --publish=always",
     "install-desktop-dev": "node scripts/install-desktop-dev.js",
@@ -185,10 +186,7 @@
     "deb": {
       "depends": ["libgtk-3-0", "libnotify4", "libnss3", "libxss1", "xdg-utils", "libatspi2.0-0", "libsecret-1-0"],
       "priority": "optional",
-      "section": "utils",
       "category": "Utility",
-      "afterInstall": "scripts/deb-after-install.sh",
-      "afterRemove": "scripts/deb-after-remove.sh",
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     }
   },

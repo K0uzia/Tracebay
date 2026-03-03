@@ -29,7 +29,7 @@ module.exports = {
         publish: {
             provider: 'github',
             owner: 'SandersonnDev',
-            repo: 'Workspace',
+            repo: 'workspace',
             releaseType: 'release'
         },
         win: {
