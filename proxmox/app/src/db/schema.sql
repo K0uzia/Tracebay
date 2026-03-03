@@ -179,20 +179,6 @@ CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token);
 CREATE INDEX IF NOT EXISTS idx_sessions_expires_at ON sessions(expires_at);
 
-INSERT INTO users (username, password_hash, email) 
-VALUES (
-  'admin', 
-  '$2a$10$8K1p/a0dL3LzMzX8K9F4OeKwZ8k6HYdYvYr5pXpjxB8qY5n5FLT8q',
-  'admin@workspace.local'
-) ON CONFLICT (username) DO NOTHING;
-
-INSERT INTO users (username, password_hash, email) 
-VALUES (
-  'admin', 
-  '$2a$10$8K1p/a0dL3LzMzX8K9F4OeKwZ8k6HYdYvYr5pXpjxB8qY5n5FLT8q',
-  'admin@workspace.local'
-) ON CONFLICT (username) DO NOTHING;
-
 -- =====================================================
 -- Migrations pour déploiements existants (idempotent)
 -- =====================================================
@@ -247,3 +233,45 @@ CREATE TABLE IF NOT EXISTS client_errors (
 CREATE INDEX IF NOT EXISTS idx_client_errors_timestamp ON client_errors(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_client_errors_resolved ON client_errors(resolved);
 CREATE INDEX IF NOT EXISTS idx_client_errors_type ON client_errors(error_type);
+
+-- Config Applications (presets + apps) — persistant en base pour le client
+CREATE TABLE IF NOT EXISTS app_presets (
+  id SERIAL PRIMARY KEY,
+  preset_key VARCHAR(100) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_app_presets_key ON app_presets(preset_key);
+
+CREATE TABLE IF NOT EXISTS app_preset_apps (
+  id SERIAL PRIMARY KEY,
+  app_preset_id INTEGER NOT NULL REFERENCES app_presets(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  command VARCHAR(500) NOT NULL,
+  icon VARCHAR(100) DEFAULT 'fa-rocket',
+  args TEXT,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_app_preset_apps_preset ON app_preset_apps(app_preset_id);
+
+-- Config Dossiers (presets + globals) — persistant en base pour le client
+CREATE TABLE IF NOT EXISTS folder_globals (
+  id SERIAL PRIMARY KEY,
+  blacklist TEXT,
+  ignore_suffixes TEXT,
+  ignore_extensions TEXT,
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS folder_presets (
+  id SERIAL PRIMARY KEY,
+  preset_key VARCHAR(100) NOT NULL UNIQUE,
+  base_path VARCHAR(1024) NOT NULL DEFAULT '',
+  blacklist TEXT,
+  ignore_suffixes TEXT,
+  ignore_extensions TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_folder_presets_key ON folder_presets(preset_key);

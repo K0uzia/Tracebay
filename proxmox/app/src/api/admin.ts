@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import { query } from '../db';
+import { PoolClient } from 'pg';
+import { query, transaction } from '../db';
 import { getServerLogs } from '../utils/server-log-buffer';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
@@ -768,23 +769,65 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   // ─────────────────────────────────────────────
-  // CONFIG CLIENT : APPLICATIONS
+  // CONFIG CLIENT : APPLICATIONS (persistant en base)
   // ─────────────────────────────────────────────
 
-  // ─────────────────────────────────────────────
-  // CONFIG CLIENT : APPLICATIONS
-  // ─────────────────────────────────────────────
+  async function persistAppManagers(
+    client: PoolClient,
+    appManagers: Record<string, { apps: Array<{ name: string; command: string; icon?: string; args?: string[] }> }>
+  ): Promise<void> {
+    await client.query('DELETE FROM app_preset_apps');
+    await client.query('DELETE FROM app_presets');
+    for (const [presetKey, data] of Object.entries(appManagers)) {
+      if (!data?.apps || !Array.isArray(data.apps)) continue;
+      const pres = await client.query<{ id: number }>('INSERT INTO app_presets (preset_key, updated_at) VALUES ($1, NOW()) RETURNING id', [presetKey]);
+      const presetId = pres.rows[0].id;
+      let order = 0;
+      for (const app of data.apps) {
+        await client.query(
+          'INSERT INTO app_preset_apps (app_preset_id, name, command, icon, args, sort_order) VALUES ($1, $2, $3, $4, $5, $6)',
+          [presetId, app.name || '', app.command || '', app.icon || 'fa-rocket', JSON.stringify(app.args || []), order++]
+        );
+      }
+    }
+  }
 
   fastify.get('/api/admin/config/apps', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const filePath = resolveClientConfigPath('AppConfig.js');
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const appManagers = parseConfigField(content, 'appManagers');
-      return { success: true, appManagers, raw: content };
+      const presetsResult = await query<{ id: number; preset_key: string }>('SELECT id, preset_key FROM app_presets ORDER BY preset_key');
+      if (presetsResult.rows.length === 0) {
+        const filePath = resolveClientConfigPath('AppConfig.js');
+        if (fs.existsSync(filePath)) {
+          const content = fs.readFileSync(filePath, 'utf-8');
+          const appManagers = parseConfigField(content, 'appManagers') as Record<string, { apps: Array<{ name: string; command: string; icon?: string; args?: string[] }> }> | null;
+          const out = { success: true as const, appManagers: appManagers || {}, raw: content };
+          if (appManagers && typeof appManagers === 'object') {
+            transaction((client) => persistAppManagers(client, appManagers)).catch((err) => fastify.log.error({ err }, 'seed apps from file'));
+          }
+          return out;
+        }
+        return { success: true, appManagers: {}, raw: '' };
+      }
+      const appManagers: Record<string, { apps: Array<{ name: string; command: string; icon?: string; args?: string[] }> }> = {};
+      for (const row of presetsResult.rows) {
+        const appsResult = await query<{ name: string; command: string; icon: string; args: string | null }>(
+          'SELECT name, command, icon, args FROM app_preset_apps WHERE app_preset_id = $1 ORDER BY sort_order, id',
+          [row.id]
+        );
+        appManagers[row.preset_key] = {
+          apps: appsResult.rows.map(a => ({
+            name: a.name,
+            command: a.command,
+            icon: a.icon || 'fa-rocket',
+            args: a.args ? (JSON.parse(a.args) as string[]) : []
+          }))
+        };
+      }
+      return { success: true, appManagers };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin GET /config/apps');
       reply.statusCode = 500;
-      return { error: 'Impossible de lire AppConfig.js' };
+      return { error: 'Impossible de lire la config applications' };
     }
   });
 
@@ -796,33 +839,95 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       return { error: 'content (string) requis' };
     }
     try {
-      const filePath = resolveClientConfigPath('AppConfig.js');
-      fs.writeFileSync(filePath, content, 'utf-8');
+      const appManagers = parseConfigField(content, 'appManagers') as Record<string, { apps: Array<{ name: string; command: string; icon?: string; args?: string[] }> }> | null;
+      if (!appManagers || typeof appManagers !== 'object') {
+        reply.statusCode = 400;
+        return { error: 'Contenu invalide : appManagers attendu' };
+      }
+      await transaction((client) => persistAppManagers(client, appManagers));
       return { success: true };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin PUT /config/apps');
       reply.statusCode = 500;
-      return { error: 'Impossible d\'écrire AppConfig.js' };
+      return { error: 'Impossible d\'enregistrer la config applications' };
     }
   });
 
   // ─────────────────────────────────────────────
-  // CONFIG CLIENT : DOSSIERS
+  // CONFIG CLIENT : DOSSIERS (persistant en base)
   // ─────────────────────────────────────────────
+
+  async function persistFolderConfig(
+    client: PoolClient,
+    fileManagers: Record<string, { basePath?: string; blacklist?: string[]; ignoreSuffixes?: string[]; ignoreExtensions?: string[] }>,
+    blacklist: string[],
+    ignoreSuffixes: string[],
+    ignoreExtensions: string[]
+  ): Promise<void> {
+    await client.query('DELETE FROM folder_presets');
+    for (const [presetKey, data] of Object.entries(fileManagers || {})) {
+      const basePath = (data?.basePath ?? '').toString();
+      await client.query(
+        `INSERT INTO folder_presets (preset_key, base_path, blacklist, ignore_suffixes, ignore_extensions, updated_at)
+         VALUES ($1, $2, $3, $4, $5, NOW())`,
+        [presetKey, basePath, JSON.stringify(data?.blacklist ?? []), JSON.stringify(data?.ignoreSuffixes ?? []), JSON.stringify(data?.ignoreExtensions ?? [])]
+      );
+    }
+    await client.query('DELETE FROM folder_globals');
+    await client.query(
+      `INSERT INTO folder_globals (blacklist, ignore_suffixes, ignore_extensions, updated_at) VALUES ($1, $2, $3, NOW())`,
+      [JSON.stringify(blacklist || []), JSON.stringify(ignoreSuffixes || []), JSON.stringify(ignoreExtensions || [])]
+    );
+  }
+
+  function parseJsonArray(val: string | null): string[] {
+    if (val == null || val === '') return [];
+    try {
+      const a = JSON.parse(val);
+      return Array.isArray(a) ? a : [];
+    } catch { return []; }
+  }
 
   fastify.get('/api/admin/config/folders', async (request: FastifyRequest, reply: FastifyReply) => {
     try {
-      const filePath = resolveClientConfigPath('FolderConfig.js');
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const fileManagers = parseConfigField(content, 'fileManagers');
-      const blacklist = parseConfigArray(content, 'blacklist');
-      const ignoreSuffixes = parseConfigArray(content, 'ignoreSuffixes');
-      const ignoreExtensions = parseConfigArray(content, 'ignoreExtensions');
-      return { success: true, fileManagers, blacklist, ignoreSuffixes, ignoreExtensions, raw: content };
+      const presetsResult = await query<{ id: number; preset_key: string; base_path: string; blacklist: string | null; ignore_suffixes: string | null; ignore_extensions: string | null }>(
+        'SELECT id, preset_key, base_path, blacklist, ignore_suffixes, ignore_extensions FROM folder_presets ORDER BY preset_key'
+      );
+      if (presetsResult.rows.length === 0) {
+        const filePath = resolveClientConfigPath('FolderConfig.js');
+        if (fs.existsSync(filePath)) {
+          const content = fs.readFileSync(filePath, 'utf-8');
+          const fileManagers = parseConfigField(content, 'fileManagers') as Record<string, { basePath?: string; blacklist?: string[]; ignoreSuffixes?: string[]; ignoreExtensions?: string[] }> | null;
+          const blacklist = parseConfigArray(content, 'blacklist');
+          const ignoreSuffixes = parseConfigArray(content, 'ignoreSuffixes');
+          const ignoreExtensions = parseConfigArray(content, 'ignoreExtensions');
+          const out = { success: true as const, fileManagers: fileManagers || {}, blacklist, ignoreSuffixes, ignoreExtensions, raw: content };
+          if (fileManagers && typeof fileManagers === 'object') {
+            transaction((client) => persistFolderConfig(client, fileManagers, blacklist, ignoreSuffixes, ignoreExtensions)).catch((err) => fastify.log.error({ err }, 'seed folders from file'));
+          }
+          return out;
+        }
+        return { success: true, fileManagers: {}, blacklist: [], ignoreSuffixes: [], ignoreExtensions: [], raw: '' };
+      }
+      const fileManagers: Record<string, { basePath: string; blacklist?: string[]; ignoreSuffixes?: string[]; ignoreExtensions?: string[] }> = {};
+      for (const row of presetsResult.rows) {
+        fileManagers[row.preset_key] = {
+          basePath: row.base_path,
+          blacklist: parseJsonArray(row.blacklist),
+          ignoreSuffixes: parseJsonArray(row.ignore_suffixes),
+          ignoreExtensions: parseJsonArray(row.ignore_extensions)
+        };
+      }
+      const globalsResult = await query<{ blacklist: string | null; ignore_suffixes: string | null; ignore_extensions: string | null }>('SELECT blacklist, ignore_suffixes, ignore_extensions FROM folder_globals LIMIT 1');
+      const g = globalsResult.rows[0];
+      const blacklist = g ? parseJsonArray(g.blacklist) : [];
+      const ignoreSuffixes = g ? parseJsonArray(g.ignore_suffixes) : [];
+      const ignoreExtensions = g ? parseJsonArray(g.ignore_extensions) : [];
+      return { success: true, fileManagers, blacklist, ignoreSuffixes, ignoreExtensions };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin GET /config/folders');
       reply.statusCode = 500;
-      return { error: 'Impossible de lire FolderConfig.js' };
+      return { error: 'Impossible de lire la config dossiers' };
     }
   });
 
@@ -834,13 +939,16 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       return { error: 'content (string) requis' };
     }
     try {
-      const filePath = resolveClientConfigPath('FolderConfig.js');
-      fs.writeFileSync(filePath, content, 'utf-8');
+      const fileManagers = parseConfigField(content, 'fileManagers') as Record<string, { basePath?: string; blacklist?: string[]; ignoreSuffixes?: string[]; ignoreExtensions?: string[] }> | null;
+      const blacklist = parseConfigArray(content, 'blacklist');
+      const ignoreSuffixes = parseConfigArray(content, 'ignoreSuffixes');
+      const ignoreExtensions = parseConfigArray(content, 'ignoreExtensions');
+      await transaction((client) => persistFolderConfig(client, fileManagers && typeof fileManagers === 'object' ? fileManagers : {}, blacklist || [], ignoreSuffixes || [], ignoreExtensions || []));
       return { success: true };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin PUT /config/folders');
       reply.statusCode = 500;
-      return { error: 'Impossible d\'écrire FolderConfig.js' };
+      return { error: 'Impossible d\'enregistrer la config dossiers' };
     }
   });
 

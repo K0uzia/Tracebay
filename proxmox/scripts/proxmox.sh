@@ -393,6 +393,47 @@ CREATE INDEX IF NOT EXISTS idx_client_errors_client_id ON client_errors(client_i
 CREATE INDEX IF NOT EXISTS idx_client_errors_error_type ON client_errors(error_type);
 CREATE INDEX IF NOT EXISTS idx_client_errors_resolved ON client_errors(resolved);
 CREATE INDEX IF NOT EXISTS idx_client_errors_type_timestamp ON client_errors(error_type, timestamp DESC);
+
+-- Config Applications et Dossiers (persistant pour le client)
+CREATE TABLE IF NOT EXISTS app_presets (
+  id SERIAL PRIMARY KEY,
+  preset_key VARCHAR(100) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_app_presets_key ON app_presets(preset_key);
+
+CREATE TABLE IF NOT EXISTS app_preset_apps (
+  id SERIAL PRIMARY KEY,
+  app_preset_id INTEGER NOT NULL REFERENCES app_presets(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  command VARCHAR(500) NOT NULL,
+  icon VARCHAR(100) DEFAULT 'fa-rocket',
+  args TEXT,
+  sort_order INTEGER DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_app_preset_apps_preset ON app_preset_apps(app_preset_id);
+
+CREATE TABLE IF NOT EXISTS folder_globals (
+  id SERIAL PRIMARY KEY,
+  blacklist TEXT,
+  ignore_suffixes TEXT,
+  ignore_extensions TEXT,
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS folder_presets (
+  id SERIAL PRIMARY KEY,
+  preset_key VARCHAR(100) NOT NULL UNIQUE,
+  base_path VARCHAR(1024) NOT NULL DEFAULT '',
+  blacklist TEXT,
+  ignore_suffixes TEXT,
+  ignore_extensions TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_folder_presets_key ON folder_presets(preset_key);
 SQLEOF
 }
 
