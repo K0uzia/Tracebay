@@ -587,7 +587,20 @@ export default class ShortcutManager {
                     <button type="button" class="btn btn-secondary" data-close>Fermer</button>
                 </div>
             </div>
-        `);
+        `, { size: 'md' });
+
+        let hasReordered = false;
+        modal.addEventListener('close', () => {
+            if (hasReordered) {
+                const list = modal.querySelector('#shortcuts-list');
+                if (list) {
+                    const items = [...list.querySelectorAll('.shortcut-item')];
+                    const shortcutIds = items.map(item => parseInt(item.dataset.shortcutId));
+                    this.reorderShortcuts(categoryId, shortcutIds);
+                }
+            }
+            modal.remove();
+        }, { once: true });
 
         const addForm = modal.querySelector('#add-shortcut-form');
         addForm.addEventListener('submit', (e) => {
@@ -626,7 +639,6 @@ export default class ShortcutManager {
         // Drag and drop pour réorganiser
         const shortcutsList = modal.querySelector('#shortcuts-list');
         let draggedElement = null;
-        let hasReordered = false; // Tracker si l'ordre a changé
 
         shortcutsList.addEventListener('dragstart', (e) => {
             draggedElement = e.target.closest('.shortcut-item');
@@ -654,25 +666,17 @@ export default class ShortcutManager {
             logger.debug('📌 Raccourci déplacé (pas encore sauvegardé)');
         });
 
-        modal.querySelector('[data-delete-category]').addEventListener('click', () => {
-            if (confirm(`Supprimer la catégorie "${category.name}" et tous ses raccourcis ?`)) {
-                this.deleteCategory(categoryId);
+        modal.querySelector('[data-delete-category]').addEventListener('click', async () => {
+            if (!confirm(`Supprimer la catégorie "${category.name}" et tous ses raccourcis ?`)) return;
+            const success = await this.deleteCategory(categoryId);
+            if (success) {
                 modal.close();
                 modal.remove();
-                this.render();
             }
         });
 
-        modal.querySelector('[data-close]').addEventListener('click', async () => {
-            // Sauvegarder l'ordre si quelque chose a changé
-            if (hasReordered) {
-                logger.debug('💾 Sauvegarde de l\'ordre avant fermeture');
-                const items = [...shortcutsList.querySelectorAll('.shortcut-item')];
-                const shortcutIds = items.map(item => parseInt(item.dataset.shortcutId));
-                await this.reorderShortcuts(categoryId, shortcutIds);
-            }
+        modal.querySelector('[data-close]').addEventListener('click', () => {
             modal.close();
-            modal.remove();
         });
 
         document.body.appendChild(modal);
@@ -694,19 +698,39 @@ export default class ShortcutManager {
         }, { offset: Number.NEGATIVE_INFINITY }).element;
     }
 
-    createModal(title, content) {
+    /**
+     * Crée une modale alignée sur la structure universal-modal (modal.css).
+     * @param {string} title - Titre de la modale
+     * @param {string} content - HTML du corps
+     * @param {{ size?: 'md' | 'lg' }} options - size: 'md' ou 'lg' pour modale plus large
+     */
+    createModal(title, content, options = {}) {
+        const sizeClass = options.size ? ` modal-${options.size}` : '';
         const modal = document.createElement('dialog');
         modal.className = 'universal-modal';
         modal.innerHTML = `
-            <div class="modal-content">
+            <div class="modal-content${sizeClass}">
                 <div class="modal-header">
-                    <h3>${this.escapeHtml(title)}</h3>
+                    <h2>${this.escapeHtml(title)}</h2>
+                    <button type="button" class="modal-close-btn" data-modal-close aria-label="Fermer">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
                 <div class="modal-body">
                     ${content}
                 </div>
             </div>
         `;
+        modal.querySelector('[data-modal-close]')?.addEventListener('click', () => {
+            modal.close();
+            modal.remove();
+        });
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                modal.close();
+                modal.remove();
+            }
+        });
         return modal;
     }
 
@@ -735,22 +759,47 @@ export default class ShortcutManager {
         }
     }
 
+    /**
+     * Supprime une catégorie et tous ses raccourcis.
+     * @param {number|string} categoryId - ID de la catégorie
+     * @returns {Promise<boolean>} true si succès, false sinon
+     */
     async deleteCategory(categoryId) {
         const token = this.getToken();
-        
-        if (!token) return;
+
+        if (!token) {
+            alert('Vous devez être connecté pour supprimer une catégorie');
+            return false;
+        }
 
         try {
             const response = await api.delete(`/api/shortcuts/categories/${categoryId}`);
-
-            const data = await response.json();
-
-            if (data.success) {
-                await this.loadShortcuts();
-                this.render();
+            let data = {};
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                data = await response.json();
             }
+
+            if (!response.ok) {
+                const msg = data.message || data.error || `Erreur ${response.status}`;
+                logger.error('❌ Suppression catégorie:', msg);
+                alert(msg);
+                return false;
+            }
+
+            if (data.success === false) {
+                const msg = data.message || data.error || 'La suppression a échoué';
+                alert(msg);
+                return false;
+            }
+
+            await this.loadShortcuts();
+            this.render();
+            return true;
         } catch (error) {
             logger.error('❌ Erreur suppression catégorie:', error);
+            alert('Erreur lors de la suppression de la catégorie. Vérifiez la connexion au serveur.');
+            return false;
         }
     }
 

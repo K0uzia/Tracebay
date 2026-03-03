@@ -281,10 +281,13 @@
     background: var(--orange);
 }
 
+/* Conteneur des modales raccourcis : respect du scroll et largeur */
 .manage-shortcuts {
     display: flex;
     flex-direction: column;
     gap: var(--unit-2);
+    min-height: 0;
+    min-width: 0;
 }
 
 .shortcuts-list {
@@ -346,6 +349,7 @@
     flex-direction: column;
     gap: calc(var(--unit-1) / 2);
     flex: 1;
+    min-width: 0;
 }
 
 .shortcut-info strong {
@@ -363,10 +367,12 @@
     display: flex;
     gap: var(--unit-1);
     align-items: stretch;
+    min-width: 0;
 }
 
 .form-row input {
     flex: 1;
+    min-width: 0;
     padding: var(--unit-1) var(--unit-2);
     border: 1px solid var(--gris-clair);
     border-radius: var(--radius-small);

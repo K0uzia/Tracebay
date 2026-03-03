@@ -23,6 +23,9 @@ body {
 }
 
 .pdf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 20px;
     padding-bottom: 12px;
     border-bottom: 2px solid #2D3073;
@@ -31,6 +34,21 @@ body {
 .pdf-header h1 {
     margin: 0 0 4px 0;
     font-size: 22px;
+    font-weight: 700;
+    color: #2D3073;
+}
+
+.pdf-header-logo {
+    display: flex;
+}
+.pdf-header-logo img {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+}
+.pdf-header-logo h2 {
+    margin: 0;
+    font-size: 12px;
     font-weight: 700;
     color: #2D3073;
 }
@@ -154,10 +172,10 @@ body {
 
 .pdf-table .col-num { min-width: 2.5em; }
 .pdf-table .col-sn { min-width: 120px; }
-.pdf-table .col-type { min-width: 85px; }
-.pdf-table .col-marque { min-width: 95px; }
-.pdf-table .col-modele { min-width: 110px; }
-.pdf-table .col-state { min-width: 100px; }
+.pdf-table .col-type { min-width: 50px; }
+.pdf-table .col-marque { min-width: 40px; }
+.pdf-table .col-modele { min-width: 40px; }
+.pdf-table .col-state { min-width: 40px; }
 .pdf-table .col-tech { min-width: 95px; }
 .pdf-table .col-date { min-width: 95px; }
 

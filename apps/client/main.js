@@ -2,8 +2,9 @@
  * Workspace Client - Electron Main Process
  * Gère la fenêtre d'application et la connexion au serveur distant
  */
-const { app, BrowserWindow, ipcMain, shell, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Notification, nativeImage } = require('electron');
 const path = require('path');
+const url = require('url');
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
@@ -346,7 +347,11 @@ function createSplashWindow() {
         show: false,
         alwaysOnTop: true,
         webPreferences: { nodeIntegration: false, contextIsolation: true },
-        icon: path.join(__dirname, 'assets', 'icon.png'),
+        icon: (() => {
+            const base = app.isPackaged ? app.getAppPath() : __dirname;
+            const p = path.join(base, 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
+            return fs.existsSync(p) ? p : undefined;
+        })(),
     });
     win.setMenuBarVisibility(false);
     win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(splashHtml));
@@ -423,6 +428,25 @@ function closeSplashWindow() {
 }
 
 /**
+ * Résout le chemin de l'icône de l'app (barre des tâches / dock).
+ * Essaie plusieurs bases (__dirname, process.cwd(), getAppPath) pour dev et packagé.
+ */
+function getAppIconPath() {
+    const iconName = process.platform === 'win32' ? 'icon.ico' : process.platform === 'darwin' ? 'icon.icns' : 'icon.png';
+    const bases = [__dirname, process.cwd(), app.getAppPath()].filter(Boolean);
+    const tried = [];
+    for (const base of bases) {
+        const inAssets = path.join(base, 'assets', iconName);
+        const pngFallback = path.join(base, 'assets', 'icon.png');
+        if (fs.existsSync(inAssets)) return inAssets;
+        tried.push(inAssets);
+        if (iconName !== 'icon.png' && fs.existsSync(pngFallback)) return pngFallback;
+        if (iconName !== 'icon.png') tried.push(pngFallback);
+    }
+    return null;
+}
+
+/**
  * Créer la fenêtre principale (une seule instance)
  */
 function createWindow() {
@@ -431,16 +455,27 @@ function createWindow() {
         mainWindow.focus();
         return;
     }
-    const appIconPath = path.join(__dirname, 'assets',
-        process.platform === 'win32' ? 'icon.ico' :
-            process.platform === 'darwin' ? 'icon.icns' : 'icon.png'
-    );
+    const appIconPath = getAppIconPath();
+    if (!app.isPackaged && appIconPath) {
+        console.log('🖼️ Icône app (barre des tâches):', appIconPath);
+    }
+    let windowIcon = undefined;
+    if (appIconPath) {
+        let img = nativeImage.createFromPath(appIconPath);
+        if (img.isEmpty()) {
+            try {
+                const buf = fs.readFileSync(appIconPath);
+                img = nativeImage.createFromBuffer(buf);
+            } catch (_) { }
+        }
+        windowIcon = (img && !img.isEmpty()) ? img : appIconPath;
+    }
     mainWindow = new BrowserWindow({
         width: 1200,
         height: 800,
         show: false,
         autoHideMenuBar: true,  // Masquer la barre de menu
-        icon: fs.existsSync(appIconPath) ? appIconPath : undefined,
+        icon: windowIcon,
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,
@@ -448,6 +483,17 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.js')
         }
     });
+
+    if (appIconPath && process.platform === 'linux' && windowIcon) {
+        const iconToSet = typeof windowIcon === 'string' ? nativeImage.createFromPath(windowIcon) : windowIcon;
+        const applyIcon = () => {
+            if (mainWindow && !mainWindow.isDestroyed() && iconToSet && !iconToSet.isEmpty()) {
+                mainWindow.setIcon(iconToSet);
+            }
+        };
+        mainWindow.once('ready-to-show', applyIcon);
+        mainWindow.once('did-finish-load', () => setTimeout(applyIcon, 100));
+    }
 
     // Charger l'index.html ; afficher la fenêtre et fermer le splash une fois prêt
     mainWindow.loadURL(`file://${path.join(__dirname, 'public', 'index.html')}`);
@@ -543,17 +589,18 @@ function setupChatNotifications() {
 let appLaunched = false;
 
 /**
- * Lancer l'application (fenêtre principale après éventuelle mise à jour)
+ * Lancer l'application (fenêtre principale après éventuelle mise à jour).
+ * La fenêtre est créée immédiatement pour un affichage plus rapide ; la vérification
+ * du serveur s'exécute en parallèle (le client gère le mode hors-ligne).
  */
-async function launchApp() {
+function launchApp() {
     if (appLaunched) return;
     appLaunched = true;
     setSplashMessage('Chargement en cours…');
-    await checkServerConnection();
-    if (!serverConnected) {
-        console.log('🔌 Mode hors-ligne: Le client démarre sans connexion serveur');
-    }
     createWindow();
+    checkServerConnection().then(() => {
+        if (!serverConnected) console.log('🔌 Mode hors-ligne: Le client démarre sans connexion serveur');
+    });
     console.log('✅ Interface graphique lancée');
     console.log('✨ Application prête');
 }
@@ -562,6 +609,7 @@ async function launchApp() {
  * Événement de démarrage Electron
  */
 app.on('ready', async () => {
+    app.setName('Workspace Client');
     console.log('🚀 Démarrage Workspace Client...');
     console.log(`📍 Configuration depuis: ${MODE} (connexion-config.json)`);
     console.log(`🔗 Serveur par défaut: ${SERVER_URL}`);
@@ -1026,7 +1074,7 @@ ipcMain.handle('open-pdf-window', async (event, data) => {
 const TRACABILITE_PDF_BASE = '/mnt/team/#TEAM/#TRAÇABILITÉ';
 
 /**
- * Formater une date ISO en "jj/mm/aaaa HH:mm" pour le PDF
+ * Formater une date ISO en "jj/mm/aaaa" pour le PDF (sans heure)
  */
 function formatDateForPdf(iso) {
     if (!iso || typeof iso !== 'string') return '-';
@@ -1036,9 +1084,7 @@ function formatDateForPdf(iso) {
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = d.getFullYear();
-        const h = String(d.getHours()).padStart(2, '0');
-        const m = String(d.getMinutes()).padStart(2, '0');
-        return `${day}/${month}/${year} ${h}:${m}`;
+        return `${day}/${month}/${year}`;
     } catch (_) {
         return '-';
     }
@@ -1120,14 +1166,19 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
     const itemsRows = items
         .map((it, idx) => {
             const num = it.numero != null ? it.numero : idx + 1;
-            const sn = escapeHtml(it.serial_number || it.serialNumber || '-');
             const type = escapeHtml(typeLabel(it.type));
             const marque = escapeHtml(it.marque_name || it.marqueName || '-');
             const modele = escapeHtml(it.modele_name || it.modeleName || '-');
-            const state = escapeHtml(it.state || '-');
-            const tech = escapeHtml(it.technician || it.technicien || '-');
+            const sn = escapeHtml(it.serial_number || it.serialNumber || '-');
+            const rawState = (it.state && String(it.state).trim()) || '';
+            const stateLower = rawState.toLowerCase();
+            let stateDisplay;
+            if (/reconditionn[eé]s?/.test(stateLower)) stateDisplay = 'OK';
+            else if (stateLower === 'pour pièces' || stateLower === 'hs') stateDisplay = 'HS';
+            else stateDisplay = escapeHtml(rawState || '-');
             const dateHeure = escapeHtml(formatItemDateForPdf(it));
-            return `<tr><td class="col-num">${num}</td><td class="col-sn">${sn}</td><td class="col-type">${type}</td><td class="col-marque">${marque}</td><td class="col-modele">${modele}</td><td class="col-date">${dateHeure}</td><td class="col-state">${state}</td><td class="col-tech">${tech}</td></tr>`;
+            const tech = escapeHtml(it.technician || it.technicien || '-');
+            return `<tr><td class="col-num">${num}</td><td class="col-type">${type}</td><td class="col-marque">${marque}</td><td class="col-modele">${modele}</td><td class="col-sn">${sn}</td><td class="col-state">${stateDisplay}</td><td class="col-date">${dateHeure}</td><td class="col-tech">${tech}</td></tr>`;
         })
         .join('\n');
 
@@ -1148,13 +1199,25 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
         `<style>${css}</style>`
     );
 
-    // FontAwesome : lien relatif valide quand on charge depuis un fichier dans pdf-templates
-    const fontawesomeLink = '<link rel="stylesheet" href="../assets/css/fontawesome-local.css">';
-    if (!html.includes('fontawesome')) {
+    // FontAwesome : URL file:// absolue pour que les icônes s'affichent même quand le HTML est chargé depuis /tmp
+    const fontawesomeCssPath = path.join(__dirname, 'public', 'assets', 'css', 'fontawesome-local.css');
+    if (!html.includes('fontawesome') && fs.existsSync(fontawesomeCssPath)) {
+        const fontawesomeFileUrl = url.pathToFileURL(fontawesomeCssPath).href;
+        const fontawesomeLink = `<link rel="stylesheet" href="${fontawesomeFileUrl}">`;
         html = html.replace('</head>', `${fontawesomeLink}\n</head>`);
     }
 
-    const outputPath = path.join(templateDir, '.lot-pdf-output.html');
+    // Images (logo, etc.) : réécrire les src relatifs en file:// pour que ça charge depuis /tmp
+    html = html.replace(/<img([^>]*)\ssrc="([^"]+)"/gi, (match, attrs, src) => {
+        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) return match;
+        const absolutePath = path.resolve(templateDir, src.trim());
+        if (!fs.existsSync(absolutePath)) return match;
+        const fileUrl = url.pathToFileURL(absolutePath).href;
+        return `<img${attrs} src="${fileUrl}"`;
+    });
+
+    const tempDir = app.getPath('temp');
+    const outputPath = path.join(tempDir, `workspace-lot-pdf-${Date.now()}.html`);
     try {
         fs.writeFileSync(outputPath, html, 'utf8');
     } catch (e) {
@@ -1168,7 +1231,6 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
     });
     try {
         await win.loadFile(outputPath);
-        // Marges gérées par @page dans lot.css ; pas de custom margins pour éviter l'erreur Chromium
         const pdfBuffer = await win.webContents.printToPDF({
             printBackground: true,
             pageSize: 'A4',

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Workspace Client (Dev)
+Comment=Workspace Client - Lancement en développement
+Exec=REMPLACER_PAR_CHEMIN_ABSOLU_APPS_CLIENT/start-dev.sh
+Icon=REMPLACER_PAR_CHEMIN_ABSOLU_APPS_CLIENT/assets/icon.png
+Terminal=true
+Type=Application
+Categories=Development;Network;
+StartupWMClass=Workspace Client

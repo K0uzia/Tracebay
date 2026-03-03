@@ -67,10 +67,9 @@ class PageManager {
         // Initialiser le gestionnaire de connexion serveur
         await this.initializeServerConnection();
 
-        // Charger les composants HTML
+        // Charger le header puis afficher la page tout de suite (premier rendu plus rapide)
         await this.loadComponent('header', './components/header.html', () => this.initializeAuth());
-        await this.loadComponent('footer', './components/footer.html', () => this.initializeSystemInfo());
-        
+
         // Fermer le WebSocket à la fermeture de la fenêtre pour que le serveur
         // reçoive l'événement close et libère la session (évite "déjà connecté" au retour).
         const closeChatWebSocketOnUnload = () => {
@@ -83,10 +82,13 @@ class PageManager {
         window.addEventListener('beforeunload', closeChatWebSocketOnUnload);
         window.addEventListener('pagehide', closeChatWebSocketOnUnload);
 
-        // Charger la page sauvegardée ou home
+        // Charger la page sauvegardée ou home immédiatement (sans attendre le footer)
         const lastPage = this.getLastPage();
         const pageToLoad = lastPage && this.pagesConfig[lastPage] ? lastPage : 'home';
         this.loadPage(pageToLoad);
+
+        // Footer et infos système en arrière-plan pour ne pas retarder le premier affichage
+        this.loadComponent('footer', './components/footer.html', () => this.initializeSystemInfo());
     }
 
     /**
@@ -1113,8 +1115,8 @@ class PageManager {
     }
 
     /**
-     * Envoie le formulaire de feedback en créant une issue dans le panel admin.
-     * Affiche un numéro de confirmation à l'utilisateur après succès.
+     * Envoie le formulaire de feedback vers POST /api/monitoring/errors (panel admin / issues).
+     * Payload aligné sur le serveur (branche proxmox) : clientId, errorType, errorMessage, userMessage, etc.
      */
     async submitFeedback() {
         const messageEl = document.getElementById('feedback-message');
@@ -1122,47 +1124,52 @@ class PageManager {
         if (!messageEl || !typeEl) return;
         const message = messageEl.value.trim();
         if (!message) return;
-        const feedbackType = typeEl.value || 'feedback';
-        const serverUrl = this.connectionConfig?.getServerUrl?.() || this.serverUrl || '';
-        const endpoint = `${serverUrl}/api/monitoring/errors`;
+
+        const formType = typeEl.value || 'feedback';
         const submitBtn = document.getElementById('feedback-submit-btn');
         if (submitBtn) submitBtn.disabled = true;
 
+        const api = (await import('./assets/js/config/api.js')).default;
+        await api.init();
+        const endpoint = api.getUrl('monitoring.errors');
+        const token = localStorage.getItem('workspace_jwt');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
         const clientId = localStorage.getItem('workspace_client_id') || 'web-' + (navigator.userAgent || '').slice(0, 50);
-        const issueTitle = feedbackType === 'bug_report'
-            ? `[Bug] ${message.substring(0, 80)}`
-            : `[Feedback] ${message.substring(0, 80)}`;
+        const errorType = formType === 'bug' ? 'bug_report' : formType;
+        const errorMessage = formType === 'bug'
+            ? `[Bug] ${message.substring(0, 80)}${message.length > 80 ? '…' : ''}`
+            : `[Feedback] ${message.substring(0, 80)}${message.length > 80 ? '…' : ''}`;
+
+        const payload = {
+            clientId,
+            clientVersion: typeof this.getAppVersion === 'function' ? this.getAppVersion() : '1.0',
+            platform: navigator.platform || '',
+            errorType,
+            errorMessage,
+            context: 'Formulaire « Faire un retour »',
+            userMessage: message.substring(0, 500),
+            userAgent: navigator.userAgent ? navigator.userAgent.substring(0, 500) : undefined
+        };
 
         try {
-            const payload = {
-                clientId,
-                clientVersion: typeof this.getAppVersion === 'function' ? this.getAppVersion() : '1.0',
-                platform: navigator.platform || '',
-                errorType: feedbackType,
-                errorMessage: issueTitle,
-                context: 'Formulaire « Faire un retour »',
-                userMessage: message.substring(0, 500)
-            };
             const res = await fetch(endpoint, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers,
                 body: JSON.stringify(payload)
             });
-            if (res.ok) {
-                const data = await res.json().catch(() => ({}));
-                const issueId = data?.id || data?.issueId || null;
-                const confirmMsg = issueId
-                    ? `Merci ! Votre retour a été enregistré (référence #${issueId}).`
-                    : 'Merci, votre retour a bien été envoyé.';
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.success !== false) {
                 window.modalManager?.close('modal-feedback');
                 messageEl.value = '';
                 const charCount = document.getElementById('feedback-char-count');
                 if (charCount) charCount.textContent = '0';
-                this.showNotification?.(confirmMsg, 'success');
+                this.showNotification?.('Merci, votre retour a bien été envoyé. Il sera visible dans le panel de suivi.', 'success');
             } else {
-                const err = await res.text();
-                this.showNotification?.(`Envoi impossible : ${res.status}. Réessayez plus tard.`, 'error');
-                logger.warn('Feedback non enregistré:', res.status, err);
+                const errMsg = data.error || data.message || `Erreur ${res.status}`;
+                this.showNotification?.(`Envoi impossible : ${errMsg}`, 'error');
+                logger.warn('Feedback non enregistré:', res.status, data);
             }
         } catch (e) {
             this.showNotification?.('Envoi impossible. Vérifiez la connexion au serveur.', 'error');

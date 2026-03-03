@@ -8,7 +8,13 @@
 </head>
 <body>
     <header class="pdf-header">
-        <h1><i class="fa-solid fa-boxes-stacked"></i> Fiche du Lot #{{lotId}} - {{lotName}}</h1>
+        <div class="pdf-header-text">
+            <h1><i class="fa-solid fa-boxes-stacked"></i> Fiche du Lot #{{lotId}} - {{lotName}}</h1>
+        </div>
+        <div class="pdf-header-logo">
+            <img src="../src/icons/capsule.png" alt="Logo"/>
+            <h2 class="pdf-header-subtitle">LA CAPSULE</h2>
+        </div>
     </header>
 
     <section class="pdf-info">
@@ -31,12 +37,12 @@
             <thead>
                 <tr>
                     <th class="col-num">N°</th>
-                    <th class="col-sn">S/N</th>
                     <th class="col-type">Type</th>
                     <th class="col-marque">Marque</th>
                     <th class="col-modele">Modèle</th>
-                    <th class="col-date">Date / Heure</th>
+                    <th class="col-sn">S/N</th>
                     <th class="col-state">État</th>
+                    <th class="col-date">Date</th>
                     <th class="col-tech">Technicien</th>
                 </tr>
             </thead>
