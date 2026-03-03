@@ -1,5 +1,9 @@
 # Build client (Electron) sur push main → artefacts + GitHub Release pour mise à jour auto
-# Pour la publication Release : le secret doit s'appeler GH_TOKEN ou GITHUB_TOKEN (ou adapter les env ci‑dessous).
+#
+# Publication (Release) : faite UNIQUEMENT ici en CI. Le token doit avoir les droits d'écriture (créer une release).
+# - Soit un secret GH_TOKEN (Personal Access Token avec scope "repo") dans Settings > Secrets and variables > Actions.
+# - Soit GITHUB_TOKEN (automatique) si le dépôt autorise "Read and write permissions" dans Settings > Actions > General.
+# En local : "npm run build:linux" ou "build:prod:linux:local" — aucun token nécessaire.
 name: Build & Publish Client
 
 on:
@@ -9,6 +13,7 @@ on:
       - 'apps/client/**'
       - 'package.json'
       - 'package-lock.json'
+      - '.github/workflows/**'
   workflow_dispatch:
     inputs:
       platform:
@@ -42,10 +47,20 @@ jobs:
       - name: Install dependencies (root)
         run: npm ci
 
+      - name: Vérifier token de publication
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -z "${GH_TOKEN}" ] && [ -z "${GITHUB_TOKEN}" ]; then
+            echo "::error::Aucun token GitHub. Ajoutez un secret GH_TOKEN (PAT avec scope repo) dans Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          echo "Token de publication configuré."
+
       - name: Build client (Linux) & publish
         working-directory: apps/client
         env:
-          # Remplacer par votre nom de secret si différent (ex. secrets.PAT)
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
           NODE_ENV: production
@@ -75,6 +90,17 @@ jobs:
 
       - name: Install dependencies (root)
         run: npm ci
+
+      - name: Vérifier token de publication
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if (-not $env:GH_TOKEN -and -not $env:GITHUB_TOKEN) {
+            Write-Error "Aucun token GitHub. Ajoutez un secret GH_TOKEN (PAT avec scope repo) dans Settings > Secrets and variables > Actions."
+            exit 1
+          }
+          echo "Token de publication configuré."
 
       - name: Build client (Windows) & publish
         working-directory: apps/client
@@ -109,11 +135,22 @@ jobs:
       - name: Install dependencies (root)
         run: npm ci
 
+      - name: Vérifier token de publication
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -z "${GH_TOKEN}" ] && [ -z "${GITHUB_TOKEN}" ]; then
+            echo "::error::Aucun token GitHub. Ajoutez un secret GH_TOKEN (PAT avec scope repo) dans Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          echo "Token de publication configuré."
+
       - name: Build client (macOS) & publish
         working-directory: apps/client
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_ENV: production
         run: npm run build:prod:mac
 

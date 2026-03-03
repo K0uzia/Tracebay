@@ -90,6 +90,9 @@ workspace/
 
 Le client est distribué sous forme d'exécutable (AppImage sur Linux, installeur sur Windows/Mac). Les mises à jour sont gérées automatiquement par `electron-updater` : l'application détecte si une version plus récente est disponible sur les Releases GitHub et propose la mise à jour à l'utilisateur sans intervention manuelle.
 
+**Build en local** (depuis `apps/client`) : `npm run build:linux` (ou `build:prod:linux:local` pour un build prod sans publication). Aucun token nécessaire.  
+**Publication (Release GitHub)** : effectuée uniquement par la CI (`.github/workflows/build-client.yml`) au push sur `main` ; le token est fourni par le secret du dépôt (`GH_TOKEN` ou `GITHUB_TOKEN`), jamais en clair dans les fichiers.
+
 ---
 
 ## Sécurité
