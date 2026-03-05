@@ -110,9 +110,8 @@ export default class CalendarRenderer {
         column.appendChild(eventContainer);
 
         column.addEventListener('click', (e) => {
-            if (e.target === column || e.target === header || e.target.parentElement === header) {
-                this.onDayClick?.(date);
-            }
+            if (e.target.closest?.('.calendar-event-chip')) return;
+            this.onDayClick?.(date);
         });
 
         return column;
@@ -142,9 +141,8 @@ export default class CalendarRenderer {
         dayElement.appendChild(eventsContainer);
 
         dayElement.addEventListener('click', (e) => {
-            if (e.target === dayElement || e.target === header || e.target.parentElement === header) {
-                this.onDayClick?.(date);
-            }
+            if (e.target.closest?.('.calendar-event-chip')) return;
+            this.onDayClick?.(date);
         });
 
         return dayElement;

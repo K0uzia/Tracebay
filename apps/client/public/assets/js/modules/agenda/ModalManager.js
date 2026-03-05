@@ -192,8 +192,26 @@ export default class ModalManager {
         });
     }
 
+    /** Déplace le dialog dans body pour éviter les problèmes d'affichage (stacking context, overflow) */
+    ensureDialogInBody(dialogEl) {
+        if (!dialogEl || dialogEl.parentNode === document.body) return;
+        document.body.appendChild(dialogEl);
+    }
+
     showModal(modalEl) {
-        modalEl?.showModal();
+        const el = typeof modalEl?.id === 'string' ? document.getElementById(modalEl.id) : modalEl;
+        if (!el) return;
+        this.ensureDialogInBody(el);
+        if (typeof el.showModal === 'function') {
+            try {
+                el.showModal();
+            } catch (err) {
+                console.warn('dialog.showModal() failed, fallback to open attribute', err);
+                el.setAttribute('open', '');
+            }
+        } else {
+            el.setAttribute('open', '');
+        }
     }
 
     closeModal(modalEl) {
@@ -201,6 +219,9 @@ export default class ModalManager {
     }
 
     openCreateModal(dateObj) {
+        const createModalEl = document.getElementById('agenda-create-modal');
+        if (!createModalEl) return;
+
         const form = document.getElementById('createEventForm');
         form?.reset();
 
@@ -228,7 +249,7 @@ export default class ModalManager {
 
         syncDateInputs('create_date', 'create_end_date', { forceUpdate: true });
         this.updateColorPalette('create');
-        this.showModal(this.createModal);
+        this.showModal(createModalEl);
     }
 
     openEditModal(ev) {
@@ -271,13 +292,13 @@ export default class ModalManager {
 
         syncDateInputs('edit_date', 'edit_end_date', { forceUpdate: true });
         this.updateColorPalette('edit');
-        this.showModal(this.editModal);
+        this.showModal(document.getElementById('agenda-edit-modal'));
     }
 
     openDeleteModal(id, title) {
         document.getElementById('delete_eventId').value = id;
         document.getElementById('delete-event-title').textContent = title;
-        this.showModal(this.deleteModal);
+        this.showModal(document.getElementById('agenda-delete-modal'));
     }
 
     async handleCreateSubmit(e) {

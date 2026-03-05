@@ -80,6 +80,10 @@
     "agenda": {
       "events": "/api/agenda/events"
     },
+    "disques": {
+      "sessions": "/api/disques/sessions",
+      "sessionsPdf": "/api/disques/sessions/:id/pdf"
+    },
     "config": {
       "apps": "/api/admin/config/apps",
       "folders": "/api/admin/config/folders"

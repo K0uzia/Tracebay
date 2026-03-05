@@ -34,6 +34,10 @@ dialog[open] {
     top: 50%;
     transform: translate(-50%, -50%);
     margin: 0;
+    z-index: 999999;
+    min-height: 200px;
+    height: fit-content;
+    max-height: calc(100vh - var(--unit-4));
     animation: modalFadeIn 0.25s ease-out;
 }
 
@@ -78,14 +82,15 @@ dialog:has(.modal-content.modal-lg) {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    min-height: 0;
+    min-height: min(400px, 80vh);
     max-height: inherit;
 }
 
 /* Le contenu remplit l'espace pour que le body scrolle si contenu trop haut */
 .universal-modal > .modal-content {
-    flex: 1 1 0;
-    min-height: 0;
+    flex: 1 1 auto;
+    position: relative;
+    z-index: 1;
 }
 
 .universal-modal::-webkit-scrollbar {
@@ -501,11 +506,18 @@ dialog:has(.modal-content.modal-lg) {
 .btn-danger {
     background-color: var(--error);
     color: var(--blanc);
-    font-weight: 600;
+    box-shadow: var(--shadow-small);
+    font-weight: 500;
+    border: none;
     padding: var(--unit-2) var(--unit-4);
-    min-height: var(--unit-5);
-    font-size: 0.95rem;
-    box-shadow: var(--shadow-medium);
+    min-width: 7rem;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--unit-1);
 }
 
 .btn-danger:hover {
@@ -858,7 +870,6 @@ dialog:has(.modal-content.modal-lg) {
     padding: var(--unit-4);
     background-color: rgba(198, 40, 40, 0.08);
     border-radius: var(--radius-medium);
-    border-left: 5px solid var(--error);
 }
 
 .warning-icon {

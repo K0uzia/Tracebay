@@ -25,6 +25,15 @@
     margin: 0;
     font-size: 0.9rem;
 }
+.footer-copyright a {
+    text-decoration: none;
+    color: var(--text);
+}
+
+.footer-copyright a:hover {
+    text-decoration: underline;
+    color: var(--jaune);
+}
 
 .footer-system-info {
     display: flex;
@@ -57,6 +66,7 @@
 #footer-ip-value:hover {
     opacity: 0.8;
     text-decoration: underline;
+    color: var(--jaune);
 }
 
 /* Responsive tablette */

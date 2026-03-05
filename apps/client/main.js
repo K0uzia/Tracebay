@@ -8,7 +8,7 @@ const url = require('url');
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
-const { exec } = require('child_process');
+const { exec, execSync } = require('child_process');
 const PDFDocument = require('pdfkit');
 
 // #region agent log (bootstrap debug log pour AppImage sur autres machines)
@@ -1206,12 +1206,15 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
         `<style>${css}</style>`
     );
 
-    // FontAwesome : URL file:// absolue pour que les icônes s'affichent même quand le HTML est chargé depuis /tmp
+    // FontAwesome : privilégier le fichier local (file://) pour les icônes quand le HTML est chargé depuis /tmp
     const fontawesomeCssPath = path.join(__dirname, 'public', 'assets', 'css', 'fontawesome-local.css');
-    if (!html.includes('fontawesome') && fs.existsSync(fontawesomeCssPath)) {
-        const fontawesomeFileUrl = url.pathToFileURL(fontawesomeCssPath).href;
-        const fontawesomeLink = `<link rel="stylesheet" href="${fontawesomeFileUrl}">`;
-        html = html.replace('</head>', `${fontawesomeLink}\n</head>`);
+    const fontawesomeFileUrl = fs.existsSync(fontawesomeCssPath) ? url.pathToFileURL(fontawesomeCssPath).href : null;
+    const fontawesomeLink = fontawesomeFileUrl ? `<link rel="stylesheet" href="${fontawesomeFileUrl}">` : '';
+    if (fontawesomeLink) {
+        if (/<link[^>]+font-awesome[^>]*>/i.test(html))
+            html = html.replace(/<link[^>]+font-awesome[^>]*>/i, fontawesomeLink);
+        else if (!html.includes('fontawesome'))
+            html = html.replace('</head>', `${fontawesomeLink}\n</head>`);
     }
 
     // Images (logo, etc.) : réécrire les src relatifs en file:// pour que ça charge depuis /tmp
@@ -1550,4 +1553,81 @@ ipcMain.handle('get-system-info', async () => {
             type: connectionType
         }
     };
+});
+
+/** Marques connues (début de MODEL quand VENDOR vide). Plus long d’abord pour matcher "WESTERN DIGITAL" avant "WD". */
+const LSBLK_KNOWN_VENDORS = ['WESTERN DIGITAL', 'SK HYNIX', 'SANDISK', 'SAMSUNG', 'SEAGATE', 'TRANSCEND', 'TEAMGROUP', 'INTEL', 'CRUCIAL', 'KINGSTON', 'TOSHIBA', 'KIOXIA', 'LITEON', 'ADATA', 'PATRIOT', 'CORSAIR', 'GIGABYTE', 'PLEXTOR', 'PHISON', 'MICRON', 'HGST', 'HITACHI', 'LEXAR', 'SABRENT', 'VMWARE', 'PNY', 'OCZ', 'WD', 'VBOX', 'QEMU', 'MSI'];
+
+/**
+ * Si vendor est vide et model commence par une marque connue, extrait marque (vendor) et référence (model).
+ * Ex. "Intel SSDSC2KB240G8" → vendor="Intel", model="SSDSC2KB240G8"
+ */
+function splitVendorModel(vendor, model) {
+    if (vendor || !model) return { vendor: vendor || '', model: model || '' };
+    const m = model.trim();
+    const mUpper = m.toUpperCase();
+    for (const brand of LSBLK_KNOWN_VENDORS) {
+        if (mUpper === brand || mUpper.startsWith(brand + ' ')) {
+            const vendorStr = m.slice(0, brand.length);
+            const rest = m.slice(brand.length).trim();
+            return { vendor: vendorStr, model: rest };
+        }
+    }
+    return { vendor: '', model: m };
+}
+
+/**
+ * Récupérer la liste des disques via lsblk (Linux uniquement).
+ * Marque = vendor (ou début de model si "Intel SSDSC2KB..."), Modèle = référence (reste de model).
+ */
+ipcMain.handle('run-lsblk', async () => {
+    if (process.platform !== 'linux') {
+        return { success: false, error: 'lsblk n\'est disponible que sous Linux.' };
+    }
+    try {
+        const stdout = execSync('lsblk -o NAME,SERIAL,SIZE,TYPE,TRAN,ROTA,MODEL,VENDOR -J', {
+            encoding: 'utf8',
+            timeout: 10000,
+            maxBuffer: 2 * 1024 * 1024
+        });
+        const data = JSON.parse(stdout);
+        const blockdevices = data.blockdevices || [];
+        const disks = [];
+        function collectDisks(list) {
+            if (!Array.isArray(list)) return;
+            for (const dev of list) {
+                if (dev.type === 'disk') {
+                    const tran = (dev.tran || '').toUpperCase();
+                    let type = 'SATA';
+                    if (tran.includes('SAS')) type = 'SAS';
+                    else if (tran.includes('NVME') || tran === 'NVME') type = 'NVMe';
+                    else if (tran.includes('USB')) type = 'USB';
+                    else if (tran.includes('SATA') || tran === 'ATA') type = 'SATA';
+                    const rota = dev.rota;
+                    const diskType = (rota === 0 || rota === '0' || rota === false) ? 'SSD' : 'HDD';
+                    let vendor = (dev.vendor || '').trim();
+                    let model = (dev.model || '').trim();
+                    const split = splitVendorModel(vendor, model);
+                    vendor = split.vendor;
+                    model = split.model;
+                    disks.push({
+                        name: dev.name || '',
+                        serial: (dev.serial || '').trim() || dev.name || '',
+                        size: (dev.size || '').trim() || '',
+                        type,
+                        disk_type: diskType,
+                        model,
+                        vendor
+                    });
+                }
+                if (dev.children) collectDisks(dev.children);
+            }
+        }
+        collectDisks(blockdevices);
+        return { success: true, disks };
+    } catch (err) {
+        const msg = err.message || String(err);
+        console.warn('run-lsblk:', msg);
+        return { success: false, error: msg };
+    }
 });

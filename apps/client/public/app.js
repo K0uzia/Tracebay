@@ -671,7 +671,7 @@ class PageManager {
 
     async loadPage(pageName) {
         try {
-            const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite'].includes(pageName);
+            const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques'].includes(pageName);
             
             // Si c'est une sous-page de réception, charger d'abord reception.html
             if (isReceptionSubPage) {
@@ -712,6 +712,10 @@ class PageManager {
                 html = this.transformFileManagers(html);
                 html = this.transformAppManagers(html);
                 const contentEl = document.getElementById(this.contentContainer);
+                // Retirer les modales agenda du body si elles y ont été déplacées (évite doublons d’id au rechargement agenda)
+                ['agenda-create-modal', 'agenda-edit-modal', 'agenda-delete-modal'].forEach((id) => {
+                    document.getElementById(id)?.remove();
+                });
                 contentEl.innerHTML = html;
                 this.closeAllDialogsIn(contentEl);
             }
@@ -958,6 +962,20 @@ class PageManager {
                 })
                 .catch(error => {
                     logger.error('❌ Erreur import TracabiliteManager:', error);
+                });
+        } else if (pageName === 'disques') {
+            if (window.disquesManager) {
+                window.disquesManager.destroy();
+                window.disquesManager = null;
+            }
+            import('./assets/js/modules/reception/disques.js')
+                .then(module => {
+                    const DisquesManager = module.default;
+                    window.disquesManager = new DisquesManager(window.modalManager);
+                    logger.debug('✅ DisquesManager initialisé depuis app.js');
+                })
+                .catch(error => {
+                    logger.error('❌ Erreur import DisquesManager:', error);
                 });
         }
     }

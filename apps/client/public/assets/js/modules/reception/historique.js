@@ -1,11 +1,12 @@
 /**
  * HISTORIQUE - MODULE JS
- * Affiche les lots terminés
+ * Affiche les lots terminés et les sessions disques shreddés (icône PC vs disque)
  */
 
 import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
 import { loadLotsWithItems } from './lotsApi.js';
+import { getSessions, getSession, getSessionPdfUrl } from './disquesApi.js';
 const logger = getLogger();
 
 
@@ -13,30 +14,40 @@ export default class HistoriqueManager {
     constructor(modalManager) {
         this.modalManager = modalManager;
         this.lots = [];
+        this.sessionsDisques = [];
         this.init();
     }
 
     async init() {
         logger.debug('🚀 Initialisation HistoriqueManager');
-        await this.loadLots();
+        await this.loadData();
         this.setupEventListeners();
         logger.debug('✅ HistoriqueManager prêt');
     }
 
     /**
-     * Charger les lots terminés
+     * Charger lots terminés + sessions disques
      */
-    async loadLots() {
+    async loadData() {
         try {
-            this.lots = await loadLotsWithItems({ status: 'finished' });
-            this.lots.sort((a, b) =>
+            const [lots, sessions] = await Promise.all([
+                loadLotsWithItems({ status: 'finished' }),
+                getSessions().catch(() => [])
+            ]);
+            this.lots = (lots || []).sort((a, b) =>
                 new Date(b.finished_at || b.created_at) - new Date(a.finished_at || a.created_at)
             );
-            logger.info('📦 Historique : ' + this.lots.length + ' lot(s) chargé(s)');
+            this.sessionsDisques = (sessions || []).sort((a, b) => {
+                const da = a.date || (a.created_at || '').slice(0, 10);
+                const db = b.date || (b.created_at || '').slice(0, 10);
+                return new Date(db) - new Date(da);
+            });
+            logger.info('📦 Historique : ' + this.lots.length + ' lot(s), ' + this.sessionsDisques.length + ' session(s) disques');
             this.renderLots();
         } catch (error) {
-            logger.error('❌ Erreur chargement lots:', error);
+            logger.error('❌ Erreur chargement historique:', error);
             this.lots = [];
+            this.sessionsDisques = [];
             this.renderLotsError(error);
         }
     }
@@ -59,11 +70,11 @@ export default class HistoriqueManager {
             </div>
         `;
         const btn = document.getElementById('btn-retry-lots-historique');
-        if (btn) btn.addEventListener('click', () => this.loadLots());
+        if (btn) btn.addEventListener('click', () => this.loadData());
     }
 
     /**
-     * Afficher les lots
+     * Afficher les lots + sessions disques (fusionnés, triés par date)
      */
     renderLots() {
         const container = document.getElementById('historique-list');
@@ -71,14 +82,21 @@ export default class HistoriqueManager {
 
         const searchText = (document.getElementById('filter-search-historique')?.value || '').trim().toLowerCase();
 
-        let toRender = this.lots;
+        const merged = [
+            ...this.lots.map(lot => ({ type: 'lot', date: lot.finished_at || lot.created_at, item: lot })),
+            ...this.sessionsDisques.map(s => ({ type: 'disque', date: s.date || (s.created_at || '').slice(0, 10), item: s }))
+        ].sort((a, b) => new Date(b.date) - new Date(a.date));
 
-        // Filtre par recherche (nom ou n° de lot)
+        let toRender = merged;
         if (searchText) {
-            toRender = toRender.filter(lot => {
-                const name = (lot.lot_name || '').toLowerCase();
-                const id = String(lot.id || '');
-                return name.includes(searchText) || id.includes(searchText);
+            toRender = merged.filter(({ type, item }) => {
+                if (type === 'lot') {
+                    const name = (item.lot_name || '').toLowerCase();
+                    const id = String(item.id || '');
+                    return name.includes(searchText) || id.includes(searchText);
+                }
+                const dateStr = (item.date || (item.created_at || '').slice(0, 10) || '').toLowerCase();
+                return dateStr.includes(searchText);
             });
         }
 
@@ -86,14 +104,16 @@ export default class HistoriqueManager {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fa-solid fa-inbox"></i>
-                    <p>${this.lots.length === 0 ? 'Aucun lot terminé' : 'Aucun résultat'}</p>
-                    <small>${this.lots.length === 0 ? 'Les lots terminés apparaîtront ici' : 'Modifiez la recherche'}</small>
+                    <p>${merged.length === 0 ? 'Aucun élément' : 'Aucun résultat'}</p>
+                    <small>${merged.length === 0 ? 'Lots terminés et sessions disques apparaîtront ici' : 'Modifiez la recherche'}</small>
                 </div>
             `;
             return;
         }
 
-        container.innerHTML = toRender.map(lot => this.createLotElement(lot)).join('');
+        container.innerHTML = toRender.map(({ type, item }) =>
+            type === 'lot' ? this.createLotElement(item) : this.createDisqueElement(item)
+        ).join('');
         this.attachLotEventListeners();
     }
 
@@ -154,10 +174,10 @@ export default class HistoriqueManager {
         const recoveryButtonDisabled = isRecovered || !canRecover;
 
         return `
-            <div class="historique-lot-card" data-lot-id="${lot.id}">
+            <div class="historique-lot-card" data-type="lot" data-lot-id="${lot.id}">
                 <div class="historique-lot-header">
                     <div class="historique-lot-title">
-                        <h3>Lot #${lot.id}${lot.lot_name ? ' | ' + lot.lot_name : ''}</h3>
+                        <h3><i class="fa-solid fa-desktop historique-type-icon" aria-hidden="true"></i> Lot #${lot.id}${lot.lot_name ? ' | ' + this.escapeHtml(lot.lot_name) : ''}</h3>
                         <span class="${recoveryBadgeClass}">${recoveryBadgeText}</span>
                         <span class="badge-created">Terminé le ${this.formatDate(lot.finished_at)}</span>
                     </div>
@@ -194,10 +214,49 @@ export default class HistoriqueManager {
     }
 
     /**
-     * Attacher les événements aux lots
+     * Créer un élément de session disques
+     */
+    createDisqueElement(session) {
+        const dateStr = session.date || (session.created_at || '').slice(0, 10) || '-';
+        const count = Array.isArray(session.disks) ? session.disks.length : (session.disk_count ?? 0);
+        const hasPdf = session.pdf_path != null && session.pdf_path !== '';
+        const pdfUrl = getSessionPdfUrl(session.id);
+        return `
+            <div class="historique-lot-card historique-disque-card" data-type="disque" data-session-id="${session.id}">
+                <div class="historique-lot-header">
+                    <div class="historique-lot-title">
+                        <h3><i class="fa-solid fa-hard-drive historique-type-icon" aria-hidden="true"></i> Session disques du ${this.escapeHtml(dateStr)}</h3>
+                        <span class="badge-created">${count} disque(s)</span>
+                    </div>
+                    <div class="historique-lot-stats">
+                        <span class="historique-stat"><strong>${count}</strong> disque(s)</span>
+                    </div>
+                    <div class="historique-lot-actions">
+                        <button type="button" class="btn-view-details btn-view-disque" data-session-id="${session.id}">
+                            <i class="fa-solid fa-eye"></i> Voir détails
+                        </button>
+                        ${hasPdf ? `<a href="${this.escapeAttr(pdfUrl)}" target="_blank" rel="noopener" class="btn-action btn-pdf-disque"><i class="fa-solid fa-file-pdf"></i> PDF</a>` : ''}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    escapeHtml(s) {
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    escapeAttr(s) {
+        return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+
+    /**
+     * Attacher les événements aux lots et sessions disques
      */
     attachLotEventListeners() {
-        document.querySelectorAll('.btn-view-details').forEach(btn => {
+        document.querySelectorAll('.btn-view-details[data-lot-id]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 const lotId = btn.dataset.lotId;
@@ -228,6 +287,56 @@ export default class HistoriqueManager {
                 this.markAsRecovered(lotId);
             });
         });
+
+        document.querySelectorAll('.btn-view-disque').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const sessionId = btn.dataset.sessionId;
+                this.viewDisqueSessionDetails(sessionId);
+            });
+        });
+    }
+
+    /**
+     * Afficher les détails d'une session disques
+     */
+    async viewDisqueSessionDetails(sessionId) {
+        const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
+        if (!session) return;
+        const full = await getSession(sessionId).catch(() => session);
+        const dateStr = full.date || (full.created_at || '').slice(0, 10) || '-';
+        const disks = Array.isArray(full.disks) ? full.disks : [];
+        document.getElementById('modal-disque-date').textContent = dateStr;
+        document.getElementById('modal-disque-total').textContent = disks.length;
+        const tbody = document.getElementById('modal-disque-items');
+        if (tbody) {
+            tbody.innerHTML = disks.map((d, i) => {
+                const t = (d.disk_type || '').toUpperCase();
+                const shredDisplay = d.shred || (t === 'SSD' ? 'Secure E. + Sanitize' : t === 'HDD' ? 'DoD' : '-');
+                return `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td>${this.escapeHtml((d.serial != null ? d.serial : d.serial_number) || '-')}</td>
+                    <td>${this.escapeHtml(d.marque || '-')}</td>
+                    <td>${this.escapeHtml(d.modele || '-')}</td>
+                    <td>${this.escapeHtml(d.size || '-')}</td>
+                    <td>${this.escapeHtml(d.disk_type || '-')}</td>
+                    <td>${this.escapeHtml(d.interface || '-')}</td>
+                    <td>${this.escapeHtml(shredDisplay)}</td>
+                </tr>
+            `;
+            }).join('');
+        }
+        const pdfLink = document.getElementById('modal-disque-pdf-link');
+        if (pdfLink) {
+            if (full.pdf_path) {
+                pdfLink.href = getSessionPdfUrl(full.id);
+                pdfLink.style.display = '';
+            } else {
+                pdfLink.style.display = 'none';
+            }
+        }
+        this.modalManager.open('modal-disque-details');
     }
 
     /**
@@ -302,7 +411,7 @@ export default class HistoriqueManager {
             refreshBtn.addEventListener('click', async () => {
                 refreshBtn.disabled = true;
                 try {
-                    await this.loadLots();
+                    await this.loadData();
                 } finally {
                     refreshBtn.disabled = false;
                 }
@@ -700,5 +809,6 @@ export default class HistoriqueManager {
     destroy() {
         logger.debug('🧹 Destruction HistoriqueManager');
         this.lots = [];
+        this.sessionsDisques = [];
     }
 }
