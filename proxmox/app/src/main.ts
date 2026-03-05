@@ -18,6 +18,7 @@ import { globalMetrics } from './utils/metrics';
 import { globalCache } from './utils/cache';
 import { initServerLogBuffer, createPinoBufferStream } from './utils/server-log-buffer';
 import { testConnection, initializeDatabase, query } from './db';
+import { generateDisquesPdf } from './utils/disques-pdf';
 
 // Load environment variables
 dotenv.config();
@@ -1383,6 +1384,217 @@ function broadcastUserCount() {
         return reply.send(fs.createReadStream(filePath));
       } catch (err: any) {
         fastify.log.error({ err }, 'GET /api/lots/:id/pdf error');
+        reply.statusCode = 500;
+        return { error: 'Failed to serve PDF' };
+      }
+    });
+
+    // ——— Disques (sessions shred) ———
+    fastify.get('/api/disques/sessions', async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const { year, month } = request.query as { year?: string; month?: string };
+        let sql = `
+          SELECT id, date, pdf_path, created_at
+          FROM disques_sessions
+        `;
+        const params: any[] = [];
+        if (year && /^\d{4}$/.test(year)) {
+          sql += params.length ? ' AND ' : ' WHERE ';
+          sql += " EXTRACT(YEAR FROM date) = $1";
+          params.push(year);
+        }
+        if (month && /^(0?[1-9]|1[0-2])$/.test(month)) {
+          sql += params.length ? ' AND ' : ' WHERE ';
+          sql += ` EXTRACT(MONTH FROM date) = $${params.length + 1}`;
+          params.push(parseInt(month, 10));
+        }
+        sql += ' ORDER BY date DESC, created_at DESC';
+        const result = await query(sql, params);
+        const sessions = (result.rows as any[]).map((row: any) => ({
+          id: row.id,
+          date: row.date,
+          created_at: row.created_at,
+          pdf_path: row.pdf_path,
+          disk_count: 0
+        }));
+        if (sessions.length === 0) {
+          return { sessions: [] };
+        }
+        const sessionIds = sessions.map((s: any) => s.id);
+        const placeholders = sessionIds.map((_: any, i: number) => `$${i + 1}`).join(',');
+        const disksResult = await query(
+          `SELECT session_id, serial, marque, modele, size, disk_type, interface, shred
+           FROM disques_session_disks WHERE session_id IN (${placeholders})`,
+          sessionIds
+        );
+        const disksBySession: Record<number, any[]> = {};
+        for (const r of disksResult.rows as any[]) {
+          if (!disksBySession[r.session_id]) disksBySession[r.session_id] = [];
+          disksBySession[r.session_id].push({
+            serial: r.serial,
+            marque: r.marque,
+            modele: r.modele,
+            size: r.size,
+            disk_type: r.disk_type,
+            interface: r.interface,
+            shred: r.shred
+          });
+        }
+        sessions.forEach((s: any) => {
+          s.disks = disksBySession[s.id] || [];
+          s.disk_count = s.disks.length;
+        });
+        return { sessions };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'GET /api/disques/sessions error');
+        reply.statusCode = 500;
+        return { error: 'Database error', message: err?.message };
+      }
+    });
+
+    fastify.post('/api/disques/sessions', async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = (request.body as any) || {};
+      const dateStr = (body.date && /^\d{4}-\d{2}-\d{2}$/.test(String(body.date)))
+        ? String(body.date)
+        : new Date().toISOString().slice(0, 10);
+      const disks = Array.isArray(body.disks) ? body.disks : [];
+      if (disks.length === 0) {
+        reply.statusCode = 400;
+        return { error: 'disks array is required and must not be empty' };
+      }
+      try {
+        const insertSession = await query(
+          'INSERT INTO disques_sessions (date) VALUES ($1) RETURNING id, date, created_at, pdf_path',
+          [dateStr]
+        );
+        const session = (insertSession.rows[0] as any);
+        const sessionId = session.id;
+        for (const d of disks) {
+          await query(
+            `INSERT INTO disques_session_disks (session_id, serial, marque, modele, size, disk_type, interface, shred)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+            [
+              sessionId,
+              (d.serial != null ? String(d.serial) : '').trim() || null,
+              (d.marque != null ? String(d.marque) : '').trim() || null,
+              (d.modele != null ? String(d.modele) : '').trim() || null,
+              (d.size != null ? String(d.size) : '').trim() || null,
+              (d.disk_type != null ? String(d.disk_type) : '').trim() || null,
+              (d.interface != null ? String(d.interface) : '').trim() || null,
+              (d.shred != null ? String(d.shred) : '').trim() || null
+            ]
+          );
+        }
+        const disksForPdf = await query(
+          'SELECT serial, marque, modele, size, disk_type, interface, shred FROM disques_session_disks WHERE session_id = $1 ORDER BY id',
+          [sessionId]
+        );
+        const rows = (disksForPdf.rows as any[]).map((r: any) => ({
+          serial: r.serial,
+          marque: r.marque,
+          modele: r.modele,
+          size: r.size,
+          disk_type: r.disk_type,
+          interface: r.interface,
+          shred: r.shred
+        }));
+        const pdfBuffer = await generateDisquesPdf(dateStr, rows);
+        const pdfStorageDir = process.env.PDF_STORAGE_PATH || path.join(process.cwd(), 'data', 'pdfs');
+        const year = dateStr.slice(0, 4);
+        const month = dateStr.slice(5, 7);
+        const dirPath = path.join(pdfStorageDir, 'Disques', year, month);
+        fs.mkdirSync(dirPath, { recursive: true });
+        const fileName = `Disques_Shred_${dateStr}_${sessionId}.pdf`;
+        const serverFilePath = path.join(dirPath, fileName);
+        fs.writeFileSync(serverFilePath, pdfBuffer);
+        const resolvedPath = path.resolve(serverFilePath);
+        await query('UPDATE disques_sessions SET pdf_path = $1 WHERE id = $2', [resolvedPath, sessionId]);
+        return {
+          id: sessionId,
+          date: session.date,
+          created_at: session.created_at,
+          pdf_path: resolvedPath,
+          disks: rows
+        };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'POST /api/disques/sessions error');
+        reply.statusCode = 500;
+        return { error: 'Failed to create session', message: err?.message };
+      }
+    });
+
+    fastify.get('/api/disques/sessions/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      if (!id || id === 'null' || id === 'undefined') {
+        reply.statusCode = 400;
+        return { error: 'Invalid session id' };
+      }
+      try {
+        const sessionResult = await query(
+          'SELECT id, date, pdf_path, created_at FROM disques_sessions WHERE id = $1',
+          [id]
+        );
+        if (sessionResult.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Session not found' };
+        }
+        const session = sessionResult.rows[0] as any;
+        const disksResult = await query(
+          'SELECT serial, marque, modele, size, disk_type, interface, shred FROM disques_session_disks WHERE session_id = $1 ORDER BY id',
+          [id]
+        );
+        const disks = (disksResult.rows as any[]).map((r: any) => ({
+          serial: r.serial,
+          marque: r.marque,
+          modele: r.modele,
+          size: r.size,
+          disk_type: r.disk_type,
+          interface: r.interface,
+          shred: r.shred
+        }));
+        return {
+          id: session.id,
+          date: session.date,
+          pdf_path: session.pdf_path,
+          created_at: session.created_at,
+          disks
+        };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'GET /api/disques/sessions/:id error');
+        reply.statusCode = 500;
+        return { error: 'Database error', message: err?.message };
+      }
+    });
+
+    fastify.get('/api/disques/sessions/:id/pdf', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      if (!id || id === 'null' || id === 'undefined') {
+        reply.statusCode = 400;
+        return { error: 'Invalid session id' };
+      }
+      try {
+        const result = await query('SELECT pdf_path FROM disques_sessions WHERE id = $1', [id]);
+        if (result.rowCount === 0 || !(result.rows[0] as any)?.pdf_path) {
+          reply.statusCode = 404;
+          return { error: 'PDF not found for this session' };
+        }
+        let filePath = (result.rows[0] as any).pdf_path;
+        if (typeof filePath !== 'string' || filePath.startsWith('/api/') || filePath.startsWith('http')) {
+          reply.statusCode = 404;
+          return { error: 'PDF path invalid' };
+        }
+        filePath = path.resolve(filePath);
+        if (!fs.existsSync(filePath)) {
+          fastify.log.warn({ filePath, sessionId: id }, 'GET /api/disques/sessions/:id/pdf file not found on disk');
+          reply.statusCode = 404;
+          return { error: 'PDF file not found' };
+        }
+        reply.header('Content-Type', 'application/pdf');
+        reply.header('Content-Disposition', 'inline; filename="disques-session-' + id + '.pdf"');
+        reply.header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        return reply.send(fs.createReadStream(filePath));
+      } catch (err: any) {
+        fastify.log.error({ err }, 'GET /api/disques/sessions/:id/pdf error');
         reply.statusCode = 500;
         return { error: 'Failed to serve PDF' };
       }

@@ -165,6 +165,30 @@ CREATE INDEX IF NOT EXISTS idx_lot_items_serial_number ON lot_items(serial_numbe
 CREATE INDEX IF NOT EXISTS idx_lot_items_marque_id ON lot_items(marque_id);
 CREATE INDEX IF NOT EXISTS idx_lot_items_modele_id ON lot_items(modele_id);
 
+-- Disques shreddés (traçabilité sessions + disques)
+CREATE TABLE IF NOT EXISTS disques_sessions (
+  id SERIAL PRIMARY KEY,
+  date DATE NOT NULL,
+  pdf_path VARCHAR(1024),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_disques_sessions_date ON disques_sessions(date DESC);
+CREATE INDEX IF NOT EXISTS idx_disques_sessions_created_at ON disques_sessions(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS disques_session_disks (
+  id SERIAL PRIMARY KEY,
+  session_id INTEGER NOT NULL REFERENCES disques_sessions(id) ON DELETE CASCADE,
+  serial VARCHAR(255) NOT NULL,
+  marque VARCHAR(255),
+  modele VARCHAR(255),
+  size VARCHAR(100),
+  disk_type VARCHAR(50),
+  interface VARCHAR(50),
+  shred VARCHAR(255),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_disques_session_disks_session_id ON disques_session_disks(session_id);
+
 -- Sessions table (for JWT/session management)
 CREATE TABLE IF NOT EXISTS sessions (
   id SERIAL PRIMARY KEY,
