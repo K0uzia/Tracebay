@@ -156,6 +156,7 @@
       <div class="page-header"><h1>Réception</h1><p>Lots, marques et modèles</p></div>
       <div class="sub-tabs">
         <div class="sub-tab active" data-sub="lots">Lots</div>
+        <div class="sub-tab" data-sub="disques">Lots disques</div>
         <div class="sub-tab" data-sub="marques">Marques & Modèles</div>
       </div>
 
@@ -176,6 +177,37 @@
           <div class="table-wrap">
             <table><thead><tr><th>#</th><th>Nom</th><th>Statut</th><th>Articles</th><th>Reçu le</th><th>PDF</th><th>Actions</th></tr></thead>
             <tbody id="lots-table"><tr class="empty-row"><td colspan="7">Chargement…</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-panel" id="sub-disques">
+        <div class="card">
+          <div class="card-header">
+            <div class="toolbar">
+              <select id="disques-year" onchange="loadDisquesSessions()">
+                <option value="">Toutes les années</option>
+              </select>
+              <select id="disques-month" onchange="loadDisquesSessions()">
+                <option value="">Tous les mois</option>
+                <option value="1">Janvier</option>
+                <option value="2">Février</option>
+                <option value="3">Mars</option>
+                <option value="4">Avril</option>
+                <option value="5">Mai</option>
+                <option value="6">Juin</option>
+                <option value="7">Juillet</option>
+                <option value="8">Août</option>
+                <option value="9">Septembre</option>
+                <option value="10">Octobre</option>
+                <option value="11">Novembre</option>
+                <option value="12">Décembre</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table><thead><tr><th>#</th><th>Nom</th><th>Date</th><th>Disques</th><th>PDF</th><th>Actions</th></tr></thead>
+            <tbody id="disques-sessions-table"><tr class="empty-row"><td colspan="6">Chargement…</td></tr></tbody></table>
           </div>
         </div>
       </div>
@@ -626,6 +658,34 @@
   </div>
 </div>
 
+<!-- Lot disques modal (view/edit) -->
+<div class="modal-overlay" id="disque-session-modal">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header"><h3>Lot disques</h3><button class="modal-close" onclick="closeModal('disque-session-modal')">×</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="disque-session-edit-id">
+      <div class="form-group"><label>Nom</label><input type="text" id="disque-session-form-name" placeholder="Nom du lot disques"></div>
+      <div class="form-group"><label>Date</label><div id="disque-session-date-display" class="pdf-path-readonly">—</div></div>
+      <div class="form-group"><label>Chemin PDF</label><div id="disque-session-pdf-path-display" class="pdf-path-readonly" title="">—</div></div>
+      <div class="lot-items-section">
+        <h4>Disques</h4>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead><tr><th>N° série</th><th>Marque</th><th>Modèle</th><th>Taille</th><th>Interface</th><th>Shred</th></tr></thead>
+            <tbody id="disque-session-disks-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('disque-session-modal')">Fermer</button>
+      <button class="btn btn-warning btn-sm" id="disque-session-regen-btn" onclick="regenerateDisqueSessionPdf()">Régénérer le PDF</button>
+      <button class="btn btn-danger btn-sm" id="disque-session-delete-btn" onclick="deleteDisqueSession()">Supprimer</button>
+      <button class="btn btn-primary" onclick="saveDisqueSession()">Enregistrer le nom</button>
+    </div>
+  </div>
+</div>
+
 <!-- DB row edit modal -->
 <div class="modal-overlay" id="db-row-modal">
   <div class="modal" style="max-width:640px">
@@ -833,6 +893,7 @@ document.querySelectorAll('.sub-tab').forEach(el => {
     const sub = el.dataset.sub;
     parent.querySelectorAll('.sub-panel').forEach(p => p.classList.toggle('active', p.id === 'sub-' + sub));
     if (sub === 'marques') loadMarques();
+    if (sub === 'disques') loadDisquesSessions();
     if (sub === 'sc-cats') loadCategories();
     if (sub === 'sc-links') loadShortcutLinks();
   });
@@ -1203,6 +1264,117 @@ async function deleteLot(id) {
   if (data.error) { toast(data.error, 'error'); return; }
   toast('Lot supprimé');
   loadLots();
+}
+
+// ── Lots disques (admin) ───────────────────────────────────────────────────
+async function loadDisquesSessions() {
+  const year = document.getElementById('disques-year')?.value;
+  const month = document.getElementById('disques-month')?.value;
+  let url = '/api/admin/disques/sessions?';
+  if (year) url += 'year=' + encodeURIComponent(year) + '&';
+  if (month) url += 'month=' + encodeURIComponent(month) + '&';
+  const data = await api('GET', url);
+  const sessions = data.sessions || [];
+  const tbody = document.getElementById('disques-sessions-table');
+  if (!tbody) return;
+  const yearSelect = document.getElementById('disques-year');
+  if (yearSelect && yearSelect.options.length <= 1) {
+    const currentYear = new Date().getFullYear();
+    for (let y = currentYear; y >= currentYear - 5; y--) {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.textContent = y;
+      yearSelect.appendChild(opt);
+    }
+  }
+  if (!sessions.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun lot disques</td></tr>'; return; }
+  const base = window.location.origin;
+  tbody.innerHTML = sessions.map(s => {
+    const pathEsc = s.pdf_path ? escHtml(s.pdf_path) : '';
+    const pathTitle = s.pdf_path ? ` title="${escHtml(s.pdf_path)}"` : '';
+    const pdfCell = s.pdf_path
+      ? `<span class="pdf-path-cell"><span class="pdf-path"${pathTitle}>${pathEsc}</span> <a href="${base}/api/disques/sessions/${s.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="Ouvrir le PDF">Voir</a></span>`
+      : '<span class="pdf-path">—</span>';
+    return `<tr>
+      <td>${s.id}</td>
+      <td>${escHtml(s.name || '—')}</td>
+      <td>${fmtDate(s.date)}</td>
+      <td>${s.disk_count != null ? s.disk_count : '—'}</td>
+      <td>${pdfCell}</td>
+      <td><div class="actions-cell">
+        <button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="openDisqueSessionModal(${s.id})"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteDisqueSessionConfirm(${s.id})"><i class="fa-solid fa-trash"></i></button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function openDisqueSessionModal(id) {
+  document.getElementById('disque-session-edit-id').value = id;
+  document.getElementById('disque-session-form-name').value = '';
+  document.getElementById('disque-session-date-display').textContent = '—';
+  const pathEl = document.getElementById('disque-session-pdf-path-display');
+  if (pathEl) { pathEl.textContent = '—'; pathEl.title = ''; }
+  document.getElementById('disque-session-disks-tbody').innerHTML = '<tr><td colspan="6" class="text-muted">Chargement…</td></tr>';
+  openModal('disque-session-modal');
+  api('GET', '/api/admin/disques/sessions/' + id).then(data => {
+    if (data.error) { toast(data.error, 'error'); return; }
+    const session = data.session;
+    document.getElementById('disque-session-form-name').value = session.name || '';
+    document.getElementById('disque-session-date-display').textContent = fmtDate(session.date) || '—';
+    if (pathEl) { pathEl.textContent = session.pdf_path || '—'; pathEl.title = session.pdf_path || ''; }
+    const disks = session.disks || [];
+    const tbody = document.getElementById('disque-session-disks-tbody');
+    if (!disks.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun disque</td></tr>';
+    } else {
+      tbody.innerHTML = disks.map(d => `
+        <tr>
+          <td>${escHtml(d.serial || '—')}</td>
+          <td>${escHtml(d.marque || '—')}</td>
+          <td>${escHtml(d.modele || '—')}</td>
+          <td>${escHtml(d.size || '—')}</td>
+          <td>${escHtml(d.interface || '—')}</td>
+          <td>${escHtml(d.shred || '—')}</td>
+        </tr>`).join('');
+    }
+  });
+}
+
+async function saveDisqueSession() {
+  const id = document.getElementById('disque-session-edit-id').value;
+  const name = document.getElementById('disque-session-form-name').value.trim() || null;
+  const data = await api('PUT', '/api/admin/disques/sessions/' + id, { name });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Nom enregistré');
+  closeModal('disque-session-modal');
+  loadDisquesSessions();
+}
+
+async function regenerateDisqueSessionPdf() {
+  const id = document.getElementById('disque-session-edit-id').value;
+  const data = await api('POST', '/api/disques/sessions/' + id + '/regenerate-pdf');
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('PDF régénéré');
+  openDisqueSessionModal(id);
+}
+
+async function deleteDisqueSession() {
+  const id = document.getElementById('disque-session-edit-id').value;
+  if (!confirm('Supprimer ce lot disques et tous ses disques ?')) return;
+  const data = await api('DELETE', '/api/admin/disques/sessions/' + id);
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Lot disques supprimé');
+  closeModal('disque-session-modal');
+  loadDisquesSessions();
+}
+
+async function deleteDisqueSessionConfirm(id) {
+  if (!confirm('Supprimer ce lot disques et tous ses disques ?')) return;
+  const data = await api('DELETE', '/api/admin/disques/sessions/' + id);
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Lot disques supprimé');
+  loadDisquesSessions();
 }
 
 function openPdfPreview(btn) {

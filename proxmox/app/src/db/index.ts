@@ -106,6 +106,7 @@ export async function initializeDatabase(): Promise<void> {
       `CREATE TABLE IF NOT EXISTS disques_sessions (
         id SERIAL PRIMARY KEY,
         date DATE NOT NULL,
+        name VARCHAR(255),
         pdf_path VARCHAR(1024),
         created_at TIMESTAMP DEFAULT NOW()
       )`,
@@ -123,6 +124,7 @@ export async function initializeDatabase(): Promise<void> {
         created_at TIMESTAMP DEFAULT NOW()
       )`,
       `CREATE INDEX IF NOT EXISTS idx_disques_session_disks_session_id ON disques_session_disks(session_id)`,
+      'ALTER TABLE disques_sessions ADD COLUMN IF NOT EXISTS name VARCHAR(255)',
       'ALTER TABLE events ADD COLUMN IF NOT EXISTS start TIMESTAMP',
       'ALTER TABLE events ADD COLUMN IF NOT EXISTS "end" TIMESTAMP',
       'ALTER TABLE events ADD COLUMN IF NOT EXISTS username VARCHAR(255)',

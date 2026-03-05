@@ -1394,7 +1394,7 @@ function broadcastUserCount() {
       try {
         const { year, month } = request.query as { year?: string; month?: string };
         let sql = `
-          SELECT id, date, pdf_path, created_at
+          SELECT id, date, name, pdf_path, created_at
           FROM disques_sessions
         `;
         const params: any[] = [];
@@ -1413,6 +1413,7 @@ function broadcastUserCount() {
         const sessions = (result.rows as any[]).map((row: any) => ({
           id: row.id,
           date: row.date,
+          name: row.name,
           created_at: row.created_at,
           pdf_path: row.pdf_path,
           disk_count: 0
@@ -1457,6 +1458,7 @@ function broadcastUserCount() {
       const dateStr = (body.date && /^\d{4}-\d{2}-\d{2}$/.test(String(body.date)))
         ? String(body.date)
         : new Date().toISOString().slice(0, 10);
+      const name = body.name != null ? String(body.name).trim() || null : null;
       const disks = Array.isArray(body.disks) ? body.disks : [];
       if (disks.length === 0) {
         reply.statusCode = 400;
@@ -1464,8 +1466,8 @@ function broadcastUserCount() {
       }
       try {
         const insertSession = await query(
-          'INSERT INTO disques_sessions (date) VALUES ($1) RETURNING id, date, created_at, pdf_path',
-          [dateStr]
+          'INSERT INTO disques_sessions (date, name) VALUES ($1, $2) RETURNING id, date, name, created_at, pdf_path',
+          [dateStr, name]
         );
         const session = (insertSession.rows[0] as any);
         const sessionId = session.id;
@@ -1512,6 +1514,7 @@ function broadcastUserCount() {
         return {
           id: sessionId,
           date: session.date,
+          name: session.name,
           created_at: session.created_at,
           pdf_path: resolvedPath,
           disks: rows
@@ -1531,7 +1534,7 @@ function broadcastUserCount() {
       }
       try {
         const sessionResult = await query(
-          'SELECT id, date, pdf_path, created_at FROM disques_sessions WHERE id = $1',
+          'SELECT id, date, name, pdf_path, created_at FROM disques_sessions WHERE id = $1',
           [id]
         );
         if (sessionResult.rowCount === 0) {
@@ -1555,6 +1558,7 @@ function broadcastUserCount() {
         return {
           id: session.id,
           date: session.date,
+          name: session.name,
           pdf_path: session.pdf_path,
           created_at: session.created_at,
           disks
@@ -1597,6 +1601,225 @@ function broadcastUserCount() {
         fastify.log.error({ err }, 'GET /api/disques/sessions/:id/pdf error');
         reply.statusCode = 500;
         return { error: 'Failed to serve PDF' };
+      }
+    });
+
+    fastify.put('/api/disques/sessions/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      if (!id || id === 'null' || id === 'undefined') {
+        reply.statusCode = 400;
+        return { error: 'Invalid session id' };
+      }
+      const body = (request.body as any) || {};
+      try {
+        const sessionResult = await query('SELECT id, date, pdf_path FROM disques_sessions WHERE id = $1', [id]);
+        if (sessionResult.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Session not found' };
+        }
+        const session = sessionResult.rows[0] as any;
+        if (body.name !== undefined) {
+          const name = body.name != null ? String(body.name).trim() || null : null;
+          await query('UPDATE disques_sessions SET name = $1 WHERE id = $2', [name, id]);
+        }
+        if (Array.isArray(body.disks)) {
+          const disks = body.disks;
+          await query('DELETE FROM disques_session_disks WHERE session_id = $1', [id]);
+          for (const d of disks) {
+            await query(
+              `INSERT INTO disques_session_disks (session_id, serial, marque, modele, size, disk_type, interface, shred)
+               VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+              [
+                id,
+                (d.serial != null ? String(d.serial) : '').trim() || null,
+                (d.marque != null ? String(d.marque) : '').trim() || null,
+                (d.modele != null ? String(d.modele) : '').trim() || null,
+                (d.size != null ? String(d.size) : '').trim() || null,
+                (d.disk_type != null ? String(d.disk_type) : '').trim() || null,
+                (d.interface != null ? String(d.interface) : '').trim() || null,
+                (d.shred != null ? String(d.shred) : '').trim() || null
+              ]
+            );
+          }
+          const disksForPdf = await query(
+            'SELECT serial, marque, modele, size, disk_type, interface, shred FROM disques_session_disks WHERE session_id = $1 ORDER BY id',
+            [id]
+          );
+          const rows = (disksForPdf.rows as any[]).map((r: any) => ({
+            serial: r.serial,
+            marque: r.marque,
+            modele: r.modele,
+            size: r.size,
+            disk_type: r.disk_type,
+            interface: r.interface,
+            shred: r.shred
+          }));
+          const dateStr = session.date && (typeof session.date === 'string' ? session.date : (session.date as Date).toISOString?.()?.slice(0, 10)) || new Date().toISOString().slice(0, 10);
+          const pdfBuffer = await generateDisquesPdf(dateStr, rows);
+          const pdfStorageDir = process.env.PDF_STORAGE_PATH || path.join(process.cwd(), 'data', 'pdfs');
+          const year = dateStr.slice(0, 4);
+          const month = dateStr.slice(5, 7);
+          const dirPath = path.join(pdfStorageDir, 'Disques', year, month);
+          fs.mkdirSync(dirPath, { recursive: true });
+          const fileName = `Disques_Shred_${dateStr}_${id}.pdf`;
+          const serverFilePath = path.join(dirPath, fileName);
+          fs.writeFileSync(serverFilePath, pdfBuffer);
+          const resolvedPath = path.resolve(serverFilePath);
+          await query('UPDATE disques_sessions SET pdf_path = $1 WHERE id = $2', [resolvedPath, id]);
+        }
+        const updated = await query(
+          'SELECT id, date, name, pdf_path, created_at FROM disques_sessions WHERE id = $1',
+          [id]
+        );
+        const row = updated.rows[0] as any;
+        const disksResult = await query(
+          'SELECT serial, marque, modele, size, disk_type, interface, shred FROM disques_session_disks WHERE session_id = $1 ORDER BY id',
+          [id]
+        );
+        const disks = (disksResult.rows as any[]).map((r: any) => ({
+          serial: r.serial,
+          marque: r.marque,
+          modele: r.modele,
+          size: r.size,
+          disk_type: r.disk_type,
+          interface: r.interface,
+          shred: r.shred
+        }));
+        return {
+          id: row.id,
+          date: row.date,
+          name: row.name,
+          pdf_path: row.pdf_path,
+          created_at: row.created_at,
+          disks
+        };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'PUT /api/disques/sessions/:id error');
+        reply.statusCode = 500;
+        return { error: 'Database error', message: err?.message };
+      }
+    });
+
+    fastify.post('/api/disques/sessions/:id/regenerate-pdf', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      if (!id || id === 'null' || id === 'undefined') {
+        reply.statusCode = 400;
+        return { error: 'Invalid session id' };
+      }
+      try {
+        const sessionResult = await query('SELECT id, date, pdf_path FROM disques_sessions WHERE id = $1', [id]);
+        if (sessionResult.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Session not found' };
+        }
+        const session = sessionResult.rows[0] as any;
+        const disksResult = await query(
+          'SELECT serial, marque, modele, size, disk_type, interface, shred FROM disques_session_disks WHERE session_id = $1 ORDER BY id',
+          [id]
+        );
+        const rows = (disksResult.rows as any[]).map((r: any) => ({
+          serial: r.serial,
+          marque: r.marque,
+          modele: r.modele,
+          size: r.size,
+          disk_type: r.disk_type,
+          interface: r.interface,
+          shred: r.shred
+        }));
+        const dateStr = session.date && (typeof session.date === 'string' ? session.date : (session.date as Date).toISOString?.()?.slice(0, 10)) || new Date().toISOString().slice(0, 10);
+        const pdfBuffer = await generateDisquesPdf(dateStr, rows);
+        const pdfStorageDir = process.env.PDF_STORAGE_PATH || path.join(process.cwd(), 'data', 'pdfs');
+        const year = dateStr.slice(0, 4);
+        const month = dateStr.slice(5, 7);
+        const dirPath = path.join(pdfStorageDir, 'Disques', year, month);
+        fs.mkdirSync(dirPath, { recursive: true });
+        const fileName = `Disques_Shred_${dateStr}_${id}.pdf`;
+        const serverFilePath = path.join(dirPath, fileName);
+        fs.writeFileSync(serverFilePath, pdfBuffer);
+        const resolvedPath = path.resolve(serverFilePath);
+        await query('UPDATE disques_sessions SET pdf_path = $1 WHERE id = $2', [resolvedPath, id]);
+        return { success: true, pdf_path: resolvedPath };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'POST /api/disques/sessions/:id/regenerate-pdf error');
+        reply.statusCode = 500;
+        return { error: 'Failed to regenerate PDF', message: err?.message };
+      }
+    });
+
+    fastify.post('/api/disques/sessions/:id/email', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      if (!id || id === 'null' || id === 'undefined') {
+        reply.statusCode = 400;
+        return { error: 'Invalid session id', message: 'Identifiant de session invalide.' };
+      }
+      const body = (request.body as any) || {};
+      const email = body.email && String(body.email).trim();
+      const subject = body.subject || `Lot disques #${id} - PDF`;
+      const message = body.message || '';
+
+      if (!email) {
+        reply.statusCode = 400;
+        return { error: 'email is required', message: 'Veuillez entrer une adresse email' };
+      }
+
+      try {
+        const result = await query('SELECT pdf_path FROM disques_sessions WHERE id = $1', [id]);
+        if (result.rowCount === 0 || !(result.rows[0] as any)?.pdf_path) {
+          reply.statusCode = 404;
+          return { error: 'PDF not found for this session', message: 'Générez d\'abord le PDF du lot disques.' };
+        }
+        let filePath = (result.rows[0] as any).pdf_path;
+        if (typeof filePath !== 'string' || filePath.startsWith('/api/') || filePath.startsWith('http')) {
+          reply.statusCode = 404;
+          return { error: 'PDF path invalid', message: 'Chemin PDF invalide.' };
+        }
+        filePath = path.resolve(filePath);
+        if (!fs.existsSync(filePath)) {
+          fastify.log.warn({ filePath, sessionId: id }, 'POST /api/disques/sessions/:id/email PDF file not found on disk');
+          reply.statusCode = 404;
+          return { error: 'PDF file not found', message: 'Fichier PDF introuvable.' };
+        }
+
+        const smtpKeys = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_SECURE', 'SMTP_USER', 'SMTP_PASS', 'MAIL_FROM'];
+        const smtpCfg: Record<string, string> = {
+          SMTP_HOST: process.env.SMTP_HOST || 'localhost',
+          SMTP_PORT: process.env.SMTP_PORT || '25',
+          SMTP_SECURE: process.env.SMTP_SECURE || 'false',
+          SMTP_USER: process.env.SMTP_USER || '',
+          SMTP_PASS: process.env.SMTP_PASS || '',
+          MAIL_FROM: process.env.MAIL_FROM || process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@localhost',
+        };
+        try {
+          const smtpRows = await query('SELECT key, value FROM app_settings WHERE key = ANY($1)', [smtpKeys]);
+          for (const row of smtpRows.rows) { smtpCfg[row.key] = row.value ?? smtpCfg[row.key]; }
+        } catch (_) {}
+
+        const transporter = nodemailer.createTransport({
+          host: smtpCfg.SMTP_HOST,
+          port: parseInt(smtpCfg.SMTP_PORT, 10),
+          secure: smtpCfg.SMTP_SECURE === 'true',
+          auth: smtpCfg.SMTP_USER ? { user: smtpCfg.SMTP_USER, pass: smtpCfg.SMTP_PASS } : undefined
+        });
+        const fileName = path.basename(filePath);
+        const pdfBuffer = fs.readFileSync(filePath);
+        await transporter.sendMail({
+          from: smtpCfg.MAIL_FROM,
+          to: email,
+          subject,
+          text: message || `PDF du lot disques #${id} en pièce jointe.`,
+          attachments: [{ filename: fileName, content: pdfBuffer }]
+        });
+
+        return { success: true, message: 'Email envoyé' };
+      } catch (err: any) {
+        const msg = err?.message || String(err);
+        const isSmtp = /ECONNREFUSED|ETIMEDOUT|EAUTH|ESOCKET|ECONNRESET|Invalid login/i.test(msg);
+        fastify.log.error({ err }, 'POST /api/disques/sessions/:id/email error');
+        reply.statusCode = 500;
+        return {
+          error: 'Email send failed',
+          message: isSmtp ? `Erreur envoi (SMTP): ${msg}` : `Erreur: ${msg}`
+        };
       }
     });
 

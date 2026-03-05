@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PoolClient } from 'pg';
 import { query, transaction } from '../db';
 import { getServerLogs } from '../utils/server-log-buffer';
+import { generateDisquesPdf } from '../utils/disques-pdf';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -683,6 +684,157 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       return { success: true, item: result.rows[0] };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin PUT /lots/items/:id');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // LOTS DISQUES (sessions shred)
+  // ─────────────────────────────────────────────
+
+  fastify.get('/api/admin/disques/sessions', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { year, month } = request.query as { year?: string; month?: string };
+    let sql = `SELECT id, date, name, pdf_path, created_at FROM disques_sessions`;
+    const params: any[] = [];
+    if (year && /^\d{4}$/.test(year)) { sql += ' WHERE EXTRACT(YEAR FROM date) = $1'; params.push(year); }
+    if (month && /^(0?[1-9]|1[0-2])$/.test(month)) {
+      sql += params.length ? ' AND ' : ' WHERE ';
+      sql += ` EXTRACT(MONTH FROM date) = $${params.length + 1}`;
+      params.push(parseInt(month, 10));
+    }
+    sql += ' ORDER BY date DESC, created_at DESC LIMIT 500';
+    try {
+      const result = await query(sql, params);
+      const sessions = result.rows as any[];
+      if (sessions.length === 0) return { success: true, sessions: [] };
+      const sessionIds = sessions.map((s: any) => s.id);
+      const placeholders = sessionIds.map((_: any, i: number) => `$${i + 1}`).join(',');
+      const disksResult = await query(
+        `SELECT session_id, COUNT(*) as disk_count FROM disques_session_disks WHERE session_id IN (${placeholders}) GROUP BY session_id`,
+        sessionIds
+      );
+      const countBySession: Record<number, number> = {};
+      for (const r of disksResult.rows as any[]) countBySession[r.session_id] = parseInt(r.disk_count, 10) || 0;
+      sessions.forEach((s: any) => { s.disk_count = countBySession[s.id] || 0; });
+      return { success: true, sessions };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin GET /disques/sessions');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.get('/api/admin/disques/sessions/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    try {
+      const sessionResult = await query(
+        'SELECT id, date, name, pdf_path, created_at FROM disques_sessions WHERE id = $1',
+        [id]
+      );
+      if (sessionResult.rowCount === 0) { reply.statusCode = 404; return { error: 'Session introuvable' }; }
+      const session = sessionResult.rows[0] as any;
+      const disksResult = await query(
+        'SELECT id, serial, marque, modele, size, disk_type, interface, shred FROM disques_session_disks WHERE session_id = $1 ORDER BY id',
+        [id]
+      );
+      return { success: true, session: { ...session, disks: disksResult.rows } };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin GET /disques/sessions/:id');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.put('/api/admin/disques/sessions/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    const updates: string[] = [];
+    const values: any[] = [];
+    let i = 1;
+    if (body.name !== undefined) { updates.push(`name = $${i++}`); values.push(body.name === null || body.name === '' ? null : String(body.name).trim() || null); }
+    if (!updates.length && !Array.isArray(body.disks)) {
+      reply.statusCode = 400;
+      return { error: 'Aucun champ à mettre à jour (name ou disks)' };
+    }
+    if (updates.length) {
+      values.push(id);
+      await query(`UPDATE disques_sessions SET ${updates.join(', ')} WHERE id = $${i}`, values);
+    }
+    if (Array.isArray(body.disks)) {
+      await query('DELETE FROM disques_session_disks WHERE session_id = $1', [id]);
+      for (const d of body.disks) {
+        await query(
+          `INSERT INTO disques_session_disks (session_id, serial, marque, modele, size, disk_type, interface, shred)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+          [
+            id,
+            (d.serial != null ? String(d.serial) : '').trim() || null,
+            (d.marque != null ? String(d.marque) : '').trim() || null,
+            (d.modele != null ? String(d.modele) : '').trim() || null,
+            (d.size != null ? String(d.size) : '').trim() || null,
+            (d.disk_type != null ? String(d.disk_type) : '').trim() || null,
+            (d.interface != null ? String(d.interface) : '').trim() || null,
+            (d.shred != null ? String(d.shred) : '').trim() || null
+          ]
+        );
+      }
+      const sessionRow = await query('SELECT date FROM disques_sessions WHERE id = $1', [id]);
+      const sessionDate = sessionRow.rows[0] as any;
+      const dateStr = sessionDate?.date && (typeof sessionDate.date === 'string' ? sessionDate.date : (sessionDate.date as Date).toISOString?.()?.slice(0, 10)) || new Date().toISOString().slice(0, 10);
+      const disksForPdf = await query(
+        'SELECT serial, marque, modele, size, disk_type, interface, shred FROM disques_session_disks WHERE session_id = $1 ORDER BY id',
+        [id]
+      );
+      const rows = (disksForPdf.rows as any[]).map((r: any) => ({
+        serial: r.serial,
+        marque: r.marque,
+        modele: r.modele,
+        size: r.size,
+        disk_type: r.disk_type,
+        interface: r.interface,
+        shred: r.shred
+      }));
+      const pdfBuffer = await generateDisquesPdf(dateStr, rows);
+      const pdfStorageDir = process.env.PDF_STORAGE_PATH || path.join(process.cwd(), 'data', 'pdfs');
+      const year = dateStr.slice(0, 4);
+      const month = dateStr.slice(5, 7);
+      const dirPath = path.join(pdfStorageDir, 'Disques', year, month);
+      fs.mkdirSync(dirPath, { recursive: true });
+      const fileName = `Disques_Shred_${dateStr}_${id}.pdf`;
+      const serverFilePath = path.join(dirPath, fileName);
+      fs.writeFileSync(serverFilePath, pdfBuffer);
+      await query('UPDATE disques_sessions SET pdf_path = $1 WHERE id = $2', [path.resolve(serverFilePath), id]);
+    }
+    try {
+      const sessionResult = await query('SELECT id, date, name, pdf_path, created_at FROM disques_sessions WHERE id = $1', [id]);
+      if (sessionResult.rowCount === 0) { reply.statusCode = 404; return { error: 'Session introuvable' }; }
+      const session = sessionResult.rows[0] as any;
+      const disksResult = await query(
+        'SELECT id, serial, marque, modele, size, disk_type, interface, shred FROM disques_session_disks WHERE session_id = $1 ORDER BY id',
+        [id]
+      );
+      return { success: true, session: { ...session, disks: disksResult.rows } };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin PUT /disques/sessions/:id');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.delete('/api/admin/disques/sessions/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    try {
+      await query('DELETE FROM disques_session_disks WHERE session_id = $1', [id]);
+      const result = await query('DELETE FROM disques_sessions WHERE id = $1', [id]);
+      if (result.rowCount === 0) { reply.statusCode = 404; return { error: 'Session introuvable' }; }
+      return { success: true };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'admin DELETE /disques/sessions/:id');
       reply.statusCode = 500;
       return { error: 'Database error' };
     }

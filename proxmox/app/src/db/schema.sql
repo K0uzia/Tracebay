@@ -169,6 +169,7 @@ CREATE INDEX IF NOT EXISTS idx_lot_items_modele_id ON lot_items(modele_id);
 CREATE TABLE IF NOT EXISTS disques_sessions (
   id SERIAL PRIMARY KEY,
   date DATE NOT NULL,
+  name VARCHAR(255),
   pdf_path VARCHAR(1024),
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -188,6 +189,10 @@ CREATE TABLE IF NOT EXISTS disques_session_disks (
   created_at TIMESTAMP DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_disques_session_disks_session_id ON disques_session_disks(session_id);
+
+-- Migration: name pour lots disques (déploiements existants)
+ALTER TABLE IF EXISTS disques_sessions
+  ADD COLUMN IF NOT EXISTS name VARCHAR(255);
 
 -- Sessions table (for JWT/session management)
 CREATE TABLE IF NOT EXISTS sessions (

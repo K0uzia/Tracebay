@@ -1,6 +1,6 @@
 {
   "name": "workspace-proxmox",
-  "version": "1.0.0",
+  "version": "3.0.8",
   "description": "Proxmox Backend - Dedicated branch",
   "private": true,
   "workspaces": [
