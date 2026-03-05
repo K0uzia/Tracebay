@@ -1,6 +1,6 @@
 {
   "name": "workspace-client",
-  "version": "3.0.7",
+  "version": "3.0.8",
   "main": "main.js",
   "homepage": "https://github.com/SandersonnDev/workspace#readme",
   "description": "Workspace Client - Interface utilisateur collaborative",

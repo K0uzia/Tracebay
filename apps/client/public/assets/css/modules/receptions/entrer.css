@@ -49,7 +49,6 @@
 }
 
 .actions-bar button:hover {
-    background-color: var(--btn-hover);
     transform: translateY(-2px);
 }
 
@@ -66,6 +65,10 @@
 }
 
 #btn-cancel-lot {
+    background-color: var(--jaune);
+    color: var(--noir);
+}
+.btn-cancel-lot {
     background-color: var(--jaune);
     color: var(--noir);
 }

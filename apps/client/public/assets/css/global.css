@@ -28,3 +28,21 @@
 @import url(./modules/modal.css);
 @import url(./modules/chat-widget.css);
 @import url(./modules/recent-items.css);
+
+/* Focus clavier (Tab) : contour discret au lieu du outline par défaut */
+:focus {
+    outline: none;
+}
+:focus-visible {
+    outline: 2px solid var(--bleu2, #2D3073);
+    outline-offset: 2px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--bleu2, #2D3073);
+    outline-offset: 2px;
+}
