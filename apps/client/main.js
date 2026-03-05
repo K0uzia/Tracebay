@@ -2,7 +2,7 @@
  * Workspace Client - Electron Main Process
  * Gère la fenêtre d'application et la connexion au serveur distant
  */
-const { app, BrowserWindow, ipcMain, shell, Notification, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Notification, nativeImage, Menu, globalShortcut } = require('electron');
 const path = require('path');
 const url = require('url');
 const http = require('http');
@@ -476,7 +476,7 @@ function createWindow() {
         width: 1200,
         height: 800,
         show: false,
-        autoHideMenuBar: true,  // Masquer la barre de menu
+        autoHideMenuBar: true,
         icon: windowIcon,
         webPreferences: {
             nodeIntegration: false,
@@ -485,6 +485,22 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.js')
         }
     });
+
+    // Désactiver complètement le menu (Alt n'affiche plus File / Edit / View…)
+    Menu.setApplicationMenu(null);
+
+    // Raccourcis DevTools (F12 ou Ctrl+Shift+I) car le menu est désactivé
+    const toggleDevTools = () => {
+        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
+            mainWindow.webContents.toggleDevTools();
+        }
+    };
+    try {
+        globalShortcut.register('F12', toggleDevTools);
+        globalShortcut.register('CommandOrControl+Shift+I', toggleDevTools);
+    } catch (e) {
+        console.warn('Raccourcis DevTools non enregistrés:', e?.message);
+    }
 
     if (appIconPath && process.platform === 'linux' && windowIcon) {
         const iconToSet = typeof windowIcon === 'string' ? nativeImage.createFromPath(windowIcon) : windowIcon;
@@ -527,14 +543,15 @@ function createWindow() {
         mainWindow.webContents.openDevTools();
     }
 
-    // Logs console Electron (filtrer le bruit)
-    mainWindow.webContents.on('console-message', (level, message) => {
-        if (typeof message === 'string' &&
-            !message.includes('Autofill') &&
-            !message.includes('atom_cache') &&
-            !message.includes('privileged')) {
-            console.log(`[Renderer] ${message}`);
-        }
+    // Logs console Electron (filtrer le bruit). Nouvelle API : (event) avec event.message ; ancienne : (event, level, message)
+    mainWindow.webContents.on('console-message', (...args) => {
+        const payload = args[0];
+        const message = (payload && typeof payload === 'object' && payload.message != null)
+            ? payload.message
+            : (args[2] != null ? String(args[2]) : '');
+        if (typeof message !== 'string' || !message) return;
+        if (message.includes('Autofill') || message.includes('atom_cache') || message.includes('privileged')) return;
+        console.log(`[Renderer] ${message}`);
     });
 
     mainWindow.webContents.on('destroyed', () => {
@@ -542,6 +559,10 @@ function createWindow() {
     });
 
     mainWindow.on('closed', () => {
+        try {
+            globalShortcut.unregister('F12');
+            globalShortcut.unregister('CommandOrControl+Shift+I');
+        } catch (_) { /* ignore */ }
         mainWindow = null;
     });
 

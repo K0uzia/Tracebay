@@ -6,6 +6,7 @@
 import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
 import { loadLotsWithItems } from './lotsApi.js';
+import { getSessions } from './disquesApi.js';
 const logger = getLogger();
 
 
@@ -13,7 +14,9 @@ export default class TracabiliteManager {
     constructor(modalManager) {
         this.modalManager = modalManager;
         this.lots = [];
+        this.sessionsDisques = [];
         this.currentEmailLotId = null;
+        this.currentEmailSessionId = null;
         this.init();
     }
 
@@ -44,19 +47,28 @@ export default class TracabiliteManager {
     }
 
     /**
-     * Charger tous les lots
+     * Charger tous les lots + sessions disques
      */
     async loadLots() {
         try {
-            this.lots = await loadLotsWithItems({ status: 'all' });
-            this.lots.sort((a, b) =>
+            const [lots, sessions] = await Promise.all([
+                loadLotsWithItems({ status: 'all' }),
+                getSessions().catch(() => [])
+            ]);
+            this.lots = (lots || []).sort((a, b) =>
                 new Date(b.created_at) - new Date(a.created_at)
             );
-            logger.info('📦 Traçabilité : ' + this.lots.length + ' lot(s) chargé(s)');
+            this.sessionsDisques = (sessions || []).sort((a, b) => {
+                const da = a.date || (a.created_at || '').slice(0, 10);
+                const db = b.date || (b.created_at || '').slice(0, 10);
+                return new Date(db) - new Date(da);
+            });
+            logger.info('📦 Traçabilité : ' + this.lots.length + ' lot(s), ' + this.sessionsDisques.length + ' session(s) disques');
             this.renderTable();
         } catch (error) {
             logger.error('❌ Erreur chargement lots:', error);
             this.lots = [];
+            this.sessionsDisques = [];
             this.renderLotsError(error);
         }
     }
@@ -129,43 +141,65 @@ export default class TracabiliteManager {
             const date = new Date(lot.finished_at || lot.created_at);
             return date.getFullYear().toString() === selectedYear;
         });
+        const sessionsForYear = this.sessionsDisques.filter(s => {
+            const dateStr = s.date || (s.created_at || '').slice(0, 10);
+            const y = dateStr ? new Date(dateStr).getFullYear().toString() : '';
+            return y === selectedYear;
+        });
 
-        if (lotsForYear.length === 0) {
+        const totalItems = lotsForYear.length + sessionsForYear.length;
+        if (totalItems === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fa-solid fa-inbox"></i>
-                    <p>Aucun lot terminé pour ${selectedYear}</p>
-                    <small>Changez d'année ou les lots terminés apparaîtront ici</small>
+                    <p>Aucun lot ni session disques pour ${selectedYear}</p>
+                    <small>Changez d'année ou les lots terminés et sessions disques apparaîtront ici</small>
                 </div>
             `;
             return;
         }
 
         // Grouper les lots par année, puis par mois
-        const grouped = this.groupByYearMonth(lotsForYear);
-        
-        // Générer le HTML
+        const groupedLots = this.groupByYearMonth(lotsForYear);
+        const groupedSessions = this.groupByYearMonthSessions(sessionsForYear);
+        // Fusionner les clés année/mois
+        const allMonthsByYear = {};
+        for (const [year, months] of Object.entries(groupedLots)) {
+            if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
+            Object.keys(months).forEach(m => { allMonthsByYear[year][m] = true; });
+        }
+        for (const [year, months] of Object.entries(groupedSessions)) {
+            if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
+            Object.keys(months).forEach(m => { allMonthsByYear[year][m] = true; });
+        }
+
         let html = '';
-        for (const [year, months] of Object.entries(grouped)) {
+        for (const [year, monthsSet] of Object.entries(allMonthsByYear)) {
+            const months = Object.keys(monthsSet).sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
             html += `<div class="year-section" data-year="${year}">
                 <div class="year-header">
                     <h2><i class="fa-solid fa-calendar"></i> ${year}</h2>
                 </div>`;
-            
-            for (const [month, lots] of Object.entries(months)) {
+
+            for (const month of months) {
+                const lots = (groupedLots[year] && groupedLots[year][month]) || [];
+                const sessions = (groupedSessions[year] && groupedSessions[year][month]) || [];
+                const count = lots.length + sessions.length;
                 html += `<div class="month-section" data-month="${month}">
                     <div class="month-header">
-                        <h3><i class="fa-solid fa-calendar-days"></i> ${this.getMonthName(parseInt(month))} (${lots.length} lot${lots.length > 1 ? 's' : ''})</h3>
+                        <h3><i class="fa-solid fa-calendar-days"></i> ${this.getMonthName(parseInt(month))} (${count} élément${count > 1 ? 's' : ''})</h3>
                     </div>
                     <div class="lots-list">`;
-                
+
                 for (const lot of lots) {
                     html += this.createLotCard(lot);
                 }
-                
+                for (const session of sessions) {
+                    html += this.createDisqueCard(session);
+                }
+
                 html += `</div></div>`;
             }
-            
             html += `</div>`;
         }
 
@@ -178,18 +212,101 @@ export default class TracabiliteManager {
      */
     groupByYearMonth(lots) {
         const grouped = {};
-        
         lots.forEach(lot => {
             const date = new Date(lot.finished_at || lot.created_at);
             const year = date.getFullYear().toString();
             const month = String(date.getMonth() + 1).padStart(2, '0');
-            
             if (!grouped[year]) grouped[year] = {};
             if (!grouped[year][month]) grouped[year][month] = [];
             grouped[year][month].push(lot);
         });
-        
         return grouped;
+    }
+
+    /**
+     * Grouper les sessions disques par année et mois (même règle que les lots)
+     */
+    groupByYearMonthSessions(sessions) {
+        const grouped = {};
+        sessions.forEach(s => {
+            const dateStr = s.date || (s.created_at || '').slice(0, 10);
+            const date = dateStr ? new Date(dateStr) : new Date();
+            const year = date.getFullYear().toString();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            if (!grouped[year]) grouped[year] = {};
+            if (!grouped[year][month]) grouped[year][month] = [];
+            grouped[year][month].push(s);
+        });
+        return grouped;
+    }
+
+    /**
+     * Formater une date en DD/MM/AAAA (sans heure)
+     */
+    formatDateDDMMYYYY(dateStr) {
+        if (!dateStr) return '-';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '-';
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    /**
+     * Créer une carte pour une session disques (même style que lot, accès PDF, régénérer, email)
+     */
+    createDisqueCard(session) {
+        const count = Array.isArray(session.disks) ? session.disks.length : (session.disk_count ?? 0);
+        const hasPdf = session.pdf_path != null && session.pdf_path !== '';
+        const sessionName = (session.name || '').trim() || 'Lot disques';
+        const rawDate = session.date ?? session.created_at ?? '';
+        const dateOnly = typeof rawDate === 'string' ? rawDate.slice(0, 10) : (rawDate ? new Date(rawDate).toISOString().slice(0, 10) : '');
+        const dateFormatted = dateOnly && /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) ? this.formatDateTime(dateOnly + 'T12:00:00') : '-';
+        const pdfUrl = `${api.getServerUrl()}/api/disques/sessions/${session.id}/pdf?v=${Date.now()}`;
+
+        return `
+            <div class="lot-card lot-card-disque" data-session-id="${session.id}">
+                <div class="lot-card-header">
+                    <div class="lot-card-title">
+                        <h4><i class="fa-solid fa-hard-drive"></i> Lot disques</h4>
+                        <span class="lot-name">${this.escapeHtml(sessionName)}</span>
+                    </div>
+                    <div class="lot-card-date">
+                        <span class="date-label">Date</span>
+                        <span class="date-value">${this.escapeHtml(dateFormatted)}</span>
+                    </div>
+                </div>
+                <div class="lot-card-stats">
+                    <div class="stat">
+                        <span class="stat-label"><i class="fa-solid fa-hard-drive" aria-hidden="true"></i> Disques</span>
+                        <span class="stat-value">${count}</span>
+                    </div>
+                </div>
+                <div class="lot-card-actions">
+                    ${hasPdf ? `
+                        <a href="${pdfUrl}" target="_blank" rel="noopener" class="btn-action btn-view">
+                            <i class="fa-solid fa-eye"></i> Voir le PDF
+                        </a>
+                        <button type="button" class="btn-action btn-download-pdf-disque" data-session-id="${session.id}" data-pdf-url="${pdfUrl.replace(/"/g, '&quot;')}" data-download-filename="disques-session-${session.id}.pdf">
+                            <i class="fa-solid fa-download"></i> Télécharger PDF
+                        </button>
+                        <button type="button" class="btn-action btn-send-email-disque" data-session-id="${session.id}">
+                            <i class="fa-solid fa-envelope"></i> Envoyer par email
+                        </button>
+                        <button type="button" class="btn-action btn-regenerate-pdf-disque" data-session-id="${session.id}" title="Régénérer le PDF côté serveur">
+                            <i class="fa-solid fa-arrows-rotate"></i> Régénérer le PDF
+                        </button>
+                    ` : '<span class="text-muted">PDF non généré</span>'}
+                </div>
+            </div>
+        `;
+    }
+
+    escapeHtml(s) {
+        const div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
     }
 
     /**
@@ -225,7 +342,7 @@ export default class TracabiliteManager {
             <div class="lot-card" data-lot-id="${lot.id}">
                 <div class="lot-card-header">
                     <div class="lot-card-title">
-                        <h4>Lot #${lot.id}</h4>
+                        <h4><i class="fa-solid fa-desktop" aria-hidden="true"></i> Lot #${lot.id}</h4>
                         ${lot.lot_name ? `<span class="lot-name">${lot.lot_name}</span>` : ''}
                     </div>
                     <div class="lot-card-date">
@@ -240,7 +357,7 @@ export default class TracabiliteManager {
                 
                 <div class="lot-card-stats">
                     <div class="stat">
-                        <span class="stat-label">Total</span>
+                        <span class="stat-label"><i class="fa-solid fa-desktop" aria-hidden="true"></i> Total</span>
                         <span class="stat-value">${total}</span>
                     </div>
                     <div class="stat">
@@ -329,6 +446,91 @@ export default class TracabiliteManager {
                 this.generatePDF(lotId);
             });
         });
+
+        // Session disques : télécharger PDF
+        document.querySelectorAll('.btn-download-pdf-disque').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const url = (btn.dataset.pdfUrl || '').replace(/&quot;/g, '"');
+                const filename = btn.dataset.downloadFilename || 'disques-session.pdf';
+                this.downloadDisquePdf(url, filename);
+            });
+        });
+
+        // Session disques : envoyer par email
+        document.querySelectorAll('.btn-send-email-disque').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openEmailModalDisque(btn.dataset.sessionId);
+            });
+        });
+
+        // Session disques : régénérer le PDF
+        document.querySelectorAll('.btn-regenerate-pdf-disque').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.regenerateDisquePdf(btn.dataset.sessionId);
+            });
+        });
+    }
+
+    async downloadDisquePdf(url, filename) {
+        try {
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` }
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+            this.showNotification('PDF téléchargé avec succès', 'success');
+        } catch (err) {
+            logger.error('Téléchargement PDF disques:', err);
+            this.showNotification('Erreur lors du téléchargement du PDF', 'error');
+        }
+    }
+
+    openEmailModalDisque(sessionId) {
+        this.currentEmailSessionId = sessionId;
+        this.currentEmailLotId = null;
+        document.getElementById('email-recipient').value = '';
+        document.getElementById('email-message').value = '';
+        this.modalManager.open('modal-send-email');
+    }
+
+    async regenerateDisquePdf(sessionId) {
+        try {
+            const serverUrl = api.getServerUrl();
+            const url = `${serverUrl}/api/disques/sessions/${sessionId}/regenerate-pdf`;
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` }
+            });
+            const text = await res.text().catch(() => '');
+            if (!res.ok) {
+                let msg = text || `Erreur serveur ${res.status}`;
+                if (res.status === 400 || res.status === 404) {
+                    try {
+                        const j = JSON.parse(text);
+                        if (j.message) msg = j.message;
+                        else if (j.error) msg = j.error;
+                    } catch (_) { /* garder msg */ }
+                }
+                throw new Error(msg);
+            }
+            this.showNotification('PDF régénéré', 'success');
+            await this.loadLots();
+            this.renderTable();
+        } catch (err) {
+            logger.error('Régénération PDF disques:', err);
+            this.showNotification(err?.message || 'Régénération PDF non disponible', 'error');
+        }
     }
 
     /**
@@ -474,6 +676,7 @@ export default class TracabiliteManager {
      */
     openEmailModal(lotId) {
         this.currentEmailLotId = lotId;
+        this.currentEmailSessionId = null;
         document.getElementById('email-recipient').value = 'destinataire@example.com';
         document.getElementById('email-message').value = '';
         this.modalManager.open('modal-send-email');
@@ -514,8 +717,9 @@ export default class TracabiliteManager {
      */
     async sendEmailPDF() {
         try {
-            if (!this.currentEmailLotId) {
-                this.showNotification('Erreur: lot non identifié. Fermez la fenêtre et réessayez.', 'error');
+            const isSessionDisque = !!this.currentEmailSessionId;
+            if (!this.currentEmailLotId && !this.currentEmailSessionId) {
+                this.showNotification('Erreur: élément non identifié. Fermez la fenêtre et réessayez.', 'error');
                 return;
             }
 
@@ -535,20 +739,27 @@ export default class TracabiliteManager {
             this.showNotification('Envoi en cours...', 'info');
 
             const serverUrl = api.getServerUrl();
-            const emailPath = window.SERVER_CONFIG?.getEndpoint?.('lots.email') || '/api/lots/:id/email';
-            const endpointPath = emailPath.replace(':id', String(this.currentEmailLotId));
-            const fullUrl = `${serverUrl}${endpointPath.startsWith('/') ? '' : '/'}${endpointPath}`;
+            let fullUrl, body;
+            if (isSessionDisque) {
+                fullUrl = `${serverUrl}/api/disques/sessions/${this.currentEmailSessionId}/email`;
+                body = JSON.stringify({ email: recipient, subject: `Session disques #${this.currentEmailSessionId} - PDF`, message: message || '' });
+            } else {
+                const emailPath = window.SERVER_CONFIG?.getEndpoint?.('lots.email') || '/api/lots/:id/email';
+                const endpointPath = emailPath.replace(':id', String(this.currentEmailLotId));
+                fullUrl = `${serverUrl}${endpointPath.startsWith('/') ? '' : '/'}${endpointPath}`;
+                body = JSON.stringify({
+                    email: recipient,
+                    subject: `Lot #${this.currentEmailLotId} - PDF`,
+                    message: message || ''
+                });
+            }
             const response = await fetch(fullUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
                 },
-                body: JSON.stringify({
-                    email: recipient,
-                    subject: `Lot #${this.currentEmailLotId} - PDF`,
-                    message: message || ''
-                })
+                body
             });
 
             if (!response.ok) {
@@ -557,15 +768,15 @@ export default class TracabiliteManager {
                     const data = await response.json();
                     errorMessage = data.message || errorMessage;
                 } catch (parseError) {
-                    // Si on ne peut pas parser la réponse, utiliser l'erreur HTTP
                     logger.warn('Impossible de parser la réponse d\'erreur:', parseError);
                 }
                 throw new Error(errorMessage);
             }
 
-            const result = await response.json();
             this.showNotification('Email envoyé avec succès', 'success');
             this.modalManager.close('modal-send-email');
+            this.currentEmailLotId = null;
+            this.currentEmailSessionId = null;
 
         } catch (error) {
             logger.error('❌ Erreur envoi email:', error);
@@ -608,6 +819,7 @@ export default class TracabiliteManager {
     formatDateTime(dateStr) {
         if (!dateStr) return '-';
         const date = new Date(dateStr);
+        if (isNaN(date.getTime())) return '-';
         return date.toLocaleDateString('fr-FR', { 
             year: 'numeric', 
             month: 'numeric', 
@@ -643,6 +855,8 @@ export default class TracabiliteManager {
     destroy() {
         logger.debug('🧹 Destruction TracabiliteManager');
         this.lots = [];
+        this.sessionsDisques = [];
         this.currentEmailLotId = null;
+        this.currentEmailSessionId = null;
     }
 }

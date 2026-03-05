@@ -7,7 +7,7 @@
             <i class="fa-solid fa-history"></i>
             Historique
         </h1>
-        <p class="subtitle">Lots terminés et sessions disques shreddés</p>
+        <p class="subtitle">Lots terminés et lots disques (certificats d'effacement)</p>
     </div>
 
     <!-- Recherche + Rafraîchir -->
@@ -166,11 +166,63 @@
     </div>
 </dialog>
 
-<!-- MODALE : Détails session disques -->
+<!-- MODALE : Éditer nom de la session disques -->
+<dialog class="universal-modal" id="modal-edit-disque-name" data-modal-id="modal-edit-disque-name">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-edit"></i> Éditer le nom de la session</h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-disque-name">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="input-disque-session-name">Nom de la session :</label>
+                <input type="text" id="input-disque-session-name" placeholder="Ex: Session shred mars 2025" autofocus>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-disque-name">
+                <i class="fa-solid fa-times"></i> Annuler
+            </button>
+            <button type="button" id="btn-save-disque-name" class="modal-apply-btn">
+                <i class="fa-solid fa-check"></i> Enregistrer
+            </button>
+        </div>
+    </div>
+</dialog>
+
+<!-- MODALE : Éditer matériel (disques) d'un lot disques - même style que création lot disques -->
+<dialog class="universal-modal" id="modal-edit-disque-items" data-modal-id="modal-edit-disque-items">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-list-check"></i> Éditer matériel - <span id="modal-edit-disque-session-title">Lot disques</span></h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-disque-items">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <p class="modal-help">Modifiez S/N, marque, modèle, taille, type et interface pour chaque disque.</p>
+            <div id="modal-edit-disque-items-list" class="historique-disque-edit-list">
+                <!-- Rempli par JS : une ligne par disque (même formulaire que création) -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-disque-items">
+                <i class="fa-solid fa-times"></i> Annuler
+            </button>
+            <button type="button" id="btn-apply-disque-items-edits" class="modal-apply-btn">
+                <i class="fa-solid fa-check"></i> Enregistrer
+            </button>
+        </div>
+    </div>
+</dialog>
+
+<!-- MODALE : Détails lot disques -->
 <dialog class="universal-modal" id="modal-disque-details" data-modal-id="modal-disque-details">
     <div class="modal-content modal-lg">
         <div class="modal-header">
-            <h2><i class="fa-solid fa-hard-drive"></i> Session disques du <span id="modal-disque-date">-</span></h2>
+            <h2><i class="fa-solid fa-hard-drive"></i> <span id="modal-disque-title">Lot disques</span></h2>
             <button type="button" class="modal-close-btn" data-modal-close="modal-disque-details">
                 <i class="fa-solid fa-times"></i>
             </button>
@@ -207,9 +259,6 @@
             <button type="button" class="modal-cancel-btn" data-modal-close="modal-disque-details">
                 <i class="fa-solid fa-times"></i> Fermer
             </button>
-            <a id="modal-disque-pdf-link" href="#" target="_blank" rel="noopener" class="btn btn-primary" style="display: none;">
-                <i class="fa-solid fa-file-pdf"></i> Voir le PDF
-            </a>
         </div>
     </div>
 </dialog>

@@ -6,13 +6,20 @@ class PageManager {
         this.serverUrl = null;
         this.serverConnected = false;
         
-        // Pages et leur configuration de layout
+        // Pages et leur configuration de layout (sous-pages réception = même layout que reception)
+        const receptionLayout = { showHeader: true, showFooter: false, showChat: false };
         this.pagesConfig = {
             'home': { showHeader: true, showFooter: true, showChat: true },
             'agenda': { showHeader: true, showFooter: true, showChat: false },
             'dossier': { showHeader: true, showFooter: true, showChat: true },
             'application': { showHeader: true, showFooter: true, showChat: true },
-            'reception': { showHeader: true, showFooter: false, showChat: false },
+            'reception': receptionLayout,
+            'entrer': receptionLayout,
+            'sortie': receptionLayout,
+            'inventaire': receptionLayout,
+            'historique': receptionLayout,
+            'tracabilite': receptionLayout,
+            'disques': receptionLayout,
             'shortcut': { showHeader: true, showFooter: true, showChat: true },
             'option': { showHeader: true, showFooter: true, showChat: false },
             'login': { showHeader: false, showFooter: false, showChat: false },
@@ -82,13 +89,18 @@ class PageManager {
         window.addEventListener('beforeunload', closeChatWebSocketOnUnload);
         window.addEventListener('pagehide', closeChatWebSocketOnUnload);
 
-        // Charger la page sauvegardée ou home immédiatement (sans attendre le footer)
+        // Charger la page sauvegardée ou home (y compris sous-pages réception : entrer, historique, tracabilite, etc.)
         const lastPage = this.getLastPage();
-        const pageToLoad = lastPage && this.pagesConfig[lastPage] ? lastPage : 'home';
+        const receptionSubPages = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques'];
+        const isValidPage = lastPage && (this.pagesConfig[lastPage] || receptionSubPages.includes(lastPage));
+        const pageToLoad = isValidPage ? lastPage : 'home';
         this.loadPage(pageToLoad);
 
         // Footer et infos système en arrière-plan pour ne pas retarder le premier affichage
-        this.loadComponent('footer', './components/footer.html', () => this.initializeSystemInfo());
+        this.loadComponent('footer', './components/footer.html', () => {
+            this.initializeSystemInfo();
+            this.updateFooterVersion();
+        });
     }
 
     /**
@@ -651,6 +663,21 @@ class PageManager {
             .catch(error => {
                 logger.error('❌ Erreur import SystemInfoManager:', error);
             });
+    }
+
+    /**
+     * Afficher la version de l'app dans le footer (Electron = app.getVersion(), sinon fallback V3.0).
+     */
+    updateFooterVersion() {
+        const el = document.getElementById('footer-app-version');
+        if (!el) return;
+        if (typeof window.electron?.invoke === 'function') {
+            window.electron.invoke('get-app-config')
+                .then(config => {
+                    if (config?.appVersion) el.textContent = 'V' + config.appVersion;
+                })
+                .catch(() => {});
+        }
     }
 
     /**

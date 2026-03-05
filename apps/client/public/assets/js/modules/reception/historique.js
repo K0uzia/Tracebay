@@ -214,28 +214,45 @@ export default class HistoriqueManager {
     }
 
     /**
-     * Créer un élément de session disques
+     * Formater une date en DD/MM/AAAA (sans heure)
+     */
+    formatDateDDMMYYYY(dateStr) {
+        if (!dateStr) return '-';
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return '-';
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    }
+
+    /**
+     * Créer un élément de session disques. Nom seul dans le titre, date dans le badge "Créé le".
      */
     createDisqueElement(session) {
-        const dateStr = session.date || (session.created_at || '').slice(0, 10) || '-';
+        const name = (session.name || '').trim() || 'Lot disques';
+        const dateFormatted = this.formatDateDDMMYYYY(session.date || (session.created_at || '').slice(0, 10));
         const count = Array.isArray(session.disks) ? session.disks.length : (session.disk_count ?? 0);
-        const hasPdf = session.pdf_path != null && session.pdf_path !== '';
-        const pdfUrl = getSessionPdfUrl(session.id);
         return `
             <div class="historique-lot-card historique-disque-card" data-type="disque" data-session-id="${session.id}">
                 <div class="historique-lot-header">
                     <div class="historique-lot-title">
-                        <h3><i class="fa-solid fa-hard-drive historique-type-icon" aria-hidden="true"></i> Session disques du ${this.escapeHtml(dateStr)}</h3>
-                        <span class="badge-created">${count} disque(s)</span>
+                        <h3><i class="fa-solid fa-hard-drive historique-type-icon" aria-hidden="true"></i> ${this.escapeHtml(name)}</h3>
+                        <span class="badge-created">Créé le ${this.escapeHtml(dateFormatted)}</span>
                     </div>
                     <div class="historique-lot-stats">
-                        <span class="historique-stat"><strong>${count}</strong> disque(s)</span>
+                        <span class="historique-stat"><i class="fa-solid fa-hard-drive" aria-hidden="true"></i> <strong>${count}</strong> disque(s)</span>
                     </div>
                     <div class="historique-lot-actions">
                         <button type="button" class="btn-view-details btn-view-disque" data-session-id="${session.id}">
                             <i class="fa-solid fa-eye"></i> Voir détails
                         </button>
-                        ${hasPdf ? `<a href="${this.escapeAttr(pdfUrl)}" target="_blank" rel="noopener" class="btn-action btn-pdf-disque"><i class="fa-solid fa-file-pdf"></i> PDF</a>` : ''}
+                        <button type="button" class="btn-edit-disque-name" data-session-id="${session.id}">
+                            <i class="fa-solid fa-edit"></i> Éditer le nom
+                        </button>
+                        <button type="button" class="btn-edit-disque-items" data-session-id="${session.id}">
+                            <i class="fa-solid fa-list-check"></i> Éditer matériel
+                        </button>
                     </div>
                 </div>
             </div>
@@ -295,6 +312,153 @@ export default class HistoriqueManager {
                 this.viewDisqueSessionDetails(sessionId);
             });
         });
+
+        document.querySelectorAll('.btn-edit-disque-name').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.editDisqueSessionName(btn.dataset.sessionId);
+            });
+        });
+
+        document.querySelectorAll('.btn-edit-disque-items').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.editDisqueItems(btn.dataset.sessionId);
+            });
+        });
+    }
+
+    /**
+     * Ouvrir la modale d'édition du nom de la session disques
+     */
+    editDisqueSessionName(sessionId) {
+        const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
+        if (!session) return;
+        this.currentEditingSessionId = sessionId;
+        const input = document.getElementById('input-disque-session-name');
+        if (input) input.value = (session.name || '').trim();
+        this.modalManager.open('modal-edit-disque-name');
+    }
+
+    /**
+     * Sauvegarder le nom de la session disques
+     */
+    async saveDisqueSessionName() {
+        if (!this.currentEditingSessionId) return;
+        const input = document.getElementById('input-disque-session-name');
+        const newName = input?.value?.trim() ?? '';
+        if (!newName) {
+            this.showNotification('Le nom ne peut pas être vide', 'warning');
+            return;
+        }
+        try {
+            const serverUrl = api.getServerUrl();
+            const url = `${serverUrl}/api/disques/sessions/${this.currentEditingSessionId}`;
+            const res = await fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` },
+                body: JSON.stringify({ name: newName })
+            });
+            if (!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
+            const session = this.sessionsDisques.find(s => String(s.id) === String(this.currentEditingSessionId));
+            if (session) session.name = newName;
+            this.currentEditingSessionId = null;
+            this.modalManager.close('modal-edit-disque-name');
+            this.renderLots();
+            this.showNotification('Nom mis à jour', 'success');
+        } catch (err) {
+            logger.error('saveDisqueSessionName:', err);
+            this.showNotification(err?.message || 'Erreur lors de la mise à jour', 'error');
+        }
+    }
+
+    /**
+     * Ouvrir la modale d'édition du matériel (disques) d'un lot disques
+     */
+    async editDisqueItems(sessionId) {
+        const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
+        if (!session) return;
+        const full = await getSession(sessionId).catch(() => session);
+        const disks = Array.isArray(full.disks) ? full.disks : [];
+        this.currentEditingSessionId = sessionId;
+        document.getElementById('modal-edit-disque-session-title').textContent = (full.name || '').trim() || 'Lot disques';
+        const container = document.getElementById('modal-edit-disque-items-list');
+        if (!container) return;
+        const sizeOpts = ['', '250 Go', '500 Go', '1 To', '2 To', '4 To', '8 To', 'autre'];
+        const typeOpts = ['', 'HDD', 'SSD'];
+        const ifaceOpts = ['SATA', 'SAS', 'NVMe', 'M.2'];
+        container.innerHTML = disks.map((d, i) => {
+            const sizeVal = (d.size || '').trim();
+            const sizeOpt = sizeOpts.includes(sizeVal) ? sizeVal : (sizeVal ? 'autre' : '');
+            return `<div class="historique-disque-edit-row disques-edit-form" data-disk-index="${i}">
+                <span class="historique-disque-edit-num">${i + 1}.</span>
+                <div class="form-group"><label>S/N *</label><input type="text" class="disque-edit-serial" value="${this.escapeAttr(d.serial || '')}" placeholder="S/N"></div>
+                <div class="form-group"><label>Marque</label><input type="text" class="disque-edit-marque" value="${this.escapeAttr(d.marque || '')}" placeholder="Marque"></div>
+                <div class="form-group"><label>Modèle</label><input type="text" class="disque-edit-modele" value="${this.escapeAttr(d.modele || '')}" placeholder="Modèle"></div>
+                <div class="form-group"><label>Taille</label><div class="disques-size-row"><select class="disque-edit-size-select">${sizeOpts.map(o => `<option value="${o}" ${sizeOpt === o ? 'selected' : ''}>${o || '--'}</option>`).join('')}</select><input type="text" class="disque-edit-size-custom" value="${sizeOpt === 'autre' ? this.escapeAttr(sizeVal) : ''}" placeholder="Ex: 512 Go" style="display:${sizeOpt === 'autre' ? 'inline-block' : 'none'};"></div></div>
+                <div class="form-group"><label>Type</label><select class="disque-edit-type">${typeOpts.map(o => `<option value="${o}" ${(d.disk_type || '') === o ? 'selected' : ''}>${o || '--'}</option>`).join('')}</select></div>
+                <div class="form-group"><label>Interface</label><select class="disque-edit-interface">${ifaceOpts.map(o => `<option value="${o}" ${(d.interface || '') === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>
+            </div>`;
+        }).join('');
+        container.querySelectorAll('.disque-edit-size-select').forEach(sel => {
+            sel.addEventListener('change', () => {
+                const row = sel.closest('.historique-disque-edit-row');
+                const custom = row?.querySelector('.disque-edit-size-custom');
+                if (custom) custom.style.display = sel.value === 'autre' ? 'inline-block' : 'none';
+            });
+        });
+        this.modalManager.open('modal-edit-disque-items');
+    }
+
+    /**
+     * Enregistrer les modifications du matériel (lot disques)
+     */
+    async applyDisqueItemsEdits() {
+        if (!this.currentEditingSessionId) return;
+        const container = document.getElementById('modal-edit-disque-items-list');
+        if (!container) return;
+        const rows = container.querySelectorAll('.historique-disque-edit-row[data-disk-index]');
+        const disks = [];
+        for (const row of rows) {
+            const serial = row.querySelector('.disque-edit-serial')?.value?.trim();
+            const sizeSelect = row.querySelector('.disque-edit-size-select');
+            const sizeCustom = row.querySelector('.disque-edit-size-custom');
+            const size = (sizeSelect?.value === 'autre' && sizeCustom?.value?.trim()) ? sizeCustom.value.trim() : (sizeSelect?.value || '');
+            if (!serial) {
+                this.showNotification('Chaque disque doit avoir un S/N', 'warning');
+                return;
+            }
+            const t = (row.querySelector('.disque-edit-type')?.value || '').toUpperCase();
+            const shred = t === 'SSD' ? 'Secure E. + Sanitize' : t === 'HDD' ? 'DoD' : '';
+            disks.push({
+                serial,
+                marque: row.querySelector('.disque-edit-marque')?.value?.trim() || null,
+                modele: row.querySelector('.disque-edit-modele')?.value?.trim() || null,
+                size: size || null,
+                disk_type: row.querySelector('.disque-edit-type')?.value || null,
+                interface: row.querySelector('.disque-edit-interface')?.value || null,
+                shred
+            });
+        }
+        try {
+            const serverUrl = api.getServerUrl();
+            const url = `${serverUrl}/api/disques/sessions/${this.currentEditingSessionId}`;
+            const res = await fetch(url, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` },
+                body: JSON.stringify({ disks })
+            });
+            if (!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
+            const session = this.sessionsDisques.find(s => String(s.id) === String(this.currentEditingSessionId));
+            if (session) session.disks = disks;
+            this.currentEditingSessionId = null;
+            this.modalManager.close('modal-edit-disque-items');
+            this.renderLots();
+            this.showNotification('Matériel mis à jour', 'success');
+        } catch (err) {
+            logger.error('applyDisqueItemsEdits:', err);
+            this.showNotification(err?.message || 'Erreur lors de l\'enregistrement', 'error');
+        }
     }
 
     /**
@@ -304,9 +468,10 @@ export default class HistoriqueManager {
         const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
         if (!session) return;
         const full = await getSession(sessionId).catch(() => session);
-        const dateStr = full.date || (full.created_at || '').slice(0, 10) || '-';
+        const name = (full.name || '').trim() || 'Lot disques';
+        const dateFormatted = this.formatDateDDMMYYYY(full.date || (full.created_at || '').slice(0, 10));
         const disks = Array.isArray(full.disks) ? full.disks : [];
-        document.getElementById('modal-disque-date').textContent = dateStr;
+        document.getElementById('modal-disque-title').textContent = name;
         document.getElementById('modal-disque-total').textContent = disks.length;
         const tbody = document.getElementById('modal-disque-items');
         if (tbody) {
@@ -326,15 +491,6 @@ export default class HistoriqueManager {
                 </tr>
             `;
             }).join('');
-        }
-        const pdfLink = document.getElementById('modal-disque-pdf-link');
-        if (pdfLink) {
-            if (full.pdf_path) {
-                pdfLink.href = getSessionPdfUrl(full.id);
-                pdfLink.style.display = '';
-            } else {
-                pdfLink.style.display = 'none';
-            }
         }
         this.modalManager.open('modal-disque-details');
     }
@@ -434,6 +590,18 @@ export default class HistoriqueManager {
         const saveLotNameBtn = document.getElementById('btn-save-lot-name');
         if (saveLotNameBtn) {
             saveLotNameBtn.addEventListener('click', () => this.saveLotName());
+        }
+
+        // Bouton sauvegarder le nom de la session disques
+        const saveDisqueNameBtn = document.getElementById('btn-save-disque-name');
+        if (saveDisqueNameBtn) {
+            saveDisqueNameBtn.addEventListener('click', () => this.saveDisqueSessionName());
+        }
+
+        // Bouton appliquer les modifications du matériel (lot disques)
+        const applyDisqueItemsBtn = document.getElementById('btn-apply-disque-items-edits');
+        if (applyDisqueItemsBtn) {
+            applyDisqueItemsBtn.addEventListener('click', () => this.applyDisqueItemsEdits());
         }
     }
 

@@ -43,3 +43,6 @@ Les valeurs sont échappées pour l’affichage HTML. Si un template n’existe 
 **Calcul côté backend (exemple)**  
 - `count_by_interface` : grouper les disques par `interface`, compter, puis formater « n1 SATA, n2 SAS, … — Total : N disques ».  
 - `size_by_interface` : grouper par `interface`, pour chaque disque parser `size` (ex. « 4 To » → 4, « 500 Go » → 0.5), sommer par interface, formater « SATA : 9 To, SAS : 6 To ».
+
+**Important : PDF généré côté serveur**  
+Le PDF des sessions disques est généré par le serveur (PDFKit), pas à partir du template HTML de ce dossier. Il n’y a donc pas d’application de CSS comme pour le template ; le rendu dépend uniquement du code serveur. Le serveur **doit** inclure dans le PDF la ligne **« Taille totale par interface »** (valeur `size_by_interface`) pour que l’utilisateur voie le total. Les templates `disques.html` et `disques.css` servent de référence visuelle uniquement.

@@ -257,6 +257,8 @@
 .btn-download-pdf,
 .btn-edit-lot,
 .btn-edit-items,
+.btn-edit-disque-name,
+.btn-edit-disque-items,
 .btn-to-recover,
 .btn-recovered {
     padding: var(--unit-1) var(--unit-2);
@@ -299,13 +301,17 @@
 }
 
 .btn-edit-lot,
-.btn-edit-items {
+.btn-edit-items,
+.btn-edit-disque-name,
+.btn-edit-disque-items {
     background-color: var(--orange);
     color: var(--blanc);
 }
 
 .btn-edit-lot:hover,
-.btn-edit-items:hover {
+.btn-edit-items:hover,
+.btn-edit-disque-name:hover,
+.btn-edit-disque-items:hover {
     background-color: #e65100;
     transform: translateY(-2px);
 }
@@ -329,6 +335,58 @@
 
 .btn-recovered:hover {
     transform: none;
+}
+
+/* Modal éditer matériel lot disques - même style que création (disques-edit-form) */
+#modal-edit-disque-items .historique-disque-edit-list {
+    max-height: 60vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-3);
+}
+#modal-edit-disque-items .historique-disque-edit-row {
+    display: grid;
+    grid-template-columns: auto repeat(6, 1fr);
+    gap: var(--unit-2);
+    align-items: end;
+    font-size: 0.85rem;
+    padding: var(--unit-2);
+    border: 1px solid rgba(13, 13, 13, 0.1);
+    border-radius: var(--radius-medium);
+    background: rgba(13, 13, 13, 0.02);
+}
+#modal-edit-disque-items .historique-disque-edit-row .historique-disque-edit-num {
+    font-weight: 600;
+    align-self: center;
+    min-width: 1.5rem;
+}
+#modal-edit-disque-items .historique-disque-edit-row .form-group {
+    min-width: 0;
+}
+#modal-edit-disque-items .historique-disque-edit-row .form-group label {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+#modal-edit-disque-items .historique-disque-edit-row .form-group input,
+#modal-edit-disque-items .historique-disque-edit-row .form-group select {
+    width: 100%;
+    padding: 4px 8px;
+    font-size: 0.85rem;
+    border: 1px solid rgba(13, 13, 13, 0.15);
+    border-radius: var(--radius-small);
+    box-sizing: border-box;
+}
+#modal-edit-disque-items .historique-disque-edit-row .disques-size-row {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+#modal-edit-disque-items .historique-disque-edit-row .disques-size-row .disque-edit-size-custom {
+    min-width: 70px;
+    flex: 1;
 }
 
 /* État vide */
@@ -556,6 +614,8 @@
     .historique-lot-actions .btn-download-pdf,
     .historique-lot-actions .btn-edit-lot,
     .historique-lot-actions .btn-edit-items,
+    .historique-lot-actions .btn-edit-disque-name,
+    .historique-lot-actions .btn-edit-disque-items,
     .historique-lot-actions .btn-to-recover,
     .historique-lot-actions .btn-recovered {
         min-width: 8rem;
@@ -612,6 +672,8 @@
     .historique-lot-actions .btn-download-pdf,
     .historique-lot-actions .btn-edit-lot,
     .historique-lot-actions .btn-edit-items,
+    .historique-lot-actions .btn-edit-disque-name,
+    .historique-lot-actions .btn-edit-disque-items,
     .historique-lot-actions .btn-to-recover,
     .historique-lot-actions .btn-recovered {
         font-size: 0.8rem;
@@ -648,6 +710,8 @@
     .historique-lot-actions .btn-download-pdf,
     .historique-lot-actions .btn-edit-lot,
     .historique-lot-actions .btn-edit-items,
+    .historique-lot-actions .btn-edit-disque-name,
+    .historique-lot-actions .btn-edit-disque-items,
     .historique-lot-actions .btn-to-recover,
     .historique-lot-actions .btn-recovered {
         flex: 1 1 100%;
@@ -665,6 +729,8 @@
     .historique-lot-actions .btn-download-pdf,
     .historique-lot-actions .btn-edit-lot,
     .historique-lot-actions .btn-edit-items,
+    .historique-lot-actions .btn-edit-disque-name,
+    .historique-lot-actions .btn-edit-disque-items,
     .historique-lot-actions .btn-to-recover,
     .historique-lot-actions .btn-recovered {
         min-height: 2.75rem;
