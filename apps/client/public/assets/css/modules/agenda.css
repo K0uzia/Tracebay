@@ -400,7 +400,6 @@
 .agenda-event-form .form-group input[type="color"] {
     padding: var(--unit-2) var(--unit-2);
     font-size: 1rem;
-    min-height: 44px;
     border-radius: var(--radius-medium);
     border: 1px solid rgba(13, 13, 13, 0.15);
 }

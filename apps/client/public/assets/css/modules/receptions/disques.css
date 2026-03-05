@@ -1,0 +1,186 @@
+/* DISQUES SHREDDÉS - Même disposition que Entrée (réutilise .gestion-lots-container, .actions-bar, .lot-info-section, .lot-table-wrapper) */
+
+/* Zone d'ajout : conteneur avec padding lisible */
+.disques-container .lot-info-section {
+    padding: var(--unit-3) var(--unit-4);
+}
+
+/* Ligne de formulaire en ROW (override .form-field qui force column dans entrer.css) */
+.disques-container .disques-form-row {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--unit-3);
+    margin-top: var(--unit-2);
+}
+
+.disques-container .disques-form-row .form-group {
+    margin-bottom: 0;
+    flex: 0 0 auto;
+}
+
+.disques-container .disques-form-row .form-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.disques-container .disques-form-row input[type="text"],
+.disques-container .disques-form-row select {
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid rgba(13, 13, 13, 0.15);
+    border-radius: var(--radius-medium);
+    font-size: 1rem;
+    min-width: 100px;
+    box-sizing: border-box;
+}
+
+.disques-container .disques-form-row input[type="text"]#disques-serial {
+    min-width: 180px;
+    max-width: 280px;
+}
+
+/* Taille : select + champ "Autre" côte à côte */
+.disques-container .disques-size-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: var(--unit-2);
+}
+
+.disques-container .disques-size-row .disques-size-custom {
+    min-width: 100px;
+    max-width: 120px;
+    flex: 0 0 auto;
+    box-sizing: border-box;
+}
+
+.disques-size-custom {
+    min-width: 100px;
+    box-sizing: border-box;
+}
+
+/* Bouton Ajouter aligné avec les champs */
+.disques-container .disques-form-row .btn-add-manual {
+    flex: 0 0 auto;
+    padding: var(--unit-1) var(--unit-3);
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--unit-1);
+    font: var(--font-btn);
+    border: none;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    background-color: var(--valid, #2e7d32);
+    color: var(--blanc, #fff);
+    box-shadow: var(--shadow-small, 0 1px 2px rgba(0,0,0,0.1));
+}
+
+.disques-container .disques-form-row .btn-add-manual:hover {
+    filter: brightness(1.05);
+}
+
+.disques-container .disques-form-row .btn-add-manual:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.disques-empty-msg {
+    margin: var(--unit-2) 0;
+    color: var(--text2);
+    font-size: 0.95rem;
+}
+
+/* Tableau disques (réutilise .lot-table) */
+.disques-container .disques-table .th-num { min-width: 2.5em; }
+.disques-container .disques-table .th-sn { min-width: 100px; }
+.disques-container .disques-table .th-marque { min-width: 70px; }
+.disques-container .disques-table .th-modele { min-width: 80px; }
+.disques-container .disques-table .th-size { min-width: 70px; }
+.disques-container .disques-table .th-disk-type { min-width: 50px; }
+.disques-container .disques-table .th-interface { min-width: 65px; }
+.disques-container .disques-table .th-shred { min-width: 90px; }
+.disques-container .disques-table .th-action { min-width: 80px; }
+
+/* Modale lsblk */
+.lsblk-disks-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.lsblk-disk-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(13, 13, 13, 0.06);
+}
+
+.lsblk-disk-row:last-child {
+    border-bottom: none;
+}
+
+.lsblk-disk-row input[type="checkbox"] {
+    margin: 0;
+}
+
+.lsblk-disk-meta {
+    color: var(--text2);
+    font-size: 0.9rem;
+}
+
+.modal-help {
+    margin-bottom: var(--unit-3);
+    color: var(--text2);
+    font-size: 0.95rem;
+}
+
+.empty-state {
+    text-align: center;
+    padding: var(--unit-6);
+    color: var(--text2);
+}
+
+.empty-state i {
+    font-size: 2rem;
+    margin-bottom: var(--unit-2);
+    opacity: 0.6;
+}
+
+.empty-state button {
+    margin-top: var(--unit-2);
+}
+
+/* Responsive zone d'ajout disques */
+@media (max-width: 768px) {
+    .disques-container .lot-info-section {
+        padding: var(--unit-2) var(--unit-3);
+    }
+
+    .disques-container .disques-form-row {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: var(--unit-2);
+    }
+
+    .disques-container .disques-form-row .form-group {
+        min-width: 120px;
+    }
+
+    .disques-container .disques-form-row input[type="text"]#disques-serial {
+        min-width: 100%;
+        max-width: 100%;
+    }
+
+    .disques-container .disques-form-row .btn-add-manual {
+        width: 100%;
+    }
+}

@@ -158,6 +158,11 @@
     line-height: 1.3;
 }
 
+.historique-type-icon {
+    margin-right: 0.35em;
+    opacity: 0.9;
+}
+
 .badge-finished {
     display: inline-block;
     padding: var(--unit-1) var(--unit-2);

@@ -5,9 +5,9 @@
     <div class="historique-header reception-page-header">
         <h1>
             <i class="fa-solid fa-history"></i>
-            Historique - Lots terminés
+            Historique
         </h1>
-        <p class="subtitle">Consultez les lots complètement traités</p>
+        <p class="subtitle">Lots terminés et sessions disques shreddés</p>
     </div>
 
     <!-- Recherche + Rafraîchir -->
@@ -16,7 +16,7 @@
             <label for="filter-search-historique">
                 <i class="fa-solid fa-magnifying-glass"></i> Recherche :
             </label>
-            <input type="text" id="filter-search-historique" placeholder="Nom du lot ou n° de lot" autocomplete="off">
+            <input type="text" id="filter-search-historique" placeholder="Nom du lot, n° de lot ou date" autocomplete="off">
         </div>
         <div class="filter-group">
             <button type="button" id="btn-refresh-historique">
@@ -25,7 +25,7 @@
         </div>
     </div>
 
-    <!-- Liste des lots terminés -->
+    <!-- Liste des lots terminés + sessions disques -->
     <div class="lots-list" id="historique-list">
         <!-- Les lots seront chargés dynamiquement -->
         <div class="loading">
@@ -162,6 +162,54 @@
             <button type="button" id="btn-save-lot-name" class="modal-apply-btn">
                 <i class="fa-solid fa-check"></i> Enregistrer
             </button>
+        </div>
+    </div>
+</dialog>
+
+<!-- MODALE : Détails session disques -->
+<dialog class="universal-modal" id="modal-disque-details" data-modal-id="modal-disque-details">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-hard-drive"></i> Session disques du <span id="modal-disque-date">-</span></h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-disque-details">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="lot-details-info">
+                <div class="info-item">
+                    <span class="info-label">Nombre de disques :</span>
+                    <span class="info-value" id="modal-disque-total">-</span>
+                </div>
+            </div>
+            <h3 style="margin-top: 16px; margin-bottom: 12px;">Disques</h3>
+            <div class="lot-details-table">
+                <table class="details-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">N°</th>
+                            <th>S/N</th>
+                            <th>Marque</th>
+                            <th>Modèle</th>
+                            <th>Taille</th>
+                            <th>Type</th>
+                            <th>Interface</th>
+                            <th>Shred</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-disque-items">
+                        <!-- Rempli par JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-disque-details">
+                <i class="fa-solid fa-times"></i> Fermer
+            </button>
+            <a id="modal-disque-pdf-link" href="#" target="_blank" rel="noopener" class="btn btn-primary" style="display: none;">
+                <i class="fa-solid fa-file-pdf"></i> Voir le PDF
+            </a>
         </div>
     </div>
 </dialog>
