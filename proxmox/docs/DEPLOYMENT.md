@@ -233,6 +233,17 @@ rm -rf docker/proxmox/logs/*
 docker compose up --build -d
 ```
 
+## Validation PDF disques (traçabilité)
+
+Les certificats PDF des sessions disques sont stockés sous `/mnt/team/#TEAM/#TRAÇABILITÉ/Disques/AAAA/Mois` (ou le chemin défini par `DISQUES_PDF_BASE`). Pour valider dans le CT Proxmox :
+
+1. **Créer une session disques** (POST `/api/disques/sessions` avec `date` et `disks`) puis vérifier qu’un fichier PDF existe sous le dossier Disques (ex. `.../Disques/2026/Mars/...`).
+2. **Ouvrir le PDF** : GET `/api/disques/sessions/:id/pdf` doit renvoyer 200 et le flux PDF.
+3. **Supprimer ou renommer le fichier** sur le disque : GET `/api/disques/sessions/:id/pdf` doit renvoyer 404 avec `{"error":"PDF file not found"}`.
+4. **Régénérer** : POST `/api/disques/sessions/:id/regenerate-pdf` (body `{}`) puis GET à nouveau : 200 et PDF servi.
+
+Vérifier que le process backend a les droits d’écriture sur le dossier (ex. `DISQUES_PDF_BASE` ou `/mnt/team/#TEAM/#TRAÇABILITÉ/Disques`).
+
 ## Production Checklist
 
 - [ ] Changer `DB_PASSWORD` en production

@@ -18,7 +18,7 @@ import { globalMetrics } from './utils/metrics';
 import { globalCache } from './utils/cache';
 import { initServerLogBuffer, createPinoBufferStream } from './utils/server-log-buffer';
 import { testConnection, initializeDatabase, query } from './db';
-import { generateDisquesPdf } from './utils/disques-pdf';
+import { generateDisquesPdf, buildDisquesPdfPath } from './utils/disques-pdf';
 
 // Load environment variables
 dotenv.config();
@@ -1501,22 +1501,16 @@ function broadcastUserCount() {
           shred: r.shred
         }));
         const pdfBuffer = await generateDisquesPdf(dateStr, rows);
-        const pdfStorageDir = process.env.PDF_STORAGE_PATH || path.join(process.cwd(), 'data', 'pdfs');
-        const year = dateStr.slice(0, 4);
-        const month = dateStr.slice(5, 7);
-        const dirPath = path.join(pdfStorageDir, 'Disques', year, month);
-        fs.mkdirSync(dirPath, { recursive: true });
-        const fileName = `Disques_Shred_${dateStr}_${sessionId}.pdf`;
-        const serverFilePath = path.join(dirPath, fileName);
-        fs.writeFileSync(serverFilePath, pdfBuffer);
-        const resolvedPath = path.resolve(serverFilePath);
-        await query('UPDATE disques_sessions SET pdf_path = $1 WHERE id = $2', [resolvedPath, sessionId]);
+        const sessionForPath = { id: sessionId, date: session.date, name: session.name };
+        const fullPath = buildDisquesPdfPath(sessionForPath);
+        fs.writeFileSync(fullPath, pdfBuffer);
+        await query('UPDATE disques_sessions SET pdf_path = $1 WHERE id = $2', [fullPath, sessionId]);
         return {
           id: sessionId,
           date: session.date,
           name: session.name,
           created_at: session.created_at,
-          pdf_path: resolvedPath,
+          pdf_path: fullPath,
           disks: rows
         };
       } catch (err: any) {
@@ -1612,7 +1606,7 @@ function broadcastUserCount() {
       }
       const body = (request.body as any) || {};
       try {
-        const sessionResult = await query('SELECT id, date, pdf_path FROM disques_sessions WHERE id = $1', [id]);
+        const sessionResult = await query('SELECT id, date, name, pdf_path FROM disques_sessions WHERE id = $1', [id]);
         if (sessionResult.rowCount === 0) {
           reply.statusCode = 404;
           return { error: 'Session not found' };
@@ -1621,6 +1615,7 @@ function broadcastUserCount() {
         if (body.name !== undefined) {
           const name = body.name != null ? String(body.name).trim() || null : null;
           await query('UPDATE disques_sessions SET name = $1 WHERE id = $2', [name, id]);
+          session.name = name;
         }
         if (Array.isArray(body.disks)) {
           const disks = body.disks;
@@ -1656,16 +1651,10 @@ function broadcastUserCount() {
           }));
           const dateStr = session.date && (typeof session.date === 'string' ? session.date : (session.date as Date).toISOString?.()?.slice(0, 10)) || new Date().toISOString().slice(0, 10);
           const pdfBuffer = await generateDisquesPdf(dateStr, rows);
-          const pdfStorageDir = process.env.PDF_STORAGE_PATH || path.join(process.cwd(), 'data', 'pdfs');
-          const year = dateStr.slice(0, 4);
-          const month = dateStr.slice(5, 7);
-          const dirPath = path.join(pdfStorageDir, 'Disques', year, month);
-          fs.mkdirSync(dirPath, { recursive: true });
-          const fileName = `Disques_Shred_${dateStr}_${id}.pdf`;
-          const serverFilePath = path.join(dirPath, fileName);
-          fs.writeFileSync(serverFilePath, pdfBuffer);
-          const resolvedPath = path.resolve(serverFilePath);
-          await query('UPDATE disques_sessions SET pdf_path = $1 WHERE id = $2', [resolvedPath, id]);
+          const sessionForPath = { id: parseInt(id, 10), date: session.date, name: session.name };
+          const fullPath = buildDisquesPdfPath(sessionForPath);
+          fs.writeFileSync(fullPath, pdfBuffer);
+          await query('UPDATE disques_sessions SET pdf_path = $1 WHERE id = $2', [fullPath, id]);
         }
         const updated = await query(
           'SELECT id, date, name, pdf_path, created_at FROM disques_sessions WHERE id = $1',
@@ -1707,7 +1696,7 @@ function broadcastUserCount() {
         return { error: 'Invalid session id' };
       }
       try {
-        const sessionResult = await query('SELECT id, date, pdf_path FROM disques_sessions WHERE id = $1', [id]);
+        const sessionResult = await query('SELECT id, date, name FROM disques_sessions WHERE id = $1', [id]);
         if (sessionResult.rowCount === 0) {
           reply.statusCode = 404;
           return { error: 'Session not found' };
@@ -1728,17 +1717,11 @@ function broadcastUserCount() {
         }));
         const dateStr = session.date && (typeof session.date === 'string' ? session.date : (session.date as Date).toISOString?.()?.slice(0, 10)) || new Date().toISOString().slice(0, 10);
         const pdfBuffer = await generateDisquesPdf(dateStr, rows);
-        const pdfStorageDir = process.env.PDF_STORAGE_PATH || path.join(process.cwd(), 'data', 'pdfs');
-        const year = dateStr.slice(0, 4);
-        const month = dateStr.slice(5, 7);
-        const dirPath = path.join(pdfStorageDir, 'Disques', year, month);
-        fs.mkdirSync(dirPath, { recursive: true });
-        const fileName = `Disques_Shred_${dateStr}_${id}.pdf`;
-        const serverFilePath = path.join(dirPath, fileName);
-        fs.writeFileSync(serverFilePath, pdfBuffer);
-        const resolvedPath = path.resolve(serverFilePath);
-        await query('UPDATE disques_sessions SET pdf_path = $1 WHERE id = $2', [resolvedPath, id]);
-        return { success: true, pdf_path: resolvedPath };
+        const sessionForPath = { id: parseInt(id, 10), date: session.date, name: session.name };
+        const fullPath = buildDisquesPdfPath(sessionForPath);
+        fs.writeFileSync(fullPath, pdfBuffer);
+        await query('UPDATE disques_sessions SET pdf_path = $1 WHERE id = $2', [fullPath, id]);
+        return { success: true, pdf_path: fullPath };
       } catch (err: any) {
         fastify.log.error({ err }, 'POST /api/disques/sessions/:id/regenerate-pdf error');
         reply.statusCode = 500;

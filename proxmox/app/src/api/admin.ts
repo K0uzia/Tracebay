@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { PoolClient } from 'pg';
 import { query, transaction } from '../db';
 import { getServerLogs } from '../utils/server-log-buffer';
-import { generateDisquesPdf } from '../utils/disques-pdf';
+import { generateDisquesPdf, buildDisquesPdfPath } from '../utils/disques-pdf';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -782,9 +782,9 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
           ]
         );
       }
-      const sessionRow = await query('SELECT date FROM disques_sessions WHERE id = $1', [id]);
-      const sessionDate = sessionRow.rows[0] as any;
-      const dateStr = sessionDate?.date && (typeof sessionDate.date === 'string' ? sessionDate.date : (sessionDate.date as Date).toISOString?.()?.slice(0, 10)) || new Date().toISOString().slice(0, 10);
+      const sessionRow = await query('SELECT id, date, name FROM disques_sessions WHERE id = $1', [id]);
+      const sessionForPath = sessionRow.rows[0] as any;
+      const dateStr = sessionForPath?.date && (typeof sessionForPath.date === 'string' ? sessionForPath.date : (sessionForPath.date as Date).toISOString?.()?.slice(0, 10)) || new Date().toISOString().slice(0, 10);
       const disksForPdf = await query(
         'SELECT serial, marque, modele, size, disk_type, interface, shred FROM disques_session_disks WHERE session_id = $1 ORDER BY id',
         [id]
@@ -799,15 +799,13 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
         shred: r.shred
       }));
       const pdfBuffer = await generateDisquesPdf(dateStr, rows);
-      const pdfStorageDir = process.env.PDF_STORAGE_PATH || path.join(process.cwd(), 'data', 'pdfs');
-      const year = dateStr.slice(0, 4);
-      const month = dateStr.slice(5, 7);
-      const dirPath = path.join(pdfStorageDir, 'Disques', year, month);
-      fs.mkdirSync(dirPath, { recursive: true });
-      const fileName = `Disques_Shred_${dateStr}_${id}.pdf`;
-      const serverFilePath = path.join(dirPath, fileName);
-      fs.writeFileSync(serverFilePath, pdfBuffer);
-      await query('UPDATE disques_sessions SET pdf_path = $1 WHERE id = $2', [path.resolve(serverFilePath), id]);
+      const fullPath = buildDisquesPdfPath({
+        id: parseInt(id, 10),
+        date: sessionForPath?.date,
+        name: sessionForPath?.name
+      });
+      fs.writeFileSync(fullPath, pdfBuffer);
+      await query('UPDATE disques_sessions SET pdf_path = $1 WHERE id = $2', [fullPath, id]);
     }
     try {
       const sessionResult = await query('SELECT id, date, name, pdf_path, created_at FROM disques_sessions WHERE id = $1', [id]);

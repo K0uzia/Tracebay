@@ -1,9 +1,48 @@
 /**
  * Génération PDF des sessions disques shreddés (traçabilité).
  * Utilise PDFKit pour produire un PDF avec : infos session, count/size par interface, méthode, tableau des disques.
+ * Stockage sous /mnt/team/#TEAM/#TRAÇABILITÉ/Disques/AAAA/Mois (convention alignée avec l'app Electron).
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
 import PDFDocument from 'pdfkit';
+
+/** Base traçabilité (override par TRACABILITE_BASE ou DISQUES_PDF_BASE) */
+const TRACABILITE_BASE = process.env.TRACABILITE_BASE || '/mnt/team/#TEAM/#TRAÇABILITÉ';
+/** Dossier racine des PDF disques : .../Disques */
+export const DISQUES_PDF_BASE = process.env.DISQUES_PDF_BASE || path.join(TRACABILITE_BASE, 'Disques');
+
+const MONTH_NAMES = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+export interface DisquesSessionForPath {
+  id: number;
+  date?: string | Date;
+  name?: string | null;
+}
+
+/**
+ * Calcule le chemin complet du PDF pour une session disques, crée le dossier si besoin.
+ * Structure : DISQUES_PDF_BASE/AAAA/NomDuMois/NomSession_YYYY-MM-DD.pdf
+ */
+export function buildDisquesPdfPath(session: DisquesSessionForPath): string {
+  const rawDate = session.date != null
+    ? (typeof session.date === 'string' ? session.date : (session.date as Date).toISOString?.()?.slice(0, 10))
+    : '';
+  const dateStr = /^\d{4}-\d{2}-\d{2}/.test(rawDate) ? rawDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+  const year = dateStr.slice(0, 4);
+  const monthNum = parseInt(dateStr.slice(5, 7), 10) || 1;
+  const monthName = MONTH_NAMES[Math.max(0, monthNum - 1)] || 'Janvier';
+  const dirPath = path.join(DISQUES_PDF_BASE, year, monthName);
+  fs.mkdirSync(dirPath, { recursive: true });
+  const sanitizedName = (session.name != null ? String(session.name).trim() : '')
+    .replace(/\s+/g, '_')
+    .replace(/[\\/:*?"<>|]/g, '')
+    .trim();
+  const baseName = sanitizedName || `disques-session-${session.id}`;
+  const fileName = `${baseName}_${dateStr}.pdf`;
+  return path.resolve(path.join(dirPath, fileName));
+}
 
 export interface DisqueRow {
   serial: string;
