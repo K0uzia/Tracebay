@@ -658,6 +658,8 @@ app.on('ready', async () => {
             console.log('[Update] Version installée:', currentVersion);
 
             const { autoUpdater } = require('electron-updater');
+            // AppImage : le nom d'artifact est sans version (package.json linux.appImage.artifactName)
+            // pour que quitAndInstall remplace l'exécutable au même chemin au lieu de créer un nouveau fichier.
             autoUpdater.setFeedURL({
                 provider: 'github',
                 owner: 'SandersonnDev',
