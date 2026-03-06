@@ -1,9 +1,9 @@
 {
   "name": "workspace",
-  "version": "3.1.1",
+  "version": "3.1.2",
   "main": "main.js",
   "homepage": "https://github.com/SandersonnDev/workspace#readme",
-  "description": "Workspace Client - Interface utilisateur collaborative",
+  "description": "Workspace - Interface utilisateur collaborative",
   "author": "Sandersonn",
   "license": "MIT",
   "dependencies": {
@@ -104,7 +104,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Workspace Client",
+      "shortcutName": "Workspace",
       "include": "build/installer.nsh",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
@@ -175,8 +175,8 @@
       "artifactName": "${productName}.${ext}",
       "desktop": {
         "entry": {
-          "Name": "Workspace Client",
-          "Comment": "Workspace Client - Interface utilisateur collaborative",
+          "Name": "Workspace",
+          "Comment": "Workspace - Interface utilisateur collaborative",
           "Categories": "Utility;"
         }
       }
