@@ -6,7 +6,7 @@
 import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
 import { loadLotsWithItems } from './lotsApi.js';
-import { getSessions, getSessionPdfUrl } from './disquesApi.js';
+import { getSessions, getSession, getSessionPdfUrl } from './disquesApi.js';
 const logger = getLogger();
 
 
@@ -507,27 +507,53 @@ export default class TracabiliteManager {
 
     async regenerateDisquePdf(sessionId) {
         try {
+            if (!window.electron?.invoke) {
+                this.showNotification('Régénération PDF disponible dans l\'application desktop (Electron)', 'warning');
+                return;
+            }
+            const session = await getSession(sessionId);
+            if (!session?.id) {
+                this.showNotification('Session introuvable', 'error');
+                return;
+            }
+            const basePath = '/mnt/team/#TEAM/#TRAÇABILITÉ';
+            this.showNotification('Génération du PDF...', 'info');
+            const result = await window.electron.invoke('generate-disques-pdf', {
+                sessionId: session.id,
+                date: session.date || (session.created_at || '').slice(0, 10),
+                name: session.name,
+                disks: session.disks || [],
+                basePath
+            });
+            if (!result?.success || !result.pdf_path) {
+                throw new Error(result?.error || 'Échec génération PDF');
+            }
+            const readResult = await window.electron.invoke('read-file-as-base64', { path: result.pdf_path });
+            if (!readResult?.success || !readResult.base64) {
+                throw new Error('Impossible de lire le PDF pour envoi au serveur');
+            }
             const serverUrl = api.getServerUrl();
-            const url = `${serverUrl}/api/disques/sessions/${sessionId}/regenerate-pdf`;
-            const res = await fetch(url, {
+            const res = await fetch(`${serverUrl}/api/disques/sessions/${sessionId}/pdf`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
                 },
-                // Le backend attend un body JSON quand le Content-Type est application/json
-                body: JSON.stringify({})
+                body: JSON.stringify({
+                    pdf_base64: readResult.base64,
+                    session_name: session.name,
+                    date: session.date || (session.created_at || '').slice(0, 10),
+                    save_path_hint: basePath
+                })
             });
             const text = await res.text().catch(() => '');
             if (!res.ok) {
                 let msg = text || `Erreur serveur ${res.status}`;
-                if (res.status === 400 || res.status === 404) {
-                    try {
-                        const j = JSON.parse(text);
-                        if (j.message) msg = j.message;
-                        else if (j.error) msg = j.error;
-                    } catch (_) { /* garder msg */ }
-                }
+                try {
+                    const j = JSON.parse(text);
+                    if (j?.message) msg = j.message;
+                    else if (j?.error) msg = j.error;
+                } catch (_) { /* garder msg */ }
                 throw new Error(msg);
             }
             this.showNotification('PDF régénéré', 'success');
