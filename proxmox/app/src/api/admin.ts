@@ -696,7 +696,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   fastify.get('/api/admin/disques/sessions', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { year, month } = request.query as { year?: string; month?: string };
-    let sql = `SELECT id, date, name, pdf_path, created_at FROM disques_sessions`;
+    let sql = `SELECT id, date, name, pdf_path, created_at, recovered_at FROM disques_sessions`;
     const params: any[] = [];
     if (year && /^\d{4}$/.test(year)) { sql += ' WHERE EXTRACT(YEAR FROM date) = $1'; params.push(year); }
     if (month && /^(0?[1-9]|1[0-2])$/.test(month)) {
@@ -731,7 +731,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     const { id } = request.params as { id: string };
     try {
       const sessionResult = await query(
-        'SELECT id, date, name, pdf_path, created_at FROM disques_sessions WHERE id = $1',
+        'SELECT id, date, name, pdf_path, created_at, recovered_at FROM disques_sessions WHERE id = $1',
         [id]
       );
       if (sessionResult.rowCount === 0) { reply.statusCode = 404; return { error: 'Session introuvable' }; }
@@ -756,6 +756,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     const values: any[] = [];
     let i = 1;
     if (body.name !== undefined) { updates.push(`name = $${i++}`); values.push(body.name === null || body.name === '' ? null : String(body.name).trim() || null); }
+    if (body.recovered_at !== undefined) { updates.push(`recovered_at = $${i++}`); values.push(body.recovered_at == null || String(body.recovered_at).trim() === '' ? null : String(body.recovered_at).trim()); }
     if (!updates.length && !Array.isArray(body.disks)) {
       reply.statusCode = 400;
       return { error: 'Aucun champ à mettre à jour (name ou disks)' };
@@ -808,7 +809,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       await query('UPDATE disques_sessions SET pdf_path = $1 WHERE id = $2', [fullPath, id]);
     }
     try {
-      const sessionResult = await query('SELECT id, date, name, pdf_path, created_at FROM disques_sessions WHERE id = $1', [id]);
+      const sessionResult = await query('SELECT id, date, name, pdf_path, created_at, recovered_at FROM disques_sessions WHERE id = $1', [id]);
       if (sessionResult.rowCount === 0) { reply.statusCode = 404; return { error: 'Session introuvable' }; }
       const session = sessionResult.rows[0] as any;
       const disksResult = await query(

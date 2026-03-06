@@ -1394,7 +1394,7 @@ function broadcastUserCount() {
       try {
         const { year, month } = request.query as { year?: string; month?: string };
         let sql = `
-          SELECT id, date, name, pdf_path, created_at
+          SELECT id, date, name, pdf_path, created_at, recovered_at
           FROM disques_sessions
         `;
         const params: any[] = [];
@@ -1416,6 +1416,7 @@ function broadcastUserCount() {
           name: row.name,
           created_at: row.created_at,
           pdf_path: row.pdf_path,
+          recovered_at: row.recovered_at ?? null,
           disk_count: 0
         }));
         if (sessions.length === 0) {
@@ -1523,7 +1524,7 @@ function broadcastUserCount() {
       }
       try {
         const sessionResult = await query(
-          'SELECT id, date, name, pdf_path, created_at FROM disques_sessions WHERE id = $1',
+          'SELECT id, date, name, pdf_path, created_at, recovered_at FROM disques_sessions WHERE id = $1',
           [id]
         );
         if (sessionResult.rowCount === 0) {
@@ -1550,6 +1551,7 @@ function broadcastUserCount() {
           name: session.name,
           pdf_path: session.pdf_path,
           created_at: session.created_at,
+          recovered_at: session.recovered_at ?? null,
           disks
         };
       } catch (err: any) {
@@ -1659,7 +1661,7 @@ function broadcastUserCount() {
       }
       const body = (request.body as any) || {};
       try {
-        const sessionResult = await query('SELECT id, date, name, pdf_path FROM disques_sessions WHERE id = $1', [id]);
+        const sessionResult = await query('SELECT id, date, name, pdf_path, recovered_at FROM disques_sessions WHERE id = $1', [id]);
         if (sessionResult.rowCount === 0) {
           reply.statusCode = 404;
           return { error: 'Session not found' };
@@ -1669,6 +1671,11 @@ function broadcastUserCount() {
           const name = body.name != null ? String(body.name).trim() || null : null;
           await query('UPDATE disques_sessions SET name = $1 WHERE id = $2', [name, id]);
           session.name = name;
+        }
+        if (body.recovered_at !== undefined) {
+          const recoveredAt = body.recovered_at != null && String(body.recovered_at).trim() !== '' ? String(body.recovered_at).trim() : null;
+          await query('UPDATE disques_sessions SET recovered_at = $1 WHERE id = $2', [recoveredAt, id]);
+          session.recovered_at = recoveredAt;
         }
         if (Array.isArray(body.disks)) {
           const disks = body.disks;
@@ -1691,7 +1698,7 @@ function broadcastUserCount() {
           }
         }
         const updated = await query(
-          'SELECT id, date, name, pdf_path, created_at FROM disques_sessions WHERE id = $1',
+          'SELECT id, date, name, pdf_path, created_at, recovered_at FROM disques_sessions WHERE id = $1',
           [id]
         );
         const row = updated.rows[0] as any;
@@ -1714,6 +1721,7 @@ function broadcastUserCount() {
           name: row.name,
           pdf_path: row.pdf_path,
           created_at: row.created_at,
+          recovered_at: row.recovered_at ?? null,
           disks
         };
       } catch (err: any) {
