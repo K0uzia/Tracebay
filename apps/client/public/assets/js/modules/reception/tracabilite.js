@@ -6,7 +6,7 @@
 import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
 import { loadLotsWithItems } from './lotsApi.js';
-import { getSessions } from './disquesApi.js';
+import { getSessions, getSessionPdfUrl } from './disquesApi.js';
 const logger = getLogger();
 
 
@@ -263,7 +263,8 @@ export default class TracabiliteManager {
         const rawDate = session.date ?? session.created_at ?? '';
         const dateOnly = typeof rawDate === 'string' ? rawDate.slice(0, 10) : (rawDate ? new Date(rawDate).toISOString().slice(0, 10) : '');
         const dateFormatted = dateOnly && /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) ? this.formatDateTime(dateOnly + 'T12:00:00') : '-';
-        const pdfUrl = `${api.getServerUrl()}/api/disques/sessions/${session.id}/pdf?v=${Date.now()}`;
+        const basePdfUrl = getSessionPdfUrl(session.id);
+        const pdfUrl = `${basePdfUrl}${basePdfUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
 
         return `
             <div class="lot-card lot-card-disque" data-session-id="${session.id}">
@@ -510,7 +511,12 @@ export default class TracabiliteManager {
             const url = `${serverUrl}/api/disques/sessions/${sessionId}/regenerate-pdf`;
             const res = await fetch(url, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` }
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                },
+                // Le backend attend un body JSON quand le Content-Type est application/json
+                body: JSON.stringify({})
             });
             const text = await res.text().catch(() => '');
             if (!res.ok) {
