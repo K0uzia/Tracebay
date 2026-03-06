@@ -22,6 +22,7 @@ COPY proxmox/app/src ./src
 RUN echo "Cache buster: ${CACHE_BUSTER}" \
     && npm ci \
     && npm run build \
+    && test -f dist/main.js || (echo "ERROR: dist/main.js not produced by npm run build" && exit 1) \
     && mkdir -p dist/db dist/views dist/config \
     && cp src/db/schema.sql dist/db/schema.sql \
     && cp src/views/monitoring.html dist/views/monitoring.html 2>/dev/null || true \
