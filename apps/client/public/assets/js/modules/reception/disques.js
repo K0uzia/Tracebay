@@ -6,6 +6,7 @@
  */
 
 import getLogger from '../../config/Logger.js';
+import api from '../../config/api.js';
 import { createSession } from './disquesApi.js';
 
 const logger = getLogger();
@@ -397,11 +398,52 @@ export default class DisquesManager {
         if (btnSave) btnSave.disabled = true;
         try {
             const disksPayload = this.sessionDisks.map(({ autoDetected, ...rest }) => rest);
-            await createSession({ name: sessionName || undefined, date: dateStr, disks: disksPayload });
+            const session = await createSession({ name: sessionName || undefined, date: dateStr, disks: disksPayload });
             this.sessionDisks = [];
             this.renderSessionTable();
             if (nameEl) nameEl.value = '';
             window.app?.showNotification?.('Session enregistrée en traçabilité', 'success');
+
+            if (window.electron?.invoke && session?.id) {
+                const basePath = '/mnt/team/#TEAM/#TRAÇABILITÉ';
+                try {
+                    window.app?.showNotification?.('Génération du PDF...', 'info');
+                    const result = await window.electron.invoke('generate-disques-pdf', {
+                        sessionId: session.id,
+                        date: session.date || dateStr,
+                        name: session.name ?? sessionName,
+                        disks: session.disks || disksPayload,
+                        basePath
+                    });
+                    if (result?.success && result.pdf_path) {
+                        const readResult = await window.electron.invoke('read-file-as-base64', { path: result.pdf_path });
+                        if (readResult?.success && readResult.base64) {
+                            const serverUrl = api.getServerUrl();
+                            const res = await fetch(`${serverUrl}/api/disques/sessions/${session.id}/pdf`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+                                },
+                                body: JSON.stringify({
+                                    pdf_base64: readResult.base64,
+                                    session_name: session.name ?? sessionName,
+                                    date: session.date || dateStr,
+                                    save_path_hint: basePath
+                                })
+                            });
+                            if (res.ok) {
+                                window.app?.showNotification?.('PDF généré et enregistré', 'success');
+                            } else {
+                                window.app?.showNotification?.('PDF généré en local ; envoi serveur à configurer (POST /api/disques/sessions/:id/pdf)', 'warning');
+                            }
+                        }
+                    }
+                } catch (pdfErr) {
+                    logger.error('Génération PDF disques après create:', pdfErr);
+                    window.app?.showNotification?.(pdfErr?.message || 'PDF non généré (disponible dans l\'app desktop)', 'warning');
+                }
+            }
         } catch (err) {
             logger.error('createSession:', err);
             window.app?.showNotification?.(err?.message || 'Erreur lors de l\'enregistrement', 'error');

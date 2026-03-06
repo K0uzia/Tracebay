@@ -1438,6 +1438,213 @@ ipcMain.handle('generate-lot-pdf', async (_event, payload) => {
     });
 });
 
+// ---------- Disques PDF (template HTML/CSS, même principe que lots) ----------
+const MOIS_TRACABILITE = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+function parseSizeToTo(size) {
+    if (!size || typeof size !== 'string') return 0;
+    const s = String(size).trim();
+    if (!s) return 0;
+    const numMatch = s.match(/^([\d\s,]+(?:\.[\d]+)?)\s*(To|TB|Go|GB|Mo|MB|Ko|KB)?$/i);
+    if (!numMatch) return 0;
+    const num = parseFloat(numMatch[1].replace(/\s/g, '').replace(',', '.')) || 0;
+    const unit = (numMatch[2] || '').toLowerCase();
+    if (unit === 'to' || unit === 'tb') return num;
+    if (unit === 'go' || unit === 'gb') return num / 1000;
+    if (unit === 'mo' || unit === 'mb') return num / 1e6;
+    if (unit === 'ko' || unit === 'kb') return num / 1e9;
+    return num;
+}
+
+function formatTo(to) {
+    if (to % 1 === 0) return String(Math.round(to));
+    return to.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function buildDisquesCountByInterface(disks) {
+    const byIf = {};
+    disks.forEach((d) => {
+        const iface = (d.interface || '-').trim() || '-';
+        byIf[iface] = (byIf[iface] || 0) + 1;
+    });
+    const parts = Object.entries(byIf)
+        .filter(([, n]) => n > 0)
+        .map(([iface, n]) => `${n} ${iface}`)
+        .sort((a, b) => a.localeCompare(b));
+    const total = disks.length;
+    if (parts.length === 0) return `Total : ${total} disque(s)`;
+    return `${parts.join(', ')} — Total : ${total} disque(s)`;
+}
+
+function buildDisquesSizeByInterface(disks) {
+    const byIf = {};
+    disks.forEach((d) => {
+        const iface = (d.interface || '-').trim() || '-';
+        const to = parseSizeToTo(d.size);
+        byIf[iface] = (byIf[iface] || 0) + to;
+    });
+    const parts = Object.entries(byIf)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([iface, to]) => `${iface} : ${formatTo(to)} To`);
+    return parts.length ? parts.join(', ') : '—';
+}
+
+function formatDisquesTotalSize(disks) {
+    const to = disks.reduce((sum, d) => sum + parseSizeToTo(d.size), 0);
+    return to === 0 ? '—' : `${formatTo(to)} To`;
+}
+
+function buildDisquesSummaryBlock(disks) {
+    const total = disks.length;
+    const sizeByIf = buildDisquesSizeByInterface(disks);
+    return `<p class="pdf-summary-total-line"><i class="fa-solid fa-hard-drive"></i> <strong>${escapeHtml(String(total))} disque(s)</strong> — ${escapeHtml(sizeByIf)}</p>`;
+}
+
+/**
+ * Générer le PDF d'une session disques via le template HTML/CSS (disques.html + disques.css).
+ * Placeholders : {{date}}, {{count_by_interface}}, {{size_by_interface}}, {{total_size}}, {{summary_block}}, {{items_rows}}
+ */
+async function generateDisquesPdfFromHtmlTemplate(payload, fullPath) {
+    const templateDir = path.join(__dirname, 'public', 'pdf-templates');
+    const htmlPath = path.join(templateDir, 'disques.html');
+    const cssPath = path.join(templateDir, 'disques.css');
+    if (!fs.existsSync(htmlPath) || !fs.existsSync(cssPath)) {
+        return null;
+    }
+    const { date, disks = [] } = payload;
+
+    const css = fs.readFileSync(cssPath, 'utf8');
+    let html = fs.readFileSync(htmlPath, 'utf8');
+
+    const dateStr = (date && /^\d{4}-\d{2}-\d{2}/.test(String(date).trim())) ? String(date).trim().slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const dateFormatted = formatDateForPdf(dateStr);
+
+    const countByInterface = buildDisquesCountByInterface(disks);
+    const sizeByInterface = buildDisquesSizeByInterface(disks);
+    const totalSize = formatDisquesTotalSize(disks);
+    const summaryBlock = buildDisquesSummaryBlock(disks);
+    const itemsRows = disks
+        .map((d, idx) => {
+            const num = idx + 1;
+            const sn = escapeHtml((d.serial || '-').toString().trim());
+            const marque = escapeHtml((d.marque || '-').toString().trim());
+            const modele = escapeHtml((d.modele || '-').toString().trim());
+            const size = escapeHtml((d.size || '-').toString().trim());
+            const diskType = escapeHtml((d.disk_type || '-').toString().trim());
+            const iface = escapeHtml((d.interface || '-').toString().trim());
+            const shred = escapeHtml((d.shred || '-').toString().trim());
+            return `<tr><td class="col-num">${num}</td><td class="col-sn">${sn}</td><td class="col-marque">${marque}</td><td class="col-modele">${modele}</td><td class="col-size">${size}</td><td class="col-disk-type">${diskType}</td><td class="col-interface">${iface}</td><td class="col-shred">${shred}</td></tr>`;
+        })
+        .join('\n');
+
+    const replacements = [
+        [/\{\{\s*date\s*\}\}/g, escapeHtml(dateFormatted)],
+        [/\{\{\s*count_by_interface\s*\}\}/g, escapeHtml(countByInterface)],
+        [/\{\{\s*size_by_interface\s*\}\}/g, escapeHtml(sizeByInterface)],
+        [/\{\{\s*total_size\s*\}\}/g, escapeHtml(totalSize)],
+        [/\{\{\s*summary_block\s*\}\}/g, summaryBlock],
+        [/\{\{\s*items_rows\s*\}\}/g, itemsRows]
+    ];
+    replacements.forEach(([regex, value]) => { html = html.replace(regex, value); });
+
+    html = html.replace(
+        /<link\s+rel="stylesheet"\s+href="disques\.css"\s*\/?>/i,
+        `<style>${css}</style>`
+    );
+
+    const fontawesomeCssPath = path.join(__dirname, 'public', 'assets', 'css', 'fontawesome-local.css');
+    const fontawesomeFileUrl = fs.existsSync(fontawesomeCssPath) ? url.pathToFileURL(fontawesomeCssPath).href : null;
+    const fontawesomeLink = fontawesomeFileUrl ? `<link rel="stylesheet" href="${fontawesomeFileUrl}">` : '';
+    if (fontawesomeLink) {
+        if (/<link[^>]+font-awesome[^>]*>/i.test(html)) {
+            html = html.replace(/<link[^>]+font-awesome[^>]*>/i, fontawesomeLink);
+        } else if (!html.includes('fontawesome')) {
+            html = html.replace('</head>', `${fontawesomeLink}\n</head>`);
+        }
+    }
+
+    html = html.replace(/<img([^>]*)\ssrc="([^"]+)"/gi, (match, attrs, src) => {
+        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) return match;
+        const absolutePath = path.resolve(templateDir, src.trim());
+        if (!fs.existsSync(absolutePath)) return match;
+        const fileUrl = url.pathToFileURL(absolutePath).href;
+        return `<img${attrs} src="${fileUrl}"`;
+    });
+
+    const tempDir = app.getPath('temp');
+    const outputPath = path.join(tempDir, `workspace-disques-pdf-${Date.now()}.html`);
+    try {
+        fs.writeFileSync(outputPath, html, 'utf8');
+    } catch (e) {
+        console.error('❌ generate-disques-pdf write temp HTML:', e.message);
+        return null;
+    }
+
+    const win = new BrowserWindow({
+        show: false,
+        webPreferences: { offscreen: true }
+    });
+    try {
+        await win.loadFile(outputPath);
+        const pdfBuffer = await win.webContents.printToPDF({
+            printBackground: true,
+            pageSize: 'A4',
+            preferCSSPageSize: true
+        });
+        fs.writeFileSync(fullPath, pdfBuffer);
+        return { success: true, pdf_path: path.resolve(fullPath) };
+    } finally {
+        win.close();
+        try { fs.unlinkSync(outputPath); } catch (_) { }
+    }
+}
+
+/**
+ * Générer le PDF d'une session disques (template HTML/CSS) et l'enregistrer dans .../Disques/AAAA/Mois.
+ * Payload: { sessionId, date, name?, disks, basePath? }
+ */
+ipcMain.handle('generate-disques-pdf', async (_event, payload) => {
+    const {
+        sessionId,
+        date,
+        name,
+        disks = [],
+        basePath = TRACABILITE_PDF_BASE
+    } = payload || {};
+    if (!sessionId) {
+        return { success: false, error: 'sessionId requis' };
+    }
+    const rawDate = (date && String(date).trim()) ? String(date).trim() : new Date().toISOString().slice(0, 10);
+    const dateStr = /^\d{4}-\d{2}-\d{2}/.test(rawDate) ? rawDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const year = dateStr.slice(0, 4);
+    const monthNum = parseInt(dateStr.slice(5, 7), 10) || 1;
+    const nomMois = MOIS_TRACABILITE[Math.max(0, monthNum - 1)] || 'Janvier';
+    const disquesBase = path.join(basePath, 'Disques');
+    const dirPath = path.join(disquesBase, year, nomMois);
+    try {
+        fs.mkdirSync(dirPath, { recursive: true });
+    } catch (e) {
+        console.error('❌ generate-disques-pdf mkdir:', e.message);
+        return { success: false, error: 'Impossible de créer le dossier: ' + e.message };
+    }
+    const sanitizedName = (name != null ? String(name).trim() : '')
+        .replace(/\s+/g, '_')
+        .replace(/[\\/:*?"<>|]/g, '')
+        .trim();
+    const baseName = sanitizedName || `disques-session-${sessionId}`;
+    const fileName = `${baseName}_${dateStr}.pdf`;
+    const fullPath = path.join(dirPath, fileName);
+
+    try {
+        const result = await generateDisquesPdfFromHtmlTemplate({ date: dateStr, disks }, fullPath);
+        if (result) return result;
+    } catch (err) {
+        console.error('❌ generate-disques-pdf (template HTML):', err.message);
+        return { success: false, error: err.message };
+    }
+    return { success: false, error: 'Template disques introuvable ou échec génération' };
+});
+
 /**
  * Lire un fichier et retourner son contenu en base64 (pour envoi du PDF au serveur).
  */
