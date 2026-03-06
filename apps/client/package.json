@@ -1,5 +1,5 @@
 {
-  "name": "workspace-client",
+  "name": "workspace",
   "version": "3.1.1",
   "main": "main.js",
   "homepage": "https://github.com/SandersonnDev/workspace#readme",
@@ -49,7 +49,7 @@
   },
   "build": {
     "appId": "com.workspace.client",
-    "productName": "Workspace Client",
+    "productName": "workspace",
     "copyright": "Copyright © 2026 Sandersonn",
     "electronVersion": "39.2.4",
     "npmRebuild": false,
@@ -97,7 +97,7 @@
         }
       ],
       "icon": "assets/icon.ico",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "${productName}.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -112,7 +112,7 @@
       "deleteAppDataOnUninstall": false
     },
     "portable": {
-      "artifactName": "${productName}-${version}-portable.${ext}"
+      "artifactName": "${productName}.${ext}"
     },
     "mac": {
       "target": [
@@ -172,7 +172,7 @@
       ],
       "icon": "assets/icon.png",
       "category": "Utility",
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "artifactName": "${productName}.${ext}",
       "desktop": {
         "entry": {
           "Name": "Workspace Client",
@@ -182,7 +182,7 @@
       }
     },
     "appImage": {
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "workspace.${ext}"
     },
     "deb": {
       "depends": [
@@ -196,7 +196,7 @@
       ],
       "priority": "optional",
       "category": "Utility",
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
+      "artifactName": "${productName}.${ext}"
     }
   },
   "repository": {
