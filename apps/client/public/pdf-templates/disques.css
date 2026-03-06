@@ -65,21 +65,12 @@ body {
     letter-spacing: 0.5px;
 }
 
-.pdf-info ul {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-
-.pdf-info li {
-    padding: 4px 0;
-    display: flex;
-    gap: 12px;
+.pdf-info .pdf-summary-total-line {
+    margin: 0 0 8px 0;
 }
 
 .pdf-info .label {
     color: black;
-    min-width: 120px;
 }
 
 .pdf-info .value {
@@ -129,10 +120,24 @@ body {
 }
 
 .pdf-summary-total-line {
-    margin: 0 0 12px 0;
+    margin: 0 0 8px 0;
     font-size: 11px;
     color: #1a1a1a;
     line-height: 1.5;
+}
+
+.pdf-summary-by-interface {
+    margin: 4px 0 0 0;
+    padding-left: 20px;
+    list-style: none;
+}
+
+.pdf-summary-by-interface li {
+    padding: 2px 0;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .pdf-summary-total-line strong {

@@ -391,6 +391,10 @@ export default class DisquesManager {
             window.app?.showNotification?.('Aucun disque à enregistrer', 'warning');
             return;
         }
+        if (this._savingSession) {
+            return;
+        }
+        this._savingSession = true;
         const nameEl = document.getElementById('disques-session-name');
         const sessionName = (nameEl && nameEl.value) ? nameEl.value.trim() : '';
         const dateStr = new Date().toISOString().slice(0, 10);
@@ -448,6 +452,7 @@ export default class DisquesManager {
             logger.error('createSession:', err);
             window.app?.showNotification?.(err?.message || 'Erreur lors de l\'enregistrement', 'error');
         } finally {
+            this._savingSession = false;
             if (btnSave) btnSave.disabled = false;
         }
     }

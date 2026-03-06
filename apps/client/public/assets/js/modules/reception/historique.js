@@ -6,7 +6,7 @@
 import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
 import { loadLotsWithItems } from './lotsApi.js';
-import { getSessions, getSession, getSessionPdfUrl } from './disquesApi.js';
+import { getSessions, getSession, getSessionPdfUrl, updateSession } from './disquesApi.js';
 const logger = getLogger();
 
 
@@ -91,12 +91,19 @@ export default class HistoriqueManager {
         if (searchText) {
             toRender = merged.filter(({ type, item }) => {
                 if (type === 'lot') {
-                    const name = (item.lot_name || '').toLowerCase();
+                    const name = String(item.lot_name || item.name || '').toLowerCase();
                     const id = String(item.id || '');
-                    return name.includes(searchText) || id.includes(searchText);
+                    const lotLabel = ('lot #' + id).toLowerCase();
+                    return name.includes(searchText) || id.includes(searchText) || lotLabel.includes(searchText);
                 }
-                const dateStr = (item.date || (item.created_at || '').slice(0, 10) || '').toLowerCase();
-                return dateStr.includes(searchText);
+                if (type === 'disque') {
+                    const name = String(item.name || '').toLowerCase();
+                    const id = String(item.id || '');
+                    const dateStr = (item.date || (item.created_at || '').slice(0, 10) || '').toLowerCase();
+                    const disqueLabel = ('lot disques ' + id).toLowerCase();
+                    return name.includes(searchText) || id.includes(searchText) || dateStr.includes(searchText) || disqueLabel.includes(searchText);
+                }
+                return false;
             });
         }
 
@@ -227,17 +234,25 @@ export default class HistoriqueManager {
     }
 
     /**
-     * Créer un élément de session disques. Nom seul dans le titre, date dans le badge "Créé le".
+     * Créer un élément de session disques. Nom seul dans le titre, date dans le badge "Créé le". Option « Récupérer » (historique/traçabilité uniquement, pas les PDF).
      */
     createDisqueElement(session) {
         const name = (session.name || '').trim() || 'Lot disques';
         const dateFormatted = this.formatDateDDMMYYYY(session.date || (session.created_at || '').slice(0, 10));
         const count = Array.isArray(session.disks) ? session.disks.length : (session.disk_count ?? 0);
+        const isRecovered = session.recovered_at != null && session.recovered_at !== '';
+        const recoveryBadgeClass = isRecovered ? 'badge-recovered' : 'badge-to-recover';
+        const recoveryBadgeText = isRecovered
+            ? `Récupéré le ${this.formatDateTime(session.recovered_at)}`
+            : 'À récupérer';
+        const recoveryButtonClass = isRecovered ? 'btn-recovered' : 'btn-to-recover btn-to-recover-disque';
+        const recoveryButtonText = isRecovered ? '✓ Récupéré' : 'Récupérer';
         return `
             <div class="historique-lot-card historique-disque-card" data-type="disque" data-session-id="${session.id}">
                 <div class="historique-lot-header">
                     <div class="historique-lot-title">
                         <h3><i class="fa-solid fa-hard-drive historique-type-icon" aria-hidden="true"></i> ${this.escapeHtml(name)}</h3>
+                        <span class="${recoveryBadgeClass}">${recoveryBadgeText}</span>
                         <span class="badge-created">Créé le ${this.escapeHtml(dateFormatted)}</span>
                     </div>
                     <div class="historique-lot-stats">
@@ -252,6 +267,9 @@ export default class HistoriqueManager {
                         </button>
                         <button type="button" class="btn-edit-disque-items" data-session-id="${session.id}">
                             <i class="fa-solid fa-list-check"></i> Éditer matériel
+                        </button>
+                        <button type="button" class="${recoveryButtonClass}" data-session-id="${session.id}" ${isRecovered ? 'disabled' : ''} title="Marquer comme récupéré (traçabilité uniquement, pas les PDF)">
+                            ${recoveryButtonText}
                         </button>
                     </div>
                 </div>
@@ -326,6 +344,40 @@ export default class HistoriqueManager {
                 this.editDisqueItems(btn.dataset.sessionId);
             });
         });
+
+        document.querySelectorAll('.btn-to-recover-disque').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const sessionId = btn.dataset.sessionId;
+                this.markDisqueSessionAsRecovered(sessionId);
+            });
+        });
+    }
+
+    /**
+     * Marquer une session disques comme récupérée (historique/traçabilité uniquement, pas les PDF).
+     */
+    async markDisqueSessionAsRecovered(sessionId) {
+        const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
+        if (!session) return;
+        const button = document.querySelector(`.btn-to-recover-disque[data-session-id="${sessionId}"]`);
+        if (button) {
+            button.disabled = true;
+            button.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> En cours...';
+        }
+        try {
+            const data = await updateSession(sessionId, { recovered_at: new Date().toISOString() });
+            session.recovered_at = data.recovered_at ?? data.session?.recovered_at ?? new Date().toISOString();
+            this.showNotification('Lot disques marqué comme récupéré', 'success');
+            this.renderLots();
+        } catch (err) {
+            logger.error('Erreur récupération lot disques:', err);
+            this.showNotification(err?.message || 'Erreur lors de la mise à jour', 'error');
+            if (button) {
+                button.disabled = false;
+                button.textContent = 'Récupérer';
+            }
+        }
     }
 
     /**
