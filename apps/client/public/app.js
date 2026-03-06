@@ -991,18 +991,25 @@ class PageManager {
                     logger.error('❌ Erreur import TracabiliteManager:', error);
                 });
         } else if (pageName === 'disques') {
+            if (window.disquesManagerInitializing) {
+                logger.debug('⏳ DisquesManager déjà en cours d\'initialisation, skip');
+                return;
+            }
             if (window.disquesManager) {
                 window.disquesManager.destroy();
                 window.disquesManager = null;
             }
+            window.disquesManagerInitializing = true;
             import('./assets/js/modules/reception/disques.js')
                 .then(module => {
                     const DisquesManager = module.default;
                     window.disquesManager = new DisquesManager(window.modalManager);
+                    window.disquesManagerInitializing = false;
                     logger.debug('✅ DisquesManager initialisé depuis app.js');
                 })
                 .catch(error => {
                     logger.error('❌ Erreur import DisquesManager:', error);
+                    window.disquesManagerInitializing = false;
                 });
         }
     }

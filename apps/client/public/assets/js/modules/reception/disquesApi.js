@@ -78,6 +78,30 @@ export async function getSession(id) {
 }
 
 /**
+ * Mettre à jour une session (nom, recovered_at, etc.). Utilisé pour « Récupérer » (historique/traçabilité uniquement, pas les PDF).
+ * @param {string|number} id
+ * @param {{ name?: string, recovered_at?: string }} payload
+ * @returns {Promise<Object>}
+ */
+export async function updateSession(id, payload) {
+    const serverUrl = api.getServerUrl();
+    const endpoint = window.SERVER_CONFIG?.getEndpoint?.('disques.sessions') || '/api/disques/sessions';
+    const path = `${endpoint.startsWith('/') ? endpoint : '/' + endpoint}/${id}`;
+    const url = `${serverUrl}${path}`;
+
+    const response = await fetch(url, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || `HTTP ${response.status}`);
+    }
+    return response.json();
+}
+
+/**
  * URL du PDF d'une session (pour ouverture dans un nouvel onglet ou téléchargement).
  * @param {string|number} id
  * @returns {string}

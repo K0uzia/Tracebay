@@ -489,17 +489,23 @@ function createWindow() {
     // Désactiver complètement le menu (Alt n'affiche plus File / Edit / View…)
     Menu.setApplicationMenu(null);
 
-    // Raccourcis DevTools (F12 ou Ctrl+Shift+I) car le menu est désactivé
+    // Raccourcis DevTools (F12 ou Ctrl+Shift+I) et rechargement (Ctrl+R) car le menu est désactivé
     const toggleDevTools = () => {
         if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
             mainWindow.webContents.toggleDevTools();
         }
     };
+    const reloadApp = () => {
+        if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
+            mainWindow.webContents.reload();
+        }
+    };
     try {
         globalShortcut.register('F12', toggleDevTools);
         globalShortcut.register('CommandOrControl+Shift+I', toggleDevTools);
+        globalShortcut.register('CommandOrControl+R', reloadApp);
     } catch (e) {
-        console.warn('Raccourcis DevTools non enregistrés:', e?.message);
+        console.warn('Raccourcis globaux non enregistrés:', e?.message);
     }
 
     if (appIconPath && process.platform === 'linux' && windowIcon) {
@@ -562,6 +568,7 @@ function createWindow() {
         try {
             globalShortcut.unregister('F12');
             globalShortcut.unregister('CommandOrControl+Shift+I');
+            globalShortcut.unregister('CommandOrControl+R');
         } catch (_) { /* ignore */ }
         mainWindow = null;
     });
@@ -1445,15 +1452,17 @@ function parseSizeToTo(size) {
     if (!size || typeof size !== 'string') return 0;
     const s = String(size).trim();
     if (!s) return 0;
-    const numMatch = s.match(/^([\d\s,]+(?:\.[\d]+)?)\s*(To|TB|Go|GB|Mo|MB|Ko|KB)?$/i);
+    // Accepter To/TB/T, Go/GB/G, Mo/MB/M, Ko/KB/K (une ou deux lettres)
+    const numMatch = s.match(/^([\d\s,]+(?:\.[\d]+)?)\s*(To|TB|T|Go|GB|G|Mo|MB|M|Ko|KB|K)?$/i);
     if (!numMatch) return 0;
     const num = parseFloat(numMatch[1].replace(/\s/g, '').replace(',', '.')) || 0;
     const unit = (numMatch[2] || '').toLowerCase();
-    if (unit === 'to' || unit === 'tb') return num;
-    if (unit === 'go' || unit === 'gb') return num / 1000;
-    if (unit === 'mo' || unit === 'mb') return num / 1e6;
-    if (unit === 'ko' || unit === 'kb') return num / 1e9;
-    return num;
+    if (unit === 'to' || unit === 'tb' || unit === 't') return num;
+    if (unit === 'go' || unit === 'gb' || unit === 'g') return num / 1000;
+    if (unit === 'mo' || unit === 'mb' || unit === 'm') return num / 1e6;
+    if (unit === 'ko' || unit === 'kb' || unit === 'k') return num / 1e9;
+    // Pas d'unité : supposer Go (ex. "500" = 500 Go)
+    return num / 1000;
 }
 
 function formatTo(to) {
@@ -1461,7 +1470,14 @@ function formatTo(to) {
     return to.toFixed(2).replace(/\.?0+$/, '');
 }
 
-function buildDisquesCountByInterface(disks) {
+/** Affiche une taille en To ou Go : >= 1 To → "X,X To", sinon → "X Go" */
+function formatSizeDisplay(to) {
+    if (to >= 1) return `${formatTo(to)} To`;
+    const go = to * 1000;
+    return `${formatTo(go)} Go`;
+}
+
+function    buildDisquesCountByInterface(disks) {
     const byIf = {};
     disks.forEach((d) => {
         const iface = (d.interface || '-').trim() || '-';
@@ -1469,11 +1485,10 @@ function buildDisquesCountByInterface(disks) {
     });
     const parts = Object.entries(byIf)
         .filter(([, n]) => n > 0)
-        .map(([iface, n]) => `${n} ${iface}`)
-        .sort((a, b) => a.localeCompare(b));
-    const total = disks.length;
-    if (parts.length === 0) return `Total : ${total} disque(s)`;
-    return `${parts.join(', ')} — Total : ${total} disque(s)`;
+        .sort((a, b) => a[0].localeCompare(b[0]));
+    return parts
+        .map(([iface, n]) => `<li><i class="fa-solid fa-hard-drive"></i> ${escapeHtml(iface)} : ${n}</li>`)
+        .join('\n');
 }
 
 function buildDisquesSizeByInterface(disks) {
@@ -1485,19 +1500,23 @@ function buildDisquesSizeByInterface(disks) {
     });
     const parts = Object.entries(byIf)
         .sort((a, b) => a[0].localeCompare(b[0]))
-        .map(([iface, to]) => `${iface} : ${formatTo(to)} To`);
-    return parts.length ? parts.join(', ') : '—';
+        .map(([iface, to]) => `<li><i class="fa-solid fa-database"></i> ${escapeHtml(iface)} = ${escapeHtml(formatSizeDisplay(to))}</li>`);
+    return parts.length ? parts.join('\n') : '';
 }
 
 function formatDisquesTotalSize(disks) {
     const to = disks.reduce((sum, d) => sum + parseSizeToTo(d.size), 0);
-    return to === 0 ? '—' : `${formatTo(to)} To`;
+    return to === 0 ? '—' : formatSizeDisplay(to);
 }
 
 function buildDisquesSummaryBlock(disks) {
-    const total = disks.length;
-    const sizeByIf = buildDisquesSizeByInterface(disks);
-    return `<p class="pdf-summary-total-line"><i class="fa-solid fa-hard-drive"></i> <strong>${escapeHtml(String(total))} disque(s)</strong> — ${escapeHtml(sizeByIf)}</p>`;
+    const totalSizeStr = formatDisquesTotalSize(disks);
+    const sizeByInterfaceList = buildDisquesSizeByInterface(disks);
+    const totalLine = totalSizeStr !== '—'
+        ? `<p class="pdf-summary-total-line"><i class="fa-solid fa-database"></i> <strong>Taille totale : ${escapeHtml(totalSizeStr)}</strong></p>`
+        : '';
+    const listHtml = sizeByInterfaceList ? `<ul class="pdf-summary-by-interface">${sizeByInterfaceList}</ul>` : '';
+    return totalLine + listHtml;
 }
 
 /**
@@ -1519,7 +1538,8 @@ async function generateDisquesPdfFromHtmlTemplate(payload, fullPath) {
     const dateStr = (date && /^\d{4}-\d{2}-\d{2}/.test(String(date).trim())) ? String(date).trim().slice(0, 10) : new Date().toISOString().slice(0, 10);
     const dateFormatted = formatDateForPdf(dateStr);
 
-    const countByInterface = buildDisquesCountByInterface(disks);
+    const totalCount = disks.length;
+    const countByInterfaceList = buildDisquesCountByInterface(disks);
     const sizeByInterface = buildDisquesSizeByInterface(disks);
     const totalSize = formatDisquesTotalSize(disks);
     const summaryBlock = buildDisquesSummaryBlock(disks);
@@ -1539,8 +1559,9 @@ async function generateDisquesPdfFromHtmlTemplate(payload, fullPath) {
 
     const replacements = [
         [/\{\{\s*date\s*\}\}/g, escapeHtml(dateFormatted)],
-        [/\{\{\s*count_by_interface\s*\}\}/g, escapeHtml(countByInterface)],
-        [/\{\{\s*size_by_interface\s*\}\}/g, escapeHtml(sizeByInterface)],
+        [/\{\{\s*total_count\s*\}\}/g, escapeHtml(String(totalCount))],
+        [/\{\{\s*count_by_interface_list\s*\}\}/g, countByInterfaceList],
+        [/\{\{\s*size_by_interface\s*\}\}/g, sizeByInterface],
         [/\{\{\s*total_size\s*\}\}/g, escapeHtml(totalSize)],
         [/\{\{\s*summary_block\s*\}\}/g, summaryBlock],
         [/\{\{\s*items_rows\s*\}\}/g, itemsRows]

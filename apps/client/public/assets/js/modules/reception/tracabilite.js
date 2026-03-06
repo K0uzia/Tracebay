@@ -6,7 +6,7 @@
 import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
 import { loadLotsWithItems } from './lotsApi.js';
-import { getSessions, getSession, getSessionPdfUrl } from './disquesApi.js';
+import { getSessions, getSession, getSessionPdfUrl, updateSession } from './disquesApi.js';
 const logger = getLogger();
 
 
@@ -265,17 +265,21 @@ export default class TracabiliteManager {
         const dateFormatted = dateOnly && /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) ? this.formatDateTime(dateOnly + 'T12:00:00') : '-';
         const basePdfUrl = getSessionPdfUrl(session.id);
         const pdfUrl = `${basePdfUrl}${basePdfUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
+        const isRecovered = session.recovered_at != null && session.recovered_at !== '';
 
         return `
             <div class="lot-card lot-card-disque" data-session-id="${session.id}">
                 <div class="lot-card-header">
                     <div class="lot-card-title">
-                        <h4><i class="fa-solid fa-hard-drive"></i> Lot disques</h4>
-                        <span class="lot-name">${this.escapeHtml(sessionName)}</span>
+                        <h4><i class="fa-solid fa-hard-drive"></i> ${this.escapeHtml(sessionName)}</h4>
                     </div>
                     <div class="lot-card-date">
                         <span class="date-label">Date</span>
                         <span class="date-value">${this.escapeHtml(dateFormatted)}</span>
+                        ${isRecovered ? `
+                            <span class="date-label" style="margin-top: 0.5rem;">Récupéré le</span>
+                            <span class="date-value" style="color: #2e7d32; font-weight: 600;">${this.formatDateTime(session.recovered_at)}</span>
+                        ` : ''}
                     </div>
                 </div>
                 <div class="lot-card-stats">
@@ -285,6 +289,11 @@ export default class TracabiliteManager {
                     </div>
                 </div>
                 <div class="lot-card-actions">
+                    ${!isRecovered ? `
+                        <button type="button" class="btn-action btn-recover-disque" data-session-id="${session.id}" title="Marquer comme récupéré (traçabilité uniquement, pas les PDF)">
+                            <i class="fa-solid fa-check-double"></i> Récupérer
+                        </button>
+                    ` : ''}
                     ${hasPdf ? `
                         <a href="${pdfUrl}" target="_blank" rel="noopener" class="btn-action btn-view">
                             <i class="fa-solid fa-eye"></i> Voir le PDF
@@ -473,6 +482,13 @@ export default class TracabiliteManager {
                 this.regenerateDisquePdf(btn.dataset.sessionId);
             });
         });
+
+        document.querySelectorAll('.btn-recover-disque').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.markDisqueSessionAsRecovered(btn.dataset.sessionId);
+            });
+        });
     }
 
     async downloadDisquePdf(url, filename) {
@@ -562,6 +578,33 @@ export default class TracabiliteManager {
         } catch (err) {
             logger.error('Régénération PDF disques:', err);
             this.showNotification(err?.message || 'Régénération PDF non disponible', 'error');
+        }
+    }
+
+    /**
+     * Marquer une session disques comme récupérée (traçabilité uniquement, pas les PDF).
+     */
+    async markDisqueSessionAsRecovered(sessionId) {
+        const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
+        if (!session) return;
+        const btn = document.querySelector(`.btn-recover-disque[data-session-id="${sessionId}"]`);
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> En cours...';
+        }
+        try {
+            const data = await updateSession(sessionId, { recovered_at: new Date().toISOString() });
+            session.recovered_at = data.recovered_at ?? data.session?.recovered_at ?? new Date().toISOString();
+            this.showNotification('Lot disques marqué comme récupéré', 'success');
+            await this.loadLots();
+            this.renderTable();
+        } catch (err) {
+            logger.error('Récupération lot disques:', err);
+            this.showNotification(err?.message || 'Erreur lors de la mise à jour', 'error');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check-double"></i> Récupérer';
+            }
         }
     }
 
