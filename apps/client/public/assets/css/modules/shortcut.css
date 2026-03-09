@@ -9,6 +9,8 @@
     border-radius: var(--radius-medium);
     box-shadow: var(--shadow-small);
     gap: var(--unit-2);
+    min-width: 0;
+    max-width: 100%;
 }
 
 .shortcut-auth-required {
@@ -27,6 +29,12 @@
 
 .shortcut-auth-required.hidden {
     display: none;
+}
+
+.shortcut-content {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .shortcut-auth-required i {
@@ -54,6 +62,7 @@
     flex: 1 1 auto;
     min-width: 0;
     max-width: 500px;
+    width: 100%;
 }
 
 .search-container i {
@@ -67,6 +76,9 @@
 
 .search-container input {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     padding: var(--unit-1) var(--unit-2) var(--unit-1) calc(var(--unit-4) + var(--unit-1));
     border: 1px solid var(--gris-clair);
     border-radius: var(--radius-small);
@@ -110,18 +122,49 @@
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
     padding: var(--unit-2);
     gap: var(--unit-2);
     height: auto;
+    min-height: 0;
     background: var(--blanc);
     border-radius: var(--radius-medium);
     box-shadow: var(--shadow-large);
+    box-sizing: border-box;
+}
+
+/* Responsive : 2 colonnes sur tablette */
+@media (max-width: 900px) {
+    .shortcut-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Responsive : 1 colonne sur mobile, liens plus compacts */
+@media (max-width: 600px) {
+    .shortcut-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .shortcut-links {
+        min-height: 180px;
+        max-height: 180px;
+    }
+}
+
+/* Contenu raccourcis : pas de scroll horizontal, contenu contenu dans la largeur */
+.shortcut .section-contain {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 .shortcut-container {
     display: flex;
     flex-direction: column;
-    width: auto;
+    min-width: 0;
+    max-width: 100%;
     height: auto;
     padding: var(--unit-2);
     gap: var(--unit-2);
@@ -136,19 +179,25 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--unit-1);
+    min-width: 0;
+}
 
-    & h3 {
-        border-bottom: 2px solid var(--orange);
-        font: var(--block-title-h3);
-        color: var(--h2);
-        margin: 0;
-        flex: 1;
-    }
+.shortcut-title h3 {
+    border-bottom: 2px solid var(--orange);
+    font: var(--block-title-h3);
+    color: var(--h2);
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .shortcut-title-actions {
     display: flex;
     gap: calc(var(--unit-1) / 2);
+    flex-shrink: 0;
 }
 
 .shortcut-rename-btn {
@@ -201,6 +250,8 @@
     align-items: center;
     gap: var(--unit-1);
     flex: 1;
+    min-width: 0;
+    min-height: 36px;
 }
 
 .shortcut-link:hover {
@@ -212,6 +263,13 @@
 
 .shortcut-link i {
     font-size: 12px;
+}
+
+.shortcut-link span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 }
 
 .shortcut-favicon {
@@ -231,7 +289,8 @@
 .shortcut-item-wrapper {
     display: flex;
     gap: calc(var(--unit-1) / 2);
-    align-items: center;
+    align-items: stretch;
+    min-height: 36px;
 }
 
 .shortcut-edit-btn {
@@ -247,6 +306,9 @@
     justify-content: center;
     font-size: 12px;
     flex-shrink: 0;
+    min-width: 32px;
+    min-height: 36px;
+    box-sizing: border-box;
 }
 
 .shortcut-edit-btn:hover {
