@@ -11,16 +11,12 @@ export default class ShortcutManager {
     }
 
     async init() {
-        logger.info('🚀 Initialisation ShortcutManager');
         this.checkAuthentication();
-        logger.info('📥 Chargement des raccourcis...');
         await this.loadShortcuts();
-        logger.info('🎨 Rendu des raccourcis...');
         this.render();
         this.attachEventListeners();
         this.setupKeyboardShortcuts();
         this.listenAuthChanges();
-        logger.info('✅ ShortcutManager initialisé');
     }
 
     checkAuthentication() {
@@ -28,17 +24,10 @@ export default class ShortcutManager {
         const content = document.getElementById('shortcut-content');
         const isAuth = this.isAuthenticated();
 
-        logger.info('🔐 Vérification authentification:', { 
-            isAuthenticated: isAuth,
-            hasAuthRequired: !!authRequired,
-            hasContent: !!content
-        });
-
         if (authRequired && content) {
             if (isAuth) {
                 authRequired.classList.add('hidden');
                 content.style.display = 'block';
-                logger.info('✅ Contenu raccourcis affiché');
             } else {
                 authRequired.classList.remove('hidden');
                 content.style.display = 'none';
@@ -81,16 +70,12 @@ export default class ShortcutManager {
     }
 
     async loadShortcuts() {
-        logger.info('📥 loadShortcuts() appelé');
         const token = localStorage.getItem('workspace_jwt');
         
         if (!token) {
-            logger.warn('⚠️ Pas de token, raccourcis non chargés');
             this.categories = [];
             return;
         }
-        
-        logger.info('✅ Token trouvé, chargement des raccourcis...');
 
         try {
             const [categoriesRes, shortcutsRes] = await Promise.all([
@@ -107,23 +92,9 @@ export default class ShortcutManager {
             const categoriesData = await categoriesRes.json();
             const shortcutsData = await shortcutsRes.json();
 
-            logger.info('📋 Données chargées depuis API:', { 
-                categoriesFormat: Array.isArray(categoriesData) ? 'array' : 'object',
-                shortcutsFormat: Array.isArray(shortcutsData) ? 'array' : 'object',
-                categoriesData, 
-                shortcutsData 
-            });
-
             // Gérer les deux formats de réponse : avec wrapper success ou directement un tableau
             const categories = Array.isArray(categoriesData) ? categoriesData : (categoriesData.categories || categoriesData.items || []);
             const shortcuts = Array.isArray(shortcutsData) ? shortcutsData : (shortcutsData.shortcuts || shortcutsData.items || []);
-
-            logger.info('📋 Données parsées:', JSON.stringify({ 
-                categoriesCount: categories.length, 
-                shortcutsCount: shortcuts.length,
-                categories: categories.slice(0, 2),
-                shortcuts: shortcuts.slice(0, 5)
-            }, null, 2));
 
             this.categories = categories.map(cat => {
                 // Vérifier tous les champs possibles pour category_id
@@ -131,12 +102,7 @@ export default class ShortcutManager {
                     .filter(s => {
                         const matches = s.category_id === cat.id || s.categoryId === cat.id || s.category === cat.id;
                         if (!matches && (s.category_id || s.categoryId || s.category)) {
-                            logger.debug(`🔍 Shortcut ${s.id} ne correspond pas à catégorie ${cat.id}:`, {
-                                shortcutCategoryId: s.category_id,
-                                shortcutCategoryIdAlt: s.categoryId,
-                                shortcutCategory: s.category,
-                                catId: cat.id
-                            });
+                            logger.debug(`Shortcut ${s.id} / catégorie ${cat.id}:`, { shortcutCategoryId: s.category_id, catId: cat.id });
                         }
                         return matches;
                     })
@@ -147,13 +113,6 @@ export default class ShortcutManager {
                         raw: s
                     }));
                 
-                logger.info(`📁 Catégorie "${cat.name}":`, JSON.stringify({ 
-                    id: cat.id, 
-                    shortcutsCount: catShortcuts.length, 
-                    shortcuts: catShortcuts,
-                    allShortcutsInCategory: shortcuts.filter(s => s.category_id === cat.id || s.categoryId === cat.id || s.category === cat.id).length
-                }, null, 2));
-                
                 return {
                     id: cat.id,
                     name: cat.name,
@@ -161,8 +120,6 @@ export default class ShortcutManager {
                 };
             });
 
-            logger.info(`✅ ${this.categories.length} catégorie(s) et ${shortcuts.length} raccourci(s) chargé(s)`);
-            logger.info('📋 Catégories finales:', this.categories);
         } catch (error) {
             logger.error('❌ Erreur chargement raccourcis:', error);
             this.categories = [];
@@ -226,78 +183,22 @@ export default class ShortcutManager {
     }
 
     render() {
-        logger.info('🎨 render() appelé');
         const grid = document.getElementById('shortcut-grid');
         if (!grid) {
             logger.error('❌ shortcut-grid non trouvé dans le DOM');
             return;
         }
 
-        logger.info('🎨 Rendu raccourcis:', { categoriesCount: this.categories?.length, categories: this.categories });
         const filteredCategories = this.filterCategories();
-        logger.info('🎨 Catégories filtrées:', { count: filteredCategories.length, categories: filteredCategories });
-        
+
         if (filteredCategories.length === 0) {
-            logger.warn('⚠️ Aucune catégorie à afficher');
             grid.innerHTML = '<p class="shortcut-empty-message">Aucun raccourci trouvé</p>';
             return;
         }
 
-        logger.info('🎨 Génération HTML pour', filteredCategories.length, 'catégorie(s)');
         const html = filteredCategories.map(category => this.renderCategory(category)).join('');
-        logger.info('📝 HTML généré (premiers 500 caractères):', html.substring(0, 500));
-        logger.info('📝 HTML complet (longueur):', html.length, 'caractères');
-        
         grid.innerHTML = html;
-        logger.info('✅ HTML inséré dans le DOM');
-        const gridState = {
-            innerHTMLLength: grid.innerHTML.length,
-            childrenCount: grid.children.length,
-            computedDisplay: window.getComputedStyle(grid).display,
-            computedVisibility: window.getComputedStyle(grid).visibility,
-            computedOpacity: window.getComputedStyle(grid).opacity,
-            gridHTML: grid.innerHTML.substring(0, 300)
-        };
-        logger.info('📊 État du grid après insertion:', JSON.stringify(gridState, null, 2));
-        
-        // Vérifier que le contenu est bien présent
-        const containers = grid.querySelectorAll('.shortcut-container');
-        const links = grid.querySelectorAll('.shortcut-link');
-        const shortcutsInLinks = grid.querySelectorAll('.shortcut-links .shortcut-item-wrapper');
-        const logData = {
-            containers: containers.length,
-            links: links.length,
-            shortcutsInLinks: shortcutsInLinks.length,
-            containersHTML: containers.length > 0 ? containers[0].outerHTML.substring(0, 300) : 'aucun',
-            firstLinkHTML: links.length > 0 ? links[0].outerHTML : 'aucun'
-        };
-        logger.info('🔍 Éléments trouvés dans le DOM:', JSON.stringify(logData, null, 2));
-        
-        // Vérifier aussi le parent
-        const parent = grid.parentElement;
-        if (parent) {
-            const parentStyle = window.getComputedStyle(parent);
-            logger.info('📋 Parent du grid:', JSON.stringify({
-                id: parent.id,
-                className: parent.className,
-                display: parentStyle.display,
-                visibility: parentStyle.visibility,
-                height: parentStyle.height,
-                overflow: parentStyle.overflow,
-                parentHTML: parent.outerHTML.substring(0, 200)
-            }, null, 2));
-        }
-        
-        // Vérifier le contenu réel du grid
-        const gridRect = grid.getBoundingClientRect();
-        logger.info('📐 Position du grid:', JSON.stringify({
-            width: gridRect.width,
-            height: gridRect.height,
-            top: gridRect.top,
-            left: gridRect.left,
-            visible: gridRect.width > 0 && gridRect.height > 0
-        }, null, 2));
-        
+
         this.attachCategoryListeners();
     }
 
@@ -343,18 +244,22 @@ export default class ShortcutManager {
         `;
     }
 
+    /**
+     * Retourne l'URL de la favicon pour un lien.
+     * - Localhost / IP privées : /favicon.ico à l'origine (ex. http://192.168.1.62:4000/favicon.ico) pour récupérer la vraie favicon si le serveur en a une.
+     * - Domaines publics : service Google (Figma, etc.).
+     * En cas d'échec (404, cert, blocage), le fallback (icône lien) s'affiche.
+     */
     getFaviconUrl(url) {
         try {
             const urlObj = new URL(url);
-            const domain = urlObj.hostname;
-            // #region agent log
-            const isLocal = /^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/.test(domain);
-            fetch('http://127.0.0.1:7475/ingest/b9448150-f1e8-40a5-a65b-b79718dab2f2',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0937cc'},body:JSON.stringify({sessionId:'0937cc',location:'ShortcutManager.js:getFaviconUrl',message:'getFaviconUrl appelé',data:{url,domain,isLocal},timestamp:Date.now(),hypothesisId:'H-A'})}).catch(()=>{});
-            // #endregion
+            const hostname = urlObj.hostname;
+            const isLocal = /^(localhost|127\.\d+\.\d+\.\d+|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+)$/.test(hostname);
             if (isLocal) {
-                return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1 1%22%3E%3C/svg%3E';
+                return `${urlObj.origin}/favicon.ico`;
             }
-            return `https://www.google.com/s2/favicons?sz=32&domain=${domain}`;
+            const domain = hostname.replace(/^www\./, '');
+            return `https://www.google.com/s2/favicons?sz=32&domain=${encodeURIComponent(domain)}`;
         } catch (error) {
             return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1 1%22%3E%3C/svg%3E';
         }
@@ -616,12 +521,14 @@ export default class ShortcutManager {
         });
 
         modal.querySelectorAll('[data-delete-shortcut]').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const shortcutId = parseInt(btn.dataset.deleteShortcut);
-                this.deleteShortcut(shortcutId);
-                modal.close();
-                modal.remove();
-                this.render();
+            btn.addEventListener('click', async () => {
+                const shortcutId = parseInt(btn.dataset.deleteShortcut, 10);
+                const success = await this.deleteShortcut(shortcutId);
+                if (success) {
+                    modal.close();
+                    modal.remove();
+                    this.render();
+                }
             });
         });
 
@@ -712,7 +619,7 @@ export default class ShortcutManager {
             <div class="modal-content${sizeClass}">
                 <div class="modal-header">
                     <h2>${this.escapeHtml(title)}</h2>
-                    <button type="button" class="modal-close-btn" data-modal-close aria-label="Fermer">
+                    <button type="button" class="modal-close-btn" data-dialog-close aria-label="Fermer">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
@@ -721,7 +628,7 @@ export default class ShortcutManager {
                 </div>
             </div>
         `;
-        modal.querySelector('[data-modal-close]')?.addEventListener('click', () => {
+        modal.querySelector('[data-dialog-close]')?.addEventListener('click', () => {
             modal.close();
             modal.remove();
         });
@@ -777,12 +684,18 @@ export default class ShortcutManager {
             let data = {};
             const contentType = response.headers.get('content-type');
             if (contentType && contentType.includes('application/json')) {
-                data = await response.json();
+                try {
+                    data = await response.json();
+                } catch (_) {
+                    /* body non JSON */
+                }
             }
 
             if (!response.ok) {
-                const msg = data.message || data.error || `Erreur ${response.status}`;
-                logger.error('❌ Suppression catégorie:', msg);
+                const msg = data.message || data.error || (response.status === 404
+                    ? 'Suppression non disponible (404). Vérifiez que le serveur expose bien les routes DELETE pour les catégories.'
+                    : `Erreur ${response.status}`);
+                logger.error('❌ Suppression catégorie:', String(msg));
                 alert(msg);
                 return false;
             }
@@ -797,7 +710,8 @@ export default class ShortcutManager {
             this.render();
             return true;
         } catch (error) {
-            logger.error('❌ Erreur suppression catégorie:', error);
+            const errMsg = error?.message != null ? String(error.message) : (error != null ? String(error) : 'Erreur inconnue');
+            logger.error('❌ Erreur suppression catégorie:', errMsg);
             alert('Erreur lors de la suppression de la catégorie. Vérifiez la connexion au serveur.');
             return false;
         }
@@ -819,10 +733,7 @@ export default class ShortcutManager {
 
         try {
             const payload = { category_id: categoryId, title: name, url };
-            logger.info('➕ Ajout raccourci:', JSON.stringify({ categoryId, name, url, payload }, null, 2));
-            // Le serveur attend 'title' au lieu de 'name'
             const response = await api.post('shortcuts.create', payload);
-            logger.info('📡 Réponse API reçue:', JSON.stringify({ ok: response.ok, status: response.status, statusText: response.statusText }, null, 2));
 
             if (!response.ok) {
                 let errorMessage = `Erreur ${response.status}`;
@@ -838,21 +749,10 @@ export default class ShortcutManager {
             }
 
             const data = await response.json();
-            logger.info('📡 Réponse serveur complète:', JSON.stringify(data, null, 2));
-            
-            // Vérifier si le category_id est bien retourné
-            if (data && data.category_id === null) {
-                logger.warn('⚠️ Le serveur a retourné category_id: null pour le raccourci créé');
-            }
 
-            // Le serveur peut retourner directement l'objet créé ou avec un wrapper success
-            // Si on a un ID ou un objet raccourci, considérer que c'est un succès
             if (data.success !== false && (data.id || data.shortcut || data.title || data.url)) {
-                logger.info('✅ Raccourci créé avec succès, rechargement...');
-                // Forcer le rechargement sans cache
                 await this.loadShortcuts();
                 this.render();
-                logger.info('✅ Raccourcis rechargés et affichés');
             } else {
                 logger.error('❌ Réponse serveur invalide:', data);
                 alert(data.message || data.error || 'Erreur lors de la création du raccourci');
@@ -866,19 +766,39 @@ export default class ShortcutManager {
     async deleteShortcut(shortcutId) {
         const token = this.getToken();
         
-        if (!token) return;
+        if (!token) {
+            alert('Vous devez être connecté pour supprimer un raccourci');
+            return false;
+        }
 
         try {
             const response = await api.delete(`/api/shortcuts/${shortcutId}`);
+            let data = {};
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('application/json')) {
+                try {
+                    data = await response.json();
+                } catch (_) {
+                    /* body non JSON */
+                }
+            }
 
-            const data = await response.json();
-
-            if (data.success) {
+            if (response.ok && data.success !== false) {
                 await this.loadShortcuts();
                 this.render();
+                return true;
             }
+            const msg = response.status === 404
+                ? 'Suppression non disponible (404). Vérifiez que le serveur expose bien la route DELETE pour les raccourcis.'
+                : (data.message || data.error || `Erreur ${response.status}`);
+            alert(msg);
+            logger.error('❌ Erreur suppression raccourci:', msg);
+            return false;
         } catch (error) {
-            logger.error('❌ Erreur suppression raccourci:', error);
+            const errMsg = error?.message != null ? String(error.message) : (error != null ? String(error) : 'Erreur inconnue');
+            logger.error('❌ Erreur suppression raccourci:', errMsg);
+            alert('Erreur lors de la suppression du raccourci. Vérifiez la connexion au serveur.');
+            return false;
         }
     }
 
