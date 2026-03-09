@@ -206,6 +206,17 @@ function broadcastUserCount() {
       };
     });
 
+    // Favicon à la racine (pour raccourcis client et onglet navigateur)
+    fastify.get('/favicon.ico', async (request: FastifyRequest, reply: FastifyReply) => {
+      const faviconPath = path.join(__dirname, 'views', 'favicon.png');
+      if (!fs.existsSync(faviconPath)) {
+        reply.statusCode = 404;
+        return { error: 'Not found' };
+      }
+      reply.header('Content-Type', 'image/png');
+      return reply.send(fs.createReadStream(faviconPath));
+    });
+
     // Auth routes (un seul poste par compte : refus si déjà connecté)
     fastify.post('/api/auth/login', async (request: FastifyRequest, reply: FastifyReply) => {
       const { username, password } = request.body as { username: string; password: string };
@@ -590,6 +601,25 @@ function broadcastUserCount() {
       }
     });
 
+    fastify.delete('/api/shortcuts/categories/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const userId = (request.query as any).userId || 1;
+      try {
+        const result = await query(
+          'DELETE FROM shortcut_categories WHERE id = $1 AND user_id = $2',
+          [id, userId]
+        );
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Catégorie introuvable' };
+        }
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error deleting shortcut category:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
 
     // Marques & Modèles (Réception)
     fastify.get('/api/marques', async () => {
@@ -2207,6 +2237,27 @@ function broadcastUserCount() {
         return { error: 'Database error' };
       }
     });
+
+    fastify.delete('/api/shortcuts/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const userId = (request.query as any).userId || 1;
+      try {
+        const result = await query(
+          'DELETE FROM shortcuts WHERE id = $1 AND user_id = $2',
+          [id, userId]
+        );
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Raccourci introuvable' };
+        }
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error deleting shortcut:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
     // Start server
     await fastify.listen({ port: proxmoxConfig.port, host: '0.0.0.0' });
 
