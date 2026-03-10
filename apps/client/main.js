@@ -54,6 +54,27 @@ process.on('unhandledRejection', (reason) => {
 });
 // #endregion
 
+// #region agent log (session debug - écran redémarrage MAJ)
+const DEBUG_SESSION_LOG = path.join(__dirname, '..', '..', '.cursor', 'debug-3375e0.log');
+const FALLBACK_SESSION_LOG = process.platform === 'linux' && process.env.HOME
+    ? path.join(process.env.HOME, '.config', 'workspace-client', 'debug-3375e0.log')
+    : null;
+function sessionLog(payload) {
+    const line = JSON.stringify({ sessionId: '3375e0', ...payload, timestamp: Date.now() }) + '\n';
+    try {
+        fs.appendFileSync(DEBUG_SESSION_LOG, line);
+    } catch (_) {
+        if (FALLBACK_SESSION_LOG) {
+            try {
+                const d = path.dirname(FALLBACK_SESSION_LOG);
+                if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
+                fs.appendFileSync(FALLBACK_SESSION_LOG, line);
+            } catch (_2) { }
+        }
+    }
+}
+// #endregion
+
 // Import ClientDiscovery
 const ClientDiscovery = require('./lib/ClientDiscovery.js');
 
@@ -531,6 +552,9 @@ function createWindow() {
         closeSplashWindow();
         const flagPath = path.join(app.getPath('userData'), 'workspace-update-installed.flag');
         if (fs.existsSync(flagPath)) {
+            // #region agent log
+            sessionLog({ hypothesisId: 'H4', location: 'main.js:showMainAndCloseSplash', message: 'flag found post-restart', data: {} });
+            // #endregion
             try {
                 fs.unlinkSync(flagPath);
             } catch (_) { }
@@ -637,6 +661,9 @@ let appLaunched = false;
  * du serveur s'exécute en parallèle (le client gère le mode hors-ligne).
  */
 function launchApp() {
+    // #region agent log
+    sessionLog({ hypothesisId: 'H4', location: 'main.js:launchApp', message: 'launchApp called', data: { appLaunched } });
+    // #endregion
     if (appLaunched) return;
     appLaunched = true;
     setSplashMessage('Chargement en cours…');
@@ -715,6 +742,9 @@ app.on('ready', async () => {
                 setSplashProgress(percent);
             });
             autoUpdater.on('update-downloaded', () => {
+                // #region agent log
+                sessionLog({ hypothesisId: 'H1', location: 'main.js:update-downloaded', message: 'update-downloaded fired', data: { updateCheckFinished } });
+                // #endregion
                 if (updateCheckFinished) return;
                 updateCheckFinished = true;
                 if (timeoutId) {
@@ -727,9 +757,15 @@ app.on('ready', async () => {
                 try {
                     fs.writeFileSync(flagPath, Date.now().toString(), 'utf8');
                 } catch (_) { }
+                // #region agent log
+                sessionLog({ hypothesisId: 'H3', location: 'main.js:update-downloaded', message: 'flag written, before setImmediate', data: {} });
+                // #endregion
                 setSplashUpdateSuccess('Redémarrage en cours…');
                 setImmediate(() => {
                     setTimeout(() => {
+                        // #region agent log
+                        sessionLog({ hypothesisId: 'H2-H5', location: 'main.js:update-downloaded', message: 'calling quitAndInstall', data: {} });
+                        // #endregion
                         quittingForUpdate = true;
                         // isSilent=true : pas de dialogue, isForceRunAfter=true : relancer l'app après l'install
                         autoUpdater.quitAndInstall(true, true);
