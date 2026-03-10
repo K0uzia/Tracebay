@@ -289,11 +289,6 @@ export default class TracabiliteManager {
                     </div>
                 </div>
                 <div class="lot-card-actions">
-                    ${!isRecovered ? `
-                        <button type="button" class="btn-action btn-recover-disque" data-session-id="${session.id}" title="Marquer comme récupéré (traçabilité uniquement, pas les PDF)">
-                            <i class="fa-solid fa-check-double"></i> Récupérer
-                        </button>
-                    ` : ''}
                     ${hasPdf ? `
                         <a href="${pdfUrl}" target="_blank" rel="noopener" class="btn-action btn-view">
                             <i class="fa-solid fa-eye"></i> Voir le PDF
@@ -483,12 +478,6 @@ export default class TracabiliteManager {
             });
         });
 
-        document.querySelectorAll('.btn-recover-disque').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.markDisqueSessionAsRecovered(btn.dataset.sessionId);
-            });
-        });
     }
 
     async downloadDisquePdf(url, filename) {

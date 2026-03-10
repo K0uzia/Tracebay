@@ -544,6 +544,19 @@ function createWindow() {
     mainWindow.webContents.once('did-finish-load', showMainAndCloseSplash);
     showMainFallbackId = setTimeout(showMainAndCloseSplash, 15000);
 
+    // Ouvrir les liens externes (target="_blank" ou window.open) dans le navigateur système au lieu d'une nouvelle fenêtre Electron
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+        try {
+            const u = new URL(url);
+            if (['http:', 'https:'].includes(u.protocol)) {
+                shell.openExternal(url);
+            }
+        } catch (e) {
+            console.warn('setWindowOpenHandler url:', e.message);
+        }
+        return { action: 'deny' };
+    });
+
     // DevTools uniquement en développement
     if (!isProduction) {
         mainWindow.webContents.openDevTools();

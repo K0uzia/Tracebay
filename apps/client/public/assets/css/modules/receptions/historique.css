@@ -347,7 +347,7 @@
 }
 #modal-edit-disque-items .historique-disque-edit-row {
     display: grid;
-    grid-template-columns: auto repeat(6, 1fr);
+    grid-template-columns: auto repeat(7, 1fr);
     gap: var(--unit-2);
     align-items: end;
     font-size: 0.85rem;

@@ -11,6 +11,14 @@
     <!-- Barre d'actions (comme Entrée) -->
     <div class="actions-bar">
         <div class="actions-left">
+            <button type="button" id="disques-btn-add-marque" data-modal-open="disques-modal-add-marque">
+                <i class="fa-solid fa-plus"></i>
+                Ajouter une marque
+            </button>
+            <button type="button" id="disques-btn-add-modele" data-modal-open="disques-modal-add-modele">
+                <i class="fa-solid fa-plus"></i>
+                Ajouter un modèle
+            </button>
             <button type="button" id="disques-btn-lsblk" class="btn-lsblk" title="Détecter les disques (application desktop Linux uniquement)">
                 <i class="fa-solid fa-memory"></i> Détection automatique
             </button>
@@ -25,15 +33,16 @@
         </div>
     </div>
 
-    <!-- Nom du lot de disques (affiché dans Historique / Traçabilité : "nom" du DD/MM/AAAA) -->
-    <div class="lot-info-section disques-session-name-row">
+    <!-- Informations du lot (même structure que Entrée : h3 + form-field) -->
+    <div class="lot-info-section">
+        <h3><i class="fa-solid fa-circle-info"></i> Nom du lot</h3>
         <div class="form-field">
-            <label for="disques-session-name">Nom du lot</label>
-            <input type="text" id="disques-session-name" name="session_name" placeholder="Ex: Session shred mars 2025" autocomplete="off">
+            <input type="text" id="disques-session-name" name="session_name" placeholder="Ex: Session shred mars 2025" maxlength="255" autocomplete="off">
+            <small>Affiché dans l'historique et la traçabilité (optionnel)</small>
         </div>
     </div>
 
-    <!-- Zone de saisie (comme "Nom du lot" / infos) -->
+    <!-- Zone de saisie : ajouter un disque -->
     <div class="lot-info-section">
         <h3><i class="fa-solid fa-keyboard"></i> Ajouter un disque</h3>
         <div class="disques-form-row form-field">
@@ -41,13 +50,23 @@
                 <label for="disques-serial">S/N *</label>
                 <input type="text" id="disques-serial" name="serial" placeholder="Scan ou saisie" autocomplete="off" autofocus>
             </div>
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group form-group-marque" style="margin-bottom: 0;">
                 <label for="disques-marque">Marque</label>
-                <input type="text" id="disques-marque" name="marque" placeholder="Ex: Samsung" autocomplete="off">
+                <div class="disques-marque-row">
+                    <select id="disques-marque" name="marque">
+                        <option value="">-- Marque --</option>
+                    </select>
+                    <input type="text" id="disques-marque-autre" placeholder="Autre marque" class="disques-autre-input" style="display: none;" autocomplete="off">
+                </div>
             </div>
-            <div class="form-group" style="margin-bottom: 0;">
+            <div class="form-group form-group-modele" style="margin-bottom: 0;">
                 <label for="disques-modele">Modèle</label>
-                <input type="text" id="disques-modele" name="modele" placeholder="Ex: 870 EVO" autocomplete="off">
+                <div class="disques-modele-row">
+                    <select id="disques-modele" name="modele">
+                        <option value="">-- Modèle --</option>
+                    </select>
+                    <input type="text" id="disques-modele-autre" placeholder="Autre modèle" class="disques-autre-input" style="display: none;" autocomplete="off">
+                </div>
             </div>
             <div class="form-group form-group-taille" style="margin-bottom: 0;">
                 <label for="disques-size">Taille</label>
@@ -81,6 +100,12 @@
                     <option value="NVMe">NVMe</option>
                     <option value="M.2">M.2</option>
                 </select>
+            </div>
+            <div class="form-group form-group-destruction-physique" style="margin-bottom: 0;">
+                <label class="disques-checkbox-label">
+                    <input type="checkbox" id="disques-destruction-physique" name="destruction_physique" title="Disque HS, destruction physique à la place de l'effacement logiciel">
+                    Destruction physique (disque HS)
+                </label>
             </div>
             <button type="button" id="disques-btn-add" class="btn-add-manual">
                 <i class="fa-solid fa-plus"></i> Ajouter
@@ -130,11 +155,21 @@
                 </div>
                 <div class="form-group">
                     <label for="disques-edit-marque">Marque</label>
-                    <input type="text" id="disques-edit-marque" placeholder="Ex: Samsung">
+                    <div class="disques-marque-row">
+                        <select id="disques-edit-marque">
+                            <option value="">-- Marque --</option>
+                        </select>
+                        <input type="text" id="disques-edit-marque-autre" placeholder="Autre marque" class="disques-autre-input" style="display: none;" autocomplete="off">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="disques-edit-modele">Modèle</label>
-                    <input type="text" id="disques-edit-modele" placeholder="Ex: 870 EVO">
+                    <div class="disques-modele-row">
+                        <select id="disques-edit-modele">
+                            <option value="">-- Modèle --</option>
+                        </select>
+                        <input type="text" id="disques-edit-modele-autre" placeholder="Autre modèle" class="disques-autre-input" style="display: none;" autocomplete="off">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="disques-edit-size">Taille</label>
@@ -169,6 +204,12 @@
                         <option value="M.2">M.2</option>
                     </select>
                 </div>
+                <div class="form-group form-group-destruction-physique">
+                    <label class="disques-checkbox-label">
+                        <input type="checkbox" id="disques-edit-destruction-physique" name="destruction_physique" title="Disque HS, destruction physique">
+                        Destruction physique (disque HS)
+                    </label>
+                </div>
             </div>
         </div>
         <div class="modal-footer">
@@ -197,6 +238,68 @@
             <button type="button" class="btn btn-secondary" data-modal-close="modal-lsblk-disks">Fermer</button>
             <button type="button" class="btn btn-primary" id="lsblk-btn-add-selected">
                 <i class="fa-solid fa-plus"></i> Ajouter la sélection
+            </button>
+        </div>
+    </div>
+</dialog>
+
+<!-- Modale : Ajouter une marque (disques) -->
+<dialog class="universal-modal" id="disques-modal-add-marque" data-modal-id="disques-modal-add-marque">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-building"></i> Nouvelle Marque</h2>
+            <button type="button" class="modal-close-btn" data-modal-close="disques-modal-add-marque">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-description">
+                <i class="fa-solid fa-info-circle"></i>
+                <p>Ajoutez une nouvelle marque. Elle sera disponible dans la liste des disques.</p>
+            </div>
+            <div class="form-group">
+                <label for="disques-input-new-marque"><i class="fa-solid fa-tag"></i> Nom de la marque</label>
+                <input type="text" id="disques-input-new-marque" placeholder="Ex: Samsung, WD, Seagate..." autocomplete="off" autofocus>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="disques-modal-add-marque">Annuler</button>
+            <button type="button" class="modal-submit-btn" id="disques-btn-submit-marque">
+                <i class="fa-solid fa-check"></i> Ajouter la marque
+            </button>
+        </div>
+    </div>
+</dialog>
+
+<!-- Modale : Ajouter un modèle (disques) -->
+<dialog class="universal-modal" id="disques-modal-add-modele" data-modal-id="disques-modal-add-modele">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-laptop"></i> Nouveau Modèle</h2>
+            <button type="button" class="modal-close-btn" data-modal-close="disques-modal-add-modele">
+                <i class="fa-solid fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-description">
+                <i class="fa-solid fa-info-circle"></i>
+                <p>Ajoutez un nouveau modèle pour une marque existante.</p>
+            </div>
+            <div class="form-group">
+                <label for="disques-select-marque-for-modele"><i class="fa-solid fa-building"></i> Marque</label>
+                <select id="disques-select-marque-for-modele">
+                    <option value="">-- Sélectionner une marque --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="disques-input-new-modele"><i class="fa-solid fa-microchip"></i> Nom du modèle</label>
+                <input type="text" id="disques-input-new-modele" placeholder="Ex: 870 EVO, BarraCuda..." autocomplete="off">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="disques-modal-add-modele">Annuler</button>
+            <button type="button" class="modal-submit-btn" id="disques-btn-submit-modele">
+                <i class="fa-solid fa-check"></i> Ajouter le modèle
             </button>
         </div>
     </div>
