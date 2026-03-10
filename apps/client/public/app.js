@@ -100,6 +100,7 @@ class PageManager {
         this.loadComponent('footer', './components/footer.html', () => {
             this.initializeSystemInfo();
             this.updateFooterVersion();
+            this.attachFooterExternalLinks();
         });
     }
 
@@ -678,6 +679,25 @@ class PageManager {
                 })
                 .catch(() => {});
         }
+    }
+
+    /**
+     * Dans Electron : les clics sur les liens externes du footer ouvrent le navigateur système (openExternal)
+     * au lieu d'une fenêtre dans l'app. En mode web, le comportement par défaut est conservé.
+     */
+    attachFooterExternalLinks() {
+        const footer = document.getElementById('footer');
+        if (!footer) return;
+        footer.addEventListener('click', (e) => {
+            const a = e.target.closest('a[href^="http"]');
+            if (!a || !a.href) return;
+            if (typeof window.electron !== 'undefined' && (window.electron.openExternal || window.electron.invoke)) {
+                e.preventDefault();
+                e.stopPropagation();
+                const openExternal = window.electron.openExternal || ((url) => window.electron.invoke('open-external', url));
+                openExternal(a.href).catch(() => {});
+            }
+        });
     }
 
     /**

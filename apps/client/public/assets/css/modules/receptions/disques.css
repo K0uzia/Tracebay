@@ -6,35 +6,19 @@
     min-height: 0;
 }
 
-/* Nom du lot : une ligne au-dessus du formulaire d'ajout */
-.disques-container .disques-session-name-row {
-    padding: var(--unit-2) var(--unit-4);
-}
-.disques-container .disques-session-name-row label {
-    display: block;
-    margin-bottom: 4px;
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-.disques-container .disques-session-name-row input {
-    max-width: 320px;
-    padding: var(--unit-1) var(--unit-2);
-    border: 1px solid rgba(13, 13, 13, 0.15);
-    border-radius: var(--radius-medium);
-    font-size: 1rem;
-    box-sizing: border-box;
-}
-
-/* Zone d'ajout : conteneur avec padding lisible */
+/* Même structure que Entrée : .lot-info-section hérite de entrer.css (border-left, h3, etc.) */
 .disques-container .lot-info-section {
-    padding: var(--unit-3) var(--unit-4);
+    padding: var(--unit-2) var(--unit-3);
+}
+.disques-container .lot-info-section .form-field input[type="text"] {
+    max-width: 320px;
 }
 
-/* Ligne de formulaire "Ajouter un disque" sur une seule ligne, sans overflow (champs réduits) */
+/* Ligne de formulaire "Ajouter un disque" : flex avec wrap pour accommoder checkbox et futurs selects marque/modèle */
 .disques-container .disques-form-row {
     display: flex;
     flex-direction: row;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     align-items: flex-end;
     gap: var(--unit-2);
     margin-top: var(--unit-2);
@@ -71,20 +55,60 @@
     max-width: 160px;
 }
 
-.disques-container .disques-form-row input[type="text"]#disques-marque,
-.disques-container .disques-form-row input[type="text"]#disques-modele {
-    min-width: 72px;
-    max-width: 100px;
+.disques-container .disques-form-row .disques-marque-row,
+.disques-container .disques-form-row .disques-modele-row,
+#modal-disques-edit-disk .disques-marque-row,
+#modal-disques-edit-disk .disques-modele-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+}
+.disques-container .disques-form-row .disques-marque-row select,
+.disques-container .disques-form-row .disques-modele-row select {
+    min-width: 90px;
+    max-width: 130px;
+}
+.disques-container .disques-form-row .disques-autre-input,
+#modal-disques-edit-disk .disques-autre-input {
+    min-width: 80px;
+    max-width: 120px;
 }
 
-.disques-container .disques-form-row .form-group-taille select,
+.disques-container .disques-form-row .form-group-taille select {
+    min-width: 88px;
+    max-width: 100px;
+}
 .disques-container .disques-form-row .form-group-taille .disques-size-custom {
-    max-width: 90px;
+    min-width: 72px;
+    max-width: 88px;
 }
 .disques-container .disques-form-row select#disques-disk-type,
 .disques-container .disques-form-row select#disques-interface {
     min-width: 72px;
     max-width: 95px;
+}
+
+/* Checkbox « Destruction physique » : ligne dédiée sous les champs pour éviter débordement */
+.disques-container .disques-form-row .form-group-destruction-physique {
+    flex: 1 1 100%;
+    min-width: 100%;
+    margin-top: var(--unit-1);
+    padding-top: var(--unit-1);
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+.disques-container .disques-form-row .disques-checkbox-label,
+#modal-disques-edit-disk .disques-checkbox-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.disques-container .disques-form-row .disques-checkbox-label input[type="checkbox"],
+#modal-disques-edit-disk .disques-checkbox-label input[type="checkbox"] {
+    margin: 0;
 }
 
 /* Bouton Nouveau lot (jaune) */
@@ -136,14 +160,15 @@
 }
 
 .disques-container .disques-size-row .disques-size-custom {
-    min-width: 100px;
-    max-width: 120px;
+    min-width: 72px;
+    max-width: 88px;
     flex: 0 0 auto;
     box-sizing: border-box;
 }
 
 .disques-size-custom {
-    min-width: 100px;
+    min-width: 72px;
+    max-width: 88px;
     box-sizing: border-box;
 }
 
@@ -248,7 +273,8 @@
     align-items: center;
 }
 .disques-edit-form .disques-size-row .disques-size-custom {
-    min-width: 100px;
+    min-width: 72px;
+    max-width: 88px;
 }
 
 /* Modale lsblk */

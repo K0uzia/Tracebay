@@ -10,11 +10,15 @@ import { getSessions, getSession, getSessionPdfUrl, updateSession } from './disq
 const logger = getLogger();
 
 
+const VALUE_AUTRE_DISQUES = '__autre__';
+
 export default class HistoriqueManager {
     constructor(modalManager) {
         this.modalManager = modalManager;
         this.lots = [];
         this.sessionsDisques = [];
+        this.marques = [];
+        this.modeles = [];
         this.init();
     }
 
@@ -90,18 +94,17 @@ export default class HistoriqueManager {
         let toRender = merged;
         if (searchText) {
             toRender = merged.filter(({ type, item }) => {
+                // Recherche sur le texte affiché dans le titre (h3) de la carte
                 if (type === 'lot') {
-                    const name = String(item.lot_name || item.name || '').toLowerCase();
                     const id = String(item.id || '');
-                    const lotLabel = ('lot #' + id).toLowerCase();
-                    return name.includes(searchText) || id.includes(searchText) || lotLabel.includes(searchText);
+                    const lotName = String(item.lot_name || item.name || '').trim();
+                    const titleText = ('Lot #' + id + (lotName ? ' | ' + lotName : '')).toLowerCase();
+                    return titleText.includes(searchText);
                 }
                 if (type === 'disque') {
-                    const name = String(item.name || '').toLowerCase();
-                    const id = String(item.id || '');
-                    const dateStr = (item.date || (item.created_at || '').slice(0, 10) || '').toLowerCase();
-                    const disqueLabel = ('lot disques ' + id).toLowerCase();
-                    return name.includes(searchText) || id.includes(searchText) || dateStr.includes(searchText) || disqueLabel.includes(searchText);
+                    const name = (item.name || '').trim() || 'Lot disques';
+                    const titleText = name.toLowerCase();
+                    return titleText.includes(searchText);
                 }
                 return false;
             });
@@ -424,12 +427,42 @@ export default class HistoriqueManager {
         }
     }
 
+    async loadReferenceDataDisques() {
+        try {
+            const marquesRes = await api.get('marques.list');
+            if (!marquesRes.ok) return;
+            const marquesData = await marquesRes.json();
+            this.marques = Array.isArray(marquesData) ? marquesData : (marquesData.items || marquesData.marques || []);
+            const modelesRes = await api.get('marques.all');
+            if (!modelesRes.ok) return;
+            const modelesData = await modelesRes.json();
+            const marquesAvecModeles = Array.isArray(modelesData) ? modelesData : (modelesData.items || []);
+            this.modeles = [];
+            marquesAvecModeles.forEach(marque => {
+                if (marque.modeles && Array.isArray(marque.modeles)) {
+                    marque.modeles.forEach(modele => {
+                        this.modeles.push({
+                            id: modele.id,
+                            name: modele.name,
+                            marque_id: marque.id
+                        });
+                    });
+                }
+            });
+        } catch (err) {
+            logger.error('loadReferenceDataDisques:', err);
+            this.marques = [];
+            this.modeles = [];
+        }
+    }
+
     /**
      * Ouvrir la modale d'édition du matériel (disques) d'un lot disques
      */
     async editDisqueItems(sessionId) {
         const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
         if (!session) return;
+        await this.loadReferenceDataDisques();
         const full = await getSession(sessionId).catch(() => session);
         const disks = Array.isArray(full.disks) ? full.disks : [];
         this.currentEditingSessionId = sessionId;
@@ -442,14 +475,31 @@ export default class HistoriqueManager {
         container.innerHTML = disks.map((d, i) => {
             const sizeVal = (d.size || '').trim();
             const sizeOpt = sizeOpts.includes(sizeVal) ? sizeVal : (sizeVal ? 'autre' : '');
+            const marqueVal = (d.marque || '').trim();
+            const modeleVal = (d.modele || '').trim();
+            const marqueMatch = this.marques.find(m => (m.name || '').trim() === marqueVal);
+            const marqueId = marqueMatch ? marqueMatch.id : null;
+            const modelesForMarque = marqueId ? this.modeles.filter(m => m.marque_id == marqueId) : [];
+            const modeleMatch = modelesForMarque.find(m => (m.name || '').trim() === modeleVal);
+            const marqueSelVal = marqueMatch ? marqueMatch.id : (marqueVal ? VALUE_AUTRE_DISQUES : '');
+            const modeleSelVal = modeleMatch ? modeleMatch.id : (modeleVal ? VALUE_AUTRE_DISQUES : '');
+            const marqueOpts = '<option value="">-- Marque --</option>' +
+                this.marques.map(m => `<option value="${m.id}" ${marqueSelVal === m.id ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('') +
+                `<option value="${VALUE_AUTRE_DISQUES}" ${marqueSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>`;
+            const modeleOpts = '<option value="">-- Modèle --</option>' +
+                modelesForMarque.map(m => `<option value="${m.id}" ${modeleSelVal === m.id ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('') +
+                `<option value="${VALUE_AUTRE_DISQUES}" ${modeleSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>`;
+            const showMarqueAutre = marqueSelVal === VALUE_AUTRE_DISQUES;
+            const showModeleAutre = modeleSelVal === VALUE_AUTRE_DISQUES;
             return `<div class="historique-disque-edit-row disques-edit-form" data-disk-index="${i}">
                 <span class="historique-disque-edit-num">${i + 1}.</span>
                 <div class="form-group"><label>S/N *</label><input type="text" class="disque-edit-serial" value="${this.escapeAttr(d.serial || '')}" placeholder="S/N"></div>
-                <div class="form-group"><label>Marque</label><input type="text" class="disque-edit-marque" value="${this.escapeAttr(d.marque || '')}" placeholder="Marque"></div>
-                <div class="form-group"><label>Modèle</label><input type="text" class="disque-edit-modele" value="${this.escapeAttr(d.modele || '')}" placeholder="Modèle"></div>
+                <div class="form-group"><label>Marque</label><div class="disques-marque-row"><select class="disque-edit-marque">${marqueOpts}</select><input type="text" class="disque-edit-marque-autre" value="${showMarqueAutre ? this.escapeAttr(marqueVal) : ''}" placeholder="Autre marque" style="display:${showMarqueAutre ? 'inline-block' : 'none'};"></div></div>
+                <div class="form-group"><label>Modèle</label><div class="disques-modele-row"><select class="disque-edit-modele">${modeleOpts}</select><input type="text" class="disque-edit-modele-autre" value="${showModeleAutre ? this.escapeAttr(modeleVal) : ''}" placeholder="Autre modèle" style="display:${showModeleAutre ? 'inline-block' : 'none'};"></div></div>
                 <div class="form-group"><label>Taille</label><div class="disques-size-row"><select class="disque-edit-size-select">${sizeOpts.map(o => `<option value="${o}" ${sizeOpt === o ? 'selected' : ''}>${o || '--'}</option>`).join('')}</select><input type="text" class="disque-edit-size-custom" value="${sizeOpt === 'autre' ? this.escapeAttr(sizeVal) : ''}" placeholder="Ex: 512 Go" style="display:${sizeOpt === 'autre' ? 'inline-block' : 'none'};"></div></div>
                 <div class="form-group"><label>Type</label><select class="disque-edit-type">${typeOpts.map(o => `<option value="${o}" ${(d.disk_type || '') === o ? 'selected' : ''}>${o || '--'}</option>`).join('')}</select></div>
                 <div class="form-group"><label>Interface</label><select class="disque-edit-interface">${ifaceOpts.map(o => `<option value="${o}" ${(d.interface || '') === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>
+                <div class="form-group"><label class="disques-checkbox-label"><input type="checkbox" class="disque-edit-destruction-physique" ${(d.shred || '') === 'Destruction physique' ? 'checked' : ''}> Destruction physique</label></div>
             </div>`;
         }).join('');
         container.querySelectorAll('.disque-edit-size-select').forEach(sel => {
@@ -457,6 +507,41 @@ export default class HistoriqueManager {
                 const row = sel.closest('.historique-disque-edit-row');
                 const custom = row?.querySelector('.disque-edit-size-custom');
                 if (custom) custom.style.display = sel.value === 'autre' ? 'inline-block' : 'none';
+            });
+        });
+        container.querySelectorAll('.disque-edit-marque').forEach(sel => {
+            sel.addEventListener('change', () => {
+                const row = sel.closest('.historique-disque-edit-row');
+                const marqueAutre = row?.querySelector('.disque-edit-marque-autre');
+                const modeleSel = row?.querySelector('.disque-edit-modele');
+                const modeleAutre = row?.querySelector('.disque-edit-modele-autre');
+                const isAutre = sel.value === VALUE_AUTRE_DISQUES;
+                if (marqueAutre) {
+                    marqueAutre.style.display = isAutre ? 'inline-block' : 'none';
+                    if (!isAutre) marqueAutre.value = '';
+                }
+                if (modeleSel) {
+                    const marqueId = sel.value && sel.value !== VALUE_AUTRE_DISQUES ? sel.value : '';
+                    const filtered = marqueId ? this.modeles.filter(m => m.marque_id == marqueId) : [];
+                    modeleSel.innerHTML = '<option value="">-- Modèle --</option>' +
+                        filtered.map(m => `<option value="${m.id}">${this.escapeHtml(m.name)}</option>`).join('') +
+                        `<option value="${VALUE_AUTRE_DISQUES}">Autre</option>`;
+                }
+                if (modeleAutre) {
+                    modeleAutre.style.display = 'none';
+                    modeleAutre.value = '';
+                }
+            });
+        });
+        container.querySelectorAll('.disque-edit-modele').forEach(sel => {
+            sel.addEventListener('change', () => {
+                const row = sel.closest('.historique-disque-edit-row');
+                const modeleAutre = row?.querySelector('.disque-edit-modele-autre');
+                const isAutre = sel.value === VALUE_AUTRE_DISQUES;
+                if (modeleAutre) {
+                    modeleAutre.style.display = isAutre ? 'inline-block' : 'none';
+                    if (!isAutre) modeleAutre.value = '';
+                }
             });
         });
         this.modalManager.open('modal-edit-disque-items');
@@ -481,11 +566,28 @@ export default class HistoriqueManager {
                 return;
             }
             const t = (row.querySelector('.disque-edit-type')?.value || '').toUpperCase();
-            const shred = t === 'SSD' ? 'Secure E. + Sanitize' : t === 'HDD' ? 'DoD' : '';
+            const destructionPhysique = row.querySelector('.disque-edit-destruction-physique')?.checked === true;
+            const shred = destructionPhysique ? 'Destruction physique' : (t === 'SSD' ? 'Secure E. + Sanitize' : t === 'HDD' ? 'DoD' : '');
+            const marqueSel = row.querySelector('.disque-edit-marque');
+            const marqueAutre = row.querySelector('.disque-edit-marque-autre');
+            const modeleSel = row.querySelector('.disque-edit-modele');
+            const modeleAutre = row.querySelector('.disque-edit-modele-autre');
+            let marque = null;
+            if (marqueSel?.value === VALUE_AUTRE_DISQUES && marqueAutre?.value?.trim()) marque = marqueAutre.value.trim();
+            else if (marqueSel?.value && marqueSel.value !== VALUE_AUTRE_DISQUES) {
+                const m = this.marques.find(x => String(x.id) === String(marqueSel.value));
+                marque = m ? m.name : null;
+            }
+            let modele = null;
+            if (modeleSel?.value === VALUE_AUTRE_DISQUES && modeleAutre?.value?.trim()) modele = modeleAutre.value.trim();
+            else if (modeleSel?.value && modeleSel.value !== VALUE_AUTRE_DISQUES) {
+                const m = this.modeles.find(x => String(x.id) === String(modeleSel.value));
+                modele = m ? m.name : null;
+            }
             disks.push({
                 serial,
-                marque: row.querySelector('.disque-edit-marque')?.value?.trim() || null,
-                modele: row.querySelector('.disque-edit-modele')?.value?.trim() || null,
+                marque,
+                modele,
                 size: size || null,
                 disk_type: row.querySelector('.disque-edit-type')?.value || null,
                 interface: row.querySelector('.disque-edit-interface')?.value || null,
