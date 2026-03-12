@@ -8,7 +8,7 @@ const url = require('url');
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
-const { exec, execSync } = require('child_process');
+const { exec, execSync, spawn } = require('child_process');
 const PDFDocument = require('pdfkit');
 
 // #region agent log (bootstrap debug log pour AppImage sur autres machines)
@@ -250,6 +250,72 @@ let mainWindow;
 let splashWindow = null;
 /** true pendant quitAndInstall pour ne pas retarder la sortie (before-quit) */
 let quittingForUpdate = false;
+
+/**
+ * Sous Linux AppImage : crée une copie .bak de l'AppImage actuelle (à appeler dès qu'une MAJ est disponible).
+ */
+function linuxAppImageBackup(currentAppPath) {
+    if (process.platform !== 'linux' || !currentAppPath) return;
+    try {
+        const bakPath = currentAppPath + '.bak';
+        if (!fs.existsSync(bakPath)) {
+            fs.copyFileSync(currentAppPath, bakPath);
+            console.log('[Update] Sauvegarde créée:', bakPath);
+        }
+    } catch (e) {
+        console.warn('[Update] Backup .bak failed:', e?.message);
+    }
+}
+
+/** Nom final de l'AppImage (raccourci). */
+const LINUX_APPIMAGE_NAME = 'workspace.AppImage';
+/** Nom temporaire pour la copie (on n'écrase pas le binaire en cours). */
+const LINUX_APPIMAGE_TEMP_NAME = 'workspace-new.AppImage';
+
+/**
+ * Sous Linux AppImage : copie la nouvelle AppImage dans un fichier temporaire (même dossier),
+ * car on ne peut pas écraser workspace.AppImage tant que l'app tourne. Un script attend
+ * la fermeture, supprime l'ancienne, renomme la nouvelle en workspace.AppImage et relance.
+ */
+function tryLinuxAppImageUpdateHelper(currentAppPath, newAppPath) {
+    if (process.platform !== 'linux' || !currentAppPath || !newAppPath) return false;
+    if (!fs.existsSync(newAppPath)) return false;
+    try {
+        const dir = path.dirname(currentAppPath);
+        const tempPath = path.join(dir, LINUX_APPIMAGE_TEMP_NAME);
+        const finalPath = path.join(dir, LINUX_APPIMAGE_NAME);
+        // Ne pas écraser finalPath : l'app tourne encore, le fichier serait verrouillé / disparaîtrait
+        fs.copyFileSync(newAppPath, tempPath);
+        fs.chmodSync(tempPath, 0o755);
+
+        const scriptPath = path.join(app.getPath('userData'), 'workspace-update-helper.sh');
+        const script = `#!/bin/sh
+# temp = nouvelle AppImage (copie), dest = workspace.AppImage, pid = processus à attendre
+temp="$1"
+dest="$2"
+pid="$3"
+while kill -0 "$pid" 2>/dev/null; do sleep 0.3; done
+rm -f "$dest"
+mv -f "$temp" "$dest"
+chmod +x "$dest"
+export APPIMAGE_SILENT_INSTALL=true
+exec "$dest"
+`;
+        fs.writeFileSync(scriptPath, script, 'utf8');
+        fs.chmodSync(scriptPath, 0o755);
+        const child = spawn('/bin/sh', [scriptPath, tempPath, finalPath, String(process.pid)], {
+            detached: true,
+            stdio: 'ignore',
+            cwd: dir,
+        });
+        child.unref();
+        return true;
+    } catch (e) {
+        console.warn('[Update] Helper script failed:', e?.message);
+        return false;
+    }
+}
+
 let pdfWindows = new Map();
 let serverConnected = false;
 let discoveredServer = null;
@@ -733,6 +799,10 @@ app.on('ready', async () => {
                 console.log('[Update] Mise à jour disponible:', info?.version);
                 setSplashMessage('Mise à jour trouvée. Téléchargement…');
                 setSplashProgress(0);
+                // Linux AppImage : copie de l'actuelle en .bak dès qu'une MAJ est dispo
+                if (process.platform === 'linux' && process.env.APPIMAGE) {
+                    linuxAppImageBackup(process.env.APPIMAGE);
+                }
                 timeoutId = setTimeout(done, 300000);
             });
             autoUpdater.on('download-progress', (p) => {
@@ -763,10 +833,44 @@ app.on('ready', async () => {
                 setSplashUpdateSuccess('Redémarrage en cours…');
                 setImmediate(() => {
                     setTimeout(() => {
+                        quittingForUpdate = true;
+                        // Linux AppImage : script détaché qui remplace l'AppImage après notre quit (évite blocage unlink/mv et échec de remplacement)
+                        const currentApp = process.env.APPIMAGE;
+                        const newApp = autoUpdater.installerPath;
+                        // #region agent log
+                        fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',hypothesisId:'H1',location:'main.js:update-downloaded',message:'before tryLinuxAppImageUpdateHelper',data:{currentApp:!!currentApp,newApp:!!newApp,newAppPath:newApp?path.basename(newApp):null},timestamp:Date.now()})}).catch(()=>{});
+                        // #endregion
+                        const helperOk = tryLinuxAppImageUpdateHelper(currentApp, newApp);
+                        // #region agent log
+                        fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',hypothesisId:'H1',location:'main.js:update-downloaded',message:'after tryLinuxAppImageUpdateHelper',data:{helperOk},timestamp:Date.now()})}).catch(()=>{});
+                        // #endregion
+                        if (helperOk) {
+                            sessionLog({ hypothesisId: 'H2-H5', location: 'main.js:update-downloaded', message: 'linux helper launched, force exit', data: {} });
+                            // #region agent log
+                            fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',hypothesisId:'H2',location:'main.js:update-downloaded',message:'before destroy windows',data:{splashExists:!!splashWindow,splashDestroyed:!!(splashWindow&&splashWindow.isDestroyed()),mainExists:!!mainWindow,mainDestroyed:!!(mainWindow&&mainWindow.isDestroyed())},timestamp:Date.now()})}).catch(()=>{});
+                            // #endregion
+                            if (splashWindow && !splashWindow.isDestroyed()) {
+                                splashWindow.destroy();
+                                splashWindow = null;
+                            }
+                            if (mainWindow && !mainWindow.isDestroyed()) {
+                                mainWindow.destroy();
+                                mainWindow = null;
+                            }
+                            // #region agent log
+                            fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',hypothesisId:'H4',location:'main.js:update-downloaded',message:'before setImmediate app.exit',data:{},timestamp:Date.now()})}).catch(()=>{});
+                            // #endregion
+                            setImmediate(() => {
+                                // #region agent log
+                                fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',hypothesisId:'H4',location:'main.js:update-downloaded',message:'inside setImmediate calling app.exit(0)',data:{},timestamp:Date.now()})}).catch(()=>{});
+                                // #endregion
+                                app.exit(0);
+                            });
+                            return;
+                        }
                         // #region agent log
                         sessionLog({ hypothesisId: 'H2-H5', location: 'main.js:update-downloaded', message: 'calling quitAndInstall', data: {} });
                         // #endregion
-                        quittingForUpdate = true;
                         // isSilent=true : pas de dialogue, isForceRunAfter=true : relancer l'app après l'install
                         autoUpdater.quitAndInstall(true, true);
                     }, 500);
