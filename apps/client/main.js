@@ -813,6 +813,48 @@ ipcMain.handle('list-folders', async (_event, payload) => {
     }
 });
 
+// IPC: télécharger un PDF depuis une URL et l'ouvrir avec l'application système (traçabilité)
+ipcMain.handle('open-pdf-with-system-app', async (_event, payload) => {
+    const { url: pdfUrl, token, suggestedFilename } = payload || {};
+    // #region agent log
+    fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'main.js:open-pdf-with-system-app',message:'handler entry',data:{urlStart:(pdfUrl||'').slice(0,100),hasToken:!!(token&&String(token).trim())},hypothesisId:'H3',timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    if (!pdfUrl || typeof pdfUrl !== 'string') {
+        return { success: false, error: 'URL requise' };
+    }
+    let safeName = (suggestedFilename && String(suggestedFilename).replace(/[\\/:*?"<>|]/g, '_')) || 'tracabilite.pdf';
+    if (!safeName.toLowerCase().endsWith('.pdf')) safeName += '.pdf';
+    const tempPath = path.join(os.tmpdir(), `workspace-pdf-${Date.now()}-${safeName}`);
+    try {
+        const headers = { 'Authorization': `Bearer ${token || ''}` };
+        const res = await fetch(pdfUrl, { headers });
+        // #region agent log
+        fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'main.js:open-pdf-with-system-app',message:'after fetch',data:{status:res?.status,ok:res?.ok},hypothesisId:'H4',timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const buf = await res.arrayBuffer();
+        fs.writeFileSync(tempPath, Buffer.from(buf));
+        // shell.openPath peut ne jamais résoudre sur certains environnements Linux → timeout pour toujours renvoyer une réponse IPC
+        const OPEN_PATH_TIMEOUT_MS = 8000;
+        const err = await Promise.race([
+            shell.openPath(tempPath),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Ouverture expirée')), OPEN_PATH_TIMEOUT_MS))
+        ]);
+        if (err) {
+            try { fs.unlinkSync(tempPath); } catch (_) {}
+            return { success: false, error: err };
+        }
+        return { success: true, path: tempPath };
+    } catch (e) {
+        // #region agent log
+        fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'main.js:open-pdf-with-system-app',message:'handler catch',data:{message:e?.message,name:e?.constructor?.name},hypothesisId:'H5',timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch (_) {}
+        console.error('❌ open-pdf-with-system-app:', e.message);
+        return { success: false, error: e.message };
+    }
+});
+
 // IPC: ouvrir un chemin local (fichier ou dossier) avec l'app par défaut
 ipcMain.handle('open-path', async (_event, payload) => {
     const targetPath = typeof payload === 'string' ? payload : payload?.path;
@@ -1267,7 +1309,9 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
             else stateDisplay = escapeHtml(rawState || '-');
             const dateHeure = escapeHtml(formatItemDateForPdf(it));
             const tech = escapeHtml(it.technician || it.technicien || '-');
-            return `<tr><td class="col-num">${num}</td><td class="col-type">${type}</td><td class="col-marque">${marque}</td><td class="col-modele">${modele}</td><td class="col-sn">${sn}</td><td class="col-state">${stateDisplay}</td><td class="col-date">${dateHeure}</td><td class="col-tech">${tech}</td></tr>`;
+            const osIcon = it.os === 'windows' ? 'windows' : 'linux';
+            const osTitle = it.os === 'windows' ? 'Windows' : 'Linux';
+            return `<tr><td class="col-num">${num}</td><td class="col-type">${type}</td><td class="col-marque">${marque}</td><td class="col-modele">${modele}</td><td class="col-os"><i class="fa-brands fa-${osIcon}" title="${osTitle}"></i></td><td class="col-sn">${sn}</td><td class="col-state">${stateDisplay}</td><td class="col-date">${dateHeure}</td><td class="col-tech">${tech}</td></tr>`;
         })
         .join('\n');
 

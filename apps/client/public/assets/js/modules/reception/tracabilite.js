@@ -290,9 +290,9 @@ export default class TracabiliteManager {
                 </div>
                 <div class="lot-card-actions">
                     ${hasPdf ? `
-                        <a href="${pdfUrl}" target="_blank" rel="noopener" class="btn-action btn-view">
+                        <button type="button" class="btn-action btn-view-pdf-disque" data-pdf-url="${pdfUrl.replace(/"/g, '&quot;')}" data-download-filename="disques-session-${session.id}.pdf">
                             <i class="fa-solid fa-eye"></i> Voir le PDF
-                        </a>
+                        </button>
                         <button type="button" class="btn-action btn-download-pdf-disque" data-session-id="${session.id}" data-pdf-url="${pdfUrl.replace(/"/g, '&quot;')}" data-download-filename="disques-session-${session.id}.pdf">
                             <i class="fa-solid fa-download"></i> Télécharger PDF
                         </button>
@@ -381,9 +381,9 @@ export default class TracabiliteManager {
 
                 <div class="lot-card-actions">
                     ${pdfPath ? `
-                        <a href="${api.getServerUrl()}/api/lots/${lot.id}/pdf?v=${Date.now()}" target="_blank" class="btn-action btn-view">
+                        <button type="button" class="btn-action btn-view-pdf" data-pdf-url="${(api.getServerUrl() + '/api/lots/' + lot.id + '/pdf?v=' + Date.now()).replace(/"/g, '&quot;')}" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}">
                             <i class="fa-solid fa-eye"></i> Voir le PDF
-                        </a>
+                        </button>
                         <button type="button" class="btn-action btn-download-pdf" data-lot-id="${lot.id}" data-pdf-path="/api/lots/${lot.id}/pdf" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}">
                             <i class="fa-solid fa-download"></i> Télécharger PDF
                         </button>
@@ -420,6 +420,24 @@ export default class TracabiliteManager {
                 e.stopPropagation();
                 const lotId = btn.dataset.lotId;
                 this.generatePDF(lotId);
+            });
+        });
+
+        // Voir le PDF avec l'application système (Electron) ou dans un nouvel onglet (navigateur)
+        document.querySelectorAll('.btn-view-pdf').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const url = (btn.dataset.pdfUrl || '').replace(/&quot;/g, '"');
+                const filename = (btn.dataset.downloadFilename || '').replace(/&quot;/g, '"') || 'lot.pdf';
+                this.openPdfWithSystemApp(url, filename);
+            });
+        });
+        document.querySelectorAll('.btn-view-pdf-disque').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const url = (btn.dataset.pdfUrl || '').replace(/&quot;/g, '"');
+                const filename = (btn.dataset.downloadFilename || '').replace(/&quot;/g, '"') || 'disques-session.pdf';
+                this.openPdfWithSystemApp(url, filename);
             });
         });
 
@@ -594,6 +612,40 @@ export default class TracabiliteManager {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fa-solid fa-check-double"></i> Récupérer';
             }
+        }
+    }
+
+    /**
+     * Ouvrir le PDF avec l'application système (Electron) ou dans un nouvel onglet (navigateur).
+     */
+    async openPdfWithSystemApp(pdfUrl, suggestedFilename) {
+        if (!pdfUrl || !pdfUrl.trim()) return;
+        // #region agent log
+        fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'tracabilite.js:openPdfWithSystemApp',message:'openPdfWithSystemApp entry',data:{urlStart:(pdfUrl||'').trim().slice(0,100),urlLength:(pdfUrl||'').length,hasElectron:!!window.electron?.invoke,suggestedFilename:(suggestedFilename||'').slice(0,50)},hypothesisId:'H1',timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        if (window.electron?.invoke) {
+            try {
+                const token = localStorage.getItem('workspace_jwt') || '';
+                const result = await window.electron.invoke('open-pdf-with-system-app', {
+                    url: pdfUrl.trim(),
+                    token,
+                    suggestedFilename: suggestedFilename || 'tracabilite.pdf'
+                });
+                // #region agent log
+                fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'tracabilite.js:openPdfWithSystemApp',message:'invoke result',data:{success:result?.success,error:result?.error},hypothesisId:'H2',timestamp:Date.now()})}).catch(()=>{});
+                // #endregion
+                if (!result.success) {
+                    this.showNotification(result.error || 'Impossible d\'ouvrir le PDF', 'error');
+                }
+            } catch (err) {
+                // #region agent log
+                fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'tracabilite.js:openPdfWithSystemApp',message:'invoke catch',data:{errMessage:err?.message,errName:err?.constructor?.name,StringErr:String(err)},hypothesisId:'H2',timestamp:Date.now()})}).catch(()=>{});
+                // #endregion
+                logger.error('❌ openPdfWithSystemApp:', err);
+                this.showNotification('Erreur lors de l\'ouverture du PDF', 'error');
+            }
+        } else {
+            window.open(pdfUrl, '_blank', 'noopener');
         }
     }
 

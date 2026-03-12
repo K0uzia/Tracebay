@@ -698,6 +698,7 @@ export default class HistoriqueManager {
                 <td>${item.type || '-'}</td>
                 <td>${item.marque_name || '-'}</td>
                 <td>${item.modele_name || '-'}</td>
+                <td class="col-os"><i class="fa-brands fa-${item.os === 'windows' ? 'windows' : 'linux'}" title="${item.os === 'windows' ? 'Windows' : 'Linux'}"></i></td>
                 <td>
                     <span class="state-badge state-${item.state?.replace(/\s+/g, '-')}">
                         ${item.state || '-'}
@@ -950,6 +951,12 @@ export default class HistoriqueManager {
                     <td><span class="item-text">${item.type || '-'}</span></td>
                     <td><span class="item-text">${item.marque_name || '-'}</span></td>
                     <td><span class="item-text">${item.modele_name || '-'}</span></td>
+                    <td class="col-os">
+                        <select class="item-os-select" data-item-id="${item.id}">
+                            <option value="linux" ${item.os !== 'windows' ? 'selected' : ''}>Linux</option>
+                            <option value="windows" ${item.os === 'windows' ? 'selected' : ''}>Windows</option>
+                        </select>
+                    </td>
                     <td>
                         <select class="item-state-select" data-item-id="${item.id}">
                             <option value="">-- Sélectionner --</option>
@@ -987,10 +994,12 @@ export default class HistoriqueManager {
             const itemId = stateSelect.dataset.itemId;
             const row = stateSelect.closest('tr');
             const technicianInput = row.querySelector('.item-technician-input');
+            const osSelect = row.querySelector('.item-os-select');
 
             if (itemId && technicianInput) {
                 const state = stateSelect.value.trim();
                 const technician = technicianInput.value.trim();
+                const os = osSelect ? (osSelect.value || 'linux') : 'linux';
                 
                 // Valider que l'état est défini
                 if (!state || state === '') {
@@ -1001,7 +1010,8 @@ export default class HistoriqueManager {
                 updates.push({
                     itemId,
                     state: state,
-                    technician: technician || null
+                    technician: technician || null,
+                    os: os || 'linux'
                 });
             }
         });
@@ -1023,7 +1033,7 @@ export default class HistoriqueManager {
             const serverUrl = api.getServerUrl();
             const endpointPath = '/api/lots/items/:id'.replace(':id', update.itemId);
             const fullUrl = `${serverUrl}${endpointPath}`;
-            logger.debug('💾 Mise à jour item:', JSON.stringify({ itemId: update.itemId, state: update.state, technician: update.technician, fullUrl }, null, 2));
+            logger.debug('💾 Mise à jour item:', JSON.stringify({ itemId: update.itemId, state: update.state, technician: update.technician, os: update.os, fullUrl }, null, 2));
             const response = await fetch(fullUrl, {
                 method: 'PUT',
                 headers: {
@@ -1032,7 +1042,8 @@ export default class HistoriqueManager {
                 },
                 body: JSON.stringify({
                     state: update.state,
-                    technician: update.technician || null
+                    technician: update.technician || null,
+                    os: update.os || 'linux'
                 })
             });
             if (!response.ok) {
