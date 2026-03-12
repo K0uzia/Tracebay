@@ -1,197 +1,134 @@
-.shortcut-toolbar {
+/**
+ * Mes raccourcis – Style aligné sur l’app (home, section, modales)
+ */
+
+/* ---------- Section titre : titre à gauche, barre de recherche + bouton à droite ---------- */
+.shortcut-section-title {
     display: flex;
-    justify-content: space-between;
+    flex-direction: row;
     align-items: center;
-    flex-wrap: wrap;
-    padding: var(--unit-2);
-    margin: var(--unit-2) 0 var(--unit-2) 0;
-    background: var(--blanc);
-    border-radius: var(--radius-medium);
-    box-shadow: var(--shadow-small);
+    justify-content: space-between;
     gap: var(--unit-2);
-    min-width: 0;
-    max-width: 100%;
+    flex-wrap: wrap;
 }
 
+.shortcut-section-title h2 {
+    margin: 0;
+}
+
+.shortcut-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    flex-wrap: wrap;
+}
+
+.shortcut-search-wrap {
+    position: relative;
+    min-width: 200px;
+    max-width: 320px;
+}
+
+.shortcut-search-wrap i {
+    position: absolute;
+    left: var(--unit-2);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--h2);
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.shortcut-search-input {
+    width: 100%;
+    padding: var(--unit-1) var(--unit-2) var(--unit-1) calc(var(--unit-4) + var(--unit-1));
+    border: 1px solid rgba(13, 13, 13, 0.15);
+    border-radius: var(--radius-medium);
+    font: var(--font-text);
+    background-color: var(--blanc);
+    color: var(--text2);
+    box-sizing: border-box;
+}
+
+.shortcut-search-input:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 3px rgba(62, 59, 140, 0.1);
+}
+
+.shortcut-search-input::placeholder {
+    color: var(--text2);
+    opacity: 0.6;
+}
+
+/* Bouton Nouvelle catégorie : hérite du style section button */
+.shortcut-add-category-btn {
+    flex-shrink: 0;
+}
+
+/* ---------- Bloc « Authentification requise » (même style qu’un .block) ---------- */
 .shortcut-auth-required {
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: var(--unit-8);
     text-align: center;
-    background: var(--blanc);
+    padding: var(--unit-4);
+    margin: var(--unit-3) 0;
+    box-shadow: var(--shadow-medium);
     border-radius: var(--radius-medium);
-    box-shadow: var(--shadow-small);
-    margin: var(--unit-4) auto;
-    max-width: 500px;
 }
 
 .shortcut-auth-required.hidden {
     display: none;
 }
 
-.shortcut-content {
-    min-width: 0;
-    max-width: 100%;
-    overflow-x: hidden;
-}
-
-.shortcut-auth-required i {
-    font-size: 1rem;
-    color: var(--blanc);
-}
-.shortcut-auth-required span i {
-    font-size: 4rem;
+.shortcut-auth-required > i {
+    font-size: 2.5rem;
     color: var(--bleu1);
-    margin-bottom: var(--unit-3);
+    margin-bottom: var(--unit-2);
 }
 
 .shortcut-auth-required h3 {
-    margin: 0 0 var(--unit-2) 0;
-    color: var(--noir);
+    margin: 0 0 var(--unit-1) 0;
+    font: var(--block-title-h3);
+    color: var(--h2);
 }
 
 .shortcut-auth-required p {
-    margin: 0 0 var(--unit-3) 0;
-    color: var(--gris);
+    margin: 0 0 var(--unit-2) 0;
+    font: var(--font-text);
+    color: var(--text2);
 }
 
-.search-container {
-    position: relative;
-    flex: 1 1 auto;
-    min-width: 0;
-    max-width: 500px;
+.shortcut-login-btn {
+    /* hérite du style .section button */
+}
+
+/* ---------- Grille : réutilise .grid (home), pas de changement ---------- */
+.shortcut-content .section-contain {
     width: 100%;
-}
-
-.search-container i {
-    position: absolute;
-    left: var(--unit-2);
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--gris);
-    pointer-events: none;
-}
-
-.search-container input {
-    width: 100%;
-    max-width: 100%;
     min-width: 0;
-    box-sizing: border-box;
-    padding: var(--unit-1) var(--unit-2) var(--unit-1) calc(var(--unit-4) + var(--unit-1));
-    border: 1px solid var(--gris-clair);
-    border-radius: var(--radius-small);
-    font-size: 14px;
-    transition: border-color 0.2s;
 }
 
-.search-container input:focus {
-    outline: none;
-    border-color: var(--orange);
-}
-
-#add-category-btn {
-    flex-shrink: 0;
-    white-space: nowrap;
-    min-width: fit-content;
-}
-
-/* Éviter le chevauchement barre de recherche / bouton Nouvelle catégorie en responsive */
-@media (max-width: 700px) {
-    .shortcut-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .search-container {
-        max-width: none;
-    }
-}
-
-@media (max-width: 560px) {
-    .shortcut-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .search-container {
-        max-width: none;
-    }
-}
-
-.shortcut-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    width: 100%;
-    max-width: 100%;
-    min-width: 0;
-    padding: var(--unit-2);
-    gap: var(--unit-2);
-    height: auto;
-    min-height: 0;
-    background: var(--blanc);
-    border-radius: var(--radius-medium);
-    box-shadow: var(--shadow-large);
-    box-sizing: border-box;
-}
-
-/* Responsive : 2 colonnes sur tablette */
-@media (max-width: 900px) {
-    .shortcut-grid {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-
-/* Responsive : 1 colonne sur mobile, liens plus compacts */
-@media (max-width: 600px) {
-    .shortcut-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .shortcut-links {
-        min-height: 180px;
-        max-height: 180px;
-    }
-}
-
-/* Contenu raccourcis : pas de scroll horizontal, contenu contenu dans la largeur */
-.shortcut .section-contain {
-    min-width: 0;
-    max-width: 100%;
-    overflow-x: hidden;
-}
-
-.shortcut-container {
+/* ---------- Carte catégorie : .shortcut-container.block ---------- */
+.shortcut-container.block {
     display: flex;
     flex-direction: column;
-    min-width: 0;
-    max-width: 100%;
-    height: auto;
-    padding: var(--unit-2);
-    gap: var(--unit-2);
-    background: var(--blanc);
-    box-shadow: var(--shadow-small);
-    border-radius: var(--radius-medium);
+    height: 100%;
+    min-height: 0;
 }
 
-.shortcut-title {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
+.shortcut-title.block-title {
     justify-content: space-between;
-    gap: var(--unit-1);
-    min-width: 0;
+    gap: var(--unit-2);
+    flex-wrap: wrap;
 }
 
-.shortcut-title h3 {
-    border-bottom: 2px solid var(--orange);
-    font: var(--block-title-h3);
-    color: var(--h2);
-    margin: 0;
+.shortcut-title.block-title h3 {
     flex: 1 1 auto;
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    margin: 0 0 var(--unit-2) 0;
 }
 
 .shortcut-title-actions {
@@ -200,135 +137,41 @@
     flex-shrink: 0;
 }
 
-.shortcut-rename-btn {
-    background: none;
-    border: none;
-    color: var(--gris);
-    cursor: pointer;
-    padding: var(--unit-1);
-    border-radius: var(--radius-small);
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-}
-
-.shortcut-rename-btn:hover {
-    background: var(--gris-clair);
-    color: var(--orange);
-}
-
+/* Boutons Ajouter / Gérer sur la carte : style ghost (surcharge section button) */
+.shortcut-add-shortcut-btn,
 .shortcut-manage-btn {
-    background: none;
-    border: none;
-    color: var(--gris);
-    cursor: pointer;
-    padding: var(--unit-1);
-    border-radius: var(--radius-small);
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    background: transparent !important;
+    color: var(--h2) !important;
+    padding: var(--unit-1) var(--unit-1) !important;
+    box-shadow: none !important;
 }
 
+.shortcut-add-shortcut-btn:hover,
 .shortcut-manage-btn:hover {
-    background: var(--gris-clair);
-    color: var(--orange);
+    background: rgba(13, 13, 13, 0.06) !important;
+    color: var(--orange) !important;
 }
 
-.shortcut-link {
-    background: var(--blanc);
-    border: 1px solid var(--gris-clair);
-    border-radius: var(--radius-small);
-    padding: var(--unit-1) var(--unit-2);
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: left;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    gap: var(--unit-1);
+.shortcut-btn-label {
+    margin-left: 4px;
+}
+
+@media (max-width: 520px) {
+    .shortcut-btn-label {
+        display: none;
+    }
+}
+
+/* ---------- Liste de raccourcis (.shortcut-links.block-content) ---------- */
+.shortcut-links.block-content {
     flex: 1;
-    min-width: 0;
-    min-height: 36px;
+    min-height: 0;
+    max-height: 280px;
+    overflow-y: auto;
 }
-
-.shortcut-link:hover {
-    background: var(--orange);
-    color: var(--blanc);
-    border-color: var(--orange);
-    transform: translateY(-1px);
-}
-
-.shortcut-link i {
-    font-size: 12px;
-}
-
-.shortcut-link span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-}
-
-.shortcut-favicon {
-    width: 16px;
-    height: 16px;
-    display: inline-block;
-    margin-right: 2px;
-    object-fit: contain;
-}
-
-.shortcut-fallback-icon {
-    display: none;
-    font-size: 12px;
-    margin-right: 2px;
-}
-
-.shortcut-item-wrapper {
-    display: flex;
-    gap: calc(var(--unit-1) / 2);
-    align-items: stretch;
-    min-height: 36px;
-}
-
-.shortcut-edit-btn {
-    background: none;
-    border: none;
-    color: var(--gris);
-    cursor: pointer;
-    padding: var(--unit-1);
-    border-radius: var(--radius-small);
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    flex-shrink: 0;
-    min-width: 32px;
-    min-height: 36px;
-    box-sizing: border-box;
-}
-
-.shortcut-edit-btn:hover {
-    background: var(--gris-clair);
-    color: var(--bleu1);
-}
-
-.shortcut-links {
-    display: flex;
-    flex-direction: column;
-    min-height: 250px;
-    max-height: 250px;
-    overflow: auto;
-    gap: var(--unit-1);
-}
-
-/* ========== SCROLLBAR STYLING ========== */
 
 .shortcut-links::-webkit-scrollbar {
-    width: calc(var(--unit-1) * 0.75);
+    width: 6px;
 }
 
 .shortcut-links::-webkit-scrollbar-track {
@@ -337,63 +180,193 @@
 
 .shortcut-links::-webkit-scrollbar-thumb {
     background: var(--scrollbar-color);
+    border-radius: var(--radius-small);
 }
 
 .shortcut-links::-webkit-scrollbar-thumb:hover {
     background: var(--orange);
 }
 
-/* Conteneur des modales raccourcis : respect du scroll et largeur */
+/* Ligne : lien (bouton) + actions */
+.shortcut-item-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
+}
+
+.shortcut-link {
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-start;
+    text-align: left;
+}
+
+.shortcut-link span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.shortcut-favicon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    object-fit: contain;
+}
+
+.shortcut-fallback-icon {
+    display: none;
+}
+
+.shortcut-internal-icon {
+    font-size: 1rem;
+    margin-right: 2px;
+    color: var(--orange);
+}
+
+/* Boutons Modifier / Supprimer sur la grille : style ghost */
+.shortcut-item-actions-inline {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.shortcut-edit-btn,
+.shortcut-delete-btn {
+    background: transparent !important;
+    color: var(--h2) !important;
+    padding: var(--unit-1) !important;
+    min-width: 32px;
+    min-height: 32px;
+    box-shadow: none !important;
+}
+
+.shortcut-edit-btn:hover {
+    background: rgba(62, 59, 140, 0.12) !important;
+    color: var(--bleu1) !important;
+}
+
+.shortcut-delete-btn:hover {
+    background: rgba(198, 40, 40, 0.12) !important;
+    color: var(--error) !important;
+}
+
+/* ---------- Messages vides ---------- */
+.shortcut-empty-message {
+    margin: 0;
+    padding: var(--unit-2);
+    font: var(--font-text);
+    color: var(--text2);
+    opacity: 0.8;
+}
+
+.shortcuts-empty {
+    margin: 0;
+    padding: var(--unit-2);
+    font: var(--font-text);
+    color: var(--text2);
+    opacity: 0.8;
+}
+
+/* ---------- Modales (contenu généré par ShortcutManager) ---------- */
 .manage-shortcuts {
     display: flex;
     flex-direction: column;
+    gap: var(--unit-3);
+}
+
+.manage-shortcuts-section-title {
+    margin: 0 0 var(--unit-1) 0;
+    font: var(--block-title-h3);
+    font-size: 1rem;
+    color: var(--h2);
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
+}
+
+.manage-shortcuts-section-title i {
+    color: var(--orange);
+}
+
+.manage-shortcuts-hint {
+    font-size: 0.85rem;
+    color: var(--text2);
+    opacity: 0.85;
+    margin: 0 0 var(--unit-1) 0;
+}
+
+.manage-shortcuts-hint strong {
+    font-weight: 600;
+    color: var(--h2);
+}
+
+.manage-shortcuts-rename {
+    padding-bottom: var(--unit-2);
+    border-bottom: 1px solid rgba(13, 13, 13, 0.08);
+}
+
+.form-row-rename {
+    display: flex;
     gap: var(--unit-2);
-    min-height: 0;
-    min-width: 0;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.manage-category-name-input {
+    flex: 1;
+    min-width: 160px;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid rgba(13, 13, 13, 0.15);
+    border-radius: var(--radius-medium);
+    font: var(--font-text);
+    background-color: var(--blanc);
+    color: var(--text2);
+}
+
+.manage-category-name-input:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 3px rgba(62, 59, 140, 0.1);
 }
 
 .shortcuts-list {
     display: flex;
     flex-direction: column;
     gap: var(--unit-1);
-    max-height: 400px;
+    max-height: 320px;
     overflow-y: auto;
     padding: var(--unit-1);
-    background: var(--gris-tres-clair);
+    background: rgba(13, 13, 13, 0.04);
     border-radius: var(--radius-small);
 }
 
 .shortcut-item {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    gap: var(--unit-2);
     padding: var(--unit-1) var(--unit-2);
     background: var(--blanc);
     border-radius: var(--radius-small);
-    gap: var(--unit-2);
-    cursor: move;
-    transition: all 0.2s;
     border: 1px solid transparent;
+    cursor: move;
+    transition: var(--transition);
 }
 
 .shortcut-item.dragging {
-    opacity: 0.5;
-    background: var(--gris-tres-clair);
+    opacity: 0.6;
     border-color: var(--orange);
 }
 
 .shortcut-item:hover {
-    border-color: var(--gris-clair);
-    box-shadow: var(--shadow-small);
+    border-color: rgba(13, 13, 13, 0.1);
 }
 
 .shortcut-drag-handle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    color: var(--text2);
+    opacity: 0.6;
     cursor: grab;
-    color: var(--gris);
-    padding: calc(var(--unit-1) / 2);
+    padding: 4px;
 }
 
 .shortcut-drag-handle:active {
@@ -402,112 +375,110 @@
 
 .shortcut-item-actions {
     display: flex;
-    gap: calc(var(--unit-1) / 2);
+    gap: var(--unit-1);
     flex-shrink: 0;
 }
 
 .shortcut-info {
-    display: flex;
-    flex-direction: column;
-    gap: calc(var(--unit-1) / 2);
     flex: 1;
     min-width: 0;
 }
 
 .shortcut-info strong {
+    display: block;
+    font-size: 0.95rem;
     color: var(--h2);
-    font-size: 14px;
 }
 
 .shortcut-info small {
-    color: var(--gris);
-    font-size: 12px;
+    font-size: 0.8rem;
+    color: var(--text2);
+    opacity: 0.85;
     word-break: break-all;
+}
+
+.btn-edit-inline,
+.btn-delete-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-1);
+    padding: var(--unit-1) var(--unit-2);
+    border-radius: var(--radius-small);
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: var(--transition);
+}
+
+.btn-edit-inline {
+    background: rgba(13, 13, 13, 0.06);
+    color: var(--h2);
+}
+
+.btn-edit-inline:hover {
+    background: rgba(62, 59, 140, 0.12);
+    color: var(--bleu1);
+    border-color: var(--bleu1);
+}
+
+.btn-delete-inline {
+    background: rgba(198, 40, 40, 0.08);
+    color: var(--error);
+}
+
+.btn-delete-inline:hover {
+    background: rgba(198, 40, 40, 0.15);
+    border-color: var(--error);
+}
+
+.form-group.hidden {
+    display: none;
+}
+
+/* ---------- Tailles de boutons unifiées dans les modales raccourcis ---------- */
+.shortcut-modal .modal-footer button,
+.shortcut-modal .shortcut-modal-btn,
+.shortcut-modal .modal-body .modal-submit-btn,
+.shortcut-modal .modal-body .modal-cancel-btn,
+.shortcut-modal .modal-body .btn-danger {
+    padding: var(--unit-1) var(--unit-3);
+    font-size: 0.9rem;
+    min-height: 36px;
+}
+
+.shortcut-modal #manage-rename-category-btn {
+    padding: var(--unit-1) var(--unit-3);
+    font-size: 0.9rem;
+}
+
+.shortcut-form-type-row select {
+    min-width: 140px;
 }
 
 .form-row {
     display: flex;
-    gap: var(--unit-1);
-    align-items: stretch;
-    min-width: 0;
+    gap: var(--unit-2);
+    margin-top: var(--unit-1);
 }
 
-.form-row input {
-    flex: 1;
-    min-width: 0;
-    padding: var(--unit-1) var(--unit-2);
-    border: 1px solid var(--gris-clair);
-    border-radius: var(--radius-small);
-    font-size: 14px;
+/* ---------- Responsive ---------- */
+@media (max-width: 980px) {
+    .shortcut-grid.grid {
+        grid-template-columns: 1fr;
+    }
 }
 
-.form-row input:focus {
-    outline: none;
-    border-color: var(--orange);
-}
+@media (max-width: 700px) {
+    .shortcut-section-title {
+        flex-direction: column;
+        align-items: stretch;
+    }
 
-.btn-icon {
-    background: none;
-    border: none;
-    color: var(--gris);
-    cursor: pointer;
-    padding: var(--unit-1);
-    border-radius: var(--radius-small);
-    transition: all 0.2s;
-}
+    .shortcut-toolbar {
+        width: 100%;
+    }
 
-.btn-icon:hover {
-    background: var(--gris-clair);
-}
-
-.btn-delete:hover {
-    background: #ffebee;
-    color: #d32f2f;
-}
-
-.modal-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--unit-1);
-    margin-top: var(--unit-2);
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-    gap: calc(var(--unit-1) / 2);
-    margin-bottom: var(--unit-2);
-}
-
-.form-group label {
-    font-weight: 500;
-    color: var(--h2);
-    font-size: 14px;
-}
-
-.form-group input {
-    padding: var(--unit-1) var(--unit-2);
-    border: 1px solid var(--gris-clair);
-    border-radius: var(--radius-small);
-    font-size: 14px;
-}
-
-.form-group input:focus {
-    outline: none;
-    border-color: var(--orange);
-}
-
-.shortcut-empty-message {
-    grid-column: 1/-1;
-    text-align: center;
-    color: var(--gris);
-    padding: var(--unit-4);
-    font-size: 14px;
-}
-
-.shortcuts-empty {
-    text-align: center;
-    color: var(--gris);
-    padding: var(--unit-2);
-    font-size: 14px;
+    .shortcut-search-wrap {
+        max-width: none;
+    }
 }

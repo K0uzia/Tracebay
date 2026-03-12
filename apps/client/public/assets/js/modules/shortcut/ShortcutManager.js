@@ -69,6 +69,12 @@ export default class ShortcutManager {
         }
     }
 
+    /**
+     * Charge les catégories et raccourcis depuis l’API.
+     * Le backend doit filtrer par utilisateur authentifié (JWT) : GET /api/shortcuts/categories
+     * et GET /api/shortcuts ne doivent retourner que les données du compte connecté.
+     * Voir docs/backend-shortcuts-api.md pour le contrat backend.
+     */
     async loadShortcuts() {
         const token = localStorage.getItem('workspace_jwt');
         
@@ -204,53 +210,90 @@ export default class ShortcutManager {
 
     renderCategory(category) {
         return `
-            <div class="shortcut-container" data-category-id="${category.id}">
-                <div class="shortcut-title">
-                    <h3>${this.escapeHtml(category.name)}</h3>
-                    <div class="shortcut-title-actions">
-                        <button class="shortcut-rename-btn" data-rename-category="${category.id}" title="Renommer cette catégorie">
-                            <i class="fas fa-pencil"></i>
-                        </button>
-                        <button class="shortcut-manage-btn" data-category-id="${category.id}" title="Gérer les raccourcis">
-                            <i class="fas fa-cog"></i>
-                        </button>
+            <div class="grid-item">
+                <div class="shortcut-container block" data-category-id="${category.id}">
+                    <div class="shortcut-title block-title">
+                        <h3>${this.escapeHtml(category.name)}</h3>
+                        <div class="shortcut-title-actions">
+                            <button type="button" class="shortcut-add-shortcut-btn" data-add-shortcut="${category.id}" title="Ajouter un raccourci dans cette catégorie">
+                                <i class="fas fa-plus"></i><span class="shortcut-btn-label">Ajouter</span>
+                            </button>
+                            <button type="button" class="shortcut-manage-btn" data-category-id="${category.id}" title="Gérer (renommer, modifier, supprimer, réordonner)">
+                                <i class="fas fa-cog"></i><span class="shortcut-btn-label">Gérer</span>
+                            </button>
+                        </div>
                     </div>
-                </div>
-                <div class="shortcut-links">
-                    ${(category.shortcuts && category.shortcuts.length > 0) 
-                        ? category.shortcuts.map(shortcut => this.renderShortcut(shortcut)).join('') 
-                        : '<p class="shortcut-empty-message">Aucun raccourci dans cette catégorie</p>'}
+                    <div class="shortcut-links block-content">
+                        ${(category.shortcuts && category.shortcuts.length > 0) 
+                            ? category.shortcuts.map(shortcut => this.renderShortcut(shortcut)).join('') 
+                            : '<p class="shortcut-empty-message">Aucun raccourci dans cette catégorie</p>'}
+                    </div>
                 </div>
             </div>
         `;
     }
 
     renderShortcut(shortcut) {
+        const isInternal = this.isInternalShortcut(shortcut.url);
+        const iconClass = isInternal ? this.getInternalIconClass(shortcut.url) : 'fa-link';
         return `
             <div class="shortcut-item-wrapper" data-shortcut-id="${shortcut.id}">
-                <button class="shortcut-link" data-url="${this.escapeHtml(shortcut.url)}" data-name="${this.escapeHtml(shortcut.name)}" aria-label="Ouvrir ${this.escapeHtml(shortcut.name)}">
-                    <img 
-                        class="shortcut-favicon" 
-                        src="${this.getFaviconUrl(shortcut.url)}" 
-                        alt=""
-                    >
-                    <i class="fas fa-link shortcut-fallback-icon"></i>
+                <button class="shortcut-link" data-url="${this.escapeHtml(shortcut.url)}" data-name="${this.escapeHtml(shortcut.name)}" data-internal="${isInternal ? '1' : '0'}" aria-label="Ouvrir ${this.escapeHtml(shortcut.name)}">
+                    ${isInternal
+                        ? `<i class="fas ${iconClass} shortcut-internal-icon"></i>`
+                        : `<img class="shortcut-favicon" src="${this.getFaviconUrl(shortcut.url)}" alt="">
+                           <i class="fas fa-link shortcut-fallback-icon"></i>`}
                     <span>${this.escapeHtml(shortcut.name)}</span>
                 </button>
-                <button class="shortcut-edit-btn" data-edit-shortcut="${shortcut.id}" title="Modifier ce raccourci">
-                    <i class="fas fa-edit"></i>
-                </button>
+                <div class="shortcut-item-actions-inline">
+                    <button type="button" class="shortcut-edit-btn" data-edit-shortcut="${shortcut.id}" title="Modifier">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button type="button" class="shortcut-delete-btn" data-delete-shortcut-inline="${shortcut.id}" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
             </div>
         `;
     }
 
+    /** Raccourci interne (fichier / dossier / logiciel) : préfixe internal:// */
+    isInternalShortcut(url) {
+        return typeof url === 'string' && url.startsWith('internal://');
+    }
+
+    /** Type interne stocké dans l'URL : internal://file///path, internal://folder///path, internal://app///path */
+    getInternalType(url) {
+        if (!this.isInternalShortcut(url)) return null;
+        const m = url.match(/^internal:\/\/(file|folder|app)\//i);
+        return m ? m[1].toLowerCase() : null;
+    }
+
+    /** Chemin extrait d'une URL interne (sans le préfixe internal://type/) */
+    getInternalPath(url) {
+        if (!this.isInternalShortcut(url)) return '';
+        return url.replace(/^internal:\/\/(?:file|folder|app)\/+/i, '').trim();
+    }
+
+    /** Icône FontAwesome pour un raccourci interne selon le type */
+    getInternalIconClass(url) {
+        const t = this.getInternalType(url);
+        if (t === 'file') return 'fa-file';
+        if (t === 'folder') return 'fa-folder';
+        if (t === 'app') return 'fa-gear';
+        return 'fa-folder-open';
+    }
+
     /**
      * Retourne l'URL de la favicon pour un lien.
-     * - Localhost / IP privées : /favicon.ico à l'origine (ex. http://192.168.1.62:4000/favicon.ico) pour récupérer la vraie favicon si le serveur en a une.
+     * - Raccourcis internes (internal://) : pas de favicon (on utilise une icône).
+     * - Localhost / IP privées : /favicon.ico à l'origine.
      * - Domaines publics : service Google (Figma, etc.).
-     * En cas d'échec (404, cert, blocage), le fallback (icône lien) s'affiche.
      */
     getFaviconUrl(url) {
+        if (this.isInternalShortcut(url)) {
+            return 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 1 1%22%3E%3C/svg%3E';
+        }
         try {
             const urlObj = new URL(url);
             const hostname = urlObj.hostname;
@@ -270,24 +313,43 @@ export default class ShortcutManager {
             btn.addEventListener('click', () => {
                 const url = btn.dataset.url;
                 const name = btn.dataset.name;
-                
-                // Tracker le clic sur le raccourci
+                const isInternal = btn.dataset.internal === '1';
+
                 if (window.recentItemsManager && name && url) {
                     window.recentItemsManager.trackShortcutClick(name, url);
                     window.recentItemsManager.display();
-                } else if (url) {
-                    // Try Electron API first
-                    if (window.electronAPI?.openExternal) {
-                        logger.debug('🌐 Ouverture raccourci:', url);
-                        window.electronAPI.openExternal(url);
-                    } else if (window.electron?.openExternal) {
-                        window.electron.openExternal(url);
-                    } else if (typeof window.ipcRenderer !== 'undefined' && window.ipcRenderer.invoke) {
-                        window.ipcRenderer.invoke('open-external', url);
-                    } else {
-                        // Fallback to opening in default browser
-                        window.open(url, '_blank');
+                }
+                if (!url) return;
+
+                if (isInternal && this.isInternalShortcut(url)) {
+                    const path = this.getInternalPath(url);
+                    if (path && window.electronAPI?.openPath) {
+                        logger.debug('📂 Ouverture raccourci interne:', path);
+                        window.electronAPI.openPath(path).catch((err) => {
+                            logger.error('❌ openPath:', err);
+                            window.app?.showNotification?.(err?.error || 'Impossible d\'ouvrir le chemin', 'error');
+                        });
                     }
+                    return;
+                }
+
+                if (window.electronAPI?.openExternal && (url.startsWith('http://') || url.startsWith('https://'))) {
+                    logger.debug('🌐 Ouverture raccourci:', url);
+                    window.electronAPI.openExternal(url);
+                } else if (window.electronAPI?.openPath && typeof url === 'string' && url.trim()) {
+                    logger.debug('📂 Ouverture chemin (non-URL):', url);
+                    window.electronAPI.openPath(url.trim()).catch((err) => {
+                        logger.error('❌ openPath:', err);
+                        window.app?.showNotification?.(err?.error || 'Impossible d\'ouvrir', 'error');
+                    });
+                } else if (window.electron?.openExternal && (url.startsWith('http://') || url.startsWith('https://'))) {
+                    window.electron.openExternal(url);
+                } else if (typeof window.ipcRenderer !== 'undefined' && window.ipcRenderer.invoke && (url.startsWith('http://') || url.startsWith('https://'))) {
+                    window.ipcRenderer.invoke('open-external', url);
+                } else if (url.startsWith('http://') || url.startsWith('https://')) {
+                    window.open(url, '_blank');
+                } else {
+                    window.app?.showNotification?.('URL ou chemin invalide', 'warning');
                 }
             });
         });
@@ -387,16 +449,17 @@ export default class ShortcutManager {
             });
         });
 
-        document.querySelectorAll('.shortcut-rename-btn').forEach(btn => {
+        document.querySelectorAll('.shortcut-add-shortcut-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                const categoryId = parseInt(btn.dataset.renameCategory);
-                this.openRenameModal(categoryId);
+                const categoryId = parseInt(btn.dataset.addShortcut);
+                if (categoryId) this.openAddShortcutModal(categoryId);
             });
         });
 
         document.querySelectorAll('.shortcut-edit-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 const shortcutId = parseInt(btn.dataset.editShortcut);
                 const shortcutWrapper = btn.closest('.shortcut-item-wrapper');
@@ -406,6 +469,17 @@ export default class ShortcutManager {
                     const name = shortcutWrapper.querySelector('.shortcut-link').dataset.name;
                     const url = shortcutWrapper.querySelector('.shortcut-link').dataset.url;
                     this.openEditShortcutModal(shortcutId, categoryId, name, url);
+                }
+            });
+        });
+        document.querySelectorAll('.shortcut-delete-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const shortcutId = parseInt(btn.dataset.deleteShortcutInline, 10);
+                if (!shortcutId) return;
+                if (confirm('Supprimer ce raccourci ?')) {
+                    this.deleteShortcut(shortcutId).then((ok) => ok && this.loadShortcuts().then(() => this.render()));
                 }
             });
         });
@@ -421,24 +495,30 @@ export default class ShortcutManager {
             <form id="add-category-form">
                 <div class="form-group">
                     <label for="category-name">Nom de la catégorie</label>
-                    <input type="text" id="category-name" required>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" data-close>Annuler</button>
-                    <button type="submit" class="btn btn-primary">Créer</button>
+                    <input type="text" id="category-name" placeholder="Ex : Travail, Perso…" required>
                 </div>
             </form>
-        `);
+        `, {
+            modalClass: 'shortcut-modal',
+            footer: `
+                <button type="button" class="modal-cancel-btn shortcut-modal-btn" data-close>Annuler</button>
+                <button type="button" class="modal-submit-btn shortcut-modal-btn" id="add-category-submit-btn"><i class="fas fa-plus"></i> Créer</button>
+            `
+        });
 
         const form = modal.querySelector('#add-category-form');
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
+        const submitBtn = modal.querySelector('#add-category-submit-btn');
+        submitBtn.addEventListener('click', () => {
             const name = document.getElementById('category-name').value.trim();
             if (name) {
                 this.addCategory(name);
                 modal.close();
                 modal.remove();
             }
+        });
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            submitBtn.click();
         });
 
         modal.querySelector('[data-close]').addEventListener('click', () => {
@@ -455,44 +535,53 @@ export default class ShortcutManager {
         const category = this.categories.find(c => c.id === categoryId);
         if (!category) return;
 
-        const modal = this.createModal(`Gérer "${category.name}"`, `
+        const modal = this.createModal(`Gérer la catégorie : ${this.escapeHtml(category.name)}`, `
             <div class="manage-shortcuts">
-                <div class="shortcuts-list" id="shortcuts-list" data-category-id="${categoryId}">
-                    ${category.shortcuts.length === 0 ? '<p class="shortcuts-empty">Aucun raccourci dans cette catégorie</p>' : category.shortcuts.map((s, idx) => `
-                        <div class="shortcut-item" data-shortcut-id="${s.id}" draggable="true" data-index="${idx}">
-                            <div class="shortcut-drag-handle">
-                                <i class="fas fa-grip-vertical"></i>
-                            </div>
-                            <div class="shortcut-info">
-                                <strong>${this.escapeHtml(s.name)}</strong>
-                                <small>${this.escapeHtml(s.url)}</small>
-                            </div>
-                            <div class="shortcut-item-actions">
-                                <button class="btn-icon btn-edit" data-edit-inline="${s.id}" title="Modifier">
-                                    <i class="fas fa-edit"></i>
-                                </button>
-                                <button class="btn-icon btn-delete" data-delete-shortcut="${s.id}" title="Supprimer">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-                <form id="add-shortcut-form">
-                    <div class="form-row">
-                        <input type="text" id="shortcut-name" placeholder="Nom" required>
-                        <input type="url" id="shortcut-url" placeholder="URL" required>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-plus"></i> Ajouter
-                        </button>
+                <div class="manage-shortcuts-section manage-shortcuts-rename">
+                    <h3 class="manage-shortcuts-section-title"><i class="fas fa-tag"></i> Nom de la catégorie</h3>
+                    <div class="form-row form-row-rename">
+                        <input type="text" id="manage-category-name" value="${this.escapeHtml(category.name)}" placeholder="Nom de la catégorie" class="manage-category-name-input">
+                        <button type="button" class="modal-submit-btn" id="manage-rename-category-btn"><i class="fas fa-check"></i> Enregistrer le nom</button>
                     </div>
-                </form>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-danger" data-delete-category>Supprimer la catégorie</button>
-                    <button type="button" class="btn btn-secondary" data-close>Fermer</button>
+                </div>
+                <div class="manage-shortcuts-section">
+                    <h3 class="manage-shortcuts-section-title"><i class="fas fa-list"></i> Raccourcis dans cette catégorie</h3>
+                    <p class="manage-shortcuts-hint">Glissez pour réordonner. Utilisez <strong>Modifier</strong> ou <strong>Supprimer</strong> pour chaque ligne.</p>
+                    <div class="shortcuts-list" id="shortcuts-list" data-category-id="${categoryId}">
+                        ${category.shortcuts.length === 0 ? '<p class="shortcuts-empty">Aucun raccourci. Utilisez le bouton « Ajouter » sur la carte pour en ajouter.</p>' : category.shortcuts.map((s, idx) => {
+                            const displayUrl = this.isInternalShortcut(s.url) ? this.getInternalPath(s.url) || s.url : s.url;
+                            return `
+                            <div class="shortcut-item" data-shortcut-id="${s.id}" data-shortcut-url="${this.escapeHtml(s.url)}" draggable="true" data-index="${idx}">
+                                <div class="shortcut-drag-handle">
+                                    <i class="fas fa-grip-vertical"></i>
+                                </div>
+                                <div class="shortcut-info">
+                                    <strong>${this.escapeHtml(s.name)}</strong>
+                                    <small>${this.escapeHtml(displayUrl)}</small>
+                                </div>
+                                <div class="shortcut-item-actions">
+                                    <button type="button" class="btn btn-edit-inline" data-edit-inline="${s.id}" title="Modifier">
+                                        <i class="fas fa-edit"></i> Modifier
+                                    </button>
+                                    <button type="button" class="btn btn-delete-inline" data-delete-shortcut="${s.id}" title="Supprimer">
+                                        <i class="fas fa-trash"></i> Supprimer
+                                    </button>
+                                </div>
+                            </div>`;
+                        }).join('')}
+                    </div>
                 </div>
             </div>
-        `, { size: 'md' });
+        `, {
+            modalClass: 'shortcut-modal',
+            size: 'lg',
+            footer: `
+                <button type="button" class="btn-danger shortcut-modal-btn" data-delete-category title="Supprime la catégorie et tous ses raccourcis">
+                    <i class="fas fa-trash"></i> Supprimer la catégorie
+                </button>
+                <button type="button" class="modal-cancel-btn shortcut-modal-btn" data-close>Fermer</button>
+            `
+        });
 
         let hasReordered = false;
         modal.addEventListener('close', () => {
@@ -507,22 +596,25 @@ export default class ShortcutManager {
             modal.remove();
         }, { once: true });
 
-        const addForm = modal.querySelector('#add-shortcut-form');
-        addForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const name = document.getElementById('shortcut-name').value.trim();
-            const url = document.getElementById('shortcut-url').value.trim();
-            if (name && url) {
-                this.addShortcut(categoryId, name, url);
-                modal.close();
-                modal.remove();
-                this.render();
-            }
-        });
+        const renameInput = modal.querySelector('#manage-category-name');
+        const renameBtn = modal.querySelector('#manage-rename-category-btn');
+        if (renameBtn && renameInput) {
+            renameBtn.addEventListener('click', async () => {
+                const newName = renameInput.value.trim();
+                if (!newName) return;
+                const success = await this.renameCategory(categoryId, newName);
+                if (success) {
+                    category.name = newName;
+                    const headerTitle = modal.querySelector('.modal-header h2');
+                    if (headerTitle) headerTitle.textContent = `Gérer la catégorie : ${newName}`;
+                }
+            });
+        }
 
         modal.querySelectorAll('[data-delete-shortcut]').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const shortcutId = parseInt(btn.dataset.deleteShortcut, 10);
+                if (!confirm('Supprimer ce raccourci ?')) return;
                 const success = await this.deleteShortcut(shortcutId);
                 if (success) {
                     modal.close();
@@ -538,7 +630,9 @@ export default class ShortcutManager {
                 const shortcutId = parseInt(btn.dataset.editInline);
                 const shortcutItem = btn.closest('.shortcut-item');
                 const name = shortcutItem.querySelector('.shortcut-info strong').textContent;
-                const url = shortcutItem.querySelector('.shortcut-info small').textContent;
+                const url = shortcutItem.dataset.shortcutUrl || shortcutItem.querySelector('.shortcut-info small').textContent;
+                modal.close();
+                modal.remove();
                 this.openEditShortcutModal(shortcutId, categoryId, name, url);
             });
         });
@@ -579,6 +673,7 @@ export default class ShortcutManager {
             if (success) {
                 modal.close();
                 modal.remove();
+                this.render();
             }
         });
 
@@ -588,6 +683,110 @@ export default class ShortcutManager {
 
         document.body.appendChild(modal);
         modal.showModal();
+    }
+
+    /**
+     * Ouvre la modale pour ajouter un raccourci dans une catégorie donnée.
+     * @param {number} categoryId - ID de la catégorie
+     */
+    openAddShortcutModal(categoryId) {
+        if (!this.isAuthenticated()) {
+            alert('Vous devez être connecté pour ajouter un raccourci');
+            return;
+        }
+        const category = this.categories.find(c => c.id === categoryId);
+        const categoryName = category ? category.name : '';
+
+        const modal = this.createModal(`Ajouter un raccourci${categoryName ? ` dans « ${this.escapeHtml(categoryName)} »` : ''}`, `
+            <form id="add-shortcut-modal-form" class="add-shortcut-modal-form">
+                <div class="form-group shortcut-form-type-row">
+                    <label for="add-shortcut-type">Type</label>
+                    <select id="add-shortcut-type">
+                        <option value="url">URL</option>
+                        <option value="file">Fichier</option>
+                        <option value="folder">Dossier</option>
+                        <option value="app">Logiciel</option>
+                    </select>
+                </div>
+                <div class="form-group" id="add-shortcut-url-group">
+                    <label for="add-shortcut-url">URL</label>
+                    <input type="url" id="add-shortcut-url" placeholder="https://example.com">
+                </div>
+                <div class="form-group hidden" id="add-shortcut-path-group">
+                    <label for="add-shortcut-path">Chemin</label>
+                    <input type="text" id="add-shortcut-path" placeholder="/chemin/vers/fichier ou dossier">
+                </div>
+                <div class="form-group">
+                    <label for="add-shortcut-name">Nom</label>
+                    <input type="text" id="add-shortcut-name" placeholder="Nom du raccourci" required>
+                </div>
+            </form>
+        `, {
+            modalClass: 'shortcut-modal',
+            footer: `
+                <button type="button" class="modal-cancel-btn shortcut-modal-btn" data-close>Annuler</button>
+                <button type="button" class="modal-submit-btn shortcut-modal-btn" id="add-shortcut-submit-btn"><i class="fas fa-plus"></i> Ajouter</button>
+            `
+        });
+
+        const typeSelect = modal.querySelector('#add-shortcut-type');
+        const urlGroup = modal.querySelector('#add-shortcut-url-group');
+        const pathGroup = modal.querySelector('#add-shortcut-path-group');
+        const urlInput = modal.querySelector('#add-shortcut-url');
+        const pathInput = modal.querySelector('#add-shortcut-path');
+        const toggleType = () => {
+            const type = typeSelect?.value || 'url';
+            const isInternal = type === 'file' || type === 'folder' || type === 'app';
+            if (urlGroup) urlGroup.classList.toggle('hidden', isInternal);
+            if (pathGroup) pathGroup.classList.toggle('hidden', !isInternal);
+            if (urlInput) urlInput.removeAttribute('required');
+            if (pathInput) pathInput.required = isInternal;
+        };
+        typeSelect?.addEventListener('change', toggleType);
+        toggleType();
+
+        const submitBtn = modal.querySelector('#add-shortcut-submit-btn');
+        const form = modal.querySelector('#add-shortcut-modal-form');
+        const doSubmit = () => {
+            const name = modal.querySelector('#add-shortcut-name').value.trim();
+            const type = typeSelect?.value || 'url';
+            const isInternal = type === 'file' || type === 'folder' || type === 'app';
+            let url;
+            if (isInternal) {
+                const path = (modal.querySelector('#add-shortcut-path').value || '').trim();
+                if (!path) {
+                    alert('Veuillez saisir le chemin');
+                    return;
+                }
+                url = 'internal://' + type + '///' + path.replace(/^\/+/, '');
+            } else {
+                url = (modal.querySelector('#add-shortcut-url').value || '').trim();
+                if (!url) {
+                    alert('Veuillez saisir l\'URL');
+                    return;
+                }
+            }
+            if (name && url) {
+                this.addShortcut(categoryId, name, url);
+                modal.close();
+                modal.remove();
+                this.render();
+            }
+        };
+        submitBtn.addEventListener('click', doSubmit);
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            doSubmit();
+        });
+
+        modal.querySelector('[data-close]').addEventListener('click', () => {
+            modal.close();
+            modal.remove();
+        });
+
+        document.body.appendChild(modal);
+        modal.showModal();
+        modal.querySelector('#add-shortcut-name').focus();
     }
 
     getDragAfterElement(container, y) {
@@ -608,13 +807,14 @@ export default class ShortcutManager {
     /**
      * Crée une modale alignée sur la structure universal-modal (modal.css).
      * @param {string} title - Titre de la modale
-     * @param {string} content - HTML du corps
-     * @param {{ size?: 'md' | 'lg' }} options - size: 'md' ou 'lg' pour modale plus large
+     * @param {string} content - HTML du corps (modal-body)
+     * @param {{ size?: 'md' | 'lg', footer?: string, modalClass?: string }} options - size, footer, classe sur le dialog
      */
     createModal(title, content, options = {}) {
         const sizeClass = options.size ? ` modal-${options.size}` : '';
+        const footerHtml = options.footer ? `<div class="modal-footer">${options.footer}</div>` : '';
         const modal = document.createElement('dialog');
-        modal.className = 'universal-modal';
+        modal.className = 'universal-modal' + (options.modalClass ? ' ' + options.modalClass : '');
         modal.innerHTML = `
             <div class="modal-content${sizeClass}">
                 <div class="modal-header">
@@ -626,6 +826,7 @@ export default class ShortcutManager {
                 <div class="modal-body">
                     ${content}
                 </div>
+                ${footerHtml}
             </div>
         `;
         modal.querySelector('[data-dialog-close]')?.addEventListener('click', () => {
@@ -802,78 +1003,93 @@ export default class ShortcutManager {
         }
     }
 
-    openRenameModal(categoryId) {
-        const category = this.categories.find(c => c.id === categoryId);
-        if (!category) return;
-
-        const modal = this.createModal('Renommer la catégorie', `
-            <form id="rename-category-form">
-                <div class="form-group">
-                    <label for="rename-category-input">Nouveau nom</label>
-                    <input type="text" id="rename-category-input" value="${this.escapeHtml(category.name)}" required>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" data-close>Annuler</button>
-                    <button type="submit" class="btn btn-primary">Renommer</button>
-                </div>
-            </form>
-        `);
-
-        const form = modal.querySelector('#rename-category-form');
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            const newName = document.getElementById('rename-category-input').value.trim();
-            if (newName && newName !== category.name) {
-                this.renameCategory(categoryId, newName);
-                modal.close();
-                modal.remove();
-            } else if (newName === category.name) {
-                modal.close();
-                modal.remove();
-            }
-        });
-
-        modal.querySelector('[data-close]').addEventListener('click', () => {
-            modal.close();
-            modal.remove();
-        });
-
-        document.body.appendChild(modal);
-        modal.showModal();
-        document.getElementById('rename-category-input').select();
-    }
-
     openEditShortcutModal(shortcutId, categoryId, name, url) {
+        const isInternal = this.isInternalShortcut(url);
+        const editType = isInternal ? (this.getInternalType(url) || 'file') : 'url';
+        const editPath = isInternal ? this.getInternalPath(url) : '';
+        const editUrl = isInternal ? '' : url;
+        const pathGroupHidden = !isInternal ? ' hidden' : '';
+        const urlGroupHidden = isInternal ? ' hidden' : '';
+
         const modal = this.createModal('Modifier le raccourci', `
             <form id="edit-shortcut-form">
                 <div class="form-group">
                     <label for="edit-shortcut-name">Nom</label>
                     <input type="text" id="edit-shortcut-name" value="${this.escapeHtml(name)}" required>
                 </div>
-                <div class="form-group">
-                    <label for="edit-shortcut-url">URL</label>
-                    <input type="text" id="edit-shortcut-url" value="${this.escapeHtml(url)}" placeholder="https://example.com" required>
+                <div class="form-group shortcut-form-type-row">
+                    <label for="edit-shortcut-type">Type</label>
+                    <select id="edit-shortcut-type">
+                        <option value="url"${editType === 'url' ? ' selected' : ''}>URL</option>
+                        <option value="file"${editType === 'file' ? ' selected' : ''}>Fichier</option>
+                        <option value="folder"${editType === 'folder' ? ' selected' : ''}>Dossier</option>
+                        <option value="app"${editType === 'app' ? ' selected' : ''}>Logiciel</option>
+                    </select>
                 </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" data-close>Annuler</button>
-                    <button type="submit" class="btn btn-primary">Mettre à jour</button>
+                <div class="form-group" id="edit-shortcut-url-group"${urlGroupHidden}>
+                    <label for="edit-shortcut-url">URL</label>
+                    <input type="text" id="edit-shortcut-url" value="${this.escapeHtml(editUrl)}" placeholder="https://example.com">
+                </div>
+                <div class="form-group" id="edit-shortcut-path-group"${pathGroupHidden}>
+                    <label for="edit-shortcut-path">Chemin</label>
+                    <input type="text" id="edit-shortcut-path" value="${this.escapeHtml(editPath)}" placeholder="/chemin/vers/fichier ou dossier">
                 </div>
             </form>
-        `);
+        `, {
+            modalClass: 'shortcut-modal',
+            footer: `
+                <button type="button" class="modal-cancel-btn shortcut-modal-btn" data-close>Annuler</button>
+                <button type="button" class="modal-submit-btn shortcut-modal-btn" id="edit-shortcut-submit-btn"><i class="fas fa-check"></i> Mettre à jour</button>
+            `
+        });
+
+        const editTypeSelect = modal.querySelector('#edit-shortcut-type');
+        const editUrlGroup = modal.querySelector('#edit-shortcut-url-group');
+        const editPathGroup = modal.querySelector('#edit-shortcut-path-group');
+        const editUrlInput = modal.querySelector('#edit-shortcut-url');
+        const editPathInput = modal.querySelector('#edit-shortcut-path');
+        const toggleEditFormType = () => {
+            const type = editTypeSelect?.value || 'url';
+            const isInternalEdit = type === 'file' || type === 'folder' || type === 'app';
+            editUrlGroup?.classList.toggle('hidden', isInternalEdit);
+            editPathGroup?.classList.toggle('hidden', !isInternalEdit);
+            if (editUrlInput) editUrlInput.removeAttribute('required');
+            if (editPathInput) editPathInput.required = isInternalEdit;
+        };
+        editTypeSelect?.addEventListener('change', toggleEditFormType);
+        toggleEditFormType();
 
         const form = modal.querySelector('#edit-shortcut-form');
         form.addEventListener('submit', (e) => {
             e.preventDefault();
-            const newName = document.getElementById('edit-shortcut-name').value.trim();
-            const newUrl = document.getElementById('edit-shortcut-url').value.trim();
+            const newName = modal.querySelector('#edit-shortcut-name').value.trim();
+            const type = modal.querySelector('#edit-shortcut-type').value;
+            const isInternalEdit = type === 'file' || type === 'folder' || type === 'app';
+            let newUrl;
+            if (isInternalEdit) {
+                const path = (modal.querySelector('#edit-shortcut-path').value || '').trim();
+                if (!path) {
+                    alert('Veuillez saisir le chemin');
+                    return;
+                }
+                newUrl = 'internal://' + type + '///' + path.replace(/^\/+/, '');
+            } else {
+                newUrl = (modal.querySelector('#edit-shortcut-url').value || '').trim();
+                if (!newUrl) {
+                    alert('Veuillez saisir l\'URL');
+                    return;
+                }
+            }
             if (newName && newUrl) {
                 this.updateShortcut(shortcutId, newName, newUrl);
                 modal.close();
                 modal.remove();
-            } else {
-                alert('Veuillez remplir tous les champs');
+                this.loadShortcuts().then(() => this.render());
             }
         });
+
+        const editSubmitBtn = modal.querySelector('#edit-shortcut-submit-btn');
+        if (editSubmitBtn) editSubmitBtn.addEventListener('click', () => form.requestSubmit());
 
         modal.querySelector('[data-close]').addEventListener('click', () => {
             modal.close();
@@ -882,31 +1098,34 @@ export default class ShortcutManager {
 
         document.body.appendChild(modal);
         modal.showModal();
-        document.getElementById('edit-shortcut-name').focus();
+        modal.querySelector('#edit-shortcut-name').focus();
     }
 
+    /**
+     * @param {number|string} categoryId
+     * @param {string} newName
+     * @returns {Promise<boolean>} true si succès
+     */
     async renameCategory(categoryId, newName) {
         const token = this.getToken();
-        
         if (!token) {
             alert('Vous devez être connecté pour renommer une catégorie');
-            return;
+            return false;
         }
-
         try {
             const response = await api.put(`/api/shortcuts/categories/${categoryId}`, { name: newName });
-
             const data = await response.json();
-
             if (data.success) {
                 await this.loadShortcuts();
                 this.render();
-            } else {
-                alert(data.message || 'Erreur lors du renommage');
+                return true;
             }
+            alert(data.message || 'Erreur lors du renommage');
+            return false;
         } catch (error) {
             logger.error('❌ Erreur renommage catégorie:', error);
             alert('Erreur lors du renommage de la catégorie');
+            return false;
         }
     }
 

@@ -1159,6 +1159,9 @@ ipcMain.handle('open-pdf-window', async (event, data) => {
 /** Dossier de backup PDF traçabilité : /mnt/team/#TEAM/#TRAÇABILITÉ (exactement comme demandé) */
 const TRACABILITE_PDF_BASE = '/mnt/team/#TEAM/#TRAÇABILITÉ';
 
+/** Dossier PDF commandes : /mnt/team/#TEAM/#COMMANDES/ */
+const COMMANDES_PDF_BASE = '/mnt/team/#TEAM/#COMMANDES/';
+
 /**
  * Formater une date ISO en "jj/mm/aaaa" pour le PDF (sans heure)
  */
@@ -1715,6 +1718,128 @@ ipcMain.handle('generate-disques-pdf', async (_event, payload) => {
         return { success: false, error: err.message };
     }
     return { success: false, error: 'Template disques introuvable ou échec génération' };
+});
+
+/**
+ * Générer le PDF d'une commande via le template HTML/CSS (commande.html + commande.css).
+ * Placeholders : {{commande_name}}, {{date}}, {{rows}}
+ */
+async function generateCommandePdfFromHtmlTemplate(payload, fullPath) {
+    const templateDir = path.join(__dirname, 'public', 'pdf-templates');
+    const htmlPath = path.join(templateDir, 'commande.html');
+    const cssPath = path.join(templateDir, 'commande.css');
+    if (!fs.existsSync(htmlPath) || !fs.existsSync(cssPath)) {
+        return null;
+    }
+    const { commandeName, date, lines = [] } = payload;
+
+    const css = fs.readFileSync(cssPath, 'utf8');
+    let html = fs.readFileSync(htmlPath, 'utf8');
+
+    const dateStr = (date && /^\d{4}-\d{2}-\d{2}/.test(String(date).trim())) ? String(date).trim().slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const dateFormatted = formatDateForPdf(dateStr);
+
+    const rows = lines
+        .map((line) => {
+            const num = line.num != null ? line.num : 0;
+            const produit = escapeHtml((line.produit || '-').toString().trim());
+            const quantity = escapeHtml((line.quantity || '-').toString().trim());
+            const price = escapeHtml((line.price || '-').toString().trim());
+            const link = escapeHtml((line.link || '-').toString().trim());
+            return `<tr><td class="col-num">${num}</td><td class="col-produit">${produit}</td><td class="col-quantite">${quantity}</td><td class="col-prix">${price}</td><td class="col-liens">${link}</td></tr>`;
+        })
+        .join('\n');
+
+    html = html.replace(/\{\{\s*commande_name\s*\}\}/g, escapeHtml((commandeName || 'Commande').toString().trim()));
+    html = html.replace(/\{\{\s*date\s*\}\}/g, escapeHtml(dateFormatted));
+    html = html.replace(/\{\{\s*rows\s*\}\}/g, rows);
+
+    html = html.replace(
+        /<link\s+rel="stylesheet"\s+href="commande\.css"\s*\/?>/i,
+        `<style>${css}</style>`
+    );
+
+    const fontawesomeCssPath = path.join(__dirname, 'public', 'assets', 'css', 'fontawesome-local.css');
+    const fontawesomeFileUrl = fs.existsSync(fontawesomeCssPath) ? url.pathToFileURL(fontawesomeCssPath).href : null;
+    const fontawesomeLink = fontawesomeFileUrl ? `<link rel="stylesheet" href="${fontawesomeFileUrl}">` : '';
+    if (fontawesomeLink) {
+        if (/<link[^>]+font-awesome[^>]*>/i.test(html)) {
+            html = html.replace(/<link[^>]+font-awesome[^>]*>/i, fontawesomeLink);
+        } else if (!html.includes('fontawesome')) {
+            html = html.replace('</head>', `${fontawesomeLink}\n</head>`);
+        }
+    }
+
+    html = html.replace(/<img([^>]*)\ssrc="([^"]+)"/gi, (match, attrs, src) => {
+        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) return match;
+        const absolutePath = path.resolve(templateDir, src.trim());
+        if (!fs.existsSync(absolutePath)) return match;
+        const fileUrl = url.pathToFileURL(absolutePath).href;
+        return `<img${attrs} src="${fileUrl}"`;
+    });
+
+    const tempDir = app.getPath('temp');
+    const outputPath = path.join(tempDir, `workspace-commande-pdf-${Date.now()}.html`);
+    try {
+        fs.writeFileSync(outputPath, html, 'utf8');
+    } catch (e) {
+        console.error('❌ generate-commande-pdf write temp HTML:', e.message);
+        return null;
+    }
+
+    const win = new BrowserWindow({
+        show: false,
+        webPreferences: { offscreen: true }
+    });
+    try {
+        await win.loadFile(outputPath);
+        const pdfBuffer = await win.webContents.printToPDF({
+            printBackground: true,
+            pageSize: 'A4',
+            preferCSSPageSize: true
+        });
+        fs.writeFileSync(fullPath, pdfBuffer);
+        return { success: true, pdf_path: path.resolve(fullPath) };
+    } finally {
+        win.close();
+        try { fs.unlinkSync(outputPath); } catch (_) { }
+    }
+}
+
+/**
+ * Générer le PDF d'une commande et l'enregistrer dans /mnt/team/#TEAM/#COMMANDES/.
+ * Payload: { commandeName, date, lines, basePath? }
+ */
+ipcMain.handle('generate-commande-pdf', async (_event, payload) => {
+    const {
+        commandeName,
+        date,
+        lines = [],
+        basePath = COMMANDES_PDF_BASE
+    } = payload || {};
+    if (!commandeName || !String(commandeName).trim()) {
+        return { success: false, error: 'Nom de la commande requis' };
+    }
+    const rawDate = (date && String(date).trim()) ? String(date).trim() : new Date().toISOString().slice(0, 10);
+    const dateStr = /^\d{4}-\d{2}-\d{2}/.test(rawDate) ? rawDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    try {
+        fs.mkdirSync(basePath, { recursive: true });
+    } catch (e) {
+        console.error('❌ generate-commande-pdf mkdir:', e.message);
+        return { success: false, error: 'Impossible de créer le dossier: ' + e.message };
+    }
+    const sanitizedName = String(commandeName).trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim() || 'commande';
+    const fileName = `${sanitizedName}_${dateStr}.pdf`;
+    const fullPath = path.join(basePath, fileName);
+
+    try {
+        const result = await generateCommandePdfFromHtmlTemplate({ commandeName, date: dateStr, lines }, fullPath);
+        if (result) return result;
+    } catch (err) {
+        console.error('❌ generate-commande-pdf (template HTML):', err.message);
+        return { success: false, error: err.message };
+    }
+    return { success: false, error: 'Template commande introuvable ou échec génération' };
 });
 
 /**

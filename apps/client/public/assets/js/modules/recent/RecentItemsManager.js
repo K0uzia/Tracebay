@@ -199,6 +199,12 @@ class RecentItemsManager {
      * Tracker une page visitée
      */
     trackPageVisit(pageName, pageLabel = null) {
+        const now = Date.now();
+        if (this._lastTrackedPage === pageName && (now - (this._lastTrackedPageTime || 0)) < 1500) {
+            return;
+        }
+        this._lastTrackedPage = pageName;
+        this._lastTrackedPageTime = now;
         const label = pageLabel || this.formatPageName(pageName);
         
         // Mapper les pages aux icones et chemins
@@ -215,6 +221,8 @@ class RecentItemsManager {
             'inventaire': { icon: 'fas fa-list', type: 'subpage', action: 'navigate' },
             'historique': { icon: 'fas fa-history', type: 'subpage', action: 'navigate' },
             'tracabilite': { icon: 'fas fa-barcode', type: 'subpage', action: 'navigate' },
+            'disques': { icon: 'fas fa-hard-drive', type: 'subpage', action: 'navigate' },
+            'commande': { icon: 'fas fa-file-invoice', type: 'subpage', action: 'navigate' },
         };
 
         const pageInfo = pageMap[pageName] || { icon: 'fas fa-file', type: 'page', action: 'navigate' };
@@ -229,7 +237,8 @@ class RecentItemsManager {
     }
 
     /**
-     * Tracker un shortcut cliqué
+     * Tracker un shortcut cliqué (enregistrement dans les récents uniquement).
+     * L'ouverture de l'URL est gérée par l'appelant (ShortcutManager) pour éviter double ouverture.
      */
     trackShortcutClick(shortcutName, shortcutUrl) {
         this.addItem({
@@ -239,14 +248,6 @@ class RecentItemsManager {
             icon: 'fas fa-link',
             action: 'open-url'
         });
-        
-        // Ouvrir l'URL dans le navigateur par défaut
-        if (window.electronAPI && window.electronAPI.openExternal) {
-            logger.debug('🌐 Ouverture raccourci dans navigateur par défaut:', shortcutUrl);
-            window.electronAPI.openExternal(shortcutUrl);
-        } else {
-            window.open(shortcutUrl, '_blank');
-        }
     }
 
     /**
@@ -305,6 +306,8 @@ class RecentItemsManager {
             'inventaire': 'Inventaire',
             'historique': 'Historique',
             'tracabilite': 'Traçabilité',
+            'disques': 'Disques',
+            'commande': 'Commande',
         };
         return names[pageName] || pageName;
     }

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commande {{commande_name}} - {{date}}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="commande.css">
+</head>
+<body>
+    <header class="pdf-header">
+        <div class="pdf-header-text">
+            <h1><i class="fa-solid fa-file-invoice"></i> Commande : {{commande_name}}</h1>
+        </div>
+        <div class="pdf-header-logo">
+            <img src="../src/icons/capsule.png" alt="Logo"/>
+            <h2 class="pdf-header-subtitle">LA CAPSULE</h2>
+        </div>
+    </header>
+
+    <section class="pdf-info">
+        <h2><i class="fa-solid fa-circle-info"></i> Informations</h2>
+        <p class="pdf-summary-total-line"><span class="label"><i class="fa-regular fa-calendar"></i> Date :</span> <span class="value">{{date}}</span></p>
+    </section>
+
+    <section class="pdf-detail">
+        <h2><i class="fa-solid fa-table-list"></i> Détail de la commande</h2>
+        <table class="pdf-table">
+            <thead>
+                <tr>
+                    <th class="col-num">N°</th>
+                    <th class="col-produit">Produit</th>
+                    <th class="col-quantite">Quantité</th>
+                    <th class="col-prix">Prix</th>
+                    <th class="col-liens">Liens</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{rows}}
+            </tbody>
+        </table>
+    </section>
+</body>
+</html>

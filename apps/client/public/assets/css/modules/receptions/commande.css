@@ -1,0 +1,239 @@
+/* COMMANDE - Page Réception : liste produits, génération PDF */
+
+.commande-container {
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.commande-header.reception-page-header {
+    margin-bottom: var(--unit-3);
+}
+
+.commande-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--unit-3);
+    margin-bottom: var(--unit-3);
+    padding: var(--unit-2);
+    background-color: var(--blanc, #fff);
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-medium, 0 1px 3px rgba(0,0,0,0.08));
+}
+
+.commande-name-field {
+    flex: 1;
+    min-width: 200px;
+}
+.commande-name-field label {
+    display: block;
+    font-weight: 600;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+    color: var(--h2, #333);
+}
+.commande-name-field input {
+    width: 100%;
+    max-width: 400px;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid var(--gris-clair, #ddd);
+    border-radius: var(--radius-small);
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+.commande-name-field input:focus {
+    outline: none;
+    border-color: var(--orange, #e65100);
+}
+
+.commande-actions {
+    display: flex;
+    gap: var(--unit-2);
+    flex-wrap: wrap;
+}
+.commande-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-1);
+    padding: var(--unit-1) var(--unit-2);
+    border: none;
+    border-radius: var(--radius-small);
+    font: var(--font-btn, inherit);
+    cursor: pointer;
+    background-color: var(--btn, #e65100);
+    color: var(--btn-text, #fff);
+    box-shadow: var(--shadow-small, 0 1px 2px rgba(0,0,0,0.1));
+}
+.commande-actions .btn:hover {
+    opacity: 0.95;
+    transform: translateY(-1px);
+}
+.commande-actions .btn-save-pdf {
+    background-color: var(--valid, #2e7d32);
+}
+
+.commande-table-wrapper {
+    overflow-x: auto;
+    margin-bottom: var(--unit-2);
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-medium, 0 1px 3px rgba(0,0,0,0.08));
+    background-color: var(--blanc, #fff);
+}
+
+.commande-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+}
+.commande-table th,
+.commande-table td {
+    padding: var(--unit-1) var(--unit-2);
+    border-bottom: 1px solid var(--gris-clair, #eee);
+    text-align: left;
+    vertical-align: middle;
+}
+.commande-table thead th {
+    font-weight: 600;
+    background-color: var(--gris-tres-clair, #f5f5f5);
+    color: var(--h2, #333);
+    white-space: nowrap;
+}
+.commande-table tbody tr:hover {
+    background-color: rgba(0,0,0,0.02);
+}
+
+.commande-table .col-num {
+    width: 3rem;
+    text-align: center;
+}
+.commande-table .col-produit {
+    min-width: 180px;
+}
+.commande-table .col-quantite {
+    width: 6rem;
+}
+.commande-table .col-prix {
+    width: 8rem;
+}
+.commande-table .col-liens {
+    min-width: 140px;
+}
+.commande-table .col-actions {
+    width: 3rem;
+    text-align: center;
+}
+
+.commande-table select.commande-select-product {
+    width: 100%;
+    min-width: 140px;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid var(--gris-clair, #ddd);
+    border-radius: var(--radius-small);
+    font-size: 0.95rem;
+    background-color: #fff;
+}
+.commande-table select.commande-select-product:focus {
+    outline: none;
+    border-color: var(--orange, #e65100);
+}
+
+.commande-table input.commande-input-quantite,
+.commande-table input.commande-input-prix,
+.commande-table input.commande-input-lien {
+    width: 100%;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid var(--gris-clair, #ddd);
+    border-radius: var(--radius-small);
+    font-size: 0.95rem;
+    box-sizing: border-box;
+}
+.commande-table input:focus {
+    outline: none;
+    border-color: var(--orange, #e65100);
+}
+
+.commande-table .btn-remove-line {
+    padding: 4px 8px;
+    border: none;
+    background: transparent;
+    color: var(--gris, #666);
+    cursor: pointer;
+    border-radius: var(--radius-small);
+}
+.commande-table .btn-remove-line:hover:not(:disabled) {
+    background-color: rgba(200,0,0,0.1);
+    color: #c00;
+}
+.commande-table .btn-remove-line:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* Bouton "Ajouter une ligne" dans .commande-actions (à côté des autres boutons) */
+.commande-actions .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-1);
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid var(--gris-clair, #ddd);
+    border-radius: var(--radius-small);
+    background: var(--blanc, #fff);
+    color: var(--h2, #333);
+}
+.commande-actions .btn-secondary:hover {
+    background-color: var(--gris-tres-clair, #f5f5f5);
+}
+
+/* Modale ajout produit */
+#commande-modal-add-product .form-group {
+    margin-bottom: var(--unit-2);
+}
+#commande-modal-add-product .form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+#commande-modal-add-product .form-group input {
+    width: 100%;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid var(--gris-clair, #ddd);
+    border-radius: var(--radius-small);
+    font-size: 1rem;
+    box-sizing: border-box;
+}
+#commande-modal-add-product .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--unit-2);
+    margin-top: var(--unit-3);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .commande-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .commande-name-field input {
+        max-width: none;
+    }
+    .commande-actions {
+        justify-content: stretch;
+    }
+    .commande-actions .btn {
+        flex: 1;
+        justify-content: center;
+    }
+    .commande-table .col-produit {
+        min-width: 120px;
+    }
+    .commande-table .col-liens {
+        min-width: 100px;
+    }
+}

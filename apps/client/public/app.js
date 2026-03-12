@@ -20,6 +20,7 @@ class PageManager {
             'historique': receptionLayout,
             'tracabilite': receptionLayout,
             'disques': receptionLayout,
+            'commande': receptionLayout,
             'shortcut': { showHeader: true, showFooter: true, showChat: true },
             'option': { showHeader: true, showFooter: true, showChat: false },
             'login': { showHeader: false, showFooter: false, showChat: false },
@@ -91,7 +92,7 @@ class PageManager {
 
         // Charger la page sauvegardée ou home (y compris sous-pages réception : entrer, historique, tracabilite, etc.)
         const lastPage = this.getLastPage();
-        const receptionSubPages = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques'];
+        const receptionSubPages = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques', 'commande'];
         const isValidPage = lastPage && (this.pagesConfig[lastPage] || receptionSubPages.includes(lastPage));
         const pageToLoad = isValidPage ? lastPage : 'home';
         this.loadPage(pageToLoad);
@@ -718,7 +719,7 @@ class PageManager {
 
     async loadPage(pageName) {
         try {
-            const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques'].includes(pageName);
+            const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques', 'commande'].includes(pageName);
             
             // Si c'est une sous-page de réception, charger d'abord reception.html
             if (isReceptionSubPage) {
@@ -1030,6 +1031,20 @@ class PageManager {
                 .catch(error => {
                     logger.error('❌ Erreur import DisquesManager:', error);
                     window.disquesManagerInitializing = false;
+                });
+        } else if (pageName === 'commande') {
+            if (window.commandeManager) {
+                window.commandeManager.destroy();
+                window.commandeManager = null;
+            }
+            import('./assets/js/modules/reception/commande.js')
+                .then(module => {
+                    const CommandeManager = module.default;
+                    window.commandeManager = new CommandeManager(window.modalManager);
+                    logger.debug('✅ CommandeManager initialisé depuis app.js');
+                })
+                .catch(error => {
+                    logger.error('❌ Erreur import CommandeManager:', error);
                 });
         }
     }
