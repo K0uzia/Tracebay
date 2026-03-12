@@ -84,6 +84,12 @@
       "sessions": "/api/disques/sessions",
       "sessionsPdf": "/api/disques/sessions/:id/pdf"
     },
+    "commandes": {
+      "products": {
+        "list": "/api/commandes/products",
+        "create": "/api/commandes/products"
+      }
+    },
     "config": {
       "apps": "/api/admin/config/apps",
       "folders": "/api/admin/config/folders"
