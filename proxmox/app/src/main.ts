@@ -115,10 +115,6 @@ function broadcastUserCount() {
   const snapshot = Array.from(connectedUsers.values());
   const count = snapshot.length;
   const users = snapshot.map((u) => u.username);
-  // #region agent log
-  const userIds = Array.from(connectedUsers.keys());
-  fastify.log.info({ hypothesisId: 'H5', count, userIds, usernames: users }, '[DEBUG] H5 broadcastUserCount');
-  // #endregion
   const payload = JSON.stringify({ type: 'userCount', count, users });
   for (const user of snapshot) {
     sendToSocket(user.socket, payload);
@@ -375,6 +371,20 @@ function broadcastUserCount() {
     fastify.get('/api/auth/verify', handleVerifyToken);
     fastify.post('/api/auth/verify', handleVerifyToken);
 
+    /** Récupère l'ID utilisateur depuis le JWT (Authorization: Bearer). Retourne null si absent ou invalide. */
+    const getAuthUserId = (request: FastifyRequest): number | null => {
+      const authHeader = (request.headers as any).authorization;
+      const token = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '').trim() : '';
+      if (!token) return null;
+      try {
+        const jwtSecret = process.env.JWT_SECRET || 'changeme';
+        const payload = jwt.verify(token, jwtSecret) as { id?: number };
+        return payload?.id != null ? Number(payload.id) : null;
+      } catch {
+        return null;
+      }
+    };
+
     fastify.post('/api/auth/register', async (request: FastifyRequest, reply: FastifyReply) => {
       const { username, password } = request.body as { username: string; password: string };
 
@@ -549,20 +559,19 @@ function broadcastUserCount() {
       }
     });
 
-    // Shortcuts categories routes
+    // Shortcuts categories routes (protégées par JWT : userId depuis le token uniquement)
     fastify.get('/api/shortcuts/categories', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = (request.query as any).userId || 1; // Default user if not provided
-
+      const userId = getAuthUserId(request);
+      if (userId === null) {
+        reply.statusCode = 401;
+        return { error: 'Token manquant ou invalide' };
+      }
       try {
         const result = await query(
           'SELECT id, name, order_index, created_at FROM shortcut_categories WHERE user_id = $1 ORDER BY order_index ASC',
           [userId]
         );
-
-        return {
-          success: true,
-          categories: result.rows
-        };
+        return { success: true, categories: result.rows };
       } catch (error) {
         console.error('Error fetching shortcut categories:', error);
         reply.statusCode = 500;
@@ -570,26 +579,47 @@ function broadcastUserCount() {
       }
     });
 
-    fastify.post('/api/shortcuts/categories', async (request: FastifyRequest, reply: FastifyReply) => {
-      const { name } = request.body as any;
-      const userId = (request.query as any).userId || 1; // Default user if not provided
+    fastify.get('/api/shortcuts/categories/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) {
+        reply.statusCode = 401;
+        return { error: 'Token manquant ou invalide' };
+      }
+      const { id } = request.params as { id: string };
+      try {
+        const result = await query(
+          'SELECT id, name, order_index, created_at FROM shortcut_categories WHERE id = $1 AND user_id = $2',
+          [id, userId]
+        );
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Catégorie introuvable' };
+        }
+        return { success: true, category: result.rows[0] };
+      } catch (error) {
+        console.error('Error fetching shortcut category:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
 
+    fastify.post('/api/shortcuts/categories', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) {
+        reply.statusCode = 401;
+        return { error: 'Token manquant ou invalide' };
+      }
+      const { name } = request.body as any;
       if (!name || !name.trim()) {
         reply.statusCode = 400;
         return { error: 'Category name is required' };
       }
-
       try {
         const result = await query(
           'INSERT INTO shortcut_categories (user_id, name, order_index) VALUES ($1, $2, (SELECT COALESCE(MAX(order_index) + 1, 0) FROM shortcut_categories WHERE user_id = $1)) RETURNING id, name, order_index, created_at',
           [userId, name.trim()]
         );
-
-        const category = result.rows[0];
-        return {
-          success: true,
-          category
-        };
+        return { success: true, category: result.rows[0] };
       } catch (error: any) {
         console.error('Error creating shortcut category:', error);
         if (error.code === '23505') {
@@ -601,9 +631,42 @@ function broadcastUserCount() {
       }
     });
 
-    fastify.delete('/api/shortcuts/categories/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    fastify.put('/api/shortcuts/categories/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) {
+        reply.statusCode = 401;
+        return { error: 'Token manquant ou invalide' };
+      }
       const { id } = request.params as { id: string };
-      const userId = (request.query as any).userId || 1;
+      const { name } = request.body as any;
+      if (!name || !name.trim()) {
+        reply.statusCode = 400;
+        return { error: 'Category name is required' };
+      }
+      try {
+        const result = await query(
+          'UPDATE shortcut_categories SET name = $1, updated_at = NOW() WHERE id = $2 AND user_id = $3 RETURNING id, name, order_index, created_at',
+          [name.trim(), id, userId]
+        );
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Catégorie introuvable' };
+        }
+        return { success: true, category: result.rows[0] };
+      } catch (error) {
+        console.error('Error updating shortcut category:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.delete('/api/shortcuts/categories/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) {
+        reply.statusCode = 401;
+        return { error: 'Token manquant ou invalide' };
+      }
+      const { id } = request.params as { id: string };
       try {
         const result = await query(
           'DELETE FROM shortcut_categories WHERE id = $1 AND user_id = $2',
@@ -966,7 +1029,7 @@ function broadcastUserCount() {
           const itemsResult = await query(`
             SELECT 
               li.lot_id, li.id, li.serial_number, li.type, li.entry_type, li.entry_date, li.entry_time,
-              li.marque_id, li.modele_id, li.state, li.technician, li.state_changed_at,
+              li.marque_id, li.modele_id, li.state, li.technician, li.state_changed_at, li.os,
               m.name as marque_name,
               mo.name as modele_name
             FROM lot_items li
@@ -993,7 +1056,8 @@ function broadcastUserCount() {
               state_changed_at: row.state_changed_at || null,
               entry_type: row.entry_type,
               entry_date: row.entry_date,
-              entry_time: row.entry_time
+              entry_time: row.entry_time,
+              os: row.os === 'windows' ? 'windows' : 'linux'
             });
           }
 
@@ -1096,11 +1160,11 @@ function broadcastUserCount() {
 
         const lot = lotResult.rows[0];
 
-        // Get lot items with all columns
+        // Get lot items with all columns (including os)
         const itemsResult = await query(`
           SELECT 
             li.id, li.serial_number, li.type, li.entry_type, li.entry_date, li.entry_time,
-            li.marque_id, li.modele_id, li.state, li.technician, li.state_changed_at,
+            li.marque_id, li.modele_id, li.state, li.technician, li.state_changed_at, li.os,
             m.name as marque_name,
             mo.name as modele_name
           FROM lot_items li
@@ -1123,7 +1187,8 @@ function broadcastUserCount() {
           state_changed_at: item.state_changed_at || null,
           entry_type: item.entry_type,
           entry_date: item.entry_date,
-          entry_time: item.entry_time
+          entry_time: item.entry_time,
+          os: item.os === 'windows' ? 'windows' : 'linux'
         }));
 
         // Calculate totals based on item states
@@ -1230,7 +1295,7 @@ function broadcastUserCount() {
     // Update a lot item
     fastify.put('/api/lots/items/:id', async (request: FastifyRequest, reply: FastifyReply) => {
       const { id } = request.params as { id: string };
-      const { state, technician, recovered_at } = request.body as any;
+      const { state, technician, recovered_at, os } = request.body as any;
 
       try {
         const updates: string[] = [];
@@ -1239,11 +1304,9 @@ function broadcastUserCount() {
 
         if (state !== undefined) {
           if (state === null || (typeof state === 'string' && state.trim() === '')) {
-            // Permettre de définir state à null explicitement
             updates.push(`state = NULL`);
             updates.push(`state_changed_at = NOW()`);
           } else {
-            // state a une valeur valide
             updates.push(`state = $${paramIndex++}`);
             values.push(typeof state === 'string' ? state.trim() : state);
             updates.push(`state_changed_at = NOW()`);
@@ -1253,6 +1316,12 @@ function broadcastUserCount() {
         if (technician !== undefined) {
           updates.push(`technician = $${paramIndex++}`);
           values.push(technician || null);
+        }
+
+        if (os !== undefined) {
+          const osVal = (typeof os === 'string' && (os === 'windows' || os === 'linux')) ? os : 'linux';
+          updates.push(`os = $${paramIndex++}`);
+          values.push(osVal);
         }
 
         // Always update updated_at
@@ -2159,9 +2228,6 @@ function broadcastUserCount() {
 
         // Handle pong response
         (messageTarget as any).on('pong', () => {
-          // #region agent log
-          fastify.log.info({ hypothesisId: 'H4', userId, username }, '[DEBUG] H4 pong received');
-          // #endregion
           heartbeat();
         });
       };
@@ -2169,23 +2235,22 @@ function broadcastUserCount() {
       fastify.get('/', { websocket: true }, wsHandler);
     });
 
-    // Shortcuts routes
+    // Shortcuts routes (protégées par JWT ; optionnel : type, path pour raccourcis internes)
     fastify.get('/api/shortcuts', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = (request.query as any).userId || 1; // Default user if not provided
-
+      const userId = getAuthUserId(request);
+      if (userId === null) {
+        reply.statusCode = 401;
+        return { error: 'Token manquant ou invalide' };
+      }
       try {
         const result = await query(
-          `SELECT id, title, description, url, category_id, order_index, created_at
+          `SELECT id, name AS title, description, url, category_id, order_index, created_at, type, path
            FROM shortcuts
            WHERE user_id = $1
            ORDER BY category_id ASC NULLS FIRST, order_index ASC`,
           [userId]
         );
-
-        return {
-          success: true,
-          shortcuts: result.rows
-        };
+        return { success: true, shortcuts: result.rows };
       } catch (error) {
         console.error('Error fetching shortcuts:', error);
         reply.statusCode = 500;
@@ -2194,10 +2259,12 @@ function broadcastUserCount() {
     });
 
     fastify.post('/api/shortcuts', async (request: FastifyRequest, reply: FastifyReply) => {
-      const { title, description, url, category_id, categoryId } = request.body as any;
-      const userId = (request.query as any).userId || 1; // Default user if not provided
-
-      // Support both category_id and categoryId for compatibility
+      const userId = getAuthUserId(request);
+      if (userId === null) {
+        reply.statusCode = 401;
+        return { error: 'Token manquant ou invalide' };
+      }
+      const { title, description, url, category_id, categoryId, type, path } = request.body as any;
       const finalCategoryId = category_id || categoryId;
 
       if (!title || !title.trim() || !url || !url.trim()) {
@@ -2206,31 +2273,24 @@ function broadcastUserCount() {
       }
 
       try {
-        // Validate category ownership if provided
         if (finalCategoryId) {
           const categoryCheck = await query(
             'SELECT 1 FROM shortcut_categories WHERE id = $1 AND user_id = $2',
             [finalCategoryId, userId]
           );
-
           if (categoryCheck.rowCount === 0) {
-            reply.statusCode = 404;
+            reply.statusCode = 403;
             return { error: 'Category not found' };
           }
         }
 
         const result = await query(
-          `INSERT INTO shortcuts (user_id, title, description, url, category_id, order_index)
-           VALUES ($1, $2, $3, $4, $5, (SELECT COALESCE(MAX(order_index) + 1, 0) FROM shortcuts WHERE user_id = $1 AND (category_id = $5 OR (category_id IS NULL AND $5 IS NULL))))
-           RETURNING id, title, description, url, category_id, order_index, created_at`,
-          [userId, title.trim(), description || null, url.trim(), finalCategoryId || null]
+          `INSERT INTO shortcuts (user_id, name, description, url, category_id, order_index, type, path)
+           VALUES ($1, $2, $3, $4, $5, (SELECT COALESCE(MAX(order_index) + 1, 0) FROM shortcuts WHERE user_id = $1 AND (category_id = $5 OR (category_id IS NULL AND $5 IS NULL))), $6, $7)
+           RETURNING id, name AS title, description, url, category_id, order_index, created_at, type, path`,
+          [userId, title.trim(), description || null, url.trim(), finalCategoryId || null, type && String(type).trim() || null, path && String(path).trim() || null]
         );
-
-        const shortcut = result.rows[0];
-        return {
-          success: true,
-          shortcut
-        };
+        return { success: true, shortcut: result.rows[0] };
       } catch (error: any) {
         console.error('Error creating shortcut:', error);
         reply.statusCode = 500;
@@ -2238,9 +2298,76 @@ function broadcastUserCount() {
       }
     });
 
-    fastify.delete('/api/shortcuts/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    fastify.put('/api/shortcuts/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) {
+        reply.statusCode = 401;
+        return { error: 'Token manquant ou invalide' };
+      }
       const { id } = request.params as { id: string };
-      const userId = (request.query as any).userId || 1;
+      const { title, description, url, category_id, categoryId, type, path } = request.body as any;
+      const finalCategoryId = category_id ?? categoryId;
+
+      try {
+        const ownership = await query(
+          'SELECT id, category_id FROM shortcuts WHERE id = $1 AND user_id = $2',
+          [id, userId]
+        );
+        if (ownership.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Raccourci introuvable' };
+        }
+        if (finalCategoryId != null) {
+          const categoryCheck = await query(
+            'SELECT 1 FROM shortcut_categories WHERE id = $1 AND user_id = $2',
+            [finalCategoryId, userId]
+          );
+          if (categoryCheck.rowCount === 0) {
+            reply.statusCode = 403;
+            return { error: 'Category not found' };
+          }
+        }
+
+        const updates: string[] = [];
+        const values: any[] = [];
+        let paramIndex = 1;
+        if (title !== undefined) { updates.push(`name = $${paramIndex++}`); values.push(title != null ? String(title).trim() : null); }
+        if (description !== undefined) { updates.push(`description = $${paramIndex++}`); values.push(description != null ? String(description).trim() : null); }
+        if (url !== undefined) { updates.push(`url = $${paramIndex++}`); values.push(url != null ? String(url).trim() : null); }
+        if (finalCategoryId !== undefined) { updates.push(`category_id = $${paramIndex++}`); values.push(finalCategoryId || null); }
+        if (type !== undefined) { updates.push(`type = $${paramIndex++}`); values.push(type != null ? String(type).trim() : null); }
+        if (path !== undefined) { updates.push(`path = $${paramIndex++}`); values.push(path != null ? String(path).trim() : null); }
+        if (updates.length === 0) {
+          reply.statusCode = 400;
+          return { error: 'No fields to update' };
+        }
+        updates.push('updated_at = NOW()');
+        values.push(id, userId);
+        const whereIdParam = values.length - 1;
+        const whereUserIdParam = values.length;
+        const result = await query(
+          `UPDATE shortcuts SET ${updates.join(', ')} WHERE id = $${whereIdParam} AND user_id = $${whereUserIdParam} RETURNING id, name AS title, description, url, category_id, order_index, created_at, type, path`,
+          values
+        );
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Raccourci introuvable' };
+        }
+        return { success: true, shortcut: result.rows[0] };
+      } catch (error: any) {
+        console.error('Error updating shortcut:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.delete('/api/shortcuts/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) {
+        reply.statusCode = 401;
+        return { error: 'Token manquant ou invalide' };
+      }
+      const { id } = request.params as { id: string };
       try {
         const result = await query(
           'DELETE FROM shortcuts WHERE id = $1 AND user_id = $2',
@@ -2253,6 +2380,39 @@ function broadcastUserCount() {
         return { success: true };
       } catch (error: any) {
         console.error('Error deleting shortcut:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    // API Commande (produits pour l'onglet Réception > Commande)
+    fastify.get('/api/commandes/products', async (request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const result = await query(
+          'SELECT id, name FROM commande_products ORDER BY name'
+        );
+        return { success: true, items: result.rows };
+      } catch (error) {
+        console.error('Error fetching commande products:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.post('/api/commandes/products', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { name } = request.body as any;
+      if (!name || !String(name).trim()) {
+        reply.statusCode = 400;
+        return { error: 'Name is required' };
+      }
+      try {
+        const result = await query(
+          'INSERT INTO commande_products (name) VALUES ($1) RETURNING id, name',
+          [String(name).trim()]
+        );
+        return { success: true, id: result.rows[0].id, name: result.rows[0].name };
+      } catch (error: any) {
+        console.error('Error creating commande product:', error);
         reply.statusCode = 500;
         return { error: 'Database error' };
       }

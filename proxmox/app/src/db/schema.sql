@@ -284,6 +284,14 @@ CREATE TABLE IF NOT EXISTS app_preset_apps (
 );
 CREATE INDEX IF NOT EXISTS idx_app_preset_apps_preset ON app_preset_apps(app_preset_id);
 
+-- Produits de commande (Réception - onglet Commande)
+CREATE TABLE IF NOT EXISTS commande_products (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_commande_products_name ON commande_products(name);
+
 -- Config Dossiers (presets + globals) — persistant en base pour le client
 CREATE TABLE IF NOT EXISTS folder_globals (
   id SERIAL PRIMARY KEY,
@@ -304,3 +312,13 @@ CREATE TABLE IF NOT EXISTS folder_presets (
   updated_at TIMESTAMP DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_folder_presets_key ON folder_presets(preset_key);
+
+-- =====================================================
+-- Migrations : colonne OS (lot_items), type/path (shortcuts)
+-- =====================================================
+ALTER TABLE IF EXISTS lot_items
+  ADD COLUMN IF NOT EXISTS os VARCHAR(20) DEFAULT 'linux';
+
+ALTER TABLE IF EXISTS shortcuts
+  ADD COLUMN IF NOT EXISTS type VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS path TEXT;

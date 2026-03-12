@@ -129,7 +129,16 @@ export async function initializeDatabase(): Promise<void> {
       'ALTER TABLE events ADD COLUMN IF NOT EXISTS start TIMESTAMP',
       'ALTER TABLE events ADD COLUMN IF NOT EXISTS "end" TIMESTAMP',
       'ALTER TABLE events ADD COLUMN IF NOT EXISTS username VARCHAR(255)',
-      'ALTER TABLE events ADD COLUMN IF NOT EXISTS color VARCHAR(50)'
+      'ALTER TABLE events ADD COLUMN IF NOT EXISTS color VARCHAR(50)',
+      'ALTER TABLE lot_items ADD COLUMN IF NOT EXISTS os VARCHAR(20) DEFAULT \'linux\'',
+      'ALTER TABLE shortcuts ADD COLUMN IF NOT EXISTS type VARCHAR(50)',
+      'ALTER TABLE shortcuts ADD COLUMN IF NOT EXISTS path TEXT',
+      `CREATE TABLE IF NOT EXISTS commande_products (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )`,
+      'CREATE INDEX IF NOT EXISTS idx_commande_products_name ON commande_products(name)'
     ];
     for (const sql of migrations) {
       try {
