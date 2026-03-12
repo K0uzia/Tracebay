@@ -211,6 +211,11 @@
     color: var(--text2);
 }
 
+.items-table .col-os {
+    min-width: 2em;
+    text-align: center;
+}
+
 .items-table tbody tr:hover {
     background-color: #f9f9f9;
 }

@@ -175,6 +175,7 @@ body {
 .pdf-table .col-type { min-width: 50px; }
 .pdf-table .col-marque { min-width: 40px; }
 .pdf-table .col-modele { min-width: 40px; }
+.pdf-table .col-os { min-width: 2em; text-align: center; }
 .pdf-table .col-state { min-width: 40px; }
 .pdf-table .col-tech { min-width: 95px; }
 .pdf-table .col-date { min-width: 95px; }

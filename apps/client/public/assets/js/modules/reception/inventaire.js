@@ -200,6 +200,7 @@ export default class InventaireManager {
                                     <th style="width: 100px;">Type</th>
                                     <th style="width: 100px;">Marque</th>
                                     <th style="width: 120px;">Modèle</th>
+                                    <th class="col-os">OS</th>
                                     <th style="width: 100px;">État</th>
                                     <th style="width: 140px;">Date</th>
                                     <th style="width: 120px;">Technicien</th>
@@ -214,6 +215,7 @@ export default class InventaireManager {
                                         <td>${item.type || '-'}</td>
                                         <td>${item.marque_name || '-'}</td>
                                         <td>${item.modele_name || '-'}</td>
+                                        <td class="col-os"><i class="fa-brands fa-${item.os === 'windows' ? 'windows' : 'linux'}" title="${item.os === 'windows' ? 'Windows' : 'Linux'}"></i></td>
                                         <td>
                                             <span class="state-badge state-${item.state ? item.state.replace(/\s+/g, '-') : 'non-defini'}">
                                                 ${item.state || 'Non défini'}
@@ -296,6 +298,10 @@ export default class InventaireManager {
         document.getElementById('modal-pc-serial').textContent = item.serial_number || '-';
         document.getElementById('modal-pc-brand').textContent = item.marque_name || '-';
         document.getElementById('modal-pc-model').textContent = item.modele_name || '-';
+        const osDisplay = item.os === 'windows' ? 'Windows' : 'Linux';
+        const osSelect = document.getElementById('modal-pc-os-select');
+        document.getElementById('modal-pc-os').textContent = osDisplay;
+        if (osSelect) osSelect.value = item.os === 'windows' ? 'windows' : 'linux';
         document.getElementById('modal-pc-type').textContent = item.type || '-';
         document.getElementById('modal-pc-entry').textContent = item.entry_type || '-';
         document.getElementById('modal-pc-date-changed').textContent = this.formatDateTime(item.state_changed_at) || '-';
@@ -356,6 +362,7 @@ export default class InventaireManager {
 
             const state = document.getElementById('modal-pc-state').value;
             const technician = document.getElementById('modal-pc-technician').value.trim();
+            const osValue = (document.getElementById('modal-pc-os-select')?.value || 'linux').trim();
 
             if (!state || state.trim() === '') {
                 this.showNotification('Veuillez sélectionner un état', 'error');
@@ -371,7 +378,7 @@ export default class InventaireManager {
             const serverUrl = api.getServerUrl();
             const endpointPath = '/api/lots/items/:id'.replace(':id', this.currentEditingItemId);
             const fullUrl = `${serverUrl}${endpointPath}`;
-            logger.debug('💾 Sauvegarde item:', JSON.stringify({ itemId: this.currentEditingItemId, state, technician, fullUrl }, null, 2));
+            logger.debug('💾 Sauvegarde item:', JSON.stringify({ itemId: this.currentEditingItemId, state, technician, os: osValue, fullUrl }, null, 2));
             
             const response = await fetch(fullUrl, {
                 method: 'PUT',
@@ -381,7 +388,8 @@ export default class InventaireManager {
                 },
                 body: JSON.stringify({
                     state: state,
-                    technician: technician || null
+                    technician: technician || null,
+                    os: osValue || 'linux'
                 })
             });
 
@@ -472,6 +480,19 @@ export default class InventaireManager {
 
             // Recharger la liste des lots (inventaire n'affiche que les lots actifs)
             await this.loadLots();
+
+            // Réappliquer en mémoire les valeurs qu'on vient d'envoyer (notamment os) au cas où le backend ne les renvoie pas dans GET
+            const itemId = this.currentEditingItemId;
+            for (const lot of this.lots) {
+                const it = lot.items && lot.items.find(i => i.id == itemId);
+                if (it) {
+                    it.state = state;
+                    it.technician = technician || null;
+                    it.os = osValue || 'linux';
+                    break;
+                }
+            }
+            this.renderLots();
 
             if (lotJustFinished) {
                 this.showNotification('🎉 Lot terminé ! Il apparaît dans Historique et Traçabilité.', 'success');
