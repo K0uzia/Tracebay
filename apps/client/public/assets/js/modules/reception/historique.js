@@ -7,6 +7,7 @@ import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
 import { loadLotsWithItems } from './lotsApi.js';
 import { getSessions, getSession, getSessionPdfUrl, updateSession } from './disquesApi.js';
+import { OS_OPTIONS, getOsIcon, getOsLabel, getOsOption } from './osOptions.js';
 const logger = getLogger();
 
 
@@ -698,7 +699,7 @@ export default class HistoriqueManager {
                 <td>${item.type || '-'}</td>
                 <td>${item.marque_name || '-'}</td>
                 <td>${item.modele_name || '-'}</td>
-                <td class="col-os"><i class="fa-brands fa-${item.os === 'windows' ? 'windows' : 'linux'}" title="${item.os === 'windows' ? 'Windows' : 'Linux'}"></i></td>
+                <td class="col-os"><i class="fa-brands fa-${getOsIcon(item.os)}" title="${getOsLabel(item.os)}"></i></td>
                 <td>
                     <span class="state-badge state-${item.state?.replace(/\s+/g, '-')}">
                         ${item.state || '-'}
@@ -953,8 +954,7 @@ export default class HistoriqueManager {
                     <td><span class="item-text">${item.modele_name || '-'}</span></td>
                     <td class="col-os">
                         <select class="item-os-select" data-item-id="${item.id}">
-                            <option value="linux" ${item.os !== 'windows' ? 'selected' : ''}>Linux</option>
-                            <option value="windows" ${item.os === 'windows' ? 'selected' : ''}>Windows</option>
+                            ${OS_OPTIONS.map(o => `<option value="${o.value}" ${getOsOption(item.os).value === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}
                         </select>
                     </td>
                     <td>

@@ -44,12 +44,15 @@ export const CHAT_SECURITY_CONFIG = {
     ],
     
     // Protocoles autorisés pour le partage de liens (chat)
-    allowedProtocols: ['http', 'https'],
-
-    // Clé API Giphy pour la recherche de GIFs. Créer une clé : https://developers.giphy.com/dashboard/
-    // Priorité : APP_CONFIG.giphyApiKey (override) puis clé par défaut (versionnée pour poste amnésique)
-    giphyApiKey: (typeof window !== 'undefined' && window.APP_CONFIG?.giphyApiKey) ? window.APP_CONFIG.giphyApiKey : 'mvekVgYYTsuZWKdfbyHDgUvtCEfUt4IR'
+    allowedProtocols: ['http', 'https']
 };
+// Clé Giphy : lue à l'accès (getter) car APP_CONFIG est rempli après le chargement des modules.
+Object.defineProperty(CHAT_SECURITY_CONFIG, 'giphyApiKey', {
+    get() {
+        return (typeof window !== 'undefined' && window.APP_CONFIG?.giphyApiKey) ? window.APP_CONFIG.giphyApiKey : '';
+    },
+    enumerable: true
+});
 
 /**
  * Fonction helper pour ajouter une règle de blocage

@@ -8,6 +8,7 @@ export default class ShortcutManager {
         this.categories = [];
         this.searchQuery = '';
         this.listeners = [];
+        this.loadError = null;
     }
 
     async init() {
@@ -77,7 +78,8 @@ export default class ShortcutManager {
      */
     async loadShortcuts() {
         const token = localStorage.getItem('workspace_jwt');
-        
+        this.loadError = null;
+
         if (!token) {
             this.categories = [];
             return;
@@ -88,6 +90,16 @@ export default class ShortcutManager {
                 api.get('shortcuts.categories.list', { useCache: false }),
                 api.get('shortcuts.list', { useCache: false })
             ]);
+
+            const catStatus = categoriesRes.status;
+            const shortStatus = shortcutsRes.status;
+            const is5xx = (s) => s >= 500 && s < 600;
+            if (is5xx(catStatus) || is5xx(shortStatus)) {
+                this.loadError = { status: shortStatus >= 500 ? shortStatus : catStatus, which: shortStatus >= 500 ? 'shortcuts' : 'categories' };
+                logger.error('Erreur serveur API raccourcis (5xx):', this.loadError);
+                this.categories = [];
+                return;
+            }
 
             if (!categoriesRes.ok || !shortcutsRes.ok) {
                 logger.error('Erreur réponse API:', { categories: categoriesRes.status, shortcuts: shortcutsRes.status });
@@ -125,7 +137,6 @@ export default class ShortcutManager {
                     shortcuts: catShortcuts
                 };
             });
-
         } catch (error) {
             logger.error('❌ Erreur chargement raccourcis:', error);
             this.categories = [];
@@ -197,6 +208,11 @@ export default class ShortcutManager {
 
         const filteredCategories = this.filterCategories();
 
+        if (this.loadError) {
+            const status = this.loadError.status || 500;
+            grid.innerHTML = `<p class="shortcut-empty-message shortcut-error-message">Erreur serveur (${status}). Impossible de charger les raccourcis. Vérifiez les logs du serveur ou réessayez plus tard.</p>`;
+            return;
+        }
         if (filteredCategories.length === 0) {
             grid.innerHTML = '<p class="shortcut-empty-message">Aucun raccourci trouvé</p>';
             return;

@@ -6,6 +6,7 @@
 import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
 import { loadLotsWithItems } from './lotsApi.js';
+import { getOsIcon, getOsLabel, getOsOption } from './osOptions.js';
 const logger = getLogger();
 
 
@@ -215,7 +216,7 @@ export default class InventaireManager {
                                         <td>${item.type || '-'}</td>
                                         <td>${item.marque_name || '-'}</td>
                                         <td>${item.modele_name || '-'}</td>
-                                        <td class="col-os"><i class="fa-brands fa-${item.os === 'windows' ? 'windows' : 'linux'}" title="${item.os === 'windows' ? 'Windows' : 'Linux'}"></i></td>
+                                        <td class="col-os"><i class="fa-brands fa-${getOsIcon(item.os)}" title="${getOsLabel(item.os)}"></i></td>
                                         <td>
                                             <span class="state-badge state-${item.state ? item.state.replace(/\s+/g, '-') : 'non-defini'}">
                                                 ${item.state || 'Non défini'}
@@ -298,10 +299,10 @@ export default class InventaireManager {
         document.getElementById('modal-pc-serial').textContent = item.serial_number || '-';
         document.getElementById('modal-pc-brand').textContent = item.marque_name || '-';
         document.getElementById('modal-pc-model').textContent = item.modele_name || '-';
-        const osDisplay = item.os === 'windows' ? 'Windows' : 'Linux';
+        const osDisplay = getOsLabel(item.os);
         const osSelect = document.getElementById('modal-pc-os-select');
         document.getElementById('modal-pc-os').textContent = osDisplay;
-        if (osSelect) osSelect.value = item.os === 'windows' ? 'windows' : 'linux';
+        if (osSelect) osSelect.value = getOsOption(item.os).value;
         document.getElementById('modal-pc-type').textContent = item.type || '-';
         document.getElementById('modal-pc-entry').textContent = item.entry_type || '-';
         document.getElementById('modal-pc-date-changed').textContent = this.formatDateTime(item.state_changed_at) || '-';

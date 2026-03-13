@@ -47,6 +47,9 @@ jobs:
       - name: Install dependencies (root)
         run: npm ci
 
+      - name: Audit des dépendances
+        run: npm audit --audit-level=high
+
       - name: Vérifier token de publication
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
@@ -91,6 +94,9 @@ jobs:
       - name: Install dependencies (root)
         run: npm ci
 
+      - name: Audit des dépendances
+        run: npm audit --audit-level=high
+
       - name: Vérifier token de publication
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
@@ -134,6 +140,9 @@ jobs:
 
       - name: Install dependencies (root)
         run: npm ci
+
+      - name: Audit des dépendances
+        run: npm audit --audit-level=high
 
       - name: Vérifier token de publication
         env:

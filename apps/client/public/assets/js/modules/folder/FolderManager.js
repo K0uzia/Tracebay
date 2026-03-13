@@ -148,7 +148,12 @@ export default class FolderManager {
                 this.cache.set(path, filtered);
                 return filtered;
             } catch (error) {
-                console.warn('IPC list-folders indisponible');
+                const msg = error?.message || String(error);
+                if (msg.includes('Chemin non autorisé') || msg.includes('path')) {
+                    console.warn('FolderManager list-folders: chemin non autorisé ou indisponible:', path);
+                } else {
+                    console.warn('FolderManager list-folders:', msg);
+                }
             }
         }
         

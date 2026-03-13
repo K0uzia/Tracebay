@@ -260,6 +260,11 @@
     opacity: 0.8;
 }
 
+.shortcut-error-message {
+    color: var(--error, #c62828);
+    font-weight: 500;
+}
+
 .shortcuts-empty {
     margin: 0;
     padding: var(--unit-2);

@@ -2,14 +2,32 @@
  * Workspace Client - Electron Main Process
  * Gère la fenêtre d'application et la connexion au serveur distant
  */
-const { app, BrowserWindow, ipcMain, shell, Notification, nativeImage, Menu, globalShortcut } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Notification, nativeImage, Menu, globalShortcut, crashReporter } = require('electron');
 const path = require('path');
 const url = require('url');
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
-const { exec, execSync, spawn } = require('child_process');
+const { exec, execSync, execFile, spawn } = require('child_process');
 const PDFDocument = require('pdfkit');
+
+/** Activer les envois de logs debug vers l'endpoint ingest (débug session). Définir WORKSPACE_DEBUG=1 pour activer. */
+const DEBUG_INGEST = process.env.WORKSPACE_DEBUG === '1';
+
+// Crash reporting : dumps locaux par défaut ; pour envoi à Sentry/Bugsnag, définir CRASH_REPORT_URL (ex. https://sentry.io/...)
+try {
+    if (process.type !== 'renderer' && crashReporter && typeof crashReporter.start === 'function') {
+        const submitURL = process.env.CRASH_REPORT_URL || '';
+        crashReporter.start({
+            submitURL: submitURL || 'https://localhost/crash', // requis par l'API ; ignoré si uploadToServer: false
+            uploadToServer: !!submitURL,
+            compress: true,
+            globalExtra: { appVersion: (typeof app.getVersion === 'function' ? app.getVersion() : null) || process.env.npm_package_version || '0.0.0' }
+        });
+    }
+} catch (e) {
+    console.warn('[CrashReporter] init skipped:', e?.message);
+}
 
 // #region agent log (bootstrap debug log pour AppImage sur autres machines)
 function getAppImageDebugLogPath() {
@@ -75,8 +93,9 @@ function sessionLog(payload) {
 }
 // #endregion
 
-// Import ClientDiscovery
+// Import ClientDiscovery et module de mise à jour
 const ClientDiscovery = require('./lib/ClientDiscovery.js');
+const { runAutoUpdate } = require('./lib/update.js');
 
 // Détection environnement (production vs développement)
 const isProduction = process.env.NODE_ENV === 'production' || app.isPackaged;
@@ -250,6 +269,8 @@ let mainWindow;
 let splashWindow = null;
 /** true pendant quitAndInstall pour ne pas retarder la sortie (before-quit) */
 let quittingForUpdate = false;
+/** Début du démarrage (app.ready) pour mesure de performance */
+let startupBegin = 0;
 
 /**
  * Sous Linux AppImage : crée une copie .bak de l'AppImage actuelle (à appeler dès qu'une MAJ est disponible).
@@ -615,6 +636,14 @@ function createWindow() {
         showMainCalled = true;
         if (showMainFallbackId) clearTimeout(showMainFallbackId);
         if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+        const startupMs = startupBegin ? Math.round(Date.now() - startupBegin) : 0;
+        if (startupMs > 0) {
+            console.log(`⏱️ Démarrage (ready → fenêtre affichée): ${startupMs} ms`);
+            try {
+                const metricsPath = path.join(app.getPath('userData'), 'startup-metrics.json');
+                fs.writeFileSync(metricsPath, JSON.stringify({ lastStartupMs: startupMs, timestamp: new Date().toISOString() }, null, 2), 'utf8');
+            } catch (_) { /* ignore */ }
+        }
         closeSplashWindow();
         const flagPath = path.join(app.getPath('userData'), 'workspace-update-installed.flag');
         if (fs.existsSync(flagPath)) {
@@ -645,6 +674,19 @@ function createWindow() {
             console.warn('setWindowOpenHandler url:', e.message);
         }
         return { action: 'deny' };
+    });
+
+    // Empêcher la navigation vers des URL externes dans la fenêtre principale (sécurité : garder file:// uniquement)
+    mainWindow.webContents.on('will-navigate', (event, url) => {
+        try {
+            const u = new URL(url);
+            if (u.protocol !== 'file:') {
+                event.preventDefault();
+                if (['http:', 'https:'].includes(u.protocol)) {
+                    shell.openExternal(url);
+                }
+            }
+        } catch (_) { /* ignore */ }
     });
 
     // DevTools uniquement en développement
@@ -745,6 +787,7 @@ function launchApp() {
  * Événement de démarrage Electron
  */
 app.on('ready', async () => {
+    startupBegin = Date.now();
     app.setName('Workspace Client');
     console.log('🚀 Démarrage Workspace Client...');
     console.log(`📍 Configuration depuis: ${MODE} (connexion-config.json)`);
@@ -756,155 +799,36 @@ app.on('ready', async () => {
     createSplashWindow();
 
     if (app.isPackaged) {
-        let timeoutId;
-        /** Une fois true, on ne réagit plus aux événements de mise à jour (évite lancement puis MAJ tardive) */
-        let updateCheckFinished = false;
-        try {
-            const currentVersion = app.getVersion();
-            console.log('[Update] Version installée:', currentVersion);
-
-            const { autoUpdater } = require('electron-updater');
-            // AppImage : le nom d'artifact est sans version (package.json linux.appImage.artifactName)
-            // pour que quitAndInstall remplace l'exécutable au même chemin au lieu de créer un nouveau fichier.
-            autoUpdater.setFeedURL({
-                provider: 'github',
-                owner: 'SandersonnDev',
-                repo: 'workspace',
-                releaseType: 'release',
-            });
-            autoUpdater.autoDownload = true;
-            autoUpdater.autoInstallOnAppQuit = false;
-
-            const done = () => {
-                if (updateCheckFinished) return;
-                updateCheckFinished = true;
-                if (timeoutId) clearTimeout(timeoutId);
-                timeoutId = null;
-                setSplashProgress(null);
-                setSplashMessage('À jour. Lancement…');
-                setTimeout(launchApp, 500);
-            };
-
-            autoUpdater.on('checking-for-update', () => {
-                if (updateCheckFinished) return;
-                setSplashMessage('Recherche de mise à jour…');
-                setSplashProgress(null);
-            });
-            autoUpdater.on('update-available', (info) => {
-                if (updateCheckFinished) return;
-                if (timeoutId) {
-                    clearTimeout(timeoutId);
-                    timeoutId = null;
-                }
-                console.log('[Update] Mise à jour disponible:', info?.version);
-                setSplashMessage('Mise à jour trouvée. Téléchargement…');
-                setSplashProgress(0);
-                // Linux AppImage : copie de l'actuelle en .bak dès qu'une MAJ est dispo
-                if (process.platform === 'linux' && process.env.APPIMAGE) {
-                    linuxAppImageBackup(process.env.APPIMAGE);
-                }
-                timeoutId = setTimeout(done, 300000);
-            });
-            autoUpdater.on('download-progress', (p) => {
-                if (updateCheckFinished) return;
-                const percent = Math.round(p.percent || 0);
-                setSplashMessage(percent < 100 ? `Téléchargement… ${percent} %` : 'Téléchargement terminé.');
-                setSplashProgress(percent);
-            });
-            autoUpdater.on('update-downloaded', () => {
-                // #region agent log
-                sessionLog({ hypothesisId: 'H1', location: 'main.js:update-downloaded', message: 'update-downloaded fired', data: { updateCheckFinished } });
-                // #endregion
-                if (updateCheckFinished) return;
-                updateCheckFinished = true;
-                if (timeoutId) {
-                    clearTimeout(timeoutId);
-                    timeoutId = null;
-                }
-                setSplashProgress(null);
-                setSplashMessage('Installation et redémarrage…');
-                const flagPath = path.join(app.getPath('userData'), 'workspace-update-installed.flag');
-                try {
-                    fs.writeFileSync(flagPath, Date.now().toString(), 'utf8');
-                } catch (_) { }
-                // #region agent log
-                sessionLog({ hypothesisId: 'H3', location: 'main.js:update-downloaded', message: 'flag written, before setImmediate', data: {} });
-                // #endregion
-                setSplashUpdateSuccess('Redémarrage en cours…');
-                setImmediate(() => {
-                    setTimeout(() => {
-                        quittingForUpdate = true;
-                        // Linux AppImage : script détaché qui remplace l'AppImage après notre quit (évite blocage unlink/mv et échec de remplacement)
-                        const currentApp = process.env.APPIMAGE;
-                        const newApp = autoUpdater.installerPath;
-                        // #region agent log
-                        fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',hypothesisId:'H1',location:'main.js:update-downloaded',message:'before tryLinuxAppImageUpdateHelper',data:{currentApp:!!currentApp,newApp:!!newApp,newAppPath:newApp?path.basename(newApp):null},timestamp:Date.now()})}).catch(()=>{});
-                        // #endregion
-                        const helperOk = tryLinuxAppImageUpdateHelper(currentApp, newApp);
-                        // #region agent log
-                        fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',hypothesisId:'H1',location:'main.js:update-downloaded',message:'after tryLinuxAppImageUpdateHelper',data:{helperOk},timestamp:Date.now()})}).catch(()=>{});
-                        // #endregion
-                        if (helperOk) {
-                            sessionLog({ hypothesisId: 'H2-H5', location: 'main.js:update-downloaded', message: 'linux helper launched, force exit', data: {} });
-                            // #region agent log
-                            fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',hypothesisId:'H2',location:'main.js:update-downloaded',message:'before destroy windows',data:{splashExists:!!splashWindow,splashDestroyed:!!(splashWindow&&splashWindow.isDestroyed()),mainExists:!!mainWindow,mainDestroyed:!!(mainWindow&&mainWindow.isDestroyed())},timestamp:Date.now()})}).catch(()=>{});
-                            // #endregion
-                            if (splashWindow && !splashWindow.isDestroyed()) {
-                                splashWindow.destroy();
-                                splashWindow = null;
-                            }
-                            if (mainWindow && !mainWindow.isDestroyed()) {
-                                mainWindow.destroy();
-                                mainWindow = null;
-                            }
-                            // #region agent log
-                            fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',hypothesisId:'H4',location:'main.js:update-downloaded',message:'before setImmediate app.exit',data:{},timestamp:Date.now()})}).catch(()=>{});
-                            // #endregion
-                            setImmediate(() => {
-                                // #region agent log
-                                fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',hypothesisId:'H4',location:'main.js:update-downloaded',message:'inside setImmediate calling app.exit(0)',data:{},timestamp:Date.now()})}).catch(()=>{});
-                                // #endregion
-                                app.exit(0);
-                            });
-                            return;
-                        }
-                        // #region agent log
-                        sessionLog({ hypothesisId: 'H2-H5', location: 'main.js:update-downloaded', message: 'calling quitAndInstall', data: {} });
-                        // #endregion
-                        // isSilent=true : pas de dialogue, isForceRunAfter=true : relancer l'app après l'install
-                        autoUpdater.quitAndInstall(true, true);
-                    }, 500);
-                });
-            });
-            autoUpdater.on('update-not-available', (info) => {
-                const remoteVersion = info?.version || '?';
-                console.log('[Update] À jour. Version installée:', currentVersion, '| Dernière sur GitHub:', remoteVersion);
-                done();
-            });
-            autoUpdater.on('error', (err) => {
-                console.error('[Update] Erreur:', err.message || err);
-                done();
-            });
-
-            setSplashMessage('Recherche de mise à jour…');
-            timeoutId = setTimeout(done, 15000);
-            await autoUpdater.checkForUpdates();
-        } catch (e) {
-            console.warn('[Update] Non disponible:', e.message);
-            if (timeoutId) clearTimeout(timeoutId);
-            await launchApp();
-        }
+        await runAutoUpdate({
+            app,
+            path,
+            fs,
+            setSplashMessage,
+            setSplashProgress,
+            setSplashUpdateSuccess,
+            launchApp,
+            getSplashWindow: () => splashWindow,
+            getMainWindow: () => mainWindow,
+            setQuittingForUpdate: (v) => { quittingForUpdate = v; },
+            linuxAppImageBackup,
+            tryLinuxAppImageUpdateHelper,
+            sessionLog
+        });
     } else {
         await launchApp();
     }
 });
 
-// IPC: lister les dossiers d'un chemin
+// IPC: lister les dossiers d'un chemin (restriction aux répertoires autorisés)
 ipcMain.handle('list-folders', async (_event, payload) => {
     const { path: basePath, blacklist = [], ignoreSuffixes = [], ignoreExtensions = [] } = payload || {};
     if (!basePath) throw new Error('path is required');
 
     const resolvedPath = path.resolve(basePath);
+    if (!isPathAllowed(resolvedPath)) {
+        console.error('❌ list-folders: chemin non autorisé:', resolvedPath);
+        throw new Error('Chemin non autorisé');
+    }
     try {
         const entries = await fs.promises.readdir(resolvedPath, { withFileTypes: true });
         const folders = entries
@@ -921,7 +845,7 @@ ipcMain.handle('list-folders', async (_event, payload) => {
 ipcMain.handle('open-pdf-with-system-app', async (_event, payload) => {
     const { url: pdfUrl, token, suggestedFilename } = payload || {};
     // #region agent log
-    fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'main.js:open-pdf-with-system-app',message:'handler entry',data:{urlStart:(pdfUrl||'').slice(0,100),hasToken:!!(token&&String(token).trim())},hypothesisId:'H3',timestamp:Date.now()})}).catch(()=>{});
+    if (DEBUG_INGEST) { fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'main.js:open-pdf-with-system-app',message:'handler entry',data:{urlStart:(pdfUrl||'').slice(0,100),hasToken:!!(token&&String(token).trim())},hypothesisId:'H3',timestamp:Date.now()})}).catch(()=>{}); }
     // #endregion
     if (!pdfUrl || typeof pdfUrl !== 'string') {
         return { success: false, error: 'URL requise' };
@@ -933,7 +857,7 @@ ipcMain.handle('open-pdf-with-system-app', async (_event, payload) => {
         const headers = { 'Authorization': `Bearer ${token || ''}` };
         const res = await fetch(pdfUrl, { headers });
         // #region agent log
-        fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'main.js:open-pdf-with-system-app',message:'after fetch',data:{status:res?.status,ok:res?.ok},hypothesisId:'H4',timestamp:Date.now()})}).catch(()=>{});
+        if (DEBUG_INGEST) { fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'main.js:open-pdf-with-system-app',message:'after fetch',data:{status:res?.status,ok:res?.ok},hypothesisId:'H4',timestamp:Date.now()})}).catch(()=>{}); }
         // #endregion
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const buf = await res.arrayBuffer();
@@ -951,7 +875,7 @@ ipcMain.handle('open-pdf-with-system-app', async (_event, payload) => {
         return { success: true, path: tempPath };
     } catch (e) {
         // #region agent log
-        fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'main.js:open-pdf-with-system-app',message:'handler catch',data:{message:e?.message,name:e?.constructor?.name},hypothesisId:'H5',timestamp:Date.now()})}).catch(()=>{});
+        if (DEBUG_INGEST) { fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'main.js:open-pdf-with-system-app',message:'handler catch',data:{message:e?.message,name:e?.constructor?.name},hypothesisId:'H5',timestamp:Date.now()})}).catch(()=>{}); }
         // #endregion
         try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch (_) {}
         console.error('❌ open-pdf-with-system-app:', e.message);
@@ -959,13 +883,17 @@ ipcMain.handle('open-pdf-with-system-app', async (_event, payload) => {
     }
 });
 
-// IPC: ouvrir un chemin local (fichier ou dossier) avec l'app par défaut
+// IPC: ouvrir un chemin local (fichier ou dossier) avec l'app par défaut (restriction aux répertoires autorisés)
 ipcMain.handle('open-path', async (_event, payload) => {
     const targetPath = typeof payload === 'string' ? payload : payload?.path;
     if (!targetPath) throw new Error('path is required');
 
     try {
         const resolved = path.resolve(targetPath);
+        if (!isPathAllowed(resolved)) {
+            console.error('❌ open-path: chemin non autorisé:', resolved);
+            return { success: false, error: 'Chemin non autorisé' };
+        }
 
         if (!fs.existsSync(resolved)) {
             return { success: false, error: 'Path does not exist' };
@@ -1161,28 +1089,31 @@ ipcMain.handle('get-app-icon', async (_event, payload) => {
     }
 });
 
-// IPC: lancer une application
+// IPC: lancer une application (sécurisé : whitelist + execFile, pas de shell)
+const LAUNCH_APP_SAFE_PATTERN = /^[a-zA-Z0-9_.-]+$/;
+const LAUNCH_APP_MAX_LEN = 128;
+
 ipcMain.handle('launch-app', async (_event, payload) => {
     const { command, args = [] } = payload || {};
-    if (!command) throw new Error('command is required');
+    if (!command || typeof command !== 'string') throw new Error('command is required');
+
+    const cmd = command.trim();
+    if (cmd.length > LAUNCH_APP_MAX_LEN || !LAUNCH_APP_SAFE_PATTERN.test(cmd)) {
+        console.error('❌ launch-app: commande refusée (caractères ou longueur non autorisés)');
+        return { success: false, error: 'Commande non autorisée' };
+    }
+    const safeArgs = Array.isArray(args) ? args.map(a => (typeof a === 'string' ? a : String(a))) : [];
 
     try {
-        // Construire la commande avec les arguments
-        const cmdArgs = args.map(arg => `"${arg}"`).join(' ');
-        const fullCmd = cmdArgs ? `${command} ${cmdArgs}` : command;
-
-        exec(fullCmd, (error, stdout, stderr) => {
+        execFile(cmd, safeArgs, { shell: false }, (error, stdout, stderr) => {
             if (error) {
                 console.error('❌ Erreur lancement app:', error.message);
                 return;
             }
-            if (stderr) {
-                console.warn('⚠️ App stderr:', stderr);
-            }
-            console.log('✅ Application lancée:', command);
+            if (stderr) console.warn('⚠️ App stderr:', stderr);
+            console.log('✅ Application lancée:', cmd);
         });
-
-        return { success: true, command };
+        return { success: true, command: cmd };
     } catch (error) {
         console.error('❌ Erreur launch-app:', error);
         return { success: false, error: error.message };
@@ -1308,6 +1239,29 @@ const TRACABILITE_PDF_BASE = '/mnt/team/#TEAM/#TRAÇABILITÉ';
 /** Dossier PDF commandes : /mnt/team/#TEAM/#COMMANDES/ */
 const COMMANDES_PDF_BASE = '/mnt/team/#TEAM/#COMMANDES/';
 
+/** Base partagée pour FolderManager (presets team, guest, capsule, development). */
+const TEAM_BASE = '/mnt/team/#TEAM';
+
+/** Répertoires autorisés pour list-folders, open-path, read-file-as-base64 (sécurité). */
+function getAllowedPathPrefixes() {
+    const bases = [
+        os.homedir(),
+        app.getPath('userData'),
+        app.getPath('documents'),
+        app.getPath('temp'),
+        TEAM_BASE,
+        TRACABILITE_PDF_BASE,
+        COMMANDES_PDF_BASE
+    ].filter(Boolean);
+    return bases.map(p => path.normalize(p));
+}
+
+function isPathAllowed(resolvedPath) {
+    const normalized = path.normalize(resolvedPath);
+    const prefixes = getAllowedPathPrefixes();
+    return prefixes.some(p => normalized === p || normalized.startsWith(p + path.sep));
+}
+
 /**
  * Formater une date ISO en "jj/mm/aaaa" pour le PDF (sans heure)
  */
@@ -1378,6 +1332,16 @@ function buildPdfSummaryBlock(totalItems, typeEntries, stateEntries) {
  * Placeholders : {{lotId}}, {{lotName}}, {{created_at}}, {{finished_at}}, {{recovered_at}},
  * {{summary_block}}, {{items_rows}}
  */
+// Mapping OS → icône Font Awesome (fa-brands) et libellé pour les PDF des lots
+const PDF_OS_MAP = {
+    windows: { icon: 'windows', title: 'Windows' },
+    linux: { icon: 'linux', title: 'Linux' },
+    chrome: { icon: 'chrome', title: 'Chrome OS' },
+    apple: { icon: 'apple', title: 'Apple' },
+    android: { icon: 'android', title: 'Android' },
+    bsd: { icon: 'freebsd', title: 'BSD' }
+};
+
 async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, typeEntries, totalItems) {
     const templateDir = path.join(__dirname, 'public', 'pdf-templates');
     const htmlPath = path.join(templateDir, 'lot.html');
@@ -1413,8 +1377,10 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
             else stateDisplay = escapeHtml(rawState || '-');
             const dateHeure = escapeHtml(formatItemDateForPdf(it));
             const tech = escapeHtml(it.technician || it.technicien || '-');
-            const osIcon = it.os === 'windows' ? 'windows' : 'linux';
-            const osTitle = it.os === 'windows' ? 'Windows' : 'Linux';
+            const osKey = (it.os && String(it.os).toLowerCase().trim()) || 'linux';
+            const osInfo = PDF_OS_MAP[osKey] || PDF_OS_MAP.linux;
+            const osIcon = osInfo.icon;
+            const osTitle = osInfo.title;
             return `<tr><td class="col-num">${num}</td><td class="col-type">${type}</td><td class="col-marque">${marque}</td><td class="col-modele">${modele}</td><td class="col-os"><i class="fa-brands fa-${osIcon}" title="${osTitle}"></i></td><td class="col-sn">${sn}</td><td class="col-state">${stateDisplay}</td><td class="col-date">${dateHeure}</td><td class="col-tech">${tech}</td></tr>`;
         })
         .join('\n');
@@ -1467,7 +1433,7 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
 
     const win = new BrowserWindow({
         show: false,
-        webPreferences: { offscreen: true }
+        webPreferences: { nodeIntegration: false, contextIsolation: true, offscreen: true }
     });
     try {
         await win.loadFile(outputPath);
@@ -1805,7 +1771,7 @@ async function generateDisquesPdfFromHtmlTemplate(payload, fullPath) {
 
     const win = new BrowserWindow({
         show: false,
-        webPreferences: { offscreen: true }
+        webPreferences: { nodeIntegration: false, contextIsolation: true, offscreen: true }
     });
     try {
         await win.loadFile(outputPath);
@@ -1937,7 +1903,7 @@ async function generateCommandePdfFromHtmlTemplate(payload, fullPath) {
 
     const win = new BrowserWindow({
         show: false,
-        webPreferences: { offscreen: true }
+        webPreferences: { nodeIntegration: false, contextIsolation: true, offscreen: true }
     });
     try {
         await win.loadFile(outputPath);
@@ -2000,6 +1966,10 @@ ipcMain.handle('read-file-as-base64', async (_event, payload) => {
     }
     try {
         const resolved = path.resolve(filePath);
+        if (!isPathAllowed(resolved)) {
+            console.error('❌ read-file-as-base64: chemin non autorisé:', resolved);
+            return { success: false, error: 'Chemin non autorisé' };
+        }
         if (!fs.existsSync(resolved)) {
             return { success: false, error: 'Fichier introuvable' };
         }
@@ -2009,6 +1979,64 @@ ipcMain.handle('read-file-as-base64', async (_event, payload) => {
     } catch (err) {
         console.error('❌ read-file-as-base64:', err.message);
         return { success: false, error: err.message };
+    }
+});
+
+/** Fichier de config locale (userData) : créé à l'exécution sur chaque machine (dev ou prod), jamais dans le dépôt. */
+const WORKSPACE_CONFIG_PATH = path.join(app.getPath('userData'), 'workspace-config.json');
+/** Clé Giphy : présente dans le code (donc dans la release). Au 1er lancement on crée workspace-config.json avec cette valeur ; les lancements suivants lisent depuis userData. Dev et prod fonctionnent. */
+const DEFAULT_GIPHY_API_KEY = 'mvekVgYYTsuZWKdfbyHDgUvtCEfUt4IR';
+
+function getGiphyApiKey() {
+    const fromEnv = process.env.GIPHY_API_KEY && String(process.env.GIPHY_API_KEY).trim();
+    if (fromEnv) return fromEnv;
+    try {
+        if (fs.existsSync(WORKSPACE_CONFIG_PATH)) {
+            const data = JSON.parse(fs.readFileSync(WORKSPACE_CONFIG_PATH, 'utf8'));
+            if (data.giphyApiKey && String(data.giphyApiKey).trim()) return String(data.giphyApiKey).trim();
+        }
+        const dir = path.dirname(WORKSPACE_CONFIG_PATH);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        let data = {};
+        try {
+            if (fs.existsSync(WORKSPACE_CONFIG_PATH)) {
+                data = JSON.parse(fs.readFileSync(WORKSPACE_CONFIG_PATH, 'utf8'));
+            }
+        } catch (_) { /* ignore */ }
+        data.giphyApiKey = DEFAULT_GIPHY_API_KEY;
+        fs.writeFileSync(WORKSPACE_CONFIG_PATH, JSON.stringify(data, null, 2), 'utf8');
+        return DEFAULT_GIPHY_API_KEY;
+    } catch (_) { /* ignore */ }
+    return '';
+}
+
+ipcMain.handle('get-workspace-config', async () => {
+    try {
+        if (fs.existsSync(WORKSPACE_CONFIG_PATH)) {
+            const data = JSON.parse(fs.readFileSync(WORKSPACE_CONFIG_PATH, 'utf8'));
+            return { giphyApiKey: (data.giphyApiKey && String(data.giphyApiKey).trim()) ? String(data.giphyApiKey).trim() : '' };
+        }
+    } catch (_) { /* ignore */ }
+    return { giphyApiKey: '' };
+});
+
+ipcMain.handle('set-workspace-config', async (_event, payload) => {
+    const giphyApiKey = (payload && payload.giphyApiKey != null) ? String(payload.giphyApiKey).trim() : '';
+    try {
+        const dir = path.dirname(WORKSPACE_CONFIG_PATH);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        const data = {};
+        try {
+            if (fs.existsSync(WORKSPACE_CONFIG_PATH)) {
+                Object.assign(data, JSON.parse(fs.readFileSync(WORKSPACE_CONFIG_PATH, 'utf8')));
+            }
+        } catch (_) { /* ignore */ }
+        data.giphyApiKey = giphyApiKey;
+        fs.writeFileSync(WORKSPACE_CONFIG_PATH, JSON.stringify(data, null, 2), 'utf8');
+        return { success: true };
+    } catch (e) {
+        console.error('set-workspace-config:', e.message);
+        return { success: false, error: e.message };
     }
 });
 
@@ -2023,7 +2051,8 @@ ipcMain.handle('get-app-config', async () => {
         serverMode: MODE,
         nodeEnv: isProduction ? 'production' : 'development',
         isProduction: isProduction,
-        appVersion: app.getVersion()
+        appVersion: app.getVersion(),
+        giphyApiKey: getGiphyApiKey()
     };
 });
 

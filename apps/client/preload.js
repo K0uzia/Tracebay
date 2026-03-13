@@ -2,7 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 const ALLOWED_CHANNELS = {
     send: ['open-pdf', 'chat-new-message'],
-    invoke: ['open-external', 'open-pdf-window', 'open-pdf-with-system-app', 'get-app-config', 'get-connection-config', 'get-server-config', 'get-local-ip', 'get-system-info', 'list-folders', 'open-path', 'launch-app', 'get-app-icon', 'generate-lot-pdf', 'generate-disques-pdf', 'generate-commande-pdf', 'read-file-as-base64', 'run-lsblk'],
+    invoke: ['open-external', 'open-pdf-window', 'open-pdf-with-system-app', 'get-app-config', 'get-connection-config', 'get-server-config', 'get-workspace-config', 'set-workspace-config', 'get-local-ip', 'get-system-info', 'list-folders', 'open-path', 'launch-app', 'get-app-icon', 'generate-lot-pdf', 'generate-disques-pdf', 'generate-commande-pdf', 'read-file-as-base64', 'run-lsblk'],
     on: ['update-was-installed']
 };
 

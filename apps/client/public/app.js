@@ -1,3 +1,10 @@
+// Charger la config app (dont giphyApiKey) dès que possible en Electron
+if (typeof window !== 'undefined' && window.electron && window.electron.invoke) {
+    window.electron.invoke('get-app-config').then(function (c) {
+        if (c && typeof c === 'object') window.APP_CONFIG = Object.assign({}, window.APP_CONFIG || {}, c);
+    }).catch(function () {});
+}
+
 class PageManager {
     constructor() {
         this.contentContainer = 'content';
@@ -389,6 +396,7 @@ class PageManager {
         const btnRegister = document.getElementById('btnRegister');
         const btnLogout = document.getElementById('btnLogout');
         const btnSettings = document.getElementById('btnSettings');
+        const btnSettingsGuest = document.getElementById('btnSettingsGuest');
 
         if (!navProfile || !profileDropdown || !btnLogin || !btnRegister || !btnLogout) return;
 
@@ -424,6 +432,12 @@ class PageManager {
                 profileDropdown.classList.add('hidden');
             });
         }
+        if (btnSettingsGuest) {
+            btnSettingsGuest.addEventListener('click', () => {
+                this.showSettingsModal();
+                profileDropdown.classList.add('hidden');
+            });
+        }
     }
 
     async loadSettingsModal() {
@@ -440,10 +454,10 @@ class PageManager {
     }
 
     showSettingsModal() {
-        if (!this.authManager || !this.authManager.isAuthenticated()) return;
         const modal = document.getElementById('settingsModal');
         if (!modal) return;
-        const user = this.authManager.getCurrentUser();
+        const isAuth = this.authManager && this.authManager.isAuthenticated();
+        const user = this.authManager ? this.authManager.getCurrentUser() : null;
         const usernameInput = document.getElementById('settingsNewUsername');
         if (usernameInput && user) usernameInput.value = user.username || '';
         const usernameError = document.getElementById('settingsUsernameError');
@@ -456,6 +470,13 @@ class PageManager {
         if (deleteError) { deleteError.classList.add('hidden'); deleteError.textContent = ''; }
         if (deleteConfirmError) { deleteConfirmError.classList.add('hidden'); deleteConfirmError.textContent = ''; }
         if (deleteConfirm) deleteConfirm.classList.add('hidden');
+        document.querySelectorAll('.settings-section:not(#settingsSectionGiphy)').forEach(el => { el.style.display = isAuth ? '' : 'none'; });
+        if (typeof window.electron?.invoke === 'function') {
+            window.electron.invoke('get-workspace-config').then(c => {
+                const el = document.getElementById('settingsGiphyApiKey');
+                if (el) el.value = (c && c.giphyApiKey) ? c.giphyApiKey : '';
+            }).catch(() => {});
+        }
         modal.classList.remove('hidden');
     }
 
@@ -477,6 +498,24 @@ class PageManager {
 
         if (closeBtn) closeBtn.addEventListener('click', hideModal);
         if (overlay) overlay.addEventListener('click', hideModal);
+
+        const btnSaveGiphy = document.getElementById('settingsBtnSaveGiphy');
+        if (btnSaveGiphy && typeof window.electron?.invoke === 'function') {
+            btnSaveGiphy.addEventListener('click', async () => {
+                const input = document.getElementById('settingsGiphyApiKey');
+                const errEl = document.getElementById('settingsGiphyError');
+                const key = (input && input.value) ? String(input.value).trim() : '';
+                if (errEl) errEl.classList.add('hidden');
+                const result = await window.electron.invoke('set-workspace-config', { giphyApiKey: key });
+                if (result && result.success) {
+                    const appConfig = await window.electron.invoke('get-app-config').catch(() => null);
+                    if (appConfig && typeof appConfig === 'object') window.APP_CONFIG = { ...(window.APP_CONFIG || {}), ...appConfig };
+                    if (this.showNotification) this.showNotification('Clé Giphy enregistrée.', 'success');
+                } else {
+                    if (errEl) { errEl.textContent = (result && result.error) || 'Erreur'; errEl.classList.remove('hidden'); }
+                }
+            });
+        }
 
         if (formUsername) {
             formUsername.addEventListener('submit', async (e) => {

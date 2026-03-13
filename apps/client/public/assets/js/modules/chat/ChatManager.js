@@ -20,7 +20,6 @@ class ChatManager {
         this.emotePickerId = options.emotePickerId || 'chat-widget-emote-picker';
         this.gifButtonId = options.gifButtonId || 'chat-widget-gif';
         this.gifPickerId = options.gifPickerId || 'chat-widget-gif-picker';
-        this.giphyApiKey = options.giphyApiKey || (options.securityConfig && options.securityConfig.giphyApiKey) || (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.giphyApiKey) || '';
 
         const wsUrl = options.wsUrl || api.getWsUrl();
         this.webSocket = getSharedChatWebSocket({ wsUrl });
@@ -32,6 +31,11 @@ class ChatManager {
         this.replyingTo = null;
         this.securityConfig = options.securityConfig || {};
         this.securityManager = new ChatSecurityManager(this.securityConfig);
+        // Clé Giphy lue à l'accès (APP_CONFIG est rempli après api.init())
+        Object.defineProperty(this, 'giphyApiKey', {
+            get: () => (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.giphyApiKey) || (this.securityConfig && this.securityConfig.giphyApiKey) || '',
+            enumerable: true
+        });
 
         this._registerWsHandlers();
         this.init();
