@@ -620,9 +620,6 @@ export default class TracabiliteManager {
      */
     async openPdfWithSystemApp(pdfUrl, suggestedFilename) {
         if (!pdfUrl || !pdfUrl.trim()) return;
-        // #region agent log
-        fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'tracabilite.js:openPdfWithSystemApp',message:'openPdfWithSystemApp entry',data:{urlStart:(pdfUrl||'').trim().slice(0,100),urlLength:(pdfUrl||'').length,hasElectron:!!window.electron?.invoke,suggestedFilename:(suggestedFilename||'').slice(0,50)},hypothesisId:'H1',timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         if (window.electron?.invoke) {
             try {
                 const token = localStorage.getItem('workspace_jwt') || '';
@@ -631,16 +628,10 @@ export default class TracabiliteManager {
                     token,
                     suggestedFilename: suggestedFilename || 'tracabilite.pdf'
                 });
-                // #region agent log
-                fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'tracabilite.js:openPdfWithSystemApp',message:'invoke result',data:{success:result?.success,error:result?.error},hypothesisId:'H2',timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
                 if (!result.success) {
                     this.showNotification(result.error || 'Impossible d\'ouvrir le PDF', 'error');
                 }
             } catch (err) {
-                // #region agent log
-                fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'tracabilite.js:openPdfWithSystemApp',message:'invoke catch',data:{errMessage:err?.message,errName:err?.constructor?.name,StringErr:String(err)},hypothesisId:'H2',timestamp:Date.now()})}).catch(()=>{});
-                // #endregion
                 logger.error('❌ openPdfWithSystemApp:', err);
                 this.showNotification('Erreur lors de l\'ouverture du PDF', 'error');
             }

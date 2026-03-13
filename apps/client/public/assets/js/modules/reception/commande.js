@@ -234,13 +234,17 @@ export default class CommandeManager {
     }
 
     async submitAddProduct() {
+        if (this._submittingAddProduct) return;
         const input = document.getElementById('commande-new-product-name');
         const modal = document.getElementById('commande-modal-add-product');
+        const submitBtn = modal?.querySelector('button[type="submit"]');
         if (!input?.value?.trim()) {
             window.app?.showNotification?.('Saisissez un nom de produit', 'warning');
             return;
         }
         const name = input.value.trim();
+        this._submittingAddProduct = true;
+        if (submitBtn) submitBtn.disabled = true;
         try {
             const res = await api.post('commandes.products.create', { name });
             if (!res.ok) {
@@ -249,11 +253,15 @@ export default class CommandeManager {
                 return;
             }
             await this.loadProducts();
+            input.value = '';
             modal?.close();
             window.app?.showNotification?.('Produit ajouté', 'success');
         } catch (err) {
             logger.error('Erreur ajout produit:', err);
             window.app?.showNotification?.(err?.message || 'Erreur lors de l\'ajout', 'error');
+        } finally {
+            this._submittingAddProduct = false;
+            if (submitBtn) submitBtn.disabled = false;
         }
     }
 
