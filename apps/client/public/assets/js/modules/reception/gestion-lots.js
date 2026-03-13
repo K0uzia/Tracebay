@@ -365,19 +365,7 @@ export default class GestionLotsManager {
 
         const row = this.createRow(serialNumber, 'scan');
         tbody.appendChild(row);
-        
-        // Créer une nouvelle ligne vide SCAN pour le prochain scan
-        setTimeout(() => {
-            const newRow = this.createRow('', 'scan');
-            tbody.appendChild(newRow);
-            
-            // AutoFocus sur le S/N de la nouvelle ligne
-            const snInput = newRow.querySelector('input[name="serial_number"]');
-            if (snInput) {
-                snInput.focus();
-            }
-        }, 100);
-        
+
         this.showNotification('Appareil scanné ajouté', 'success');
     }
 
