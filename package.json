@@ -1,6 +1,6 @@
 {
   "name": "workspace",
-  "version": "3.1.5",
+  "version": "3.1.6",
   "description": "Workspace management application with two Electron apps",
   "private": true,
   "workspaces": [
