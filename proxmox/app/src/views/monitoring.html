@@ -1403,7 +1403,7 @@ async function loadEntrees() {
   const tbody = document.getElementById('entrees-table');
   if (!tbody) return;
   try {
-    const data = await api('GET', '/api/entrees?limit=200');
+    const data = await api('GET', '/api/admin/entrees?limit=200');
     const list = (data.data || []).slice();
     if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucune entrée</td></tr>'; return; }
     tbody.innerHTML = list.map(e => {
@@ -1440,7 +1440,7 @@ async function saveEntree() {
   const body = { date, type, description };
   if (lotId) body.lot_id = parseInt(lotId, 10);
   if (disqueSessionId) body.disque_session_id = parseInt(disqueSessionId, 10);
-  const data = await api('POST', '/api/entrees', body);
+  const data = await api('POST', '/api/admin/entrees', body);
   if (data.error) { toast(data.error, 'error'); return; }
   toast('Entrée créée');
   closeModal('entree-modal');

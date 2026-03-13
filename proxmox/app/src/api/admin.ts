@@ -1739,10 +1739,10 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   // ─────────────────────────────────────────────
-  // ENTRÉES RÉCEPTION — admin
+  // ENTRÉES RÉCEPTION — admin (préfixe /api/admin pour éviter doublon avec main.ts /api/entrees)
   // ─────────────────────────────────────────────
 
-  fastify.get('/api/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/admin/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { limit = '100', offset = '0', type } = request.query as any;
     const limitNum = Math.min(parseInt(limit, 10) || 100, 200);
@@ -1767,13 +1767,13 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       const total = parseInt(countResult.rows[0]?.count || '0', 10);
       return { success: true, data: result.rows, pagination: { total, limit: limitNum, offset: offsetNum } };
     } catch (err: any) {
-      fastify.log.error({ err }, 'GET /api/entrees');
+      fastify.log.error({ err }, 'GET /api/admin/entrees');
       reply.statusCode = 500;
       return { error: 'Database error' };
     }
   });
 
-  fastify.post('/api/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/api/admin/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const body = request.body as { date?: string; type?: string; lot_id?: number; disque_session_id?: number; description?: string };
     const date = body.date || new Date().toISOString().slice(0, 10);
@@ -1789,7 +1789,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       );
       return { success: true, entree: result.rows[0] };
     } catch (err: any) {
-      fastify.log.error({ err }, 'POST /api/entrees');
+      fastify.log.error({ err }, 'POST /api/admin/entrees');
       reply.statusCode = 500;
       return { error: 'Database error' };
     }
