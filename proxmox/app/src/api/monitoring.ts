@@ -323,7 +323,8 @@ export async function registerMonitoringRoutes(
     async (request: FastifyRequest, reply: FastifyReply) => {
       if (!checkAdminAuth(request, reply)) return;
       try {
-        const { limit = '100', offset = '0', status, errorType } = request.query;
+        const q = request.query as { limit?: string; offset?: string; status?: string; errorType?: string };
+        const { limit = '100', offset = '0', status, errorType } = q;
         let sql = 'SELECT id, client_id, client_version, platform, error_type, error_message, context, user_message, url, user_agent, timestamp, resolved, resolved_at, notes FROM client_errors WHERE 1=1';
         const params: any[] = [];
         let i = 1;
@@ -352,7 +353,7 @@ export async function registerMonitoringRoutes(
 
   fastify.get<{ Params: { id: string } }>('/api/monitoring/issues/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
-    const { id } = request.params;
+    const { id } = request.params as { id: string };
     try {
       const result = await query(
         'SELECT * FROM client_errors WHERE id = $1',
@@ -372,7 +373,7 @@ export async function registerMonitoringRoutes(
 
   fastify.delete<{ Params: { id: string } }>('/api/monitoring/issues/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
-    const { id } = request.params;
+    const { id } = request.params as { id: string };
     try {
       const result = await query('DELETE FROM client_errors WHERE id = $1', [id]);
       if (result.rowCount === 0) {
@@ -387,12 +388,13 @@ export async function registerMonitoringRoutes(
     }
   });
 
-  fastify.patch<{ Params: { id: string }; Body: { status?: string; resolved?: boolean; notes?: string } }>(
+  type IssuePatchBody = { status?: string; resolved?: boolean; notes?: string };
+  fastify.patch<{ Params: { id: string }; Body: IssuePatchBody }>(
     '/api/monitoring/issues/:id',
     async (request: FastifyRequest, reply: FastifyReply) => {
       if (!checkAdminAuth(request, reply)) return;
-      const { id } = request.params;
-      const body = request.body || {};
+      const { id } = request.params as { id: string };
+      const body = (request.body || {}) as IssuePatchBody;
       const resolved = body.resolved ?? (body.status === 'resolved');
       const notes = body.notes;
       const updates: string[] = [];
