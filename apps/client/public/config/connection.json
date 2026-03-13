@@ -83,6 +83,18 @@
     "config": {
       "apps": "/api/admin/config/apps",
       "folders": "/api/admin/config/folders"
+    },
+    "commandes": {
+      "products": {
+        "list": "/api/commandes/products",
+        "create": "/api/commandes/products",
+        "update": "/api/commandes/products/:id",
+        "delete": "/api/commandes/products/:id"
+      }
+    },
+    "entrees": {
+      "list": "/api/entrees",
+      "create": "/api/entrees"
     }
   }
 }

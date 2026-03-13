@@ -600,7 +600,7 @@ class PageManager {
 
     async loadPage(pageName) {
         try {
-            const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite'].includes(pageName);
+            const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'commande'].includes(pageName);
             
             // Si c'est une sous-page de réception, charger d'abord reception.html
             if (isReceptionSubPage) {
@@ -613,18 +613,34 @@ class PageManager {
                 contentEl.innerHTML = receptionHtml;
                 this.closeAllDialogsIn(contentEl);
 
-                // Puis charger la sous-page dans recep-section
+                const recepSection = document.querySelector('.recep-section');
                 const pagePath = `./pages/reception-pages/${pageName}.html`;
                 const response = await fetch(pagePath);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                let html = await response.text();
-                html = this.transformFileManagers(html);
-                html = this.transformAppManagers(html);
-                const recepSection = document.querySelector('.recep-section');
-                if (recepSection) {
-                    recepSection.innerHTML = html;
-                    this.closeAllDialogsIn(recepSection);
+                if (!response.ok) {
+                    // Pages optionnelles : contenu minimal pour que les managers puissent s'accrocher
+                    if (recepSection && (pageName === 'commande' || pageName === 'entrer')) {
+                        if (pageName === 'commande') recepSection.innerHTML = '<div id="commande-products-root"></div>';
+                        else recepSection.innerHTML = '<div id="entrer-lots-container"></div><div id="entrees-reception-container"></div>';
+                    } else {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                } else {
+                    let html = await response.text();
+                    html = this.transformFileManagers(html);
+                    html = this.transformAppManagers(html);
+                    if (recepSection) {
+                        recepSection.innerHTML = html;
+                        if (pageName === 'entrer') {
+                            if (!document.getElementById('entrees-reception-container')) {
+                                const div = document.createElement('div');
+                                div.id = 'entrees-reception-container';
+                                div.className = 'reception-block';
+                                recepSection.appendChild(div);
+                            }
+                        }
+                    }
                 }
+                if (recepSection) this.closeAllDialogsIn(recepSection);
                 this.setReceptionNavActive(pageName);
             } else {
                 // Si on clique sur "Réception" du header, rediriger vers "entrer" par défaut
@@ -887,6 +903,37 @@ class PageManager {
                 })
                 .catch(error => {
                     logger.error('❌ Erreur import TracabiliteManager:', error);
+                });
+        } else if (pageName === 'commande') {
+            if (window.commandesProductsManager) {
+                window.commandesProductsManager.destroy();
+                window.commandesProductsManager = null;
+            }
+            import('./assets/js/modules/reception/CommandesProductsManager.js')
+                .then(module => {
+                    const CommandesProductsManager = module.default;
+                    window.commandesProductsManager = new CommandesProductsManager();
+                    window.commandesProductsManager.init();
+                    logger.debug('✅ CommandesProductsManager initialisé');
+                })
+                .catch(error => {
+                    logger.error('❌ Erreur import CommandesProductsManager:', error);
+                });
+        } else if (pageName === 'entrer') {
+            // Entrées réception (en plus de GestionLotsManager)
+            if (window.entreesManager) {
+                window.entreesManager.destroy();
+                window.entreesManager = null;
+            }
+            import('./assets/js/modules/reception/EntreesManager.js')
+                .then(module => {
+                    const EntreesManager = module.default;
+                    window.entreesManager = new EntreesManager();
+                    window.entreesManager.init();
+                    logger.debug('✅ EntreesManager initialisé (onglet Entrée)');
+                })
+                .catch(error => {
+                    logger.error('❌ Erreur import EntreesManager:', error);
                 });
         }
     }

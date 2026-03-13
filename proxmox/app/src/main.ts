@@ -2244,13 +2244,14 @@ function broadcastUserCount() {
       }
       try {
         const result = await query(
-          `SELECT id, name AS title, description, url, category_id, order_index, created_at, type, path
+          `SELECT id, name AS title, description, url, category_id, order_index, created_at
            FROM shortcuts
            WHERE user_id = $1
            ORDER BY category_id ASC NULLS FIRST, order_index ASC`,
           [userId]
         );
-        return { success: true, shortcuts: result.rows };
+        const rows = (result.rows as any[]).map((r: any) => ({ ...r, type: r.type ?? null, path: r.path ?? null }));
+        return { success: true, shortcuts: rows };
       } catch (error) {
         console.error('Error fetching shortcuts:', error);
         reply.statusCode = 500;
@@ -2413,6 +2414,105 @@ function broadcastUserCount() {
         return { success: true, id: result.rows[0].id, name: result.rows[0].name };
       } catch (error: any) {
         console.error('Error creating commande product:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.put('/api/commandes/products/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const { name } = request.body as any;
+      if (!name || !String(name).trim()) {
+        reply.statusCode = 400;
+        return { error: 'Name is required' };
+      }
+      try {
+        const result = await query(
+          'UPDATE commande_products SET name = $1 WHERE id = $2 RETURNING id, name',
+          [String(name).trim(), id]
+        );
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Produit introuvable' };
+        }
+        return { success: true, id: result.rows[0].id, name: result.rows[0].name };
+      } catch (error: any) {
+        console.error('Error updating commande product:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.delete('/api/commandes/products/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      try {
+        const result = await query('DELETE FROM commande_products WHERE id = $1', [id]);
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Produit introuvable' };
+        }
+        return { success: true };
+      } catch (error: any) {
+        console.error('Error deleting commande product:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    // API Entrées (réception) — utilisateur connecté peut lister et créer
+    fastify.get('/api/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) {
+        reply.statusCode = 401;
+        return { error: 'Token manquant ou invalide' };
+      }
+      try {
+        const { limit = '100', offset = '0', type } = request.query as { limit?: string; offset?: string; type?: string };
+        const limitNum = Math.min(parseInt(limit, 10) || 100, 200);
+        const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
+        let sql = `SELECT e.id, e.date, e.type, e.lot_id, e.disque_session_id, e.description, e.created_at,
+                    l.name AS lot_name, d.name AS disque_session_name
+                    FROM entrees e
+                    LEFT JOIN lots l ON e.lot_id = l.id
+                    LEFT JOIN disques_sessions d ON e.disque_session_id = d.id
+                    WHERE 1=1`;
+        const params: any[] = [];
+        let i = 1;
+        if (type) { sql += ` AND e.type = $${i++}`; params.push(type); }
+        sql += ` ORDER BY e.date DESC, e.created_at DESC LIMIT $${i++} OFFSET $${i++}`;
+        params.push(limitNum, offsetNum);
+        const result = await query(sql, params);
+        const countResult = await query<{ count: string }>('SELECT COUNT(*) AS count FROM entrees' + (type ? ' WHERE type = $1' : ''), type ? [type] : []);
+        const total = parseInt(countResult.rows[0]?.count || '0', 10);
+        return { success: true, data: result.rows, pagination: { total, limit: limitNum, offset: offsetNum } };
+      } catch (error: any) {
+        console.error('Error fetching entrees:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.post('/api/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) {
+        reply.statusCode = 401;
+        return { error: 'Token manquant ou invalide' };
+      }
+      const body = request.body as { date?: string; type?: string; lot_id?: number; disque_session_id?: number; description?: string };
+      const date = body.date || new Date().toISOString().slice(0, 10);
+      const type = (body.type && String(body.type).trim()) || 'manual';
+      const lot_id = body.lot_id != null ? (Number(body.lot_id) || null) : null;
+      const disque_session_id = body.disque_session_id != null ? (Number(body.disque_session_id) || null) : null;
+      const description = body.description != null ? String(body.description).trim() || null : null;
+      try {
+        const result = await query(
+          `INSERT INTO entrees (date, type, lot_id, disque_session_id, description) VALUES ($1, $2, $3, $4, $5)
+           RETURNING id, date, type, lot_id, disque_session_id, description, created_at`,
+          [date, type, lot_id, disque_session_id, description]
+        );
+        return { success: true, entree: result.rows[0] };
+      } catch (error: any) {
+        console.error('Error creating entree:', error);
         reply.statusCode = 500;
         return { error: 'Database error' };
       }

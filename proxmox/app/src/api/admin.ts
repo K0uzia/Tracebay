@@ -849,12 +849,11 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     if (!checkAdminAuth(request, reply)) return;
     try {
       const result = await query(
-        `SELECT s.id, s.user_id, u.username, s.title, s.description, s.url, s.category_id,
+        `SELECT s.id, s.user_id, u.username, s.name AS title, s.description, s.url, s.category_id,
                 sc.name as category_name, s.order_index, s.created_at
          FROM shortcuts s
          LEFT JOIN users u ON s.user_id = u.id
          LEFT JOIN shortcut_categories sc ON s.category_id = sc.id
-         WHERE s.deleted_at IS NULL
          ORDER BY u.username ASC, sc.name ASC, s.order_index ASC`
       );
       return { success: true, shortcuts: result.rows };
@@ -874,11 +873,11 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
     try {
       const result = await query(
-        `INSERT INTO shortcuts (user_id, title, url, description, category_id, order_index, created_at)
+        `INSERT INTO shortcuts (user_id, name, url, description, category_id, order_index, created_at)
          VALUES ($1, $2, $3, $4, $5,
            (SELECT COALESCE(MAX(order_index)+1, 0) FROM shortcuts WHERE user_id = $1),
            NOW())
-         RETURNING id, user_id, title, url, description, category_id, order_index`,
+         RETURNING id, user_id, name AS title, url, description, category_id, order_index`,
         [user_id, title.trim(), url.trim(), description || null, category_id || null]
       );
       return { success: true, shortcut: result.rows[0] };
@@ -896,7 +895,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     const updates: string[] = [];
     const params: any[] = [];
     let i = 1;
-    if (title !== undefined) { updates.push(`title = $${i++}`); params.push(title); }
+    if (title !== undefined) { updates.push(`name = $${i++}`); params.push(title); }
     if (url !== undefined) { updates.push(`url = $${i++}`); params.push(url); }
     if (description !== undefined) { updates.push(`description = $${i++}`); params.push(description); }
     if (category_id !== undefined) { updates.push(`category_id = $${i++}`); params.push(category_id || null); }
@@ -904,7 +903,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     params.push(id);
     try {
       const result = await query(
-        `UPDATE shortcuts SET ${updates.join(', ')} WHERE id = $${i} RETURNING id, title, url, description, category_id`,
+        `UPDATE shortcuts SET ${updates.join(', ')} WHERE id = $${i} RETURNING id, name AS title, url, description, category_id`,
         params
       );
       if (result.rowCount === 0) { reply.statusCode = 404; return { error: 'Raccourci introuvable' }; }
@@ -935,10 +934,9 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     try {
       const result = await query(
         `SELECT sc.id, sc.user_id, u.username, sc.name, sc.order_index,
-                (SELECT COUNT(*) FROM shortcuts s WHERE s.category_id = sc.id AND s.deleted_at IS NULL) AS shortcut_count
+                (SELECT COUNT(*) FROM shortcuts s WHERE s.category_id = sc.id) AS shortcut_count
          FROM shortcut_categories sc
          LEFT JOIN users u ON sc.user_id = u.id
-         WHERE sc.deleted_at IS NULL
          ORDER BY u.username ASC, sc.order_index ASC`
       );
       return { success: true, categories: result.rows };
@@ -1551,6 +1549,27 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     if (!checkAdminAuth(request, reply)) return;
     try {
       const status = getServerStatus();
+      const inDocker = !!process.env.DB_HOST && process.env.DB_HOST !== 'localhost';
+      if (inDocker && status.containerApi === 'stopped') {
+        status.containerApi = 'running';
+        try {
+          await query('SELECT 1');
+          status.containerDb = 'running';
+        } catch {
+          status.containerDb = 'stopped';
+        }
+      }
+      if (inDocker && status.systemd === 'unknown') {
+        status.systemd = 'active';
+      }
+      // Afficher l'URL d'accès réelle (celle utilisée par l'utilisateur) au lieu de localhost en Docker/réseau
+      const hostHeader = (request.headers.host || '').trim();
+      if (process.env.PUBLIC_URL) {
+        status.accessUrl = process.env.PUBLIC_URL.replace(/\/$/, '');
+      } else if (inDocker && hostHeader) {
+        const proto = (request.headers['x-forwarded-proto'] as string) || 'http';
+        status.accessUrl = `${proto}://${hostHeader}`;
+      }
       return { success: true, status };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin GET /server/status');
