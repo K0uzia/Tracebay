@@ -4,6 +4,8 @@ import { Message } from '../models/Message';
 import { Event } from '../models/Event';
 import { User } from '../models/User';
 import { getServerLogs } from '../utils/server-log-buffer';
+import { query } from '../db';
+import { checkAdminAuth } from './admin';
 
 /**
  * Monitoring statistics interface
@@ -311,6 +313,119 @@ export async function registerMonitoringRoutes(
       return { error: 'Failed to fetch upcoming events' };
     }
   });
+
+  // ─────────────────────────────────────────────
+  // Issues (client_errors) — admin only
+  // ─────────────────────────────────────────────
+
+  fastify.get<{ Querystring: { limit?: string; offset?: string; status?: string; errorType?: string } }>(
+    '/api/monitoring/issues',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!checkAdminAuth(request, reply)) return;
+      try {
+        const { limit = '100', offset = '0', status, errorType } = request.query;
+        let sql = 'SELECT id, client_id, client_version, platform, error_type, error_message, context, user_message, url, user_agent, timestamp, resolved, resolved_at, notes FROM client_errors WHERE 1=1';
+        const params: any[] = [];
+        let i = 1;
+        if (status === 'resolved') { sql += ` AND resolved = true`; }
+        else if (status === 'unresolved') { sql += ` AND resolved = false`; }
+        if (errorType) { sql += ` AND error_type = $${i++}`; params.push(errorType); }
+        sql += ` ORDER BY timestamp DESC LIMIT $${i++} OFFSET $${i++}`;
+        params.push(Math.min(parseInt(limit, 10) || 100, 500), Math.max(0, parseInt(offset, 10) || 0));
+        const result = await query(sql, params);
+        let countSql = 'SELECT COUNT(*) AS total FROM client_errors WHERE 1=1';
+        const countParams: any[] = [];
+        let ci = 1;
+        if (status === 'resolved') { countSql += ` AND resolved = true`; }
+        else if (status === 'unresolved') { countSql += ` AND resolved = false`; }
+        if (errorType) { countSql += ` AND error_type = $${ci++}`; countParams.push(errorType); }
+        const countResult = await query<{ total: string }>(countSql, countParams);
+        const total = parseInt(countResult.rows[0]?.total || '0', 10);
+        return { success: true, data: result.rows, pagination: { total, limit: parseInt(limit, 10), offset: parseInt(offset, 10), hasMore: result.rows.length + (parseInt(offset, 10) || 0) < total } };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'GET /api/monitoring/issues');
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    }
+  );
+
+  fastify.get<{ Params: { id: string } }>('/api/monitoring/issues/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { id } = request.params;
+    try {
+      const result = await query(
+        'SELECT * FROM client_errors WHERE id = $1',
+        [id]
+      );
+      if (result.rowCount === 0) {
+        reply.statusCode = 404;
+        return { error: 'Issue introuvable' };
+      }
+      return { success: true, issue: result.rows[0] };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'GET /api/monitoring/issues/:id');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.delete<{ Params: { id: string } }>('/api/monitoring/issues/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { id } = request.params;
+    try {
+      const result = await query('DELETE FROM client_errors WHERE id = $1', [id]);
+      if (result.rowCount === 0) {
+        reply.statusCode = 404;
+        return { error: 'Issue introuvable' };
+      }
+      return { success: true };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'DELETE /api/monitoring/issues/:id');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.patch<{ Params: { id: string }; Body: { status?: string; resolved?: boolean; notes?: string } }>(
+    '/api/monitoring/issues/:id',
+    async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!checkAdminAuth(request, reply)) return;
+      const { id } = request.params;
+      const body = request.body || {};
+      const resolved = body.resolved ?? (body.status === 'resolved');
+      const notes = body.notes;
+      const updates: string[] = [];
+      const values: any[] = [];
+      let i = 1;
+      if (typeof resolved === 'boolean') {
+        updates.push(`resolved = $${i++}`, `resolved_at = $${i++}`);
+        values.push(resolved, resolved ? new Date().toISOString() : null);
+      }
+      if (notes !== undefined) {
+        updates.push(`notes = $${i++}`);
+        values.push(notes || null);
+      }
+      if (updates.length === 0) {
+        reply.statusCode = 400;
+        return { error: 'Aucun champ à mettre à jour (resolved ou notes)' };
+      }
+      values.push(id);
+      try {
+        await query(`UPDATE client_errors SET ${updates.join(', ')} WHERE id = $${i}`, values);
+        const row = await query('SELECT * FROM client_errors WHERE id = $1', [id]);
+        if (row.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Issue introuvable' };
+        }
+        return { success: true, issue: row.rows[0] };
+      } catch (err: any) {
+        fastify.log.error({ err }, 'PATCH /api/monitoring/issues/:id');
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    }
+  );
 
   fastify.log.info('✅ Monitoring routes registered');
 }

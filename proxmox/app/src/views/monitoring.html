@@ -158,6 +158,8 @@
         <div class="sub-tab active" data-sub="lots">Lots</div>
         <div class="sub-tab" data-sub="disques">Lots disques</div>
         <div class="sub-tab" data-sub="marques">Marques & Modèles</div>
+        <div class="sub-tab" data-sub="commandes">Commandes</div>
+        <div class="sub-tab" data-sub="entrees">Entrées</div>
       </div>
 
       <div class="sub-panel active" id="sub-lots">
@@ -233,6 +235,33 @@
               <table><thead><tr><th>#</th><th>Nom</th><th>Actions</th></tr></thead>
               <tbody id="modeles-table"><tr class="empty-row"><td colspan="3">Sélectionnez une marque</td></tr></tbody></table>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-panel" id="sub-commandes">
+        <div class="card">
+          <div class="card-header">
+            <h2>Commandes en base</h2>
+            <button class="btn btn-secondary btn-sm" onclick="loadCommandes()"><i class="fa-solid fa-rotate-right"></i> Actualiser</button>
+          </div>
+          <div class="table-wrap">
+            <table><thead><tr><th>#</th><th>Nom</th><th>Date</th><th>Lignes</th><th>PDF</th><th>Actions</th></tr></thead>
+            <tbody id="commandes-table"><tr class="empty-row"><td colspan="6">Chargement…</td></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div class="sub-panel" id="sub-entrees">
+        <div class="card">
+          <div class="card-header">
+            <h2>Entrées réception</h2>
+            <button class="btn btn-primary btn-sm" onclick="openEntreeModal()">+ Nouvelle entrée</button>
+            <button class="btn btn-secondary btn-sm" onclick="loadEntrees()"><i class="fa-solid fa-rotate-right"></i></button>
+          </div>
+          <div class="table-wrap">
+            <table><thead><tr><th>#</th><th>Date</th><th>Type</th><th>Lot / Session</th><th>Description</th><th>Créé le</th></tr></thead>
+            <tbody id="entrees-table"><tr class="empty-row"><td colspan="6">Chargement…</td></tbody></table>
           </div>
         </div>
       </div>
@@ -736,6 +765,61 @@
   </div>
 </div>
 
+<!-- Commande detail modal -->
+<div class="modal-overlay" id="commande-detail-modal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-header"><h3>Détail commande</h3><button class="modal-close" onclick="closeModal('commande-detail-modal')">×</button></div>
+    <div class="modal-body">
+      <p><strong>#</strong> <span id="commande-detail-id"></span> — <strong>Nom</strong> <span id="commande-detail-name"></span> — <strong>Date</strong> <span id="commande-detail-date"></span></p>
+      <p class="text-muted" style="font-size:12px"><strong>PDF</strong> <span id="commande-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">—</span></p>
+      <div class="table-wrap" style="margin-top:12px">
+        <table class="log-table"><thead><tr><th>Produit</th><th>Quantité</th><th>Prix unit.</th></tr></thead>
+        <tbody id="commande-detail-lignes-tbody"></tbody></table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('commande-detail-modal')">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Entrée réception modal -->
+<div class="modal-overlay" id="entree-modal">
+  <div class="modal">
+    <div class="modal-header"><h3>Nouvelle entrée</h3><button class="modal-close" onclick="closeModal('entree-modal')">×</button></div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Date</label>
+        <input type="date" id="entree-form-date" class="form-input">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select id="entree-form-type" class="form-input">
+          <option value="manual">Manuelle</option>
+          <option value="lot">Lot</option>
+          <option value="disque">Disques</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">ID Lot (optionnel)</label>
+        <input type="number" id="entree-form-lot-id" class="form-input" placeholder="—">
+      </div>
+      <div class="form-group">
+        <label class="form-label">ID Session disques (optionnel)</label>
+        <input type="number" id="entree-form-disque-session-id" class="form-input" placeholder="—">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <textarea id="entree-form-description" class="form-input" rows="3" placeholder="Commentaire…"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('entree-modal')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveEntree()">Créer</button>
+    </div>
+  </div>
+</div>
+
 <!-- PDF preview modal (affiche le PDF ou "Fichier introuvable" + chemin) -->
 <div class="modal-overlay" id="pdf-preview-modal">
   <div class="modal" style="max-width:90vw;width:800px;max-height:90vh;display:flex;flex-direction:column">
@@ -894,6 +978,8 @@ document.querySelectorAll('.sub-tab').forEach(el => {
     parent.querySelectorAll('.sub-panel').forEach(p => p.classList.toggle('active', p.id === 'sub-' + sub));
     if (sub === 'marques') loadMarques();
     if (sub === 'disques') loadDisquesSessions();
+    if (sub === 'commandes') loadCommandes();
+    if (sub === 'entrees') loadEntrees();
     if (sub === 'sc-cats') loadCategories();
     if (sub === 'sc-links') loadShortcutLinks();
   });
@@ -1264,6 +1350,95 @@ async function deleteLot(id) {
   if (data.error) { toast(data.error, 'error'); return; }
   toast('Lot supprimé');
   loadLots();
+}
+
+// ── Commandes (admin) ──────────────────────────────────────────────────────
+async function loadCommandes() {
+  const tbody = document.getElementById('commandes-table');
+  if (!tbody) return;
+  try {
+    const data = await api('GET', '/api/commandes?limit=200');
+    const list = (data.data || []).slice();
+    if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucune commande</td></tr>'; return; }
+    tbody.innerHTML = list.map(c => {
+      const pdfCell = c.pdf_path ? `<span class="pdf-path" title="${escHtml(c.pdf_path)}">${escHtml((c.pdf_path||'').slice(-40))}</span>` : '—';
+      return `<tr>
+        <td>${c.id}</td>
+        <td>${escHtml(c.name || '—')}</td>
+        <td>${fmtDate(c.date)}</td>
+        <td>—</td>
+        <td>${pdfCell}</td>
+        <td><button class="btn btn-secondary btn-sm" onclick="openCommandeDetail(${c.id})">Détail</button></td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Erreur de chargement</td></tr>';
+  }
+}
+
+async function openCommandeDetail(id) {
+  const data = await api('GET', '/api/commandes/' + id);
+  if (data.error) { toast(data.error, 'error'); return; }
+  const c = data.commande || {};
+  const lignes = c.lignes || [];
+  const lignesHtml = lignes.length
+    ? lignes.map(l => `<tr><td>${escHtml((l.product_name_ref || l.product_name || '—'))}</td><td>${l.quantity || 0}</td><td>${l.unit_price != null ? l.unit_price : '—'}</td></tr>`).join('')
+    : '<tr class="empty-row"><td colspan="3">Aucune ligne</td></tr>';
+  document.getElementById('commande-detail-id').textContent = c.id || '—';
+  document.getElementById('commande-detail-name').textContent = c.name || '—';
+  document.getElementById('commande-detail-date').textContent = fmtDate(c.date) || '—';
+  document.getElementById('commande-detail-pdf').textContent = c.pdf_path || '—';
+  document.getElementById('commande-detail-lignes-tbody').innerHTML = lignesHtml;
+  openModal('commande-detail-modal');
+}
+
+// ── Entrées réception (admin) ───────────────────────────────────────────────
+async function loadEntrees() {
+  const tbody = document.getElementById('entrees-table');
+  if (!tbody) return;
+  try {
+    const data = await api('GET', '/api/entrees?limit=200');
+    const list = (data.data || []).slice();
+    if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucune entrée</td></tr>'; return; }
+    tbody.innerHTML = list.map(e => {
+      const ref = [e.lot_name, e.disque_session_name].filter(Boolean).join(' / ') || '—';
+      return `<tr>
+        <td>${e.id}</td>
+        <td>${fmtDate(e.date)}</td>
+        <td>${escHtml(e.type || '—')}</td>
+        <td>${escHtml(ref)}</td>
+        <td class="table-cell-ellipsis" title="${escHtml(e.description || '')}">${escHtml((e.description || '—').slice(0, 60))}${(e.description||'').length > 60 ? '…' : ''}</td>
+        <td>${fmtDate(e.created_at)}</td>
+      </tr>`;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Erreur de chargement</td></tr>';
+  }
+}
+
+function openEntreeModal() {
+  document.getElementById('entree-form-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('entree-form-type').value = 'manual';
+  document.getElementById('entree-form-lot-id').value = '';
+  document.getElementById('entree-form-disque-session-id').value = '';
+  document.getElementById('entree-form-description').value = '';
+  openModal('entree-modal');
+}
+
+async function saveEntree() {
+  const date = document.getElementById('entree-form-date').value;
+  const type = document.getElementById('entree-form-type').value || 'manual';
+  const lotId = document.getElementById('entree-form-lot-id').value.trim();
+  const disqueSessionId = document.getElementById('entree-form-disque-session-id').value.trim();
+  const description = document.getElementById('entree-form-description').value.trim() || null;
+  const body = { date, type, description };
+  if (lotId) body.lot_id = parseInt(lotId, 10);
+  if (disqueSessionId) body.disque_session_id = parseInt(disqueSessionId, 10);
+  const data = await api('POST', '/api/entrees', body);
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Entrée créée');
+  closeModal('entree-modal');
+  loadEntrees();
 }
 
 // ── Lots disques (admin) ───────────────────────────────────────────────────
@@ -2023,15 +2198,17 @@ function renderIssueRow(e, showType) {
     <td class="issue-actions">
       <button class="btn btn-secondary btn-sm" onclick="openIssueResponseModal(${e.id})" title="Répondre / Notes">Répondre</button>
       <button class="btn btn-secondary btn-sm" onclick="toggleResolve(${e.id},${!!e.resolved})">${e.resolved?'Rouvrir':'Résoudre'}</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteIssue(${e.id})" title="Supprimer">Supprimer</button>
     </td>
   </tr>`;
 }
 
 async function loadLogErrors() {
-  const status = document.getElementById('err-filter-status').value;
-  let url = '/api/monitoring/errors?limit=200';
-  if (status === 'resolved') url += '&resolved=true';
-  if (status === 'unresolved') url += '&resolved=false';
+  const statusEl = document.getElementById('err-filter-status');
+  const status = statusEl ? statusEl.value : '';
+  let url = '/api/monitoring/issues?limit=200';
+  if (status === 'resolved') url += '&status=resolved';
+  if (status === 'unresolved') url += '&status=unresolved';
   const [statsData, errData] = await Promise.all([
     api('GET', '/api/monitoring/errors/stats'),
     api('GET', url),
@@ -2088,7 +2265,7 @@ function openIssueResponseModal(id) {
 async function saveIssueResponse() {
   const id = document.getElementById('issue-response-id').value;
   const notes = document.getElementById('issue-response-notes').value.trim();
-  const data = await api('PATCH', `/api/monitoring/errors/${id}/resolve`, { resolved: undefined, notes: notes || null });
+  const data = await api('PATCH', `/api/monitoring/issues/${id}`, { notes: notes || null });
   if (data.error) { toast(data.error, 'error'); return; }
   toast('Notes enregistrées');
   closeModal('issue-response-modal');
@@ -2096,9 +2273,17 @@ async function saveIssueResponse() {
 }
 
 async function toggleResolve(id, resolved) {
-  const data = await api('PATCH', `/api/monitoring/errors/${id}/resolve`, { resolved: !resolved });
+  const data = await api('PATCH', `/api/monitoring/issues/${id}`, { resolved: !resolved });
   if (data.error) { toast(data.error, 'error'); return; }
   toast(resolved ? 'Erreur rouverte' : 'Erreur marquée résolue');
+  loadLogErrors();
+}
+
+async function deleteIssue(id) {
+  if (!confirm('Supprimer définitivement cette issue ?')) return;
+  const data = await api('DELETE', `/api/monitoring/issues/${id}`);
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Issue supprimée');
   loadLogErrors();
 }
 

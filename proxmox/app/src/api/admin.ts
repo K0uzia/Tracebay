@@ -12,6 +12,8 @@ import nodemailer from 'nodemailer';
 
 const SERVICE_NAME = process.env.SERVICE_NAME || 'proxmox-backend';
 const PROXMOX_CLI = process.env.PROXMOX_CLI || '/usr/local/bin/proxmox';
+const CONTAINER_API_NAME = process.env.CONTAINER_API_NAME || '';
+const CONTAINER_DB_NAME = process.env.CONTAINER_DB_NAME || '';
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'SECRET_RETIRE';
 const JWT_SECRET = process.env.JWT_SECRET || 'SECRET_RETIRE';
@@ -47,7 +49,7 @@ function verifyAdminJwt(token: string): Record<string, any> | null {
   }
 }
 
-function checkAdminAuth(request: FastifyRequest, reply: FastifyReply): boolean {
+export function checkAdminAuth(request: FastifyRequest, reply: FastifyReply): boolean {
   const raw =
     (request.query as any).token ||
     (request.headers['x-admin-token'] as string) ||
@@ -1315,6 +1317,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   const DB_TABLES_WHITELIST = [
     'users', 'marques', 'modeles', 'messages', 'events', 'activity_logs',
     'shortcut_categories', 'shortcuts', 'lots', 'lot_items', 'client_errors', 'app_settings',
+    'commandes', 'commande_lignes', 'commande_products', 'entrees',
   ];
 
   fastify.get('/api/admin/db/tables', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -1515,12 +1518,18 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
         timeout: 5000,
       });
       const lines = (psOut || '').trim().split('\n').filter(Boolean);
+      const apiMatch = CONTAINER_API_NAME
+        ? (name: string) => name === CONTAINER_API_NAME
+        : (name: string) => /workspace-proxmox|proxmox.*api/i.test(name);
+      const dbMatch = CONTAINER_DB_NAME
+        ? (name: string) => name === CONTAINER_DB_NAME
+        : (name: string) => /workspace-db|proxmox.*db/i.test(name);
       for (const line of lines) {
         const [name = '', status = ''] = line.split('\t');
-        if (/workspace-proxmox|proxmox.*api/i.test(name)) {
+        if (apiMatch(name.trim())) {
           containerApi = /up|running/i.test(status) ? 'running' : 'stopped';
         }
-        if (/workspace-db|proxmox.*db/i.test(name)) {
+        if (dbMatch(name.trim())) {
           containerDb = /up|running/i.test(status) ? 'running' : 'stopped';
         }
       }
@@ -1624,6 +1633,146 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       fastify.log.error({ err }, 'admin POST /server/restart');
       reply.statusCode = 500;
       return { error: err?.message || 'Échec du redémarrage' };
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // COMMANDES (entête + lignes) — admin
+  // ─────────────────────────────────────────────
+
+  fastify.get('/api/commandes', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { limit = '100', offset = '0' } = request.query as any;
+    const limitNum = Math.min(parseInt(limit, 10) || 100, 200);
+    const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
+    try {
+      const result = await query(
+        `SELECT id, name, date, pdf_path, created_at FROM commandes ORDER BY date DESC, created_at DESC LIMIT $1 OFFSET $2`,
+        [limitNum, offsetNum]
+      );
+      const countResult = await query<{ count: string }>('SELECT COUNT(*) AS count FROM commandes');
+      const total = parseInt(countResult.rows[0]?.count || '0', 10);
+      return { success: true, data: result.rows, pagination: { total, limit: limitNum, offset: offsetNum } };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'GET /api/commandes');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.get('/api/commandes/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    try {
+      const cmdResult = await query(
+        'SELECT id, name, date, pdf_path, created_at FROM commandes WHERE id = $1',
+        [id]
+      );
+      if (cmdResult.rowCount === 0) { reply.statusCode = 404; return { error: 'Commande introuvable' }; }
+      const cmd = cmdResult.rows[0] as any;
+      const lignesResult = await query(
+        `SELECT l.id, l.commande_id, l.commande_product_id, l.product_name, l.quantity, l.unit_price, p.name AS product_name_ref
+         FROM commande_lignes l LEFT JOIN commande_products p ON l.commande_product_id = p.id WHERE l.commande_id = $1 ORDER BY l.id`,
+        [id]
+      );
+      return { success: true, commande: { ...cmd, lignes: lignesResult.rows } };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'GET /api/commandes/:id');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.post('/api/commandes', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const body = request.body as { name?: string; date?: string; pdf_path?: string; lignes?: Array<{ commande_product_id?: number; product_name?: string; quantity?: number; unit_price?: number }> };
+    const name = body.name != null ? String(body.name).trim() || null : null;
+    const date = body.date || new Date().toISOString().slice(0, 10);
+    const pdf_path = body.pdf_path != null ? String(body.pdf_path).trim() || null : null;
+    const lignes = Array.isArray(body.lignes) ? body.lignes : [];
+    try {
+      const insertResult = await query(
+        'INSERT INTO commandes (name, date, pdf_path) VALUES ($1, $2, $3) RETURNING id, name, date, pdf_path, created_at',
+        [name, date, pdf_path]
+      );
+      const commandeId = (insertResult.rows[0] as any).id;
+      for (const line of lignes) {
+        const productId = line.commande_product_id ?? null;
+        const productName = line.product_name != null ? String(line.product_name).trim() || null : null;
+        const quantity = Math.max(0, parseInt(String(line.quantity), 10) || 1);
+        const unitPrice = line.unit_price != null ? parseFloat(String(line.unit_price)) : null;
+        await query(
+          'INSERT INTO commande_lignes (commande_id, commande_product_id, product_name, quantity, unit_price) VALUES ($1, $2, $3, $4, $5)',
+          [commandeId, productId, productName, quantity, unitPrice]
+        );
+      }
+      const cmd = insertResult.rows[0] as any;
+      const lignesResult = await query(
+        `SELECT l.id, l.commande_product_id, l.product_name, l.quantity, l.unit_price FROM commande_lignes l WHERE l.commande_id = $1 ORDER BY l.id`,
+        [commandeId]
+      );
+      return { success: true, commande: { ...cmd, lignes: lignesResult.rows } };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'POST /api/commandes');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  // ─────────────────────────────────────────────
+  // ENTRÉES RÉCEPTION — admin
+  // ─────────────────────────────────────────────
+
+  fastify.get('/api/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { limit = '100', offset = '0', type } = request.query as any;
+    const limitNum = Math.min(parseInt(limit, 10) || 100, 200);
+    const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
+    let sql = `SELECT e.id, e.date, e.type, e.lot_id, e.disque_session_id, e.description, e.created_at,
+                l.name AS lot_name, d.name AS disque_session_name
+                FROM entrees e
+                LEFT JOIN lots l ON e.lot_id = l.id
+                LEFT JOIN disques_sessions d ON e.disque_session_id = d.id
+                WHERE 1=1`;
+    const params: any[] = [];
+    let i = 1;
+    if (type) { sql += ` AND e.type = $${i++}`; params.push(type); }
+    sql += ` ORDER BY e.date DESC, e.created_at DESC LIMIT $${i++} OFFSET $${i++}`;
+    params.push(limitNum, offsetNum);
+    try {
+      const result = await query(sql, params);
+      let countSql = 'SELECT COUNT(*) AS count FROM entrees WHERE 1=1';
+      const countParams: any[] = [];
+      if (type) { countSql += ' AND type = $1'; countParams.push(type); }
+      const countResult = await query<{ count: string }>(countSql, countParams);
+      const total = parseInt(countResult.rows[0]?.count || '0', 10);
+      return { success: true, data: result.rows, pagination: { total, limit: limitNum, offset: offsetNum } };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'GET /api/entrees');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.post('/api/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const body = request.body as { date?: string; type?: string; lot_id?: number; disque_session_id?: number; description?: string };
+    const date = body.date || new Date().toISOString().slice(0, 10);
+    const type = (body.type && String(body.type).trim()) || 'manual';
+    const lot_id = body.lot_id != null ? (Number(body.lot_id) || null) : null;
+    const disque_session_id = body.disque_session_id != null ? (Number(body.disque_session_id) || null) : null;
+    const description = body.description != null ? String(body.description).trim() || null : null;
+    try {
+      const result = await query(
+        `INSERT INTO entrees (date, type, lot_id, disque_session_id, description) VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, date, type, lot_id, disque_session_id, description, created_at`,
+        [date, type, lot_id, disque_session_id, description]
+      );
+      return { success: true, entree: result.rows[0] };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'POST /api/entrees');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
     }
   });
 

@@ -292,6 +292,43 @@ CREATE TABLE IF NOT EXISTS commande_products (
 );
 CREATE INDEX IF NOT EXISTS idx_commande_products_name ON commande_products(name);
 
+-- Commandes (entête + lignes) — réception onglet Commande
+CREATE TABLE IF NOT EXISTS commandes (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255),
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  pdf_path VARCHAR(1024),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_commandes_date ON commandes(date DESC);
+CREATE INDEX IF NOT EXISTS idx_commandes_created_at ON commandes(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS commande_lignes (
+  id SERIAL PRIMARY KEY,
+  commande_id INTEGER NOT NULL REFERENCES commandes(id) ON DELETE CASCADE,
+  commande_product_id INTEGER REFERENCES commande_products(id) ON DELETE SET NULL,
+  product_name VARCHAR(255),
+  quantity INTEGER NOT NULL DEFAULT 1,
+  unit_price NUMERIC(12,2),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_commande_lignes_commande_id ON commande_lignes(commande_id);
+
+-- Entrées réception (traçabilité entrées manuelles / lots / disques)
+CREATE TABLE IF NOT EXISTS entrees (
+  id SERIAL PRIMARY KEY,
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  type VARCHAR(50) NOT NULL DEFAULT 'manual',
+  lot_id INTEGER REFERENCES lots(id) ON DELETE SET NULL,
+  disque_session_id INTEGER REFERENCES disques_sessions(id) ON DELETE SET NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_entrees_date ON entrees(date DESC);
+CREATE INDEX IF NOT EXISTS idx_entrees_type ON entrees(type);
+CREATE INDEX IF NOT EXISTS idx_entrees_lot_id ON entrees(lot_id);
+CREATE INDEX IF NOT EXISTS idx_entrees_disque_session_id ON entrees(disque_session_id);
+
 -- Config Dossiers (presets + globals) — persistant en base pour le client
 CREATE TABLE IF NOT EXISTS folder_globals (
   id SERIAL PRIMARY KEY,

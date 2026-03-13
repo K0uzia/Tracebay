@@ -61,6 +61,8 @@ services:
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
+      CONTAINER_API_NAME: ${CONTAINER_API_NAME:-workspace-proxmox}
+      CONTAINER_DB_NAME: ${CONTAINER_DB_NAME:-workspace-db}
     ports:
       - "${API_PORT:-4000}:4000"
     volumes:
