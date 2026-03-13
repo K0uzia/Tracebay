@@ -45,7 +45,9 @@
     "build:linux:publish": "node ../scripts/run-with-env.js npm run build:linux:publish:inner -w apps/client",
     "build:linux:publish:inner": "cross-env NODE_ENV=production npx electron-builder --linux --publish=always",
     "install-desktop-dev": "node scripts/install-desktop-dev.js",
-    "lint": "eslint . --ext .js"
+    "lint": "eslint . --ext .js",
+    "audit": "npm audit",
+    "audit:fix": "npm audit --fix"
   },
   "build": {
     "appId": "com.workspace.client",

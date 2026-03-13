@@ -26,7 +26,9 @@
     "format:check": "prettier --check \"apps/**/*.{ts,js,css,json}\"",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "audit": "npm audit",
+    "audit:fix": "npm audit --fix"
   },
   "devDependencies": {
     "dotenv": "^16.4.5",

@@ -60,6 +60,7 @@ async function init() {
         const cfg = await response.json();
         if (applyConnectionConfig(cfg)) {
             initialized = true;
+            await mergeAppConfigFromMain();
             return;
         }
     } catch (error) {
@@ -73,6 +74,7 @@ async function init() {
             if (cfg && applyConnectionConfig(cfg)) {
                 initialized = true;
                 logger.info('API Config chargée depuis le process principal (fallback build)');
+                await mergeAppConfigFromMain();
                 return;
             }
         } catch (e) {
@@ -94,6 +96,18 @@ async function init() {
         serverWsUrl: fallback.ws
     };
     initialized = true;
+    await mergeAppConfigFromMain();
+}
+
+/** En Electron : récupère get-app-config (giphyApiKey, etc.) et fusionne dans APP_CONFIG. */
+async function mergeAppConfigFromMain() {
+    if (typeof window.electron?.invoke !== 'function') return;
+    try {
+        const appConfig = await window.electron.invoke('get-app-config');
+        if (appConfig && typeof appConfig === 'object') {
+            window.APP_CONFIG = { ...(window.APP_CONFIG || {}), ...appConfig };
+        }
+    } catch (_) { /* ignore */ }
 }
 
 /**
