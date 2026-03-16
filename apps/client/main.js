@@ -290,41 +290,34 @@ function linuxAppImageBackup(currentAppPath) {
 
 /** Nom final de l'AppImage (raccourci). */
 const LINUX_APPIMAGE_NAME = 'workspace.AppImage';
-/** Nom temporaire pour la copie (on n'écrase pas le binaire en cours). */
-const LINUX_APPIMAGE_TEMP_NAME = 'workspace-new.AppImage';
 
 /**
- * Sous Linux AppImage : copie la nouvelle AppImage dans un fichier temporaire (même dossier),
- * car on ne peut pas écraser workspace.AppImage tant que l'app tourne. Un script attend
- * la fermeture, supprime l'ancienne, renomme la nouvelle en workspace.AppImage et relance.
+ * Sous Linux AppImage : la nouvelle AppImage a déjà été téléchargée dans un dossier temporaire
+ * (ex. app.getPath('temp')/workspace-update/). Un script attend la fermeture de l'app,
+ * supprime l'ancienne AppImage, déplace celle du temporaire vers le dossier racine et relance.
  */
 function tryLinuxAppImageUpdateHelper(currentAppPath, newAppPath) {
     if (process.platform !== 'linux' || !currentAppPath || !newAppPath) return false;
     if (!fs.existsSync(newAppPath)) return false;
     try {
         const dir = path.dirname(currentAppPath);
-        const tempPath = path.join(dir, LINUX_APPIMAGE_TEMP_NAME);
         const finalPath = path.join(dir, LINUX_APPIMAGE_NAME);
-        // Ne pas écraser finalPath : l'app tourne encore, le fichier serait verrouillé / disparaîtrait
-        fs.copyFileSync(newAppPath, tempPath);
-        fs.chmodSync(tempPath, 0o755);
-
         const scriptPath = path.join(app.getPath('userData'), 'workspace-update-helper.sh');
         const script = `#!/bin/sh
-# temp = nouvelle AppImage (copie), dest = workspace.AppImage, pid = processus à attendre
-temp="$1"
+# downloaded = AppImage téléchargée (dossier temporaire), dest = chemin final, pid = processus à attendre
+downloaded="$1"
 dest="$2"
 pid="$3"
 while kill -0 "$pid" 2>/dev/null; do sleep 0.3; done
 rm -f "$dest"
-mv -f "$temp" "$dest"
+mv -f "$downloaded" "$dest"
 chmod +x "$dest"
 export APPIMAGE_SILENT_INSTALL=true
 exec "$dest"
 `;
         fs.writeFileSync(scriptPath, script, 'utf8');
         fs.chmodSync(scriptPath, 0o755);
-        const child = spawn('/bin/sh', [scriptPath, tempPath, finalPath, String(process.pid)], {
+        const child = spawn('/bin/sh', [scriptPath, newAppPath, finalPath, String(process.pid)], {
             detached: true,
             stdio: 'ignore',
             cwd: dir,
