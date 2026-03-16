@@ -785,6 +785,8 @@ class PageManager {
                     this.closeAllDialogsIn(recepSection);
                 }
                 this.setReceptionNavActive(pageName);
+                this.setReceptionPageTitle(pageName);
+                this.setReceptionPageDescription(pageName);
             } else {
                 // Si on clique sur "Réception" du header, rediriger vers "entrer" par défaut
                 if (pageName === 'reception') {
@@ -1437,6 +1439,33 @@ class PageManager {
                 btn.setAttribute('aria-current', 'page');
             }
         });
+    }
+
+    setReceptionPageTitle(pageName) {
+        const titles = {
+            entrer: 'Lots',
+            inventaire: 'Inventaire',
+            historique: 'Historique',
+            tracabilite: 'Traçabilité',
+            disques: 'Disques',
+            commande: 'Commande',
+            dons: 'Dons'
+        };
+        const titleEl = document.getElementById('reception-page-title');
+        if (titleEl) titleEl.textContent = titles[pageName] || 'Réception';
+    }
+
+    setReceptionPageDescription(pageName) {
+        const descriptions = {
+            entrer: 'Saisissez les numéros de série et les informations des machines.',
+            disques: 'Saisissez les disques puis enregistrez en traçabilité.',
+            commande: 'Constituer une liste de produits et générer le PDF.'
+        };
+        const descEl = document.getElementById('reception-page-desc');
+        if (!descEl) return;
+        const text = descriptions[pageName] || '';
+        descEl.textContent = text;
+        descEl.classList.toggle('is-empty', !text);
     }
 
     attachReceptionPageListeners() {

@@ -1,0 +1,36 @@
+/* Réception – page Dons – design SaaS */
+
+.dons-container .recep-toolbar {
+    border-bottom: 1px solid rgba(13, 13, 13, 0.06);
+}
+
+.dons-container .recep-toolbar-field {
+    min-width: 240px;
+}
+
+.dons-container .dons-actions {
+    margin-left: auto;
+}
+
+.dons-container .recep-table-wrap {
+    margin-top: 0;
+}
+
+.dons-table .col-num { width: 3rem; }
+.dons-table .col-type { min-width: 90px; }
+.dons-table .col-marque { min-width: 100px; }
+.dons-table .col-modele { min-width: 110px; }
+.dons-table .col-sn { min-width: 120px; }
+.dons-table .col-date { min-width: 100px; }
+.dons-table .col-stagiaire { min-width: 120px; }
+.dons-table .col-actions { width: 52px; text-align: center; }
+
+.dons-container #dons-tbody:empty::after {
+    content: "Aucune ligne. Cliquez sur « Ajouter une ligne » pour commencer.";
+    display: block;
+    padding: var(--unit-5);
+    text-align: center;
+    font: var(--font-text2);
+    color: var(--text2);
+    opacity: 0.7;
+}

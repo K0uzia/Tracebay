@@ -1,0 +1,290 @@
+/**
+ * RECEPTION.CSS – Layout du module Réception
+ * Inspiré des couleurs v3.1.8 (jaune, orange, bleu1/bleu2, valid) – mise en page actuelle conservée.
+ */
+
+.r-root {
+    --recep-page-bg: var(--blanc);
+    --recep-panel-bg: #ffffff;
+    --recep-panel-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    --recep-panel-radius: 12px;
+    --recep-gap: var(--unit-3);
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: 1fr;
+    min-height: 100%;
+    height: 100%;
+    background-color: var(--recep-page-bg);
+    color: var(--text2);
+}
+
+/* ----- Sidebar (couleurs 3.1.8 : bleu2 fond nav, orange actif, jaune hover) ----- */
+.r-header {
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bleu2);
+    color: var(--text);
+    box-shadow: var(--shadow-medium);
+    z-index: 10;
+}
+
+.r-brand {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    margin: 0;
+    padding: var(--unit-3) var(--unit-3);
+    font: var(--font-subtitle);
+    color: var(--h1);
+    border-bottom: 2px solid var(--orange);
+    flex-shrink: 0;
+}
+
+.r-nav {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-3);
+    padding: var(--unit-2) var(--unit-1);
+    flex: 1;
+    overflow-y: auto;
+}
+
+.r-nav-group {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--unit-1) / 2);
+}
+
+.r-nav-group-title {
+    padding: var(--unit-1) var(--unit-2);
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text);
+    opacity: 0.75;
+}
+
+.r-nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    width: 100%;
+    padding: var(--unit-2) var(--unit-2);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-medium);
+    color: var(--text);
+    font: var(--font-text2);
+    cursor: pointer;
+    transition: var(--transition);
+    text-align: left;
+}
+
+.r-nav-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: var(--jaune);
+}
+
+.r-nav-item[aria-current="page"],
+.r-nav-item.active {
+    background-color: var(--orange);
+    color: var(--blanc);
+    font-weight: 600;
+}
+
+.r-nav-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--unit-3);
+    flex-shrink: 0;
+}
+
+.r-nav-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ----- Zone principale ----- */
+.r-main {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+    background-color: var(--recep-page-bg);
+}
+
+.r-main-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--unit-2);
+    padding: var(--unit-3) var(--unit-5);
+    background: var(--recep-panel-bg);
+    border-bottom: 2px solid var(--orange);
+    flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+}
+
+.r-main-header-text {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+    min-width: 0;
+}
+
+.r-main-title {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--h2);
+    letter-spacing: -0.01em;
+}
+
+.r-main-title-icon {
+    color: var(--bleu1);
+    font-size: 1.125rem;
+}
+
+.r-main-desc {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.4;
+    color: var(--text2);
+    opacity: 0.9;
+}
+
+.r-main-desc.is-empty {
+    display: none;
+}
+
+.r-main-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+}
+
+.recep-section {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: var(--unit-4) var(--unit-5);
+    box-sizing: border-box;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.recep-section > .recep-page {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.recep-section::-webkit-scrollbar {
+    width: calc(var(--unit-1) * 0.75);
+}
+
+.recep-section::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.recep-section::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-color);
+    border-radius: var(--radius-medium);
+}
+
+.recep-section::-webkit-scrollbar-thumb:hover {
+    background: var(--orange);
+}
+
+/* ----- Responsive : sidebar en barre horizontale, zone principale en colonne ----- */
+@media (max-width: 900px) {
+    .r-root {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+        min-height: 100vh;
+    }
+
+    .r-header {
+        width: 100%;
+        min-width: 0;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        padding: var(--unit-2) var(--unit-3);
+        gap: var(--unit-2);
+    }
+
+    .r-brand {
+        border-bottom: none;
+        padding: var(--unit-1) 0;
+        font-size: 1.25rem;
+    }
+
+    .r-nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+        padding: 0;
+        order: 3;
+        width: 100%;
+        gap: var(--unit-2);
+    }
+
+    .r-nav-group {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--unit-1);
+        width: 100%;
+    }
+
+    .r-nav-group-title {
+        width: 100%;
+        padding: var(--unit-1) 0;
+        margin-bottom: calc(var(--unit-1) / -2);
+        font-size: 0.65rem;
+    }
+
+    .r-nav-item {
+        flex: 1 1 auto;
+        min-width: 80px;
+        justify-content: center;
+        padding: var(--unit-2) var(--unit-1);
+        font-size: 0.8125rem;
+    }
+
+    .r-main {
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .recep-section {
+        padding: var(--unit-2) var(--unit-3);
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+    }
+
+    .r-main-header {
+        padding: var(--unit-2) var(--unit-3);
+        gap: var(--unit-2);
+    }
+
+    .r-main-title {
+        font-size: 1.125rem;
+    }
+
+    .r-main-desc {
+        font-size: 0.875rem;
+    }
+}

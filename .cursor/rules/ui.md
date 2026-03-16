@@ -21,7 +21,7 @@ Guide pour l’IA : appliquer ces règles systématiquement. Priorité : lisibil
 
 - **Mobile-first** : commencer par `@media (max-width: 480px)` puis élargir.
 - **Espacement** : multiples de 4px (4, 8, 12, 16, 24, 32, 40, 48, 64). Utiliser des variables (ex. `--unit`, `--unit-2`).
-- **Bordures** : 1px solid pour séparation discrète ; 2px pour focus/état actif.
+- **Bordures** : 1px solid pour séparation discrète ; 2px pour focus/état actif. **Interdit** : bordure colorée décorative (ex. `border-left: 4px solid var(--bleu1)` sur un panneau/carte). Ne pas utiliser de bordure en couleur de marque pour délimiter des blocs.
 - **Ombres** : progresser du léger au marqué (ex. `0 1px 3px rgba(0,0,0,0.1)` → `0 10px 25px rgba(0,0,0,0.15)`).
 - **Coins** : `border-radius` 8px (small), 12px (default), 24px (large).
 - **Interlignes** : `line-height: 1.5` (texte), `1.7` (corps long).

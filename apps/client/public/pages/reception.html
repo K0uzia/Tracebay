@@ -1,38 +1,51 @@
 <div class="r-root" role="application" aria-label="Réception">
-    <header class="r-header" aria-label="En-tête réception">
+    <header class="r-header" aria-label="Navigation réception">
         <h1 class="r-brand" id="r-brand">Réception</h1>
         <nav class="r-nav" aria-label="Sections réception">
-            <button type="button" class="r-nav-item" data-page="entrer" data-reception-page="true" title="Entrée du matériel">
-                <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-arrow-right"></i></span>
-                <span class="r-nav-text">Entrée</span>
-            </button>
-            <button type="button" class="r-nav-item" data-page="inventaire" data-reception-page="true" title="Inventaire lots en cours">
-                <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-clipboard-list"></i></span>
-                <span class="r-nav-text">Inventaire</span>
-            </button>
-            <button type="button" class="r-nav-item" data-page="historique" data-reception-page="true" title="Historique des lots">
-                <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-history"></i></span>
-                <span class="r-nav-text">Historique</span>
-            </button>
-            <button type="button" class="r-nav-item" data-page="tracabilite" data-reception-page="true" title="Traçabilité">
-                <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-link"></i></span>
-                <span class="r-nav-text">Traçabilité</span>
-            </button>
-            <button type="button" class="r-nav-item" data-page="disques" data-reception-page="true" title="Disques shreddés">
-                <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-hard-drive"></i></span>
-                <span class="r-nav-text">Disques</span>
-            </button>
-            <button type="button" class="r-nav-item" data-page="commande" data-reception-page="true" title="Commande">
-                <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-file-invoice"></i></span>
-                <span class="r-nav-text">Commande</span>
-            </button>
-            <button type="button" class="r-nav-item" data-page="dons" data-reception-page="true" title="Dons">
-                <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-hand-holding-heart"></i></span>
-                <span class="r-nav-text">Dons</span>
-            </button>
+            <div class="r-nav-group">
+                <div class="r-nav-group-title">Lots & documents</div>
+                <button type="button" class="r-nav-item" data-page="entrer" data-reception-page="true" title="Nouveaux lots (PC)">
+                    <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-boxes-stacked"></i></span>
+                    <span class="r-nav-text">Lots</span>
+                </button>
+                <button type="button" class="r-nav-item" data-page="disques" data-reception-page="true" title="Disques shreddés">
+                    <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-hard-drive"></i></span>
+                    <span class="r-nav-text">Disques</span>
+                </button>
+                <button type="button" class="r-nav-item" data-page="commande" data-reception-page="true" title="Commande">
+                    <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-file-invoice"></i></span>
+                    <span class="r-nav-text">Commande</span>
+                </button>
+                <button type="button" class="r-nav-item" data-page="dons" data-reception-page="true" title="Dons">
+                    <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-hand-holding-heart"></i></span>
+                    <span class="r-nav-text">Dons</span>
+                </button>
+            </div>
+            <div class="r-nav-group">
+                <div class="r-nav-group-title">Suivi & traçabilité</div>
+                <button type="button" class="r-nav-item" data-page="inventaire" data-reception-page="true" title="Inventaire lots en cours">
+                    <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-clipboard-list"></i></span>
+                    <span class="r-nav-text">Inventaire</span>
+                </button>
+                <button type="button" class="r-nav-item" data-page="historique" data-reception-page="true" title="Historique des lots">
+                    <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-history"></i></span>
+                    <span class="r-nav-text">Historique</span>
+                </button>
+                <button type="button" class="r-nav-item" data-page="tracabilite" data-reception-page="true" title="Traçabilité">
+                    <span class="r-nav-icon" aria-hidden="true"><i class="fa-solid fa-link"></i></span>
+                    <span class="r-nav-text">Traçabilité</span>
+                </button>
+            </div>
         </nav>
     </header>
     <main class="r-main">
+        <header class="r-main-header">
+            <div class="r-main-header-text">
+                <h2 class="r-main-title"><i class="fa-solid fa-folder-open r-main-title-icon" aria-hidden="true"></i> <span id="reception-page-title">Réception</span></h2>
+                <p class="r-main-desc" id="reception-page-desc"></p>
+            </div>
+            <div class="r-main-actions" aria-hidden="true"></div>
+        </header>
         <div class="recep-section" id="reception-content" role="region" aria-live="polite" aria-label="Contenu de la section"></div>
     </main>
 </div>

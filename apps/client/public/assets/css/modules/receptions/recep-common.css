@@ -1,0 +1,641 @@
+/**
+ * RECEP-COMMON.CSS – Design dashboard SaaS (sobre, pro)
+ * Panneaux, grille, boutons, tableaux. Variables : variables.css
+ */
+
+/* ========== Layout page ========== */
+.recep-page {
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-4);
+}
+
+.recep-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-4);
+}
+
+.recep-card-desc {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    margin: 0;
+    padding: var(--unit-2) 0;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    color: var(--text2);
+}
+
+.recep-card-desc .recep-desc-icon {
+    color: var(--bleu1);
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+/* ========== Panneau (card SaaS) ========== */
+.recep-panel {
+    background: var(--recep-panel-bg, #fff);
+    border-radius: var(--recep-panel-radius, 12px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    overflow: hidden;
+}
+
+.recep-panel-header {
+    padding: var(--unit-3) var(--unit-4);
+    border-bottom: 1px solid rgba(13, 13, 13, 0.06);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    color: var(--h2);
+}
+
+.recep-panel-body {
+    padding: var(--unit-4);
+}
+
+/* ========== Toolbar (barre d’actions) ========== */
+.recep-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--unit-3);
+    padding: var(--unit-3) var(--unit-4);
+    background: rgba(62, 59, 140, 0.04);
+    border-bottom: 1px solid rgba(62, 59, 140, 0.12);
+}
+
+.recep-toolbar-field,
+.recep-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--unit-1) / 2);
+}
+
+.recep-toolbar-field .recep-label,
+.recep-filter-group .recep-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-1);
+    font-weight: 600;
+    font-size: 0.8125rem;
+    color: var(--bleu2);
+}
+
+.recep-toolbar-field .recep-label i,
+.recep-filter-group .recep-label i {
+    color: var(--bleu1);
+    opacity: 0.9;
+}
+
+.recep-toolbar-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-2);
+    margin-left: auto;
+}
+
+.reception-toolbar-field .recep-input {
+    min-width: 220px;
+}
+
+/* ========== Boutons ========== */
+.recep-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--unit-2);
+    min-height: 38px;
+    padding: var(--unit-2) var(--unit-3);
+    border-radius: var(--radius-medium);
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    white-space: nowrap;
+}
+
+.recep-btn i {
+    opacity: 0.95;
+}
+
+.recep-btn-primary {
+    background: linear-gradient(180deg, var(--bleu1) 0%, var(--bleu2) 100%);
+    color: var(--btn-text);
+    box-shadow: 0 2px 4px rgba(62, 59, 140, 0.25);
+}
+
+.recep-btn-primary:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 4px 8px rgba(62, 59, 140, 0.3);
+}
+
+.recep-btn-secondary {
+    background: #fff;
+    color: var(--bleu2);
+    border: 1px solid rgba(62, 59, 140, 0.25);
+}
+
+.recep-btn-secondary:hover {
+    background: rgba(62, 59, 140, 0.08);
+    border-color: var(--bleu1);
+    color: var(--bleu1);
+}
+
+.reception-btn-refresh {
+    background: var(--bleu1);
+    color: var(--btn-text);
+}
+
+.reception-btn-refresh:hover {
+    background: var(--bleu2);
+    color: var(--jaune);
+}
+
+/* ========== Champs ========== */
+.recep-label {
+    font: var(--block-subtitle-h4);
+    color: var(--h2);
+}
+
+.recep-input {
+    min-height: 38px;
+    padding: var(--unit-2) var(--unit-3);
+    border: 1px solid rgba(13, 13, 13, 0.12);
+    border-radius: var(--radius-medium);
+    font-size: 0.9375rem;
+    background: #fff;
+    color: var(--text2);
+    transition: var(--transition);
+}
+
+.recep-input:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 3px rgba(62, 59, 140, 0.15);
+}
+
+.recep-checkbox {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--bleu1);
+}
+
+/* ========== Tableaux ========== */
+.recep-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.recep-panel > .recep-table-wrap {
+    margin: 0 calc(var(--unit-4) * -1);
+    border-radius: 0;
+}
+
+.recep-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    color: var(--text2);
+    line-height: 1.45;
+}
+
+.recep-table th,
+.recep-table td {
+    padding: var(--unit-2) var(--unit-4);
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid rgba(13, 13, 13, 0.06);
+}
+
+.recep-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.recep-table th {
+    background: linear-gradient(180deg, rgba(62, 59, 140, 0.1) 0%, rgba(62, 59, 140, 0.06) 100%);
+    color: var(--bleu2);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    border-bottom: 2px solid var(--bleu1);
+}
+
+.recep-table th i {
+    margin-right: var(--unit-1);
+    opacity: 0.9;
+}
+
+.recep-table tbody tr {
+    transition: background 0.15s ease;
+}
+
+.recep-table tbody tr:nth-child(even) {
+    background: rgba(13, 13, 13, 0.02);
+}
+
+.recep-table tbody tr:hover {
+    background: rgba(62, 59, 140, 0.08);
+}
+
+.recep-table tbody td {
+    padding: var(--unit-2) var(--unit-4);
+}
+
+.recep-table .th-select {
+    width: 48px;
+    text-align: center;
+}
+
+.recep-table .th-action,
+.recep-table .col-actions {
+    width: 80px;
+    text-align: center;
+}
+
+/* ========== Tags / Pills ========== */
+.recep-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: calc(var(--unit-1) / 2) var(--unit-2);
+    border-radius: 999px;
+    font: var(--font-text2);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.recep-tag--green {
+    background-color: rgba(0, 128, 0, 0.15);
+    color: var(--valid);
+}
+
+.recep-tag--orange {
+    background-color: rgba(242, 130, 65, 0.2);
+    color: var(--orange);
+}
+
+.recep-tag--yellow {
+    background-color: rgba(242, 188, 27, 0.25);
+    color: #b8860b;
+}
+
+.recep-tag--blue {
+    background-color: rgba(62, 59, 140, 0.15);
+    color: var(--bleu1);
+}
+
+.recep-tag--grey {
+    background-color: rgba(13, 13, 13, 0.08);
+    color: var(--text2);
+}
+
+/* ========== Info box (label / valeur) ========== */
+.recep-info-box,
+.recep-info-row.info-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+
+.recep-info-box {
+    gap: var(--unit-2);
+}
+
+.recep-info-row {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.recep-info-label.info-label {
+    font: var(--font-text2);
+    color: var(--text2);
+    opacity: 0.8;
+}
+
+.recep-info-value.info-value {
+    font: var(--font-text2);
+    color: var(--h2);
+    font-weight: 500;
+}
+
+/* ========== Listes (inventaire, historique) ========== */
+.recep-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-2);
+}
+
+.recep-loading.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--unit-3);
+    padding: var(--unit-6);
+    font-size: 0.9375rem;
+    color: var(--bleu2);
+}
+
+.recep-loading i {
+    font-size: 1.5rem;
+    color: var(--bleu1);
+    animation: recep-spin 0.8s linear infinite;
+}
+
+@keyframes recep-spin {
+    to { transform: rotate(360deg); }
+}
+
+.recep-empty-msg,
+.recep-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--unit-3);
+    padding: var(--unit-6);
+    text-align: center;
+    color: var(--text2);
+}
+
+.recep-empty-state i {
+    font-size: 2.5rem;
+    color: var(--bleu1);
+    opacity: 0.7;
+}
+
+.recep-empty-state p,
+.recep-empty-msg {
+    margin: 0;
+    font-size: 0.9375rem;
+    line-height: 1.5;
+}
+
+.recep-empty-state small {
+    font-size: 0.8125rem;
+    opacity: 0.85;
+}
+
+/* ========== Vue détail lot (style dashboard / maquette) ========== */
+.recep-detail-hero {
+    display: grid;
+    grid-template-columns: minmax(200px, 1fr) 1fr;
+    gap: var(--unit-4);
+    padding: var(--unit-4);
+    background-color: var(--blanc);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-medium);
+    border: 1px solid rgba(13, 13, 13, 0.06);
+    margin-bottom: var(--unit-4);
+}
+
+.recep-detail-hero-image {
+    aspect-ratio: 16/10;
+    background: linear-gradient(135deg, rgba(62, 59, 140, 0.08) 0%, rgba(242, 188, 27, 0.06) 100%);
+    border-radius: var(--radius-medium);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bleu1);
+    font-size: 3rem;
+    opacity: 0.6;
+}
+
+.recep-detail-hero-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-2);
+}
+
+.recep-detail-hero-title {
+    margin: 0;
+    font: var(--font-subtitle);
+    color: var(--h2);
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+}
+
+.recep-detail-hero-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-2);
+    align-items: center;
+    font: var(--font-text2);
+    color: var(--text2);
+}
+
+.recep-detail-hero-meta i {
+    color: var(--bleu1);
+    margin-right: calc(var(--unit-1) / 2);
+}
+
+.recep-detail-hero-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-1);
+}
+
+.recep-detail-hero-link {
+    color: var(--bleu1);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.recep-detail-hero-link:hover {
+    color: var(--bleu2);
+    text-decoration: underline;
+}
+
+/* Grille de stats (satisfaction, approbation, origine) */
+.recep-detail-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--unit-3);
+    margin-bottom: var(--unit-4);
+}
+
+.recep-stat-card {
+    background-color: var(--blanc);
+    border-radius: var(--radius-large);
+    box-shadow: var(--shadow-medium);
+    border: 1px solid rgba(13, 13, 13, 0.06);
+    padding: var(--unit-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-2);
+}
+
+.recep-stat-card-title {
+    margin: 0;
+    font: var(--block-subtitle-h4);
+    color: var(--h2);
+}
+
+.recep-stat-card-value {
+    font: var(--font-subtitle);
+    color: var(--h2);
+}
+
+.recep-stat-card-change {
+    font: var(--font-text2);
+}
+
+.recep-stat-card-change--up {
+    color: var(--valid);
+}
+
+.recep-stat-card-change--down {
+    color: var(--error);
+}
+
+/* Barre de progression (taux, approbation) */
+.recep-progress-wrap {
+    height: 8px;
+    background-color: rgba(13, 13, 13, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.recep-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--bleu1), var(--valid));
+    border-radius: 4px;
+    transition: width 0.4s ease;
+    min-width: 0;
+}
+
+/* Zone origine (responsables) */
+.recep-origin-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+    font: var(--font-text2);
+    color: var(--text2);
+}
+
+.recep-origin-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-2);
+    margin-top: var(--unit-2);
+}
+
+.recep-origin-actions .recep-btn-primary {
+    flex: 1;
+    min-width: 140px;
+}
+
+.recep-origin-actions .recep-btn-secondary {
+    flex: 1;
+    min-width: 140px;
+}
+
+/* Jauge radiale (placeholder) */
+.recep-gauge-wrap {
+    width: 120px;
+    height: 60px;
+    margin: 0 auto;
+    position: relative;
+}
+
+.recep-gauge-svg {
+    width: 100%;
+    height: 100%;
+}
+
+.recep-gauge-value {
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    font: var(--font-subtitle);
+    color: var(--h2);
+}
+
+/* Graphique anneau (placeholder) */
+.recep-chart-legend {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+    margin-top: var(--unit-2);
+}
+
+.recep-chart-legend-item {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    font: var(--font-text2);
+    color: var(--text2);
+}
+
+.recep-chart-legend-color {
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    flex-shrink: 0;
+}
+
+/* Sous-titre dans les modales réception */
+.recep-modal-subtitle {
+    margin: var(--unit-3) 0 var(--unit-2);
+    font: var(--block-subtitle-h4);
+    color: var(--h2);
+}
+
+/* Lot details info grid (historique modal) */
+.lot-details-info {
+    margin-bottom: var(--unit-3);
+}
+
+.lot-details-info .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: var(--unit-2);
+}
+
+.lot-details-info .info-item {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--unit-1) / 2);
+}
+
+.lot-details-info .info-label {
+    font: var(--font-text2);
+    color: var(--text2);
+    opacity: 0.8;
+}
+
+.lot-details-info .info-value {
+    font: var(--font-text2);
+    font-weight: 500;
+    color: var(--h2);
+}
+
+/* Responsive détail lot */
+@media (max-width: 768px) {
+    .recep-detail-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .recep-detail-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .recep-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .recep-toolbar-actions {
+        margin-left: 0;
+    }
+}

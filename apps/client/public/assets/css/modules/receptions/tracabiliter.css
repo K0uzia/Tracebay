@@ -1,0 +1,251 @@
+/* Réception – page Traçabilité (aligné inventaire/historique) */
+
+.tracabilite-container .recep-card-desc {
+    margin-bottom: var(--unit-3);
+}
+
+.tracabilite-filters {
+    margin-bottom: var(--unit-3);
+}
+
+.tracabilite-filters .recep-filter-group .recep-input {
+    min-width: 120px;
+}
+
+.recep-panel-body.tracabilite-content-wrapper {
+    min-height: 120px;
+    padding-top: var(--unit-2);
+}
+
+.tracabilite-grouped {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-4);
+}
+
+/* Sections année / mois – sobre */
+.tracabilite-container .year-section {
+    margin-bottom: var(--unit-4);
+}
+
+.tracabilite-container .year-header h2 {
+    margin: 0 0 var(--unit-2);
+    font: var(--font-subtitle);
+    color: var(--h2);
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+}
+
+.tracabilite-container .year-header h2 i {
+    color: var(--bleu1);
+}
+
+.tracabilite-container .month-section {
+    margin-bottom: var(--unit-3);
+}
+
+.tracabilite-container .month-header {
+    margin-bottom: var(--unit-2);
+    padding-bottom: var(--unit-1);
+    border-bottom: 1px solid rgba(13, 13, 13, 0.08);
+}
+
+.tracabilite-container .month-header h3 {
+    margin: 0;
+    font: var(--block-title-h2);
+    color: var(--h2);
+    font-size: 1rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+}
+
+.tracabilite-container .month-header h3 i {
+    color: var(--bleu1);
+}
+
+/* Liste de cartes – même rendu qu’historique */
+.tracabilite-container .lots-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-2);
+}
+
+.tracabilite-container .lot-card {
+    background: var(--recep-panel-bg, #fff);
+    border: 1px solid rgba(13, 13, 13, 0.06);
+    border-radius: var(--recep-panel-radius, 12px);
+    box-shadow: var(--recep-panel-shadow, 0 1px 3px rgba(0,0,0,0.06));
+    overflow: hidden;
+}
+
+.tracabilite-container .lot-card-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: var(--unit-2);
+    padding: var(--unit-3) var(--unit-4);
+    background: rgba(13, 13, 13, 0.02);
+}
+
+.tracabilite-container .lot-card-title h4 {
+    margin: 0;
+    font: var(--block-title-h2);
+    color: var(--h2);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+}
+
+.tracabilite-container .lot-card-title h4 i {
+    color: var(--bleu1);
+}
+
+.tracabilite-container .lot-card-title .lot-name {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text2);
+    opacity: 0.85;
+    margin-top: 2px;
+}
+
+.tracabilite-container .lot-card-date {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    text-align: right;
+}
+
+.tracabilite-container .date-label {
+    font-size: 0.8rem;
+    color: var(--text2);
+    opacity: 0.8;
+}
+
+.tracabilite-container .date-value {
+    font: var(--font-text2);
+    font-weight: 500;
+    color: var(--h2);
+}
+
+.tracabilite-container .lot-card-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-3);
+    padding: 0 var(--unit-4) var(--unit-2);
+}
+
+.tracabilite-container .lot-card-stats .stat {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.tracabilite-container .stat-label {
+    font-size: 0.85rem;
+    color: var(--text2);
+    opacity: 0.85;
+}
+
+.tracabilite-container .stat-label i {
+    margin-right: 4px;
+    color: var(--bleu1);
+}
+
+.tracabilite-container .stat-value {
+    font-weight: 600;
+    color: var(--h2);
+}
+
+.tracabilite-container .lot-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-2);
+    padding: var(--unit-2) var(--unit-4) var(--unit-3);
+    border-top: 1px solid rgba(13, 13, 13, 0.06);
+}
+
+.tracabilite-container .lot-card-actions .btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-1);
+    padding: var(--unit-1) var(--unit-2);
+    background-color: var(--btn);
+    color: var(--btn-text);
+    border: none;
+    border-radius: var(--radius-small);
+    font: var(--font-btn);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.tracabilite-container .lot-card-actions .btn-action:hover {
+    background-color: var(--btn-hover);
+    color: var(--jaune);
+}
+
+.tracabilite-container .lot-card-actions .text-muted {
+    font-size: 0.9rem;
+    color: var(--text2);
+    opacity: 0.7;
+}
+
+.tracabilite-container .empty-state {
+    text-align: center;
+    padding: var(--unit-6);
+    font: var(--font-text2);
+    color: var(--text2);
+    opacity: 0.9;
+    border-radius: var(--recep-panel-radius, 12px);
+    border: 1px dashed rgba(13, 13, 13, 0.12);
+}
+
+.tracabilite-container .empty-state {
+    padding: var(--unit-8);
+}
+
+.tracabilite-container .empty-state i {
+    display: block;
+    font-size: 3rem;
+    color: var(--bleu1);
+    opacity: 0.8;
+    margin-bottom: var(--unit-3);
+}
+
+.tracabilite-container .empty-state p {
+    font-weight: 500;
+    color: var(--bleu2);
+}
+
+.tracabilite-container .empty-state.error-state i {
+    color: var(--error);
+}
+
+.tracabilite-container .empty-state p {
+    margin: 0 0 var(--unit-1);
+}
+
+.tracabilite-container .empty-state small {
+    opacity: 0.8;
+}
+
+.tracabilite-container .btn-retry-lots {
+    margin-top: var(--unit-3);
+    padding: var(--unit-2) var(--unit-3);
+    background-color: var(--btn);
+    color: var(--btn-text);
+    border: none;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    font: var(--font-btn);
+}
+
+.tracabilite-container .btn-retry-lots:hover {
+    background-color: var(--btn-hover);
+    color: var(--jaune);
+}

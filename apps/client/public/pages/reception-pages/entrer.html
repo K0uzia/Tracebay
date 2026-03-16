@@ -1,43 +1,44 @@
-<section class="recep-page gestion-lots-container">
-    <div class="recep-card block">
-        <header class="recep-card-header block-title">
-            <h2 class="recep-card-title block-title-h3"><i class="fa-solid fa-boxes-stacked recep-card-icon" aria-hidden="true"></i> Réception nouveau lot</h2>
-        </header>
-        <div class="recep-card-body block-content">
-            <p class="recep-card-desc reception-subtitle">Saisissez les numéros de série et les informations des machines.</p>
-
-            <div class="recep-toolbar reception-toolbar">
-                <div class="recep-toolbar-field reception-toolbar-field">
-                    <label class="recep-label" for="input-lot-name">Nom du lot (optionnel)</label>
-                    <input class="recep-input" type="text" id="input-lot-name" name="lot_name" placeholder="Ex: Nom Entreprise" maxlength="255">
-                </div>
-                <div class="recep-toolbar-actions reception-toolbar-actions">
-                    <button type="button" class="recep-btn" id="btn-add-marque" data-modal-open="modal-add-marque" title="Ajouter une marque"><i class="fa-solid fa-plus" aria-hidden="true"></i> Ajouter une marque</button>
-                    <button type="button" class="recep-btn" id="btn-add-modele" data-modal-open="modal-add-modele" title="Ajouter un modèle"><i class="fa-solid fa-plus" aria-hidden="true"></i> Ajouter un modèle</button>
-                    <button type="button" class="recep-btn" id="btn-apply-mass" title="Appliquer aux lignes sélectionnées"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> Application en masse</button>
-                    <button type="button" class="recep-btn recep-btn-secondary" id="btn-add-manual" title="Ajouter une ligne"><i class="fa-solid fa-keyboard" aria-hidden="true"></i> Ajout manuel</button>
-                    <button type="button" class="recep-btn recep-btn-secondary" id="btn-cancel-lot" title="Nouveau lot"><i class="fa-solid fa-arrow-rotate-right" aria-hidden="true"></i> Nouveau lot</button>
-                    <button type="button" class="recep-btn recep-btn-primary" id="btn-save-lot" title="Enregistrer le lot"><i class="fa-solid fa-save" aria-hidden="true"></i> Enregistrer</button>
+<section class="recep-page lot-page">
+    <div class="lot-page__body">
+        <div class="lot-card lot-card--config">
+            <div class="lot-card__inner">
+                <div class="lot-config">
+                    <div class="lot-config__field">
+                        <label class="lot-config__label" for="input-lot-name"><i class="fa-solid fa-tag"></i> Nom du lot</label>
+                        <input class="lot-config__input" type="text" id="input-lot-name" name="lot_name" placeholder="Ex: Nom entreprise" maxlength="255">
+                    </div>
+                    <div class="lot-config__actions">
+                        <button type="button" class="lot-btn lot-btn--secondary" id="btn-add-marque" data-modal-open="modal-add-marque" title="Ajouter une marque"><i class="fa-solid fa-plus"></i> Marque</button>
+                        <button type="button" class="lot-btn lot-btn--secondary" id="btn-add-modele" data-modal-open="modal-add-modele" title="Ajouter un modèle"><i class="fa-solid fa-plus"></i> Modèle</button>
+                        <button type="button" class="lot-btn lot-btn--secondary" id="btn-apply-mass" title="Appliquer aux lignes sélectionnées"><i class="fa-solid fa-layer-group"></i> En masse</button>
+                        <button type="button" class="lot-btn lot-btn--secondary" id="btn-add-manual" title="Ajouter une ligne"><i class="fa-solid fa-keyboard"></i> Ligne</button>
+                        <button type="button" class="lot-btn lot-btn--secondary" id="btn-cancel-lot" title="Nouveau lot"><i class="fa-solid fa-arrow-rotate-right"></i> Nouveau</button>
+                        <button type="button" class="lot-btn lot-btn--primary" id="btn-save-lot" title="Enregistrer le lot"><i class="fa-solid fa-save"></i> Enregistrer</button>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <div class="recep-table-wrap lot-table-wrapper">
-                <table class="recep-table lot-table">
-                    <thead>
-                        <tr>
-                            <th class="th-select"><input type="checkbox" id="select-all" title="Tout sélectionner" class="recep-checkbox"></th>
-                            <th class="th-num">N°</th>
-                            <th class="th-sn">S/N</th>
-                            <th class="th-type">Type</th>
-                            <th class="th-marque">Marque</th>
-                            <th class="th-modele">Modèle</th>
-                            <th class="th-date">Date / Heure</th>
-                            <th class="th-entree">Entrée</th>
-                            <th class="th-action">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="lot-table-body"></tbody>
-                </table>
+        <div class="lot-card lot-card--table">
+            <div class="lot-card__inner lot-card__inner--scroll">
+                <div class="lot-table-wrap">
+                    <table class="lot-table">
+                        <thead>
+                            <tr>
+                                <th class="lot-table__th--select"><input type="checkbox" id="select-all" title="Tout sélectionner" class="lot-checkbox"></th>
+                                <th class="lot-table__th--num">N°</th>
+                                <th class="lot-table__th--sn">S/N</th>
+                                <th class="lot-table__th--type">Type</th>
+                                <th class="lot-table__th--marque">Marque</th>
+                                <th class="lot-table__th--modele">Modèle</th>
+                                <th class="lot-table__th--date">Date / Heure</th>
+                                <th class="lot-table__th--entree">Entrée</th>
+                                <th class="lot-table__th--action">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lot-table-body"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

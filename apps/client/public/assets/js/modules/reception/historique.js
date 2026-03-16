@@ -669,6 +669,15 @@ export default class HistoriqueManager {
         document.getElementById('modal-lot-recond').textContent = recond;
         document.getElementById('modal-lot-hs').textContent = hs;
 
+        // Stats détail (taux reconditionnement, barre)
+        const pctRecond = total > 0 ? Math.round((recond / total) * 100) : 0;
+        const statRecondEl = document.getElementById('recep-stat-recond');
+        const progressRecondEl = document.getElementById('recep-progress-recond');
+        if (statRecondEl) statRecondEl.textContent = pctRecond + '%';
+        if (progressRecondEl) progressRecondEl.style.width = pctRecond + '%';
+        const statStateEl = document.getElementById('recep-stat-state');
+        if (statStateEl) statStateEl.textContent = pctRecond >= 50 ? 'Bon' : pctRecond >= 25 ? 'Moyen' : 'Faible';
+
         // Items
         const itemsContainer = document.getElementById('modal-lot-items');
         if (!itemsContainer) {

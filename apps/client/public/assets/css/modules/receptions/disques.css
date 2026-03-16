@@ -1,0 +1,101 @@
+/* Réception – page Disques – design SaaS */
+
+.disques-form-panel .recep-panel-body {
+    padding: var(--unit-4);
+}
+
+.disques-form-section {
+    margin: 0;
+}
+
+.disques-form-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--unit-2);
+}
+
+.disques-container .recep-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--unit-1) / 2);
+}
+
+.disques-container .recep-form-group label {
+    font: var(--block-subtitle-h4);
+    color: var(--h2);
+}
+
+.disques-marque-row,
+.disques-modele-row,
+.disques-size-row {
+    display: flex;
+    gap: var(--unit-1);
+    flex-wrap: wrap;
+}
+
+.disques-container .disques-marque-row select,
+.disques-container .disques-modele-row select,
+.disques-container .disques-size-row select {
+    min-width: 100px;
+}
+
+.disques-autre-input,
+.disques-size-custom {
+    min-width: 90px;
+}
+
+.disques-container .recep-checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    cursor: pointer;
+    font: var(--font-text2);
+    color: var(--text2);
+}
+
+.disques-container .recep-panel-body .recep-table-wrap {
+    margin: 0;
+}
+
+.disques-container .recep-panel-body .recep-empty-msg {
+    padding: var(--unit-4) var(--unit-4) var(--unit-5);
+    margin: 0;
+}
+
+.disques-container .recep-table .th-num { width: 3rem; }
+.disques-container .recep-table .th-sn { min-width: 120px; }
+.disques-container .recep-table .th-marque,
+.disques-container .recep-table .th-modele { min-width: 100px; }
+.disques-container .recep-table .th-size { min-width: 80px; }
+
+.recep-empty-msg.disques-empty-msg {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-3);
+    padding: var(--unit-5);
+    font-size: 0.9375rem;
+    color: var(--bleu2);
+}
+
+.recep-empty-msg.disques-empty-msg .recep-empty-icon {
+    font-size: 2rem;
+    color: var(--bleu1);
+    opacity: 0.8;
+}
+
+.disques-container .btn-lsblk {
+    background-color: var(--bleu1);
+    color: var(--btn-text);
+}
+
+.disques-container .btn-lsblk:hover {
+    background-color: var(--btn-hover);
+    color: var(--jaune);
+}
+
+.historique-disque-edit-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-2);
+}

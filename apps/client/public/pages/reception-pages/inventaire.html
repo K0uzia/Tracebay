@@ -1,11 +1,7 @@
 <section class="recep-page inventaire-container">
-    <div class="recep-card block">
-        <header class="recep-card-header block-title">
-            <h2 class="recep-card-title block-title-h3"><i class="fa-solid fa-clipboard-list recep-card-icon" aria-hidden="true"></i> Inventaire – Lots en cours</h2>
-        </header>
-        <div class="recep-card-body block-content">
-            <p class="recep-card-desc reception-subtitle">Gérez l'état des PC et assignez les techniciens.</p>
-
+    <div class="recep-card-body">
+        <p class="recep-card-desc"><i class="recep-desc-icon fa-solid fa-info-circle" aria-hidden="true"></i> Gérez l'état des PC et assignez les techniciens.</p>
+        <div class="recep-panel">
             <div class="recep-toolbar inventaire-filters">
                 <div class="recep-filter-group filter-group">
                     <label class="recep-label" for="filter-state"><i class="fa-solid fa-filter" aria-hidden="true"></i> État</label>
@@ -23,12 +19,13 @@
                     </button>
                 </div>
             </div>
-
+            <div class="recep-panel-body">
             <div class="recep-list lots-list-inv" id="lots-list">
                 <div class="recep-loading loading">
                     <i class="fa-solid fa-spinner" aria-hidden="true"></i>
                     <span>Chargement des lots...</span>
                 </div>
+            </div>
             </div>
         </div>
     </div>

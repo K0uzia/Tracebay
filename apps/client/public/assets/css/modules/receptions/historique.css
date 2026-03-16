@@ -1,0 +1,171 @@
+/* Réception – page Historique – design SaaS */
+
+.recep-panel-body .lots-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-2);
+}
+
+.historique-lot-card {
+    background: var(--recep-panel-bg, #fff);
+    border: 1px solid rgba(13, 13, 13, 0.06);
+    border-radius: var(--recep-panel-radius, 12px);
+    box-shadow: var(--recep-panel-shadow, 0 1px 3px rgba(0,0,0,0.06));
+    overflow: hidden;
+}
+
+.historique-lot-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--unit-3);
+    padding: var(--unit-3) var(--unit-4);
+    background-color: rgba(13, 13, 13, 0.02);
+}
+
+.historique-lot-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--unit-2);
+    flex: 1;
+    min-width: 0;
+}
+
+.historique-lot-title h3 {
+    margin: 0;
+    font: var(--block-title-h3);
+    color: var(--h2);
+}
+
+.historique-lot-title .historique-type-icon {
+    color: var(--bleu1);
+}
+
+.historique-lot-stats .historique-stat strong {
+    color: var(--bleu2);
+}
+
+.historique-lot-title .badge-created,
+.historique-lot-title .badge-recovered,
+.historique-lot-title .badge-to-recover {
+    font-size: 0.85rem;
+    padding: calc(var(--unit-1) / 2) var(--unit-2);
+    border-radius: var(--radius-small);
+}
+
+.badge-created { background-color: rgba(13, 13, 13, 0.08); color: var(--text2); }
+.badge-recovered { background-color: rgba(0, 128, 0, 0.15); color: var(--valid); }
+.badge-to-recover { background-color: rgba(242, 130, 65, 0.2); color: var(--orange); }
+
+.historique-lot-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-3);
+}
+
+.historique-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--unit-1) / 2);
+    font: var(--font-text2);
+    color: var(--text2);
+}
+
+.historique-stat i { color: var(--bleu1); }
+
+.historique-lot-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-2);
+    width: 100%;
+    margin-top: var(--unit-1);
+}
+
+.historique-lot-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-1);
+    padding: var(--unit-1) var(--unit-2);
+    border-radius: var(--radius-small);
+    font: var(--font-btn);
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+}
+
+.historique-lot-actions .btn-view-details,
+.historique-lot-actions .btn-edit-lot,
+.historique-lot-actions .btn-edit-disque-name,
+.historique-lot-actions .btn-edit-items,
+.historique-lot-actions .btn-view-disque,
+.historique-lot-actions .btn-edit-disque-items {
+    background-color: var(--btn);
+    color: var(--btn-text);
+}
+
+.historique-lot-actions .btn-view-details:hover,
+.historique-lot-actions .btn-edit-lot:hover,
+.historique-lot-actions .btn-edit-disque-name:hover,
+.historique-lot-actions .btn-edit-items:hover,
+.historique-lot-actions .btn-view-disque:hover,
+.historique-lot-actions .btn-edit-disque-items:hover {
+    background-color: var(--btn-hover);
+    color: var(--jaune);
+}
+
+.historique-lot-actions .btn-to-recover {
+    background-color: var(--valid);
+    color: var(--blanc);
+}
+.historique-lot-actions .btn-to-recover:hover:not(:disabled) { filter: brightness(1.08); }
+.historique-lot-actions .btn-to-recover.disabled { opacity: 0.6; cursor: not-allowed; }
+.historique-lot-actions .btn-recovered {
+    background-color: rgba(13, 13, 13, 0.1);
+    color: var(--text2);
+    cursor: default;
+}
+
+.historique-disque-card .historique-lot-stats {
+    margin-left: 0;
+}
+
+.historique-container .empty-state {
+    text-align: center;
+    padding: var(--unit-8);
+    font: var(--font-text2);
+    border-radius: var(--recep-panel-radius, 12px);
+    border: 1px dashed rgba(62, 59, 140, 0.2);
+}
+
+.historique-container .empty-state i {
+    display: block;
+    font-size: 3rem;
+    color: var(--bleu1);
+    opacity: 0.8;
+    margin-bottom: var(--unit-3);
+}
+
+.historique-container .empty-state.error-state i { color: var(--error); }
+.historique-container .empty-state p { margin: 0 0 var(--unit-1); font-weight: 500; color: var(--bleu2); }
+.historique-container .empty-state small { opacity: 0.9; }
+.historique-container .btn-retry-lots,
+.historique-container .btn-retry-historique {
+    margin-top: var(--unit-3);
+    padding: var(--unit-2) var(--unit-3);
+    background-color: var(--btn);
+    color: var(--btn-text);
+    border: none;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    font: var(--font-btn);
+}
+.historique-container .btn-retry-lots:hover,
+.historique-container .btn-retry-historique:hover { background-color: var(--btn-hover); color: var(--jaune); }
+
+.historique-filters { margin-bottom: var(--unit-3); }
+.historique-filters .filter-group-search .recep-input { min-width: 240px; }
+
+.details-table.recep-table th.col-os { min-width: 80px; }
+.edit-items-table-wrapper,
+.lot-details-table { margin-top: var(--unit-2); }

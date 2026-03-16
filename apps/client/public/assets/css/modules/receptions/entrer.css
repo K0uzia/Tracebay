@@ -1,0 +1,417 @@
+/**
+ * Page Lots (réception) – Couleurs inspirées v3.1.8 (valid, jaune, bleu2, orange, error).
+ * Mise en page actuelle : cards, pas de bordure décorative.
+ */
+
+/* ---------- Conteneur page (remplissage simple, couleurs variables) ---------- */
+.lot-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--unit-3) var(--unit-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-4);
+    min-width: 0;
+    flex: 1;
+    min-height: 0;
+}
+
+.lot-page__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-4);
+    min-width: 0;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ---------- Cartes (fond blanc, ombre légère style 3.1.8) ---------- */
+.lot-card {
+    background: var(--recep-panel-bg);
+    border-radius: var(--recep-panel-radius);
+    box-shadow: var(--shadow-small);
+    overflow: hidden;
+    min-width: 0;
+}
+
+.lot-card__inner {
+    padding: var(--unit-4);
+}
+
+.lot-card__inner--scroll {
+    padding: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* ---------- Carte config (nom du lot + actions) ---------- */
+.lot-config {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--unit-4);
+}
+
+.lot-config__field {
+    flex: 1 1 200px;
+    min-width: 0;
+    max-width: 320px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+
+.lot-config__label {
+    font-weight: 600;
+    font-size: 0.8125rem;
+    color: var(--bleu2);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-1);
+}
+
+.lot-config__label i {
+    color: var(--bleu1);
+    opacity: 0.95;
+}
+
+.lot-config__input {
+    width: 100%;
+    min-height: 40px;
+    padding: var(--unit-2) var(--unit-3);
+    border: 1px solid rgba(13, 13, 13, 0.12);
+    border-radius: var(--radius-medium);
+    font-size: 0.9375rem;
+    background: #fff;
+    color: var(--text2);
+    transition: var(--transition);
+    box-sizing: border-box;
+}
+
+.lot-config__input:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 3px rgba(62, 59, 140, 0.2);
+}
+
+.lot-config__input::placeholder {
+    color: var(--text2);
+    opacity: 0.6;
+}
+
+.lot-config__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--unit-2);
+}
+
+/* ---------- Boutons ---------- */
+.lot-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--unit-2);
+    min-height: 40px;
+    padding: var(--unit-2) var(--unit-3);
+    border-radius: var(--radius-medium);
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    white-space: nowrap;
+}
+
+.lot-btn i {
+    opacity: 0.95;
+}
+
+/* Enregistrer = vert (valid) comme en 3.1.8 */
+.lot-btn--primary,
+#btn-save-lot {
+    background-color: var(--valid);
+    color: var(--blanc);
+    box-shadow: var(--shadow-small);
+}
+
+.lot-btn--primary:hover,
+#btn-save-lot:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 4px 8px rgba(0, 128, 0, 0.25);
+    color: var(--blanc);
+}
+
+/* Nouveau lot = jaune + noir comme en 3.1.8 */
+#btn-cancel-lot {
+    background-color: var(--jaune);
+    color: var(--noir);
+    border: none;
+}
+
+#btn-cancel-lot:hover {
+    background-color: var(--orange);
+    color: var(--blanc);
+}
+
+.lot-btn--secondary {
+    background: #fff;
+    color: var(--bleu2);
+    border: 1px solid rgba(62, 59, 140, 0.25);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.lot-btn--secondary:hover {
+    background: rgba(62, 59, 140, 0.06);
+    border-color: var(--bleu1);
+    color: var(--bleu1);
+}
+
+/* ---------- Tableau (scroll interne, pas de scroll page) ---------- */
+.lot-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    min-width: 0;
+    flex: 1;
+}
+
+.lot-table {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    color: var(--text2);
+    line-height: 1.45;
+}
+
+.lot-table th,
+.lot-table td {
+    padding: var(--unit-2) var(--unit-3);
+    text-align: left;
+    vertical-align: middle;
+    border-bottom: 1px solid rgba(13, 13, 13, 0.06);
+}
+
+.lot-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+/* En-tête tableau = bleu2 + texte blanc (comme 3.1.8) */
+.lot-table th {
+    background-color: var(--bleu2);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+    border-bottom: 2px solid var(--orange);
+}
+
+.lot-table th i {
+    margin-right: var(--unit-1);
+    opacity: 0.9;
+}
+
+.lot-table tbody tr {
+    transition: background 0.15s ease;
+}
+
+.lot-table tbody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.02);
+}
+
+.lot-table tbody tr:hover {
+    background: #f5f5f5;
+}
+
+.lot-table tbody td {
+    padding: var(--unit-2) var(--unit-3);
+}
+
+/* Colonnes */
+.lot-table__th--select { width: 44px; text-align: center; }
+.lot-table__th--num { width: 3rem; }
+.lot-table__th--sn { min-width: 120px; }
+.lot-table__th--type { min-width: 88px; }
+.lot-table__th--marque,
+.lot-table__th--modele { min-width: 100px; }
+.lot-table__th--date { min-width: 130px; }
+.lot-table__th--entree { min-width: 72px; }
+.lot-table__th--action { width: 72px; text-align: center; }
+
+.lot-checkbox {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--bleu1);
+}
+
+.lot-table thead .lot-checkbox {
+    accent-color: var(--jaune);
+}
+
+/* Cellules : champs et boutons */
+.lot-table td input[type="text"],
+.lot-table td select {
+    width: 100%;
+    min-width: 0;
+    min-height: 36px;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid rgba(13, 13, 13, 0.12);
+    border-radius: var(--radius-small);
+    font-size: 0.8125rem;
+    background: #fff;
+    color: var(--text2);
+}
+
+.lot-table td input:focus,
+.lot-table td select:focus {
+    outline: none;
+    border-color: var(--bleu1);
+}
+
+.lot-table .type-cell-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-1);
+    align-items: center;
+}
+
+.lot-table .type-cell-wrapper .type-other-input {
+    min-width: 80px;
+    flex: 1;
+}
+
+/* Bouton supprimer : error + blanc au hover (3.1.8) */
+.lot-table .btn-delete-row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 2px solid var(--error);
+    border-radius: var(--radius-small);
+    background: rgba(198, 40, 40, 0.1);
+    color: var(--error);
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: 0 2px 4px rgba(198, 40, 40, 0.1);
+}
+
+.lot-table .btn-delete-row:hover {
+    background: var(--error);
+    color: var(--blanc);
+    box-shadow: 0 4px 8px rgba(198, 40, 40, 0.25);
+}
+
+/* Badges entrée : scan = valid, manuel = jaune (3.1.8) */
+.lot-table .entry-badge {
+    display: inline-block;
+    padding: calc(var(--unit-1) / 2) var(--unit-2);
+    border-radius: var(--radius-small);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.lot-table .entry-badge.scan {
+    background-color: var(--valid);
+    color: var(--blanc);
+}
+
+.lot-table .entry-badge.manuel {
+    background-color: var(--jaune);
+    color: var(--noir);
+}
+
+/* État vide du tableau */
+.lot-table tbody#lot-table-body:empty::after {
+    content: "Aucune ligne. Utilisez « Ligne » ou scannez des numéros de série.";
+    display: block;
+    padding: var(--unit-6) var(--unit-4);
+    text-align: center;
+    font-size: 0.9375rem;
+    color: var(--text2);
+    background: #f5f5f5;
+}
+
+/* ---------- Responsive : remplissage simple (sidebar déjà gérée dans reception.css) ---------- */
+@media (max-width: 768px) {
+    .lot-page {
+        padding: var(--unit-2) var(--unit-2);
+        gap: var(--unit-3);
+    }
+
+    .lot-card--config {
+        flex-shrink: 0;
+    }
+
+    .lot-card--table {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .lot-card__inner {
+        padding: var(--unit-3);
+    }
+
+    .lot-card__inner--scroll {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .lot-table-wrap {
+        flex: 1;
+        min-height: 120px;
+    }
+
+    .lot-config {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--unit-3);
+    }
+
+    .lot-config__field {
+        max-width: none;
+    }
+
+    .lot-config__actions {
+        flex-wrap: wrap;
+    }
+
+    .lot-btn {
+        min-height: 40px;
+        flex: 1 1 auto;
+    }
+
+    .lot-table {
+        min-width: 560px;
+    }
+
+    .lot-table th,
+    .lot-table td {
+        padding: var(--unit-2) var(--unit-2);
+        font-size: 0.8125rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .lot-config__actions {
+        flex-direction: column;
+    }
+
+    .lot-btn {
+        width: 100%;
+    }
+}

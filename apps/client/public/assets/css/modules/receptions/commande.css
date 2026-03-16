@@ -1,0 +1,71 @@
+/* Réception – page Commande – design SaaS */
+
+.commande-container .recep-toolbar {
+    border-bottom: 1px solid rgba(13, 13, 13, 0.06);
+}
+
+.commande-container .recep-toolbar-field {
+    min-width: 260px;
+}
+
+.commande-container .commande-actions {
+    margin-left: auto;
+}
+
+.commande-container .recep-table-wrap {
+    margin-top: 0;
+}
+
+.commande-table .col-num { width: 3rem; }
+.commande-table .col-produit { min-width: 180px; }
+.commande-table .col-quantite { width: 90px; }
+.commande-table .col-prix { width: 100px; }
+.commande-table .col-liens { min-width: 160px; }
+.commande-table .col-actions { width: 52px; text-align: center; }
+
+.commande-table .commande-select-product {
+    width: 100%;
+    min-width: 160px;
+}
+
+.commande-table .commande-input-quantite,
+.commande-table .commande-input-prix {
+    width: 100%;
+    max-width: 90px;
+    box-sizing: border-box;
+}
+
+.commande-table .commande-input-lien {
+    width: 100%;
+    min-width: 140px;
+    box-sizing: border-box;
+}
+
+.commande-container .recep-btn-icon,
+.commande-container .btn-remove-line {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--unit-4);
+    height: var(--unit-4);
+    padding: 0;
+    background-color: transparent;
+    color: var(--text2);
+    border: 1px solid rgba(13, 13, 13, 0.2);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.commande-container .recep-btn-icon:hover:not(:disabled),
+.commande-container .btn-remove-line:hover:not(:disabled) {
+    background-color: var(--error);
+    color: var(--blanc);
+    border-color: var(--error);
+}
+
+.commande-container .recep-btn-icon:disabled,
+.commande-container .btn-remove-line:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
