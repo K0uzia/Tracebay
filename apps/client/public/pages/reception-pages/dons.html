@@ -1,0 +1,87 @@
+<section class="recep-page dons-container">
+    <div class="recep-card block">
+        <header class="recep-card-header block-title">
+            <h2 class="recep-card-title block-title-h3"><i class="fa-solid fa-hand-holding-heart recep-card-icon" aria-hidden="true"></i> Dons de matériel</h2>
+        </header>
+        <div class="recep-card-body block-content">
+            <p class="recep-card-desc reception-subtitle">Saisir les équipements donnés et générer le certificat de don.</p>
+
+            <div class="recep-toolbar dons-toolbar">
+                <div class="recep-toolbar-field">
+                    <label class="recep-label" for="dons-lot-name">Nom de lot (optionnel)</label>
+                    <input class="recep-input" type="text" id="dons-lot-name" placeholder="Ex : Don stagiaires mars 2025" maxlength="255" autocomplete="off">
+                </div>
+                <div class="recep-toolbar-actions dons-actions">
+                    <button type="button" class="recep-btn" id="dons-btn-add-marque" data-modal-open="modal-add-marque" title="Ajouter une marque">Ajouter une marque</button>
+                    <button type="button" class="recep-btn" id="dons-btn-add-modele" data-modal-open="modal-add-modele" title="Ajouter un modèle">Ajouter un modèle</button>
+                    <button type="button" class="recep-btn recep-btn-secondary" id="dons-btn-add-line" title="Ajouter une ligne">Ajouter une ligne</button>
+                    <button type="button" class="recep-btn recep-btn-primary" id="dons-btn-save-pdf" title="Enregistrer le certificat">Enregistrer</button>
+                </div>
+            </div>
+
+            <div class="recep-table-wrap dons-table-wrapper">
+                <table class="recep-table dons-table" id="dons-table">
+                    <thead>
+                        <tr>
+                            <th class="col-num">N°</th>
+                            <th class="col-type">Type</th>
+                            <th class="col-marque">Marque</th>
+                            <th class="col-modele">Modèle</th>
+                            <th class="col-sn">S/N</th>
+                            <th class="col-date">Date</th>
+                            <th class="col-stagiaire">Stagiaire AFPA</th>
+                            <th class="col-actions"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="dons-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<dialog class="universal-modal" id="modal-add-marque" data-modal-id="modal-add-marque">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-building"></i> Nouvelle marque</h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-add-marque" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="form-add-marque">
+                <div class="form-group">
+                    <label for="input-new-marque">Nom de la marque</label>
+                    <input type="text" id="input-new-marque" name="marque" placeholder="Ex: Dell, HP..." required autocomplete="off">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-add-marque">Annuler</button>
+            <button type="button" class="modal-submit-btn" id="btn-submit-marque"><i class="fa-solid fa-check" aria-hidden="true"></i> Ajouter</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog class="universal-modal" id="modal-add-modele" data-modal-id="modal-add-modele">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-laptop"></i> Nouveau modèle</h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-add-modele" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="form-add-modele">
+                <div class="form-group">
+                    <label for="select-marque-for-modele">Marque</label>
+                    <select id="select-marque-for-modele" name="marqueId" required><option value="">— Choisir —</option></select>
+                </div>
+                <div class="form-group">
+                    <label for="input-new-modele">Nom du modèle</label>
+                    <input type="text" id="input-new-modele" name="modele" placeholder="Ex: Latitude 5410..." required autocomplete="off">
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-add-modele">Annuler</button>
+            <button type="button" class="modal-submit-btn" id="btn-submit-modele"><i class="fa-solid fa-check" aria-hidden="true"></i> Ajouter</button>
+        </div>
+    </div>
+</dialog>

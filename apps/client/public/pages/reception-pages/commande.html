@@ -1,89 +1,66 @@
-<!-- COMMANDE - Liste de produits, génération PDF -->
-<section class="commande-container">
-    <div class="commande-header reception-page-header">
-        <h1>
-            <i class="fa-solid fa-file-invoice"></i>
-            Commande
-        </h1>
-        <p class="subtitle">Constituer une liste de produits et générer le PDF de la commande</p>
-    </div>
+<section class="recep-page commande-container">
+    <div class="recep-card block">
+        <header class="recep-card-header block-title">
+            <h2 class="recep-card-title block-title-h3"><i class="fa-solid fa-file-invoice recep-card-icon" aria-hidden="true"></i> Commande</h2>
+        </header>
+        <div class="recep-card-body block-content">
+            <p class="recep-card-desc reception-subtitle">Constituer une liste de produits et générer le PDF.</p>
 
-    <div class="commande-toolbar">
-        <div class="commande-name-field">
-            <label for="commande-name">Nom de la commande</label>
-            <input type="text" id="commande-name" placeholder="Ex : Commande fournitures mars 2025" maxlength="255" autocomplete="off">
-        </div>
-        <div class="commande-actions">
-            <button type="button" id="commande-btn-add-line" class="btn btn-primary">
-                <i class="fa-solid fa-plus"></i> Ajouter une ligne
-            </button>
-            <button type="button" id="commande-btn-add-product" class="btn btn-primary">
-                <i class="fa-solid fa-plus"></i> Ajouter un produit
-            </button>
-            <button type="button" id="commande-btn-save-pdf" class="btn btn-primary btn-save-pdf">
-                <i class="fa-solid fa-file-pdf"></i> Enregistrer
-            </button>
-        </div>
-    </div>
+            <div class="recep-toolbar commande-toolbar">
+                <div class="recep-toolbar-field">
+                    <label class="recep-label" for="commande-name">Nom de la commande</label>
+                    <input class="recep-input" type="text" id="commande-name" placeholder="Ex : Commande fournitures mars 2025" maxlength="255" autocomplete="off">
+                </div>
+                <div class="recep-toolbar-actions commande-actions">
+                    <button type="button" class="recep-btn recep-btn-secondary" id="commande-btn-add-line" title="Ajouter une ligne">Ajouter une ligne</button>
+                    <button type="button" class="recep-btn" id="commande-btn-add-product" title="Ajouter un produit">Ajouter un produit</button>
+                    <button type="button" class="recep-btn recep-btn-primary" id="commande-btn-save-pdf" title="Enregistrer le PDF">Enregistrer</button>
+                </div>
+            </div>
 
-    <div class="commande-table-wrapper">
-        <table class="commande-table" id="commande-table">
-            <thead>
-                <tr>
-                    <th class="col-num">N°</th>
-                    <th class="col-produit">Produit</th>
-                    <th class="col-quantite">Quantité</th>
-                    <th class="col-prix">Prix</th>
-                    <th class="col-liens">Liens (optionnel)</th>
-                    <th class="col-actions"></th>
-                </tr>
-            </thead>
-            <tbody id="commande-tbody">
-                <tr class="commande-line" data-line-index="0">
-                    <td class="col-num">1</td>
-                    <td class="col-produit">
-                        <select class="commande-select-product" data-line="0">
-                            <option value="">-- Produit --</option>
-                        </select>
-                    </td>
-                    <td class="col-quantite">
-                        <input type="number" min="0" step="1" class="commande-input-quantite" data-line="0" placeholder="0" inputmode="numeric">
-                    </td>
-                    <td class="col-prix">
-                        <input type="number" min="0" step="0.01" class="commande-input-prix" data-line="0" placeholder="0,00" inputmode="decimal">
-                    </td>
-                    <td class="col-liens">
-                        <input type="text" class="commande-input-lien" data-line="0" placeholder="URL ou référence">
-                    </td>
-                    <td class="col-actions">
-                        <button type="button" class="btn-icon btn-remove-line" data-line="0" title="Supprimer la ligne" disabled>
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
+            <div class="recep-table-wrap commande-table-wrapper">
+                <table class="recep-table commande-table" id="commande-table">
+                    <thead>
+                        <tr>
+                            <th class="col-num">N°</th>
+                            <th class="col-produit">Produit</th>
+                            <th class="col-quantite">Quantité</th>
+                            <th class="col-prix">Prix</th>
+                            <th class="col-liens">Liens</th>
+                            <th class="col-actions"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="commande-tbody">
+                        <tr class="commande-line" data-line-index="0">
+                            <td class="col-num">1</td>
+                            <td class="col-produit"><select class="commande-select-product recep-input" data-line="0"><option value="">— Produit —</option></select></td>
+                            <td class="col-quantite"><input type="number" min="0" step="1" class="commande-input-quantite recep-input" data-line="0" placeholder="0"></td>
+                            <td class="col-prix"><input type="number" min="0" step="0.01" class="commande-input-prix recep-input" data-line="0" placeholder="0,00"></td>
+                            <td class="col-liens"><input type="text" class="commande-input-lien recep-input" data-line="0" placeholder="URL"></td>
+                            <td class="col-actions"><button type="button" class="recep-btn-icon btn-remove-line" data-line="0" title="Supprimer" disabled><i class="fas fa-trash" aria-hidden="true"></i></button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </section>
 
-<!-- Modale : Ajouter un produit (saisie libre, enregistré en DB) -->
 <dialog class="universal-modal" id="commande-modal-add-product" data-modal-id="commande-modal-add-product">
     <div class="modal-content">
         <div class="modal-header">
             <h2><i class="fa-solid fa-plus"></i> Ajouter un produit</h2>
-            <button type="button" class="modal-close-btn" data-modal-close="commande-modal-add-product">
-                <i class="fa-solid fa-times"></i>
-            </button>
+            <button type="button" class="modal-close-btn" data-modal-close="commande-modal-add-product" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
         </div>
         <div class="modal-body">
             <form id="commande-form-add-product">
                 <div class="form-group">
                     <label for="commande-new-product-name">Nom du produit</label>
-                    <input type="text" id="commande-new-product-name" placeholder="Saisie libre (ex : Câble HDMI 2m)" required autocomplete="off">
+                    <input type="text" id="commande-new-product-name" placeholder="Ex : Câble HDMI 2m" required autocomplete="off">
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" data-close-modal="commande-modal-add-product">Annuler</button>
-                    <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    <button type="button" class="recep-btn recep-btn-secondary" data-close-modal="commande-modal-add-product">Annuler</button>
+                    <button type="submit" class="recep-btn recep-btn-primary">Enregistrer</button>
                 </div>
             </form>
         </div>

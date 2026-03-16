@@ -121,15 +121,14 @@ async function runAutoUpdate(opts) {
                         const updateTempDir = pathModule.join(app.getPath('temp'), 'workspace-update');
                         try {
                             fsModule.mkdirSync(updateTempDir, { recursive: true });
-                            const tempAppPath = pathModule.join(updateTempDir, 'workspace-new.AppImage');
+                            const tempAppPath = pathModule.join(updateTempDir, 'workspace.AppImage');
                             fsModule.renameSync(newApp, tempAppPath);
                             newApp = tempAppPath;
                             console.log('[Update] AppImage déplacée vers dossier temporaire:', newApp);
                         } catch (e) {
                             console.warn('[Update] Déplacement vers temp échoué, utilisation du chemin par défaut:', e?.message);
                         }
-                        // Créer la copie .bak de l'AppImage actuelle une fois le téléchargement terminé
-                        linuxAppImageBackup(currentApp);
+                        // Le script helper crée le .bak après fermeture (supprime ancien .bak, renomme l'actuelle en .bak, puis déplace la nouvelle)
                     }
                     const helperOk = tryLinuxAppImageUpdateHelper(currentApp, newApp);
                     if (helperOk) {

@@ -28,6 +28,7 @@ class PageManager {
             'tracabilite': receptionLayout,
             'disques': receptionLayout,
             'commande': receptionLayout,
+            'dons': receptionLayout,
             'shortcut': { showHeader: true, showFooter: true, showChat: true },
             'option': { showHeader: true, showFooter: true, showChat: false },
             'login': { showHeader: false, showFooter: false, showChat: false },
@@ -99,7 +100,7 @@ class PageManager {
 
         // Charger la page sauvegardée ou home (y compris sous-pages réception : entrer, historique, tracabilite, etc.)
         const lastPage = this.getLastPage();
-        const receptionSubPages = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques', 'commande'];
+        const receptionSubPages = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques', 'commande', 'dons'];
         const isValidPage = lastPage && (this.pagesConfig[lastPage] || receptionSubPages.includes(lastPage));
         const pageToLoad = isValidPage ? lastPage : 'home';
         this.loadPage(pageToLoad);
@@ -758,7 +759,7 @@ class PageManager {
 
     async loadPage(pageName) {
         try {
-            const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques', 'commande'].includes(pageName);
+            const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques', 'commande', 'dons'].includes(pageName);
             
             // Si c'est une sous-page de réception, charger d'abord reception.html
             if (isReceptionSubPage) {
@@ -822,6 +823,39 @@ class PageManager {
             this.attachReceptionPageListeners();
             this.initializeFileManagers();
             this.initializeAppManagers();
+            // #region agent log
+            if (isReceptionSubPage) {
+                requestAnimationFrame(() => {
+                    const recepSection = document.querySelector('.recep-section');
+                    const block = document.querySelector('.recep-section .block');
+                    const toolbar = document.querySelector('.recep-section .reception-toolbar, .recep-section .commande-toolbar, .recep-section .dons-toolbar, .recep-section .inventaire-filters, .recep-section .historique-filters, .recep-section .tracabilite-filters');
+                    const firstBtn = document.querySelector('.recep-section .reception-toolbar-actions button, .recep-section .commande-actions button, .recep-section .dons-actions button, .recep-section .filter-group button');
+                    const data = { page: pageName };
+                    if (recepSection) {
+                        const s = getComputedStyle(recepSection);
+                        data.recepSectionBg = s.backgroundColor;
+                        data.recepSectionPadding = s.padding;
+                    }
+                    if (block) {
+                        const s = getComputedStyle(block);
+                        data.blockPadding = s.padding;
+                        data.blockGap = s.gap;
+                    }
+                    if (toolbar) {
+                        const s = getComputedStyle(toolbar);
+                        data.toolbarBg = s.backgroundColor;
+                        data.toolbarPadding = s.padding;
+                    }
+                    if (firstBtn) {
+                        const s = getComputedStyle(firstBtn);
+                        data.btnBg = s.backgroundColor;
+                        data.btnColor = s.color;
+                        data.btnPadding = s.padding;
+                    }
+                    fetch('http://127.0.0.1:7511/ingest/12c1a38a-34e1-48f0-a494-21cbcbc0db41', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'f23c7a' }, body: JSON.stringify({ sessionId: 'f23c7a', location: 'app.js:loadPage', message: 'Reception subpage styles', data, timestamp: Date.now(), hypothesisId: 'H1-H5' }) }).catch(() => {});
+                });
+            }
+            // #endregion
         } catch (error) {
             logger.error(`❌ Erreur lors du chargement de ${pageName}:`, error);
             this.showError(pageName);
@@ -1084,6 +1118,20 @@ class PageManager {
                 })
                 .catch(error => {
                     logger.error('❌ Erreur import CommandeManager:', error);
+                });
+        } else if (pageName === 'dons') {
+            if (window.donsManager) {
+                window.donsManager.destroy();
+                window.donsManager = null;
+            }
+            import('./assets/js/modules/reception/dons.js')
+                .then(module => {
+                    const DonsManager = module.default;
+                    window.donsManager = new DonsManager(window.modalManager);
+                    logger.debug('✅ DonsManager initialisé depuis app.js');
+                })
+                .catch(error => {
+                    logger.error('❌ Erreur import DonsManager:', error);
                 });
         }
     }

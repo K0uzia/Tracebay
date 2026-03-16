@@ -1,247 +1,198 @@
-<!-- HISTORIQUE - LOTS TERMINÉS -->
-<section class="historique-container">
-    
-    <!-- En-tête -->
-    <div class="historique-header reception-page-header">
-        <h1>
-            <i class="fa-solid fa-history"></i>
-            Historique
-        </h1>
-        <p class="subtitle">Lots terminés et lots disques (certificats d'effacement)</p>
-    </div>
+<section class="recep-page historique-container">
+    <div class="recep-card block">
+        <header class="recep-card-header block-title">
+            <h2 class="recep-card-title block-title-h3"><i class="fa-solid fa-history recep-card-icon" aria-hidden="true"></i> Historique</h2>
+        </header>
+        <div class="recep-card-body block-content">
+            <p class="recep-card-desc reception-subtitle">Lots terminés et lots disques (certificats d'effacement).</p>
 
-    <!-- Recherche + Rafraîchir -->
-    <div class="historique-filters">
-        <div class="filter-group filter-group-search">
-            <label for="filter-search-historique">
-                <i class="fa-solid fa-magnifying-glass"></i> Recherche :
-            </label>
-            <input type="text" id="filter-search-historique" placeholder="Rechercher par nom du lot (ex. Lot #1, ogo…)" autocomplete="off">
-        </div>
-        <div class="filter-group">
-            <button type="button" id="btn-refresh-historique">
-                <i class="fa-solid fa-sync"></i> Rafraîchir
-            </button>
-        </div>
-    </div>
+            <div class="recep-toolbar historique-filters">
+                <div class="recep-filter-group filter-group filter-group-search">
+                    <label class="recep-label" for="filter-search-historique"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Recherche</label>
+                    <input class="recep-input" type="text" id="filter-search-historique" placeholder="Rechercher par nom du lot…" autocomplete="off">
+                </div>
+                <div class="recep-toolbar-actions">
+                    <button type="button" class="recep-btn reception-btn-refresh" id="btn-refresh-historique" title="Recharger l'historique">
+                        <i class="fa-solid fa-sync" aria-hidden="true"></i> Rafraîchir
+                    </button>
+                </div>
+            </div>
 
-    <!-- Liste des lots terminés + sessions disques -->
-    <div class="lots-list" id="historique-list">
-        <!-- Les lots seront chargés dynamiquement -->
-        <div class="loading">
-            <i class="fa-solid fa-spinner"></i> Chargement de l'historique...
+            <div class="recep-list lots-list" id="historique-list">
+                <div class="recep-loading loading">
+                    <i class="fa-solid fa-spinner" aria-hidden="true"></i>
+                    <span>Chargement de l'historique...</span>
+                </div>
+            </div>
         </div>
     </div>
-
 </section>
 
-<!-- MODALE : Voir détails lot -->
+<!-- Modales historique (détails lot, éditer items, éditer nom, disques, etc.) - IDs conservés pour le JS -->
 <dialog class="universal-modal" id="modal-lot-details" data-modal-id="modal-lot-details">
     <div class="modal-content modal-lg">
         <div class="modal-header">
             <h2><i class="fa-solid fa-boxes-stacked"></i> Détails Lot #<span id="modal-lot-number">-</span></h2>
-            <button type="button" class="modal-close-btn" data-modal-close="modal-lot-details">
-                <i class="fa-solid fa-times"></i>
-            </button>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-lot-details" title="Fermer" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
         </div>
         <div class="modal-body">
             <div class="lot-details-info">
                 <div class="info-grid">
                     <div class="info-item">
-                        <span class="info-label">Créé le :</span>
+                        <span class="info-label">Créé le</span>
                         <span class="info-value" id="modal-lot-created">-</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Terminé le :</span>
+                        <span class="info-label">Terminé le</span>
                         <span class="info-value" id="modal-lot-finished">-</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Total PC :</span>
+                        <span class="info-label">Total PC</span>
                         <span class="info-value" id="modal-lot-total">-</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Reconditionnés :</span>
+                        <span class="info-label">Reconditionnés</span>
                         <span class="info-value" id="modal-lot-recond">-</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">HS :</span>
+                        <span class="info-label">HS</span>
                         <span class="info-value" id="modal-lot-hs">-</span>
                     </div>
                 </div>
             </div>
-
-            <h3 style="margin-top: 16px; margin-bottom: 12px;">PC du lot</h3>
-            <div class="lot-details-table">
-                <table class="details-table">
+            <h3 class="recep-modal-subtitle">PC du lot</h3>
+            <div class="lot-details-table recep-table-wrap">
+                <table class="details-table recep-table">
                     <thead>
                         <tr>
-                            <th style="width: 50px;">N°</th>
-                            <th style="width: 140px;">S/N</th>
-                            <th style="width: 100px;">Type</th>
-                            <th style="width: 100px;">Marque</th>
-                            <th style="width: 120px;">Modèle</th>
+                            <th>N°</th>
+                            <th>S/N</th>
+                            <th>Type</th>
+                            <th>Marque</th>
+                            <th>Modèle</th>
                             <th class="col-os">OS</th>
-                            <th style="width: 100px;">État</th>
-                            <th style="width: 120px;">Technicien</th>
-                            <th style="width: 115px;">Date / Heure</th>
+                            <th>État</th>
+                            <th>Technicien</th>
+                            <th>Date / Heure</th>
                         </tr>
                     </thead>
-                    <tbody id="modal-lot-items">
-                        <!-- Items seront ajoutés dynamiquement -->
-                    </tbody>
+                    <tbody id="modal-lot-items"></tbody>
                 </table>
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="modal-cancel-btn" data-modal-close="modal-lot-details">
-                <i class="fa-solid fa-times"></i> Fermer
-            </button>
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-lot-details" title="Fermer">Fermer</button>
         </div>
     </div>
 </dialog>
 
-<!-- MODALE : Éditer items du lot -->
 <dialog class="universal-modal" id="modal-edit-lot-items" data-modal-id="modal-edit-lot-items">
     <div class="modal-content modal-lg">
         <div class="modal-header">
-            <h2><i class="fa-solid fa-list-check"></i> Éditer matériel - Lot #<span id="modal-edit-lot-number">-</span></h2>
-            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-lot-items">
-                <i class="fa-solid fa-times"></i>
-            </button>
+            <h2><i class="fa-solid fa-list-check"></i> Éditer matériel – Lot #<span id="modal-edit-lot-number">-</span></h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-lot-items" title="Fermer" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
         </div>
         <div class="modal-body">
-            <div class="edit-items-table-wrapper">
-                <table class="edit-items-table">
+            <div class="edit-items-table-wrapper recep-table-wrap">
+                <table class="edit-items-table recep-table">
                     <thead>
                         <tr>
-                            <th style="width: 50px;">N°</th>
-                            <th style="width: 140px;">S/N</th>
-                            <th style="width: 100px;">Type</th>
-                            <th style="width: 100px;">Marque</th>
-                            <th style="width: 120px;">Modèle</th>
+                            <th>N°</th>
+                            <th>S/N</th>
+                            <th>Type</th>
+                            <th>Marque</th>
+                            <th>Modèle</th>
                             <th class="col-os">OS</th>
-                            <th style="width: 120px;">État</th>
-                            <th style="width: 140px;">Technicien</th>
-                            <th style="width: 115px;">Date / Heure</th>
+                            <th>État</th>
+                            <th>Technicien</th>
+                            <th>Date / Heure</th>
                         </tr>
                     </thead>
-                    <tbody id="modal-edit-items-body">
-                        <!-- Items seront ajoutés dynamiquement -->
-                    </tbody>
+                    <tbody id="modal-edit-items-body"></tbody>
                 </table>
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-lot-items">
-                <i class="fa-solid fa-times"></i> Annuler
-            </button>
-            <button type="button" id="btn-apply-item-edits" class="modal-apply-btn">
-                <i class="fa-solid fa-check"></i> Appliquer
-            </button>
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-lot-items" title="Annuler">Annuler</button>
+            <button type="button" class="modal-submit-btn" id="btn-apply-item-edits" title="Appliquer"><i class="fa-solid fa-check" aria-hidden="true"></i> Appliquer</button>
         </div>
     </div>
 </dialog>
 
-<!-- MODALE : Éditer nom du lot -->
 <dialog class="universal-modal" id="modal-edit-lot-name" data-modal-id="modal-edit-lot-name">
     <div class="modal-content modal-md">
         <div class="modal-header">
             <h2><i class="fa-solid fa-edit"></i> Éditer le nom du lot</h2>
-            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-lot-name">
-                <i class="fa-solid fa-times"></i>
-            </button>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-lot-name" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
         </div>
         <div class="modal-body">
             <div class="form-group">
-                <label for="input-lot-name">Nom du lot :</label>
-                <input type="text" id="input-lot-name" placeholder="Entrez le nouveau nom du lot" autofocus>
+                <label for="input-lot-name">Nom du lot</label>
+                <input type="text" id="input-lot-name" placeholder="Nouveau nom du lot" autofocus>
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-lot-name">
-                <i class="fa-solid fa-times"></i> Annuler
-            </button>
-            <button type="button" id="btn-save-lot-name" class="modal-apply-btn">
-                <i class="fa-solid fa-check"></i> Enregistrer
-            </button>
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-lot-name">Annuler</button>
+            <button type="button" class="modal-submit-btn" id="btn-save-lot-name" title="Enregistrer"><i class="fa-solid fa-check" aria-hidden="true"></i> Enregistrer</button>
         </div>
     </div>
 </dialog>
 
-<!-- MODALE : Éditer nom de la session disques -->
 <dialog class="universal-modal" id="modal-edit-disque-name" data-modal-id="modal-edit-disque-name">
     <div class="modal-content modal-md">
         <div class="modal-header">
             <h2><i class="fa-solid fa-edit"></i> Éditer le nom de la session</h2>
-            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-disque-name">
-                <i class="fa-solid fa-times"></i>
-            </button>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-disque-name" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
         </div>
         <div class="modal-body">
             <div class="form-group">
-                <label for="input-disque-session-name">Nom de la session :</label>
+                <label for="input-disque-session-name">Nom de la session</label>
                 <input type="text" id="input-disque-session-name" placeholder="Ex: Session shred mars 2025" autofocus>
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-disque-name">
-                <i class="fa-solid fa-times"></i> Annuler
-            </button>
-            <button type="button" id="btn-save-disque-name" class="modal-apply-btn">
-                <i class="fa-solid fa-check"></i> Enregistrer
-            </button>
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-disque-name">Annuler</button>
+            <button type="button" class="modal-submit-btn" id="btn-save-disque-name" title="Enregistrer"><i class="fa-solid fa-check" aria-hidden="true"></i> Enregistrer</button>
         </div>
     </div>
 </dialog>
 
-<!-- MODALE : Éditer matériel (disques) d'un lot disques - même style que création lot disques -->
 <dialog class="universal-modal" id="modal-edit-disque-items" data-modal-id="modal-edit-disque-items">
     <div class="modal-content modal-lg">
         <div class="modal-header">
-            <h2><i class="fa-solid fa-list-check"></i> Éditer matériel - <span id="modal-edit-disque-session-title">Lot disques</span></h2>
-            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-disque-items">
-                <i class="fa-solid fa-times"></i>
-            </button>
+            <h2><i class="fa-solid fa-list-check"></i> Éditer matériel – <span id="modal-edit-disque-session-title">Lot disques</span></h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-disque-items" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
         </div>
         <div class="modal-body">
             <p class="modal-help">Modifiez S/N, marque, modèle, taille, type et interface pour chaque disque.</p>
-            <div id="modal-edit-disque-items-list" class="historique-disque-edit-list">
-                <!-- Rempli par JS : une ligne par disque (même formulaire que création) -->
-            </div>
+            <div id="modal-edit-disque-items-list" class="historique-disque-edit-list"></div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-disque-items">
-                <i class="fa-solid fa-times"></i> Annuler
-            </button>
-            <button type="button" id="btn-apply-disque-items-edits" class="modal-apply-btn">
-                <i class="fa-solid fa-check"></i> Enregistrer
-            </button>
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-disque-items">Annuler</button>
+            <button type="button" class="modal-submit-btn" id="btn-apply-disque-items-edits" title="Enregistrer"><i class="fa-solid fa-check" aria-hidden="true"></i> Enregistrer</button>
         </div>
     </div>
 </dialog>
 
-<!-- MODALE : Détails lot disques -->
 <dialog class="universal-modal" id="modal-disque-details" data-modal-id="modal-disque-details">
     <div class="modal-content modal-lg">
         <div class="modal-header">
             <h2><i class="fa-solid fa-hard-drive"></i> <span id="modal-disque-title">Lot disques</span></h2>
-            <button type="button" class="modal-close-btn" data-modal-close="modal-disque-details">
-                <i class="fa-solid fa-times"></i>
-            </button>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-disque-details" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
         </div>
         <div class="modal-body">
             <div class="lot-details-info">
                 <div class="info-item">
-                    <span class="info-label">Nombre de disques :</span>
+                    <span class="info-label">Nombre de disques</span>
                     <span class="info-value" id="modal-disque-total">-</span>
                 </div>
             </div>
-            <h3 style="margin-top: 16px; margin-bottom: 12px;">Disques</h3>
-            <div class="lot-details-table">
-                <table class="details-table">
+            <h3 class="recep-modal-subtitle">Disques</h3>
+            <div class="lot-details-table recep-table-wrap">
+                <table class="details-table recep-table">
                     <thead>
                         <tr>
-                            <th style="width: 40px;">N°</th>
+                            <th>N°</th>
                             <th>S/N</th>
                             <th>Marque</th>
                             <th>Modèle</th>
@@ -251,16 +202,12 @@
                             <th>Shred</th>
                         </tr>
                     </thead>
-                    <tbody id="modal-disque-items">
-                        <!-- Rempli par JS -->
-                    </tbody>
+                    <tbody id="modal-disque-items"></tbody>
                 </table>
             </div>
         </div>
         <div class="modal-footer">
-            <button type="button" class="modal-cancel-btn" data-modal-close="modal-disque-details">
-                <i class="fa-solid fa-times"></i> Fermer
-            </button>
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-disque-details" title="Fermer">Fermer</button>
         </div>
     </div>
 </dialog>

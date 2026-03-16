@@ -293,6 +293,17 @@ export default class CommandeManager {
             });
             if (result?.success && result.pdf_path) {
                 window.app?.showNotification?.('PDF enregistré : ' + result.pdf_path, 'success');
+                try {
+                    const createRes = await api.post('commandes.create', {
+                        commande_name: commandeName,
+                        date: dateStr,
+                        pdf_path: result.pdf_path,
+                        lines
+                    });
+                    if (!createRes.ok) logger.warn('Backend commandes.create:', createRes.status);
+                } catch (apiErr) {
+                    logger.warn('Backend commandes.create non disponible:', apiErr);
+                }
             } else {
                 window.app?.showNotification?.(result?.error || 'Échec génération PDF', 'error');
             }

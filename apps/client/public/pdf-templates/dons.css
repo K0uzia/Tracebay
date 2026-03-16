@@ -1,0 +1,172 @@
+/**
+ * Style du PDF Dons - Certificat de don stagiaires
+ * /mnt/team/#TEAM/#TRAÇABILITÉ/don_stagiaires
+ */
+@page {
+    size: A4;
+    margin: 15mm;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    font-size: 11px;
+    color: black;
+    line-height: 1.4;
+    margin: 0;
+    padding: 20px;
+    max-width: 210mm;
+}
+
+.pdf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #2D3073;
+}
+
+.pdf-header h1 {
+    margin: 0 0 4px 0;
+    font-size: 22px;
+    font-weight: 700;
+    color: #2D3073;
+}
+
+.pdf-header-org {
+    margin: 0;
+    font-size: 12px;
+    color: #555;
+}
+
+.pdf-header-logo {
+    display: flex;
+    align-items: center;
+}
+.pdf-header-logo img {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+}
+.pdf-header-logo h2 {
+    margin: 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: #2D3073;
+}
+
+/* Bloc certificat - visuel type certificat */
+.pdf-certificate-title {
+    margin-bottom: 20px;
+    padding: 16px 20px;
+    border: 2px solid #2D3073;
+    border-radius: 8px;
+    background: linear-gradient(to bottom, #f8f9fc 0%, #fff 100%);
+}
+
+.pdf-certificate-title h2 {
+    margin: 0 0 8px 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #2D3073;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pdf-certificate-title h2 i {
+    margin-right: 8px;
+}
+
+.certificate-intro {
+    margin: 0;
+    font-size: 11px;
+    color: #333;
+    line-height: 1.5;
+}
+
+.pdf-info {
+    margin-bottom: 20px;
+}
+
+.pdf-info h2 {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: black;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pdf-info .pdf-summary-total-line {
+    margin: 0 0 8px 0;
+}
+
+.pdf-info .label {
+    color: black;
+}
+
+.pdf-info .value {
+    font-weight: 500;
+    color: #2D3073;
+}
+
+.pdf-info .lot-name-line {
+    margin: 0 0 8px 0;
+}
+
+.pdf-detail {
+    margin-bottom: 20px;
+}
+
+.pdf-detail h2 {
+    margin: 0 0 10px 0;
+    font-size: 12px;
+    font-weight: 700;
+    color: black;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.pdf-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+    font-size: 10px;
+}
+
+.pdf-table thead th {
+    text-align: left;
+    padding: 8px 6px;
+    font-weight: 700;
+    color: #333;
+    border-bottom: 2px solid #2D3073;
+    background: #f5f5f5;
+}
+
+.pdf-table tbody td {
+    padding: 6px 8px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.pdf-table tbody tr:nth-child(even) {
+    background: #fafafa;
+}
+
+.pdf-table .col-num { min-width: 2.5em; text-align: center; }
+.pdf-table .col-type { min-width: 70px; }
+.pdf-table .col-marque { min-width: 70px; }
+.pdf-table .col-modele { min-width: 90px; }
+.pdf-table .col-sn { min-width: 90px; }
+.pdf-table .col-date { min-width: 75px; }
+.pdf-table .col-stagiaire { min-width: 100px; }
+.pdf-table .col-signature { min-width: 60px; }
+
+@media print {
+    body { padding: 0; }
+    .pdf-table { page-break-inside: auto; }
+    .pdf-table tr { page-break-inside: avoid; page-break-after: auto; }
+}

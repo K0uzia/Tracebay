@@ -446,7 +446,7 @@ dialog:has(.modal-content.modal-lg) {
 .modal-submit-btn:hover:not(:disabled),
 .modal-apply-btn:hover:not(:disabled),
 .btn-primary:hover {
-    background-color: #006600;
+    filter: brightness(1.08);
     box-shadow: var(--shadow-medium);
     transform: translateY(-2px);
 }
@@ -489,7 +489,7 @@ dialog:has(.modal-content.modal-lg) {
 .btn-annuler:hover,
 .btn-cancel:hover,
 .btn-secondary:hover {
-    background-color: #b71c1c;
+    filter: brightness(1.1);
     box-shadow: var(--shadow-medium);
     transform: translateY(-2px);
 }
@@ -499,7 +499,7 @@ dialog:has(.modal-content.modal-lg) {
 .btn-cancel:active,
 .btn-secondary:active {
     transform: translateY(0);
-    background-color: #a01010;
+    filter: brightness(0.95);
 }
 
 /* Danger Button */
@@ -521,14 +521,14 @@ dialog:has(.modal-content.modal-lg) {
 }
 
 .btn-danger:hover {
-    background-color: #b71c1c;
+    filter: brightness(1.1);
     box-shadow: var(--shadow-strong);
     transform: translateY(-2px);
 }
 
 .btn-danger:active {
     transform: translateY(0);
-    background-color: #a01010;
+    filter: brightness(0.95);
 }
 
 .btn-danger-outline {

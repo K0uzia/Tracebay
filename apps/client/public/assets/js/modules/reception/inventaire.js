@@ -53,8 +53,8 @@ export default class InventaireManager {
                 <i class="fa-solid fa-triangle-exclamation"></i>
                 <p>Erreur de chargement</p>
                 <small>${String(message).replace(/</g, '&lt;')}</small>
-                <button type="button" class="btn-retry-lots" id="btn-retry-lots-inventaire">
-                    <i class="fa-solid fa-sync"></i> Réessayer
+                <button type="button" class="btn-retry-lots" id="btn-retry-lots-inventaire" title="Recharger la liste des lots">
+                    <i class="fa-solid fa-sync" aria-hidden="true"></i> Réessayer
                 </button>
             </div>
         `;
@@ -225,8 +225,8 @@ export default class InventaireManager {
                                         <td>${this.formatDateTime(item.state_changed_at) || '-'}</td>
                                         <td>${item.technician || '-'}</td>
                                         <td>
-                                            <button type="button" class="btn-edit-pc" data-item-id="${item.id}">
-                                                <i class="fa-solid fa-edit"></i>
+                                            <button type="button" class="btn-edit-pc" data-item-id="${item.id}" title="Éditer l'état et le technicien de ce PC">
+                                                <i class="fa-solid fa-edit" aria-hidden="true"></i>
                                             </button>
                                         </td>
                                     </tr>

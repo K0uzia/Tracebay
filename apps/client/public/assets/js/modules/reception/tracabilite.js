@@ -15,6 +15,8 @@ export default class TracabiliteManager {
         this.modalManager = modalManager;
         this.lots = [];
         this.sessionsDisques = [];
+        this.commandes = [];
+        this.dons = [];
         this.currentEmailLotId = null;
         this.currentEmailSessionId = null;
         this.init();
@@ -47,14 +49,22 @@ export default class TracabiliteManager {
     }
 
     /**
-     * Charger tous les lots + sessions disques
+     * Charger tous les lots + sessions disques + commandes + dons
      */
     async loadLots() {
         try {
-            const [lots, sessions] = await Promise.all([
+            const serverUrl = api.getServerUrl();
+            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` };
+            const endpointCommandes = (window.SERVER_CONFIG?.getEndpoint?.('commandes.tracabilite')) || '/api/commandes/tracabilite';
+            const endpointDons = (window.SERVER_CONFIG?.getEndpoint?.('dons.tracabilite')) || '/api/dons/tracabilite';
+
+            const [lots, sessions, commandesRes, donsRes] = await Promise.all([
                 loadLotsWithItems({ status: 'all' }),
-                getSessions().catch(() => [])
+                getSessions().catch(() => []),
+                fetch(`${serverUrl}${endpointCommandes.startsWith('/') ? endpointCommandes : '/' + endpointCommandes}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
+                fetch(`${serverUrl}${endpointDons.startsWith('/') ? endpointDons : '/' + endpointDons}`, { method: 'GET', headers }).catch(() => ({ ok: false }))
             ]);
+
             this.lots = (lots || []).sort((a, b) =>
                 new Date(b.created_at) - new Date(a.created_at)
             );
@@ -63,12 +73,34 @@ export default class TracabiliteManager {
                 const db = b.date || (b.created_at || '').slice(0, 10);
                 return new Date(db) - new Date(da);
             });
-            logger.info('📦 Traçabilité : ' + this.lots.length + ' lot(s), ' + this.sessionsDisques.length + ' session(s) disques');
+
+            if (commandesRes.ok) {
+                try {
+                    const data = await commandesRes.json();
+                    this.commandes = Array.isArray(data) ? data : (data.items || data.commandes || []);
+                    this.commandes.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+                } catch (_) { this.commandes = []; }
+            } else {
+                this.commandes = [];
+            }
+            if (donsRes.ok) {
+                try {
+                    const data = await donsRes.json();
+                    this.dons = Array.isArray(data) ? data : (data.items || data.dons || []);
+                    this.dons.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+                } catch (_) { this.dons = []; }
+            } else {
+                this.dons = [];
+            }
+
+            logger.info('📦 Traçabilité : ' + this.lots.length + ' lot(s), ' + this.sessionsDisques.length + ' disque(s), ' + this.commandes.length + ' commande(s), ' + this.dons.length + ' don(s)');
             this.renderTable();
         } catch (error) {
             logger.error('❌ Erreur chargement lots:', error);
             this.lots = [];
             this.sessionsDisques = [];
+            this.commandes = [];
+            this.dons = [];
             this.renderLotsError(error);
         }
     }
@@ -146,29 +178,53 @@ export default class TracabiliteManager {
             const y = dateStr ? new Date(dateStr).getFullYear().toString() : '';
             return y === selectedYear;
         });
+        const commandesForYear = this.commandes.filter(c => {
+            const dateStr = c.date || (c.created_at || '').slice(0, 10);
+            const y = dateStr ? new Date(dateStr).getFullYear().toString() : '';
+            return y === selectedYear;
+        });
+        const donsForYear = this.dons.filter(d => {
+            const dateStr = d.date || (d.created_at || '').slice(0, 10);
+            const y = dateStr ? new Date(dateStr).getFullYear().toString() : '';
+            return y === selectedYear;
+        });
 
-        const totalItems = lotsForYear.length + sessionsForYear.length;
+        const typeFilter = (document.getElementById('filter-tracabilite-type')?.value) || 'tous';
+        const showLots = typeFilter === 'tous' || typeFilter === 'lots';
+        const showDisques = typeFilter === 'tous' || typeFilter === 'disques';
+        const showCommandes = typeFilter === 'tous' || typeFilter === 'commandes';
+        const showDons = typeFilter === 'tous' || typeFilter === 'dons';
+        const totalItems = (showLots ? lotsForYear.length : 0) + (showDisques ? sessionsForYear.length : 0) + (showCommandes ? commandesForYear.length : 0) + (showDons ? donsForYear.length : 0);
         if (totalItems === 0) {
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fa-solid fa-inbox"></i>
-                    <p>Aucun lot ni session disques pour ${selectedYear}</p>
-                    <small>Changez d'année ou les lots terminés et sessions disques apparaîtront ici</small>
+                    <p>Aucun élément pour ${selectedYear}${typeFilter !== 'tous' ? ' (filtre : ' + typeFilter + ')' : ''}</p>
+                    <small>Changez d'année ou de type pour afficher les documents</small>
                 </div>
             `;
             return;
         }
 
-        // Grouper les lots par année, puis par mois
+        // Grouper par année et mois
         const groupedLots = this.groupByYearMonth(lotsForYear);
         const groupedSessions = this.groupByYearMonthSessions(sessionsForYear);
-        // Fusionner les clés année/mois
+        const groupedCommandes = this.groupByYearMonthCommandes(commandesForYear);
+        const groupedDons = this.groupByYearMonthDons(donsForYear);
         const allMonthsByYear = {};
         for (const [year, months] of Object.entries(groupedLots)) {
             if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
             Object.keys(months).forEach(m => { allMonthsByYear[year][m] = true; });
         }
         for (const [year, months] of Object.entries(groupedSessions)) {
+            if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
+            Object.keys(months).forEach(m => { allMonthsByYear[year][m] = true; });
+        }
+        for (const [year, months] of Object.entries(groupedCommandes)) {
+            if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
+            Object.keys(months).forEach(m => { allMonthsByYear[year][m] = true; });
+        }
+        for (const [year, months] of Object.entries(groupedDons)) {
             if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
             Object.keys(months).forEach(m => { allMonthsByYear[year][m] = true; });
         }
@@ -184,19 +240,19 @@ export default class TracabiliteManager {
             for (const month of months) {
                 const lots = (groupedLots[year] && groupedLots[year][month]) || [];
                 const sessions = (groupedSessions[year] && groupedSessions[year][month]) || [];
-                const count = lots.length + sessions.length;
+                const commandes = (groupedCommandes[year] && groupedCommandes[year][month]) || [];
+                const dons = (groupedDons[year] && groupedDons[year][month]) || [];
+                const count = (showLots ? lots.length : 0) + (showDisques ? sessions.length : 0) + (showCommandes ? commandes.length : 0) + (showDons ? dons.length : 0);
                 html += `<div class="month-section" data-month="${month}">
                     <div class="month-header">
-                        <h3><i class="fa-solid fa-calendar-days"></i> ${this.getMonthName(parseInt(month))} (${count} élément${count > 1 ? 's' : ''})</h3>
+                        <h3><i class="fa-solid fa-calendar-days"></i> ${this.getMonthName(parseInt(month))} (${count} élément${count !== 1 ? 's' : ''})</h3>
                     </div>
                     <div class="lots-list">`;
 
-                for (const lot of lots) {
-                    html += this.createLotCard(lot);
-                }
-                for (const session of sessions) {
-                    html += this.createDisqueCard(session);
-                }
+                if (showLots) { for (const lot of lots) { html += this.createLotCard(lot); } }
+                if (showDisques) { for (const session of sessions) { html += this.createDisqueCard(session); } }
+                if (showCommandes) { for (const cmd of commandes) { html += this.createCommandeCard(cmd); } }
+                if (showDons) { for (const don of dons) { html += this.createDonCard(don); } }
 
                 html += `</div></div>`;
             }
@@ -236,6 +292,40 @@ export default class TracabiliteManager {
             if (!grouped[year]) grouped[year] = {};
             if (!grouped[year][month]) grouped[year][month] = [];
             grouped[year][month].push(s);
+        });
+        return grouped;
+    }
+
+    /**
+     * Grouper les commandes par année et mois
+     */
+    groupByYearMonthCommandes(commandes) {
+        const grouped = {};
+        (commandes || []).forEach(c => {
+            const dateStr = (c.date || (c.created_at || '')).toString().slice(0, 10);
+            const date = dateStr ? new Date(dateStr) : new Date();
+            const year = date.getFullYear().toString();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            if (!grouped[year]) grouped[year] = {};
+            if (!grouped[year][month]) grouped[year][month] = [];
+            grouped[year][month].push(c);
+        });
+        return grouped;
+    }
+
+    /**
+     * Grouper les dons par année et mois
+     */
+    groupByYearMonthDons(dons) {
+        const grouped = {};
+        (dons || []).forEach(d => {
+            const dateStr = (d.date || (d.created_at || '')).toString().slice(0, 10);
+            const date = dateStr ? new Date(dateStr) : new Date();
+            const year = date.getFullYear().toString();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            if (!grouped[year]) grouped[year] = {};
+            if (!grouped[year][month]) grouped[year][month] = [];
+            grouped[year][month].push(d);
         });
         return grouped;
     }
@@ -290,19 +380,106 @@ export default class TracabiliteManager {
                 </div>
                 <div class="lot-card-actions">
                     ${hasPdf ? `
-                        <button type="button" class="btn-action btn-view-pdf-disque" data-pdf-url="${pdfUrl.replace(/"/g, '&quot;')}" data-download-filename="disques-session-${session.id}.pdf">
-                            <i class="fa-solid fa-eye"></i> Voir le PDF
+                        <button type="button" class="btn-action btn-view-pdf-disque" data-pdf-url="${pdfUrl.replace(/"/g, '&quot;')}" data-download-filename="disques-session-${session.id}.pdf" title="Ouvrir le PDF dans le navigateur">
+                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le PDF
                         </button>
-                        <button type="button" class="btn-action btn-download-pdf-disque" data-session-id="${session.id}" data-pdf-url="${pdfUrl.replace(/"/g, '&quot;')}" data-download-filename="disques-session-${session.id}.pdf">
-                            <i class="fa-solid fa-download"></i> Télécharger PDF
+                        <button type="button" class="btn-action btn-download-pdf-disque" data-session-id="${session.id}" data-pdf-url="${pdfUrl.replace(/"/g, '&quot;')}" data-download-filename="disques-session-${session.id}.pdf" title="Télécharger le certificat d'effacement (PDF)">
+                            <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger PDF
                         </button>
-                        <button type="button" class="btn-action btn-send-email-disque" data-session-id="${session.id}">
-                            <i class="fa-solid fa-envelope"></i> Envoyer par email
+                        <button type="button" class="btn-action btn-send-email-disque" data-session-id="${session.id}" title="Envoyer le PDF par email">
+                            <i class="fa-solid fa-envelope" aria-hidden="true"></i> Envoyer par email
                         </button>
                         <button type="button" class="btn-action btn-regenerate-pdf-disque" data-session-id="${session.id}" title="Régénérer le PDF côté serveur">
                             <i class="fa-solid fa-arrows-rotate"></i> Régénérer le PDF
                         </button>
                     ` : '<span class="text-muted">PDF non généré</span>'}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Créer une carte pour une commande (traçabilité)
+     */
+    createCommandeCard(commande) {
+        const name = (commande.commande_name || commande.name || '').trim() || 'Commande';
+        const dateStr = commande.date || (commande.created_at || '').slice(0, 10);
+        const dateFormatted = dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? this.formatDateDDMMYYYY(dateStr) : '-';
+        const lineCount = Array.isArray(commande.lines) ? commande.lines.length : (commande.line_count ?? 0);
+        const pdfUrl = commande.pdf_url || (commande.pdf_path ? (api.getServerUrl() + (commande.pdf_path.startsWith('/') ? commande.pdf_path : '/' + commande.pdf_path)) : '');
+        const hasPdf = pdfUrl && pdfUrl.length > 0;
+        const safeUrl = (pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;');
+        const downloadFilename = (name.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') || 'commande') + '_' + (dateStr || '') + '.pdf';
+        return `
+            <div class="lot-card lot-card-commande" data-commande-id="${this.escapeHtml(String(commande.id || ''))}">
+                <div class="lot-card-header">
+                    <div class="lot-card-title">
+                        <h4><i class="fa-solid fa-file-invoice"></i> Commande : ${this.escapeHtml(name)}</h4>
+                    </div>
+                    <div class="lot-card-date">
+                        <span class="date-label">Date</span>
+                        <span class="date-value">${this.escapeHtml(dateFormatted)}</span>
+                    </div>
+                </div>
+                <div class="lot-card-stats">
+                    <div class="stat">
+                        <span class="stat-label">Lignes</span>
+                        <span class="stat-value">${lineCount}</span>
+                    </div>
+                </div>
+                <div class="lot-card-actions">
+                    ${hasPdf ? `
+                        <button type="button" class="btn-action btn-view-pdf-commande" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Ouvrir le PDF de la commande">
+                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le PDF
+                        </button>
+                        <button type="button" class="btn-action btn-download-pdf-commande" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Télécharger le PDF de la commande">
+                            <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger PDF
+                        </button>
+                    ` : '<span class="text-muted">PDF non disponible</span>'}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Créer une carte pour un don (certificat)
+     */
+    createDonCard(don) {
+        const lotName = (don.lot_name || don.name || '').trim();
+        const title = lotName ? `Don : ${this.escapeHtml(lotName)}` : 'Don #' + (don.id || '');
+        const dateStr = don.date || (don.created_at || '').slice(0, 10);
+        const dateFormatted = dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? this.formatDateDDMMYYYY(dateStr) : '-';
+        const stagiaire = (don.stagiaire_afpa || don.stagiaire || '').trim() || '-';
+        const pdfUrl = don.pdf_url || (don.pdf_path ? (api.getServerUrl() + (don.pdf_path.startsWith('/') ? don.pdf_path : '/' + don.pdf_path)) : '');
+        const hasPdf = pdfUrl && pdfUrl.length > 0;
+        const safeUrl = (pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;');
+        const downloadFilename = (lotName ? lotName.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') : 'don') + '_' + (dateStr || '') + '.pdf';
+        return `
+            <div class="lot-card lot-card-don" data-don-id="${this.escapeHtml(String(don.id || ''))}">
+                <div class="lot-card-header">
+                    <div class="lot-card-title">
+                        <h4><i class="fa-solid fa-hand-holding-heart"></i> ${title}</h4>
+                    </div>
+                    <div class="lot-card-date">
+                        <span class="date-label">Date</span>
+                        <span class="date-value">${this.escapeHtml(dateFormatted)}</span>
+                    </div>
+                </div>
+                <div class="lot-card-stats">
+                    <div class="stat">
+                        <span class="stat-label">Stagiaire</span>
+                        <span class="stat-value">${this.escapeHtml(stagiaire)}</span>
+                    </div>
+                </div>
+                <div class="lot-card-actions">
+                    ${hasPdf ? `
+                        <button type="button" class="btn-action btn-view-pdf-don" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Ouvrir le certificat de don (PDF)">
+                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le certificat
+                        </button>
+                        <button type="button" class="btn-action btn-download-pdf-don" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Télécharger le certificat de don (PDF)">
+                            <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger PDF
+                        </button>
+                    ` : '<span class="text-muted">Certificat non disponible</span>'}
                 </div>
             </div>
         `;
@@ -381,21 +558,21 @@ export default class TracabiliteManager {
 
                 <div class="lot-card-actions">
                     ${pdfPath ? `
-                        <button type="button" class="btn-action btn-view-pdf" data-pdf-url="${(api.getServerUrl() + '/api/lots/' + lot.id + '/pdf?v=' + Date.now()).replace(/"/g, '&quot;')}" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}">
-                            <i class="fa-solid fa-eye"></i> Voir le PDF
+                        <button type="button" class="btn-action btn-view-pdf" data-pdf-url="${(api.getServerUrl() + '/api/lots/' + lot.id + '/pdf?v=' + Date.now()).replace(/"/g, '&quot;')}" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}" title="Ouvrir le PDF du lot dans le navigateur">
+                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le PDF
                         </button>
-                        <button type="button" class="btn-action btn-download-pdf" data-lot-id="${lot.id}" data-pdf-path="/api/lots/${lot.id}/pdf" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}">
-                            <i class="fa-solid fa-download"></i> Télécharger PDF
+                        <button type="button" class="btn-action btn-download-pdf" data-lot-id="${lot.id}" data-pdf-path="/api/lots/${lot.id}/pdf" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}" title="Télécharger le PDF du lot">
+                            <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger PDF
                         </button>
-                        <button type="button" class="btn-action btn-send-email" data-lot-id="${lot.id}">
-                            <i class="fa-solid fa-envelope"></i> Envoyer par email
+                        <button type="button" class="btn-action btn-send-email" data-lot-id="${lot.id}" title="Envoyer le PDF du lot par email">
+                            <i class="fa-solid fa-envelope" aria-hidden="true"></i> Envoyer par email
                         </button>
                         <button type="button" class="btn-action btn-regenerate-pdf" data-lot-id="${lot.id}" ${isGenerating ? 'disabled' : ''} title="Recréer le PDF et le dossier local (en cas de bug ou perte)">
-                            <i class="fa-solid fa-arrows-rotate"></i> ${isGenerating ? 'Génération...' : 'Régénérer le PDF'}
+                            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> ${isGenerating ? 'Génération...' : 'Régénérer le PDF'}
                         </button>
                     ` : `
-                        <button type="button" class="btn-action btn-generate-pdf" data-lot-id="${lot.id}" ${isGenerating ? 'disabled' : ''}>
-                            <i class="fa-solid fa-file-pdf"></i> ${isGenerating ? 'Génération...' : 'Générer PDF'}
+                        <button type="button" class="btn-action btn-generate-pdf" data-lot-id="${lot.id}" ${isGenerating ? 'disabled' : ''} title="Générer le PDF du lot">
+                            <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> ${isGenerating ? 'Génération...' : 'Générer PDF'}
                         </button>
                     `}
                 </div>
@@ -496,6 +673,41 @@ export default class TracabiliteManager {
             });
         });
 
+        // Commande : voir / télécharger PDF
+        document.querySelectorAll('.btn-view-pdf-commande').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const url = (btn.dataset.pdfUrl || '').replace(/&quot;/g, '"');
+                const filename = (btn.dataset.downloadFilename || '').replace(/&quot;/g, '"') || 'commande.pdf';
+                this.openPdfWithSystemApp(url, filename);
+            });
+        });
+        document.querySelectorAll('.btn-download-pdf-commande').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const url = (btn.dataset.pdfUrl || '').replace(/&quot;/g, '"');
+                const filename = (btn.dataset.downloadFilename || '').replace(/&quot;/g, '"') || 'commande.pdf';
+                this.downloadDisquePdf(url, filename);
+            });
+        });
+
+        // Don : voir / télécharger certificat PDF
+        document.querySelectorAll('.btn-view-pdf-don').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const url = (btn.dataset.pdfUrl || '').replace(/&quot;/g, '"');
+                const filename = (btn.dataset.downloadFilename || '').replace(/&quot;/g, '"') || 'don.pdf';
+                this.openPdfWithSystemApp(url, filename);
+            });
+        });
+        document.querySelectorAll('.btn-download-pdf-don').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const url = (btn.dataset.pdfUrl || '').replace(/&quot;/g, '"');
+                const filename = (btn.dataset.downloadFilename || '').replace(/&quot;/g, '"') || 'don.pdf';
+                this.downloadDisquePdf(url, filename);
+            });
+        });
     }
 
     async downloadDisquePdf(url, filename) {
@@ -812,6 +1024,12 @@ export default class TracabiliteManager {
             filterYear.addEventListener('change', () => this.renderTable());
         }
 
+        // Filtre type (Lot, Disque, Commande, Don)
+        const filterType = document.getElementById('filter-tracabilite-type');
+        if (filterType) {
+            filterType.addEventListener('change', () => this.renderTable());
+        }
+
         // Bouton envoyer email
         const sendEmailBtn = document.getElementById('btn-confirm-send-email');
         if (sendEmailBtn) {
@@ -963,6 +1181,8 @@ export default class TracabiliteManager {
         logger.debug('🧹 Destruction TracabiliteManager');
         this.lots = [];
         this.sessionsDisques = [];
+        this.commandes = [];
+        this.dons = [];
         this.currentEmailLotId = null;
         this.currentEmailSessionId = null;
     }

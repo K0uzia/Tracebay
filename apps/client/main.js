@@ -304,12 +304,19 @@ function tryLinuxAppImageUpdateHelper(currentAppPath, newAppPath) {
         const finalPath = path.join(dir, LINUX_APPIMAGE_NAME);
         const scriptPath = path.join(app.getPath('userData'), 'workspace-update-helper.sh');
         const script = `#!/bin/sh
-# downloaded = AppImage téléchargée (dossier temporaire), dest = chemin final, pid = processus à attendre
+# downloaded = AppImage téléchargée (dossier temporaire), dest = chemin final (workspace.AppImage), pid = processus à attendre
 downloaded="$1"
 dest="$2"
 pid="$3"
 while kill -0 "$pid" 2>/dev/null; do sleep 0.3; done
-rm -f "$dest"
+# Ne rien faire si le fichier de MAJ n'existe pas (évite de perdre l'app)
+if [ ! -f "$downloaded" ]; then
+  exit 1
+fi
+# Supprimer l'ancien .bak s'il existe, puis renommer l'AppImage actuelle en .bak
+rm -f "${dest}.bak"
+mv -f "$dest" "${dest}.bak"
+# Déplacer la nouvelle AppImage du dossier temp vers l'emplacement final
 mv -f "$downloaded" "$dest"
 chmod +x "$dest"
 export APPIMAGE_SILENT_INSTALL=true
@@ -1232,6 +1239,9 @@ const TRACABILITE_PDF_BASE = '/mnt/team/#TEAM/#TRAÇABILITÉ';
 /** Dossier PDF commandes : /mnt/team/#TEAM/#COMMANDES/ */
 const COMMANDES_PDF_BASE = '/mnt/team/#TEAM/#COMMANDES/';
 
+/** Dossier PDF dons stagiaires : /mnt/team/#TEAM/#TRAÇABILITÉ/don_stagiaires */
+const DONS_PDF_BASE = '/mnt/team/#TEAM/#TRAÇABILITÉ/don_stagiaires';
+
 /** Base partagée pour FolderManager (presets team, guest, capsule, development). */
 const TEAM_BASE = '/mnt/team/#TEAM';
 
@@ -1244,7 +1254,8 @@ function getAllowedPathPrefixes() {
         app.getPath('temp'),
         TEAM_BASE,
         TRACABILITE_PDF_BASE,
-        COMMANDES_PDF_BASE
+        COMMANDES_PDF_BASE,
+        DONS_PDF_BASE
     ].filter(Boolean);
     return bases.map(p => path.normalize(p));
 }
@@ -1947,6 +1958,135 @@ ipcMain.handle('generate-commande-pdf', async (_event, payload) => {
         return { success: false, error: err.message };
     }
     return { success: false, error: 'Template commande introuvable ou échec génération' };
+});
+
+/**
+ * Générer le PDF d'un don (certificat) via le template HTML/CSS (dons.html + dons.css).
+ * Placeholders : {{date}}, {{lot_name}}, {{lot_name_block}}, {{rows}}
+ */
+async function generateDonsPdfFromHtmlTemplate(payload, fullPath) {
+    const templateDir = path.join(__dirname, 'public', 'pdf-templates');
+    const htmlPath = path.join(templateDir, 'dons.html');
+    const cssPath = path.join(templateDir, 'dons.css');
+    if (!fs.existsSync(htmlPath) || !fs.existsSync(cssPath)) {
+        return null;
+    }
+    const { lotName, date, lines = [] } = payload;
+
+    const css = fs.readFileSync(cssPath, 'utf8');
+    let html = fs.readFileSync(htmlPath, 'utf8');
+
+    const dateStr = (date && /^\d{4}-\d{2}-\d{2}/.test(String(date).trim())) ? String(date).trim().slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const dateFormatted = formatDateForPdf(dateStr);
+
+    const lotNameDisplay = (lotName && String(lotName).trim()) ? String(lotName).trim() : '';
+    const lotNameBlock = lotNameDisplay
+        ? `<p class="pdf-summary-total-line lot-name-line"><span class="label"><i class="fa-solid fa-tag"></i> Lot :</span> <span class="value">${escapeHtml(lotNameDisplay)}</span></p>`
+        : '';
+
+    const rows = lines
+        .map((line) => {
+            const num = line.num != null ? line.num : 0;
+            const type = escapeHtml((line.type || '-').toString().trim());
+            const marque = escapeHtml((line.marqueName || '-').toString().trim());
+            const modele = escapeHtml((line.modeleName || '-').toString().trim());
+            const sn = escapeHtml((line.serialNumber || '-').toString().trim());
+            const lineDate = escapeHtml((line.date || '-').toString().trim());
+            const stagiaire = escapeHtml((line.stagiaire || '-').toString().trim());
+            return `<tr><td class="col-num">${num}</td><td class="col-type">${type}</td><td class="col-marque">${marque}</td><td class="col-modele">${modele}</td><td class="col-sn">${sn}</td><td class="col-date">${lineDate}</td><td class="col-stagiaire">${stagiaire}</td><td class="col-signature"></td></tr>`;
+        })
+        .join('\n');
+
+    html = html.replace(/\{\{\s*date\s*\}\}/g, escapeHtml(dateFormatted));
+    html = html.replace(/\{\{\s*lot_name\s*\}\}/g, escapeHtml(lotNameDisplay || 'don'));
+    html = html.replace(/\{\{\s*lot_name_block\s*\}\}/g, lotNameBlock);
+    html = html.replace(/\{\{\s*rows\s*\}\}/g, rows);
+
+    html = html.replace(
+        /<link\s+rel="stylesheet"\s+href="dons\.css"\s*\/?>/i,
+        `<style>${css}</style>`
+    );
+
+    const fontawesomeCssPath = path.join(__dirname, 'public', 'assets', 'css', 'fontawesome-local.css');
+    const fontawesomeFileUrl = fs.existsSync(fontawesomeCssPath) ? url.pathToFileURL(fontawesomeCssPath).href : null;
+    const fontawesomeLink = fontawesomeFileUrl ? `<link rel="stylesheet" href="${fontawesomeFileUrl}">` : '';
+    if (fontawesomeLink) {
+        if (/<link[^>]+font-awesome[^>]*>/i.test(html)) {
+            html = html.replace(/<link[^>]+font-awesome[^>]*>/i, fontawesomeLink);
+        } else if (!html.includes('fontawesome')) {
+            html = html.replace('</head>', `${fontawesomeLink}\n</head>`);
+        }
+    }
+
+    html = html.replace(/<img([^>]*)\ssrc="([^"]+)"/gi, (match, attrs, src) => {
+        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) return match;
+        const absolutePath = path.resolve(templateDir, src.trim());
+        if (!fs.existsSync(absolutePath)) return match;
+        const fileUrl = url.pathToFileURL(absolutePath).href;
+        return `<img${attrs} src="${fileUrl}"`;
+    });
+
+    const tempDir = app.getPath('temp');
+    const outputPath = path.join(tempDir, `workspace-dons-pdf-${Date.now()}.html`);
+    try {
+        fs.writeFileSync(outputPath, html, 'utf8');
+    } catch (e) {
+        console.error('❌ generate-don-pdf write temp HTML:', e.message);
+        return null;
+    }
+
+    const win = new BrowserWindow({
+        show: false,
+        webPreferences: { nodeIntegration: false, contextIsolation: true, offscreen: true }
+    });
+    try {
+        await win.loadFile(outputPath);
+        const pdfBuffer = await win.webContents.printToPDF({
+            printBackground: true,
+            pageSize: 'A4',
+            preferCSSPageSize: true
+        });
+        fs.writeFileSync(fullPath, pdfBuffer);
+        return { success: true, pdf_path: path.resolve(fullPath) };
+    } finally {
+        win.close();
+        try { fs.unlinkSync(outputPath); } catch (_) { }
+    }
+}
+
+/**
+ * Générer le PDF d'un don (certificat) et l'enregistrer dans /mnt/team/#TEAM/#TRAÇABILITÉ/don_stagiaires.
+ * Payload: { lotName?, date, lines, basePath? }
+ */
+ipcMain.handle('generate-don-pdf', async (_event, payload) => {
+    const {
+        lotName,
+        date,
+        lines = [],
+        basePath = DONS_PDF_BASE
+    } = payload || {};
+    const rawDate = (date && String(date).trim()) ? String(date).trim() : new Date().toISOString().slice(0, 10);
+    const dateStr = /^\d{4}-\d{2}-\d{2}/.test(rawDate) ? rawDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    try {
+        fs.mkdirSync(basePath, { recursive: true });
+    } catch (e) {
+        console.error('❌ generate-don-pdf mkdir:', e.message);
+        return { success: false, error: 'Impossible de créer le dossier: ' + e.message };
+    }
+    const sanitizedName = (lotName && String(lotName).trim())
+        ? String(lotName).trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim()
+        : 'don';
+    const fileName = `${sanitizedName}_${dateStr}.pdf`;
+    const fullPath = path.join(basePath, fileName);
+
+    try {
+        const result = await generateDonsPdfFromHtmlTemplate({ lotName: sanitizedName === 'don' ? '' : (lotName || '').trim(), date: dateStr, lines }, fullPath);
+        if (result) return result;
+    } catch (err) {
+        console.error('❌ generate-don-pdf (template HTML):', err.message);
+        return { success: false, error: err.message };
+    }
+    return { success: false, error: 'Template dons introuvable ou échec génération' };
 });
 
 /**

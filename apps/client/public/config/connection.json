@@ -88,7 +88,13 @@
       "products": {
         "list": "/api/commandes/products",
         "create": "/api/commandes/products"
-      }
+      },
+      "create": "/api/commandes",
+      "tracabilite": "/api/commandes/tracabilite"
+    },
+    "dons": {
+      "create": "/api/dons",
+      "tracabilite": "/api/dons/tracabilite"
     },
     "config": {
       "apps": "/api/admin/config/apps",

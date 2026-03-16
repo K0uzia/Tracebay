@@ -16,14 +16,15 @@
 @import url(./modules/reception.css);
 @import url(./modules/shortcut.css);
 
-/* ----------CSS RECEPTION----------- */
+/* ----------CSS RECEPTION (modulaire par sous-page) ----------- */
+@import url(./modules/receptions/recep-common.css);
 @import url(./modules/receptions/entrer.css);
-@import url(./modules/receptions/historique.css);
 @import url(./modules/receptions/inventaire.css);
+@import url(./modules/receptions/historique.css);
 @import url(./modules/receptions/tracabiliter.css);
 @import url(./modules/receptions/disques.css);
 @import url(./modules/receptions/commande.css);
-@import url(./modules/receptions/recep-section.css);
+@import url(./modules/receptions/dons.css);
 
 /* ----------CSS MODULES----------- */
 @import url(./modules/modal.css);

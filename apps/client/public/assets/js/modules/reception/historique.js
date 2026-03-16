@@ -206,16 +206,16 @@ export default class HistoriqueManager {
                         </span>
                     </div>
                     <div class="historique-lot-actions">
-                        <button type="button" class="btn-view-details" data-lot-id="${lot.id}">
-                            <i class="fa-solid fa-eye"></i> Voir détails
+                        <button type="button" class="btn-view-details" data-lot-id="${lot.id}" title="Afficher les détails du lot (PC, états, techniciens)">
+                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir détails
                         </button>
-                        <button type="button" class="btn-edit-lot" data-lot-id="${lot.id}">
-                            <i class="fa-solid fa-edit"></i> Éditer lot
+                        <button type="button" class="btn-edit-lot" data-lot-id="${lot.id}" title="Modifier le nom du lot">
+                            <i class="fa-solid fa-edit" aria-hidden="true"></i> Éditer lot
                         </button>
-                        <button type="button" class="btn-edit-items" data-lot-id="${lot.id}">
-                            <i class="fa-solid fa-list-check"></i> Éditer matériel
+                        <button type="button" class="btn-edit-items" data-lot-id="${lot.id}" title="Modifier le matériel (état, technicien par PC)">
+                            <i class="fa-solid fa-list-check" aria-hidden="true"></i> Éditer matériel
                         </button>
-                        <button type="button" class="${recoveryButtonClass}" data-lot-id="${lot.id}" ${recoveryButtonDisabled ? 'disabled' : ''} title="${!canRecover && !isRecovered ? 'Tous les items doivent avoir un état et un technicien' : ''}">
+                        <button type="button" class="${recoveryButtonClass}" data-lot-id="${lot.id}" ${recoveryButtonDisabled ? 'disabled' : ''} title="${!canRecover && !isRecovered ? 'Tous les items doivent avoir un état et un technicien' : 'Marquer le lot comme récupéré'}">
                             ${recoveryButtonText}
                         </button>
                     </div>
@@ -263,14 +263,14 @@ export default class HistoriqueManager {
                         <span class="historique-stat"><i class="fa-solid fa-hard-drive" aria-hidden="true"></i> <strong>${count}</strong> disque(s)</span>
                     </div>
                     <div class="historique-lot-actions">
-                        <button type="button" class="btn-view-details btn-view-disque" data-session-id="${session.id}">
-                            <i class="fa-solid fa-eye"></i> Voir détails
+                        <button type="button" class="btn-view-details btn-view-disque" data-session-id="${session.id}" title="Afficher la liste des disques de cette session">
+                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir détails
                         </button>
-                        <button type="button" class="btn-edit-disque-name" data-session-id="${session.id}">
-                            <i class="fa-solid fa-edit"></i> Éditer le nom
+                        <button type="button" class="btn-edit-disque-name" data-session-id="${session.id}" title="Modifier le nom de la session">
+                            <i class="fa-solid fa-edit" aria-hidden="true"></i> Éditer le nom
                         </button>
-                        <button type="button" class="btn-edit-disque-items" data-session-id="${session.id}">
-                            <i class="fa-solid fa-list-check"></i> Éditer matériel
+                        <button type="button" class="btn-edit-disque-items" data-session-id="${session.id}" title="Modifier S/N, marque, modèle des disques">
+                            <i class="fa-solid fa-list-check" aria-hidden="true"></i> Éditer matériel
                         </button>
                         <button type="button" class="${recoveryButtonClass}" data-session-id="${session.id}" ${isRecovered ? 'disabled' : ''} title="Marquer comme récupéré (traçabilité uniquement, pas les PDF)">
                             ${recoveryButtonText}
