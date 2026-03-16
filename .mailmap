@@ -1,0 +1,6 @@
+cat > .mailmap << EOF
+# Tous les anciens noms redirigés vers SandersonnDev
+La Capsule <kouziaeffa.pro@gmail.com>
+Sandersonndev <kouziaeffa.pro@gmail.com>
+SandersonnDev <Kouziaeffa.pro@gmail.com>
+EOF
