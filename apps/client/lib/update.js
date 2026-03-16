@@ -84,9 +84,6 @@ async function runAutoUpdate(opts) {
             console.log('[Update] Mise à jour disponible:', info?.version);
             setSplashMessage('Mise à jour trouvée. Téléchargement…');
             setSplashProgress(0);
-            if (process.platform === 'linux' && process.env.APPIMAGE) {
-                linuxAppImageBackup(process.env.APPIMAGE);
-            }
             timeoutId = setTimeout(done, 300000);
         });
         autoUpdater.on('download-progress', (p) => {
@@ -115,7 +112,22 @@ async function runAutoUpdate(opts) {
                 setTimeout(() => {
                     setQuittingForUpdate(true);
                     const currentApp = process.env.APPIMAGE;
-                    const newApp = autoUpdater.installerPath;
+                    let newApp = autoUpdater.installerPath;
+                    // Sous Linux AppImage : déplacer le fichier téléchargé vers un dossier temporaire dédié
+                    if (process.platform === 'linux' && currentApp && newApp && fsModule.existsSync(newApp)) {
+                        const updateTempDir = pathModule.join(app.getPath('temp'), 'workspace-update');
+                        try {
+                            fsModule.mkdirSync(updateTempDir, { recursive: true });
+                            const tempAppPath = pathModule.join(updateTempDir, 'workspace-new.AppImage');
+                            fsModule.renameSync(newApp, tempAppPath);
+                            newApp = tempAppPath;
+                            console.log('[Update] AppImage déplacée vers dossier temporaire:', newApp);
+                        } catch (e) {
+                            console.warn('[Update] Déplacement vers temp échoué, utilisation du chemin par défaut:', e?.message);
+                        }
+                        // Créer la copie .bak de l'AppImage actuelle une fois le téléchargement terminé
+                        linuxAppImageBackup(currentApp);
+                    }
                     const helperOk = tryLinuxAppImageUpdateHelper(currentApp, newApp);
                     if (helperOk) {
                         sessionLog({ hypothesisId: 'H2-H5', location: 'lib/update.js:update-downloaded', message: 'linux helper launched, force exit', data: {} });
