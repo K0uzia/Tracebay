@@ -51,12 +51,15 @@ async function runAutoUpdate(opts) {
         console.log('[Update] Version installée:', currentVersion);
 
         const { autoUpdater } = require('electron-updater');
-        autoUpdater.setFeedURL({
+        const feedUrl = {
             provider: 'github',
             owner: 'SandersonnDev',
             repo: 'workspace',
             releaseType: 'release',
-        });
+            allowPrerelease: false,
+        };
+        autoUpdater.setFeedURL(feedUrl);
+        console.log('[Update] Source: GitHub', feedUrl.owner + '/' + feedUrl.repo, 'releaseType:', feedUrl.releaseType);
         autoUpdater.autoDownload = true;
         autoUpdater.autoInstallOnAppQuit = false;
 
@@ -155,15 +158,23 @@ async function runAutoUpdate(opts) {
             done();
         });
         autoUpdater.on('error', (err) => {
-            console.error('[Update] Erreur:', err.message || err);
+            console.error('[Update] Erreur mise à jour:', err?.message || err);
+            if (err?.stack) console.error('[Update] Stack:', err.stack);
             done();
         });
 
         setSplashMessage('Recherche de mise à jour…');
-        timeoutId = setTimeout(done, 15000);
-        await autoUpdater.checkForUpdates();
+        // Timeout généreux pour éviter "pas de MAJ" si le réseau ou l'API GitHub est lent
+        timeoutId = setTimeout(done, 25000);
+        const checkResult = await autoUpdater.checkForUpdates();
+        const remoteVersion = checkResult?.updateInfo?.version;
+        if (remoteVersion) {
+            console.log('[Update] Dernière version GitHub:', remoteVersion);
+        } else if (checkResult != null) {
+            console.log('[Update] Check terminé, pas de version plus récente.');
+        }
     } catch (e) {
-        console.warn('[Update] Non disponible:', e.message);
+        console.warn('[Update] Non disponible:', e?.message);
         if (timeoutId) clearTimeout(timeoutId);
         await launchApp();
     }
