@@ -608,10 +608,16 @@ function createWindow() {
             mainWindow.webContents.reload();
         }
     };
+    const toggleFullscreen = () => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.setFullScreen(!mainWindow.isFullScreen());
+        }
+    };
     try {
         globalShortcut.register('F12', toggleDevTools);
         globalShortcut.register('CommandOrControl+Shift+I', toggleDevTools);
         globalShortcut.register('CommandOrControl+R', reloadApp);
+        globalShortcut.register('F11', toggleFullscreen);
     } catch (e) {
         console.warn('Raccourcis globaux non enregistrés:', e?.message);
     }
@@ -714,6 +720,7 @@ function createWindow() {
             globalShortcut.unregister('F12');
             globalShortcut.unregister('CommandOrControl+Shift+I');
             globalShortcut.unregister('CommandOrControl+R');
+            globalShortcut.unregister('F11');
         } catch (_) { /* ignore */ }
         mainWindow = null;
     });

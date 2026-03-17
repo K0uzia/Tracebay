@@ -112,8 +112,8 @@ export default class CommandeManager {
         tr.className = 'commande-line';
         tr.dataset.lineIndex = String(nextIndex);
         tr.innerHTML = `
-            <td class="col-num">${nextIndex + 1}</td>
-            <td class="col-produit">
+            <td class="col-num" data-label="N°">${nextIndex + 1}</td>
+            <td class="col-produit" data-label="Produit">
                 <select class="commande-select-product" data-line="${nextIndex}">
                     <option value="">-- Produit --</option>
                     ${this.products.map(p => {
@@ -123,16 +123,16 @@ export default class CommandeManager {
                     }).join('')}
                 </select>
             </td>
-            <td class="col-quantite">
+            <td class="col-quantite" data-label="Quantité">
                 <input type="number" min="0" step="1" class="commande-input-quantite" data-line="${nextIndex}" placeholder="0" inputmode="numeric">
             </td>
-            <td class="col-prix">
+            <td class="col-prix" data-label="Prix">
                 <input type="number" min="0" step="0.01" class="commande-input-prix" data-line="${nextIndex}" placeholder="0,00" inputmode="decimal">
             </td>
-            <td class="col-liens">
+            <td class="col-liens" data-label="Liens">
                 <input type="text" class="commande-input-lien" data-line="${nextIndex}" placeholder="URL ou référence">
             </td>
-            <td class="col-actions">
+            <td class="col-actions" data-label="Action">
                 <button type="button" class="btn-icon btn-remove-line" data-line="${nextIndex}" title="Supprimer la ligne">
                     <i class="fas fa-trash"></i>
                 </button>

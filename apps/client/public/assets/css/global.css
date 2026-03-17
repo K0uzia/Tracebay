@@ -31,6 +31,49 @@
 @import url(./modules/chat-widget.css);
 @import url(./modules/recent-items.css);
 
+/* ---------- Notifications toast (appliquer en masse, lots, etc.) ---------- */
+.notification {
+    position: fixed;
+    bottom: var(--unit-4);
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    padding: var(--unit-2) var(--unit-4);
+    border-radius: var(--radius-medium);
+    box-shadow: var(--shadow-strong);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    z-index: 999998;
+    opacity: 1;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    max-width: calc(100vw - var(--unit-4));
+}
+.notification.show {
+    opacity: 1;
+}
+.notification.hide {
+    opacity: 0;
+}
+.notification.success {
+    background-color: var(--valid);
+    color: var(--blanc);
+}
+.notification.error {
+    background-color: var(--error);
+    color: var(--blanc);
+}
+.notification.info {
+    background-color: var(--bleu1);
+    color: var(--blanc);
+}
+.notification.warning {
+    background-color: var(--jaune);
+    color: var(--noir);
+}
+
 /* Focus clavier (Tab) : contour discret au lieu du outline par défaut */
 :focus {
     outline: none;

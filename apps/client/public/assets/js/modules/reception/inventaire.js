@@ -171,19 +171,19 @@ export default class InventaireManager {
                         <span class="badge-created">Créé le ${this.formatDate(lot.created_at)}</span>
                     </div>
                     <div class="inventaire-lot-stats">
-                        <span class="inventaire-stat">
+                        <span class="inventaire-stat inventaire-stat--pending">
                             <i class="fa-solid fa-hourglass-end"></i>
                             <strong>${pending}</strong> à faire
                         </span>
-                        <span class="inventaire-stat">
+                        <span class="inventaire-stat inventaire-stat--recond">
                             <i class="fa-solid fa-check-circle"></i>
                             <strong>${recond}</strong> reconditionnés
                         </span>
-                        <span class="inventaire-stat">
+                        <span class="inventaire-stat inventaire-stat--hs">
                             <i class="fa-solid fa-exclamation-circle"></i>
                             <strong>${hs}</strong> HS
                         </span>
-                        <span class="inventaire-stat">
+                        <span class="inventaire-stat inventaire-stat--total">
                             <strong>${total}</strong> total
                         </span>
                     </div>
@@ -192,20 +192,20 @@ export default class InventaireManager {
                     </div>
                 </div>
                 <div class="lot-content" style="display: none;">
-                    <div class="items-table-wrapper">
-                        <table class="items-table">
+                    <div class="lot-table-wrap">
+                        <table class="lot-table">
                             <thead>
                                 <tr>
-                                    <th style="width: 50px;">N°</th>
-                                    <th style="width: 140px;">S/N</th>
-                                    <th style="width: 100px;">Type</th>
-                                    <th style="width: 100px;">Marque</th>
-                                    <th style="width: 120px;">Modèle</th>
-                                    <th class="col-os">OS</th>
-                                    <th style="width: 100px;">État</th>
-                                    <th style="width: 140px;">Date</th>
-                                    <th style="width: 120px;">Technicien</th>
-                                    <th style="width: 60px;">Action</th>
+                                    <th class="lot-table__th--num"><i class="fa-solid fa-hashtag" aria-hidden="true"></i></th>
+                                    <th class="lot-table__th--sn"><i class="fa-solid fa-barcode" aria-hidden="true"></i> S/N</th>
+                                    <th class="lot-table__th--type"><i class="fa-solid fa-tag" aria-hidden="true"></i> Type</th>
+                                    <th class="lot-table__th--marque"><i class="fa-solid fa-building" aria-hidden="true"></i> Marque</th>
+                                    <th class="lot-table__th--modele"><i class="fa-solid fa-cube" aria-hidden="true"></i> Modèle</th>
+                                    <th class="lot-table__th--os"><i class="fa-solid fa-desktop" aria-hidden="true"></i> OS</th>
+                                    <th class="lot-table__th--state">État</th>
+                                    <th class="lot-table__th--date"><i class="fa-solid fa-calendar-clock" aria-hidden="true"></i> Date</th>
+                                    <th class="lot-table__th--technicien"><i class="fa-solid fa-user" aria-hidden="true"></i> Technicien</th>
+                                    <th class="lot-table__th--action"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Action</th>
                                 </tr>
                             </thead>
                             <tbody>

@@ -1,36 +1,382 @@
-/* Réception – page Dons – design SaaS */
+/**
+ * Page Dons – CSS autonome (répliqué depuis entrer, modifiable sans impacter entrer).
+ * Layout, cartes, config, tableau, responsive.
+ */
 
-.dons-container .recep-toolbar {
+/* ---------- Conteneur page ---------- */
+.dons-container.lot-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: var(--unit-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-4);
+    min-width: 0;
+    flex: 1;
+    min-height: 0;
+}
+
+.dons-container .lot-page__body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--unit-4);
+    min-width: 0;
+    flex: 1;
+    min-height: 0;
+}
+
+/* ---------- Cartes ---------- */
+.dons-container .lot-card {
+    background: var(--recep-panel-bg);
+    border-radius: var(--recep-panel-radius);
+    box-shadow: var(--shadow-small);
+    overflow: hidden;
+    min-width: 0;
+    width: 85vw;
+}
+
+.dons-container .lot-card__inner {
+    padding: var(--unit-4);
+}
+
+.dons-container .lot-card__inner--scroll {
+    padding: 0;
+    overflow: auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+/* ---------- Config ---------- */
+.dons-container .lot-config {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--unit-2);
+}
+
+.dons-container .lot-config__field {
+    min-width: 0;
+    max-width: 195px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+
+.dons-container .lot-config__label {
+    font-weight: 600;
+    font-size: 0.8125rem;
+    color: var(--bleu2);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-1);
+}
+
+.dons-container .lot-config__label i {
+    color: var(--bleu1);
+    opacity: 0.95;
+}
+
+.dons-container .lot-config__input {
+    width: 100%;
+    min-height: 40px;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid rgba(13, 13, 13, 0.12);
+    border-radius: var(--radius-medium);
+    font-size: 0.9375rem;
+    background: #fff;
+    color: var(--text2);
+    transition: var(--transition);
+    box-sizing: border-box;
+}
+
+.dons-container .lot-config__input:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 3px rgba(62, 59, 140, 0.2);
+}
+
+.dons-container .lot-config__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--unit-2);
+}
+
+/* ---------- Boutons ---------- */
+.dons-container .lot-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--unit-1);
+    max-width: 155px;
+    min-height: 40px;
+    padding: var(--unit-1) var(--unit-2);
+    border-radius: var(--radius-medium);
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    white-space: nowrap;
+}
+
+.dons-container .lot-btn--primary {
+    background-color: var(--valid);
+    color: var(--blanc);
+    box-shadow: var(--shadow-small);
+}
+
+.dons-container .lot-btn--primary:hover {
+    filter: brightness(1.08);
+    box-shadow: 0 4px 8px rgba(0, 128, 0, 0.25);
+    color: var(--blanc);
+}
+
+.dons-container .lot-btn--secondary {
+    background: #fff;
+    color: var(--bleu2);
+    border: 1px solid rgba(62, 59, 140, 0.25);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.dons-container .lot-btn--secondary:hover {
+    background: rgba(62, 59, 140, 0.06);
+    border-color: var(--bleu1);
+    color: var(--bleu1);
+}
+
+/* ---------- Tableau ---------- */
+.dons-container .lot-table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    min-width: 0;
+    flex: 1;
+}
+
+.dons-container .lot-table-wrap::-webkit-scrollbar { height: 10px; }
+.dons-container .lot-table-wrap::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.06);
+    border-radius: 4px;
+}
+.dons-container .lot-table-wrap::-webkit-scrollbar-thumb {
+    background: var(--bleu1);
+    border-radius: 4px;
+}
+.dons-container .lot-table-wrap::-webkit-scrollbar-thumb:hover { background: var(--bleu2); }
+
+.dons-container .lot-table {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    color: var(--text2);
+    line-height: 1.45;
+}
+
+.dons-container .lot-table th{
+    padding: var(--unit-2) var(--unit-3);
+    text-align: left;
+    vertical-align: middle;
+}
+.dons-container .lot-table td {
+    padding: var(--unit-1) var(--unit-2);
+    text-align: left;
+    vertical-align: middle;
     border-bottom: 1px solid rgba(13, 13, 13, 0.06);
 }
 
-.dons-container .recep-toolbar-field {
-    min-width: 240px;
+.dons-container .lot-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 1;
 }
 
-.dons-container .dons-actions {
-    margin-left: auto;
+.dons-container .lot-table th {
+    background-color: var(--bleu2);
+    color: var(--text);
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
 }
 
-.dons-container .recep-table-wrap {
-    margin-top: 0;
+.dons-container .lot-table th i { margin-right: var(--unit-1); opacity: 0.9; }
+
+.dons-container .lot-table tbody tr { transition: background 0.15s ease; }
+.dons-container .lot-table tbody tr:nth-child(even) { background: rgba(0, 0, 0, 0.02); }
+.dons-container .lot-table tbody tr:hover { background: #f5f5f5; }
+
+/* Colonnes dons (largeurs raisonnables pour ne pas déborder) */
+.dons-container .lot-table__th--num { width: 5px; text-align: center; }
+.dons-container .lot-table tbody td:first-child { text-align: center; }
+.dons-container .lot-table__th--type { width: 12%; min-width: 70px; }
+.dons-container .lot-table__th--marque { width: 12%; min-width: 80px; }
+.dons-container .lot-table__th--modele { width: 15%; min-width: 80px; }
+.dons-container .lot-table__th--sn { width: 20%; min-width: 85px; }
+.dons-container .lot-table__th--date { width: 13%; min-width: 90px; }
+.dons-container .lot-table__th--stagiaire { width: 18%; min-width: 100px; }
+.dons-container .lot-table__th--action { width: 1rem; text-align: center; }
+
+/* Inputs et selects dans le tableau */
+.dons-container .lot-table td input[type="text"],
+.dons-container .lot-table td input[type="date"],
+.dons-container .lot-table td select {
+    width: 100%;
+    min-width: 0;
+    min-height: 32px;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid rgba(13, 13, 13, 0.12);
+    border-radius: var(--radius-small);
+    font-size: 0.8125rem;
+    background: #fff;
+    color: var(--text2);
+    box-sizing: border-box;
 }
 
-.dons-table .col-num { width: 3rem; }
-.dons-table .col-type { min-width: 90px; }
-.dons-table .col-marque { min-width: 100px; }
-.dons-table .col-modele { min-width: 110px; }
-.dons-table .col-sn { min-width: 120px; }
-.dons-table .col-date { min-width: 100px; }
-.dons-table .col-stagiaire { min-width: 120px; }
-.dons-table .col-actions { width: 52px; text-align: center; }
+.dons-container .lot-table td input[type="date"] {
+    cursor: pointer;
+}
 
-.dons-container #dons-tbody:empty::after {
+.dons-container .lot-table td input:focus,
+.dons-container .lot-table td select:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 2px rgba(62, 59, 140, 0.15);
+}
+
+.dons-container .lot-table .type-cell-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-1);
+    align-items: center;
+    min-width: 0;
+}
+
+.dons-container .lot-table .type-cell-wrapper .dons-select-type {
+    flex: 1;
+    min-width: 0;
+}
+
+.dons-container .lot-table .type-cell-wrapper .dons-input-type-other {
+    min-width: 80px;
+    flex: 1;
+}
+
+/* Bouton supprimer la ligne */
+.dons-container .lot-table .btn-remove-line {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    background-color: transparent;
+    color: var(--text2);
+    border: 1px solid rgba(13, 13, 13, 0.2);
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.dons-container .lot-table .btn-remove-line:hover:not(:disabled) {
+    background-color: var(--error);
+    color: var(--blanc);
+    border-color: var(--error);
+}
+
+.dons-container .lot-table .btn-remove-line:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+/* État vide */
+.dons-container .lot-table tbody#dons-tbody:empty::after {
     content: "Aucune ligne. Cliquez sur « Ajouter une ligne » pour commencer.";
     display: block;
-    padding: var(--unit-5);
+    padding: var(--unit-6) var(--unit-4);
     text-align: center;
-    font: var(--font-text2);
+    font-size: 0.9375rem;
     color: var(--text2);
-    opacity: 0.7;
+    background: #f5f5f5;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 980px) {
+    .dons-container.lot-page { padding: var(--unit-2); gap: var(--unit-3); }
+    .dons-container .lot-card--config { flex-shrink: 0; }
+    .dons-container .lot-card--table {
+        flex: 1; min-height: 0; display: flex; flex-direction: column;
+    }
+    .dons-container .lot-card__inner { padding: var(--unit-3); }
+    .dons-container .lot-card__inner--scroll {
+        flex: 1; min-height: 0; display: flex; flex-direction: column;
+    }
+    .dons-container .lot-table-wrap { flex: 1; min-height: 120px; }
+    .dons-container .lot-config {
+        flex-direction: column; align-items: stretch; gap: var(--unit-3);
+    }
+    .dons-container .lot-config__field { max-width: none; }
+    .dons-container .lot-config__actions { flex-wrap: wrap; justify-content: center; }
+    .dons-container .lot-btn { min-height: 40px; flex: 1 1 auto; }
+    .dons-container .lot-table { min-width: 560px; }
+    .dons-container .lot-table th,
+    .dons-container .lot-table td {
+        padding: var(--unit-2) var(--unit-2);
+        font-size: 0.8125rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .dons-container .lot-table-wrap { overflow-x: visible; }
+    .dons-container .lot-table { min-width: 0; }
+    .dons-container .lot-table thead {
+        position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+        overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+    .dons-container .lot-table tbody tr {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0 var(--unit-3);
+        margin-bottom: var(--unit-3);
+        padding: var(--unit-3);
+        border: 1px solid rgba(13, 13, 13, 0.08);
+        border-radius: var(--radius-medium);
+        background: var(--recep-panel-bg);
+        box-shadow: var(--shadow-small);
+    }
+    .dons-container .lot-table tbody tr:nth-child(even) { background: var(--recep-panel-bg); }
+    .dons-container .lot-table tbody tr:hover {
+        background: var(--recep-panel-bg);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+    .dons-container .lot-table tbody td {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--unit-1);
+        padding: var(--unit-2) 0;
+        border-bottom: none;
+    }
+    .dons-container .lot-table tbody td:last-of-type { padding-bottom: 0; }
+    .dons-container .lot-table tbody td::before {
+        content: attr(data-label);
+        font-weight: 600;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--bleu2);
+        display: block;
+        margin-bottom: 2px;
+    }
+}
+
+@media (max-width: 480px) {
+    .dons-container .lot-config__actions { flex-direction: column; }
+    .dons-container .lot-btn { width: 100%; }
 }

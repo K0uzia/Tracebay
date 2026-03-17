@@ -243,15 +243,15 @@ export default class DisquesManager {
                 ? `<button type="button" class="btn btn-sm disques-edit" data-index="${i}" title="Éditer S/N, marque, modèle, taille, type, interface"><i class="fa-solid fa-pencil"></i></button>`
                 : '';
             tr.innerHTML = `
-                <td>${i + 1}</td>
-                <td>${escapeHtml(d.serial || '-')}</td>
-                <td>${escapeHtml(d.marque || '-')}</td>
-                <td>${escapeHtml(d.modele || '-')}</td>
-                <td>${escapeHtml(d.size || '-')}</td>
-                <td>${escapeHtml(d.disk_type || '-')}</td>
-                <td>${escapeHtml(d.interface || '-')}</td>
-                <td>${escapeHtml(d.shred || '-')}</td>
-                <td class="th-action">${editBtn}<button type="button" class="btn btn-sm disques-remove" data-index="${i}" title="Retirer"><i class="fa-solid fa-trash-alt"></i></button></td>
+                <td data-label="N°">${i + 1}</td>
+                <td data-label="S/N">${escapeHtml(d.serial || '-')}</td>
+                <td data-label="Marque">${escapeHtml(d.marque || '-')}</td>
+                <td data-label="Modèle">${escapeHtml(d.modele || '-')}</td>
+                <td data-label="Taille">${escapeHtml(d.size || '-')}</td>
+                <td data-label="Type">${escapeHtml(d.disk_type || '-')}</td>
+                <td data-label="Interface">${escapeHtml(d.interface || '-')}</td>
+                <td data-label="Shred">${escapeHtml(d.shred || '-')}</td>
+                <td class="th-action" data-label="Action">${editBtn}<button type="button" class="btn btn-sm disques-remove" data-index="${i}" title="Retirer"><i class="fa-solid fa-trash-alt"></i></button></td>
             `;
             tbody.appendChild(tr);
         });

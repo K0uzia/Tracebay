@@ -36,8 +36,27 @@
     padding: var(--unit-3) var(--unit-3);
     font: var(--font-subtitle);
     color: var(--h1);
-    border-bottom: 2px solid var(--orange);
     flex-shrink: 0;
+}
+
+.r-brand::before,
+.r-brand::after {
+    position: absolute;
+    left: 25px;
+    top: 15%;
+    bottom: -55px;
+    height: 3px;
+    background-color: var(--orange);
+    border-radius: 5px;
+    content: '';
+}
+.r-brand::before {
+    width: 40px;
+}
+
+.r-brand::after {
+    width: 25px;
+    margin-top: 6px;
 }
 
 .r-nav {
@@ -57,11 +76,13 @@
 
 .r-nav-group-title {
     padding: var(--unit-1) var(--unit-2);
+    margin-bottom: var(--unit-1);
     font-size: 0.7rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--text);
+    border-bottom: 1px solid var(--orange);
     opacity: 0.75;
 }
 
@@ -73,7 +94,6 @@
     padding: var(--unit-2) var(--unit-2);
     background: transparent;
     border: none;
-    border-radius: var(--radius-medium);
     color: var(--text);
     font: var(--font-text2);
     cursor: pointer;
@@ -88,8 +108,7 @@
 
 .r-nav-item[aria-current="page"],
 .r-nav-item.active {
-    background-color: var(--orange);
-    color: var(--blanc);
+    color: var(--orange);
     font-weight: 600;
 }
 
@@ -123,9 +142,8 @@
     justify-content: space-between;
     flex-wrap: wrap;
     gap: var(--unit-2);
-    padding: var(--unit-3) var(--unit-5);
+    padding: var(--unit-2) var(--unit-4);
     background: var(--recep-panel-bg);
-    border-bottom: 2px solid var(--orange);
     flex-shrink: 0;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 }
@@ -156,9 +174,15 @@
 .r-main-desc {
     margin: 0;
     font-size: 0.9375rem;
+    font-style: italic;
     line-height: 1.4;
     color: var(--text2);
     opacity: 0.9;
+}
+
+.r-main-desc i {
+    color: var(--bleu1);
+    font-style: normal;
 }
 
 .r-main-desc.is-empty {
@@ -175,7 +199,6 @@
     flex: 1;
     overflow-y: auto;
     overflow-x: hidden;
-    padding: var(--unit-4) var(--unit-5);
     box-sizing: border-box;
     min-height: 0;
     display: flex;
@@ -206,78 +229,80 @@
     background: var(--orange);
 }
 
-/* ----- Responsive : sidebar en barre horizontale, zone principale en colonne ----- */
+/* ----- Responsive : sidebar à gauche, icônes seules (title = tooltip) ----- */
 @media (max-width: 900px) {
     .r-root {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr;
+        grid-template-columns: auto 1fr;
+        grid-template-rows: 1fr;
         min-height: 100vh;
     }
 
     .r-header {
-        width: 100%;
-        min-width: 0;
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: center;
-        padding: var(--unit-2) var(--unit-3);
+        width: 56px;
+        min-width: 56px;
+        flex-direction: column;
+        padding: var(--unit-2) var(--unit-1);
         gap: var(--unit-2);
     }
 
     .r-brand {
+        border-top: 1px solid var(--orange);
+        border-right: none;
         border-bottom: none;
-        padding: var(--unit-1) 0;
-        font-size: 1.25rem;
+        padding: var(--unit-1) var(--unit-1);
+        font-size: 0.625rem;
+        line-height: 1.2;
+        text-align: center;
+        word-break: break-all;
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        transform: rotate(180deg);
+        min-height: 3rem;
+        justify-content: center;
+    }
+
+    .r-brand::before,
+    .r-brand::after{
+        display: none;
     }
 
     .r-nav {
-        flex-direction: row;
-        flex-wrap: wrap;
-        padding: 0;
-        order: 3;
-        width: 100%;
-        gap: var(--unit-2);
+        flex-direction: column;
+        gap: var(--unit-1);
+        padding: var(--unit-1) 0;
     }
 
     .r-nav-group {
-        flex-direction: row;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: var(--unit-1);
-        width: 100%;
+        flex-direction: column;
+        gap: calc(var(--unit-1) / 2);
     }
 
     .r-nav-group-title {
-        width: 100%;
-        padding: var(--unit-1) 0;
-        margin-bottom: calc(var(--unit-1) / -2);
-        font-size: 0.65rem;
+        display: none;
     }
 
     .r-nav-item {
-        flex: 1 1 auto;
-        min-width: 80px;
         justify-content: center;
         padding: var(--unit-2) var(--unit-1);
-        font-size: 0.8125rem;
+        width: 100%;
+        min-height: 44px;
+    }
+
+    .r-nav-text {
+        display: none;
+    }
+
+    .r-nav-icon {
+        width: 1.25rem;
+        margin: 0;
     }
 
     .r-main {
         min-height: 0;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .recep-section {
-        padding: var(--unit-2) var(--unit-3);
-        flex: 1;
-        min-height: 0;
-        overflow: auto;
     }
 
     .r-main-header {
         padding: var(--unit-2) var(--unit-3);
-        gap: var(--unit-2);
     }
 
     .r-main-title {

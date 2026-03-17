@@ -7,15 +7,22 @@
 .recep-page {
     max-width: 1280px;
     margin: 0 auto;
+    padding: var(--unit-2);
     display: flex;
     flex-direction: column;
     gap: var(--unit-4);
+    min-width: 0;
+    flex: 1;
+    min-height: 0;
 }
 
 .recep-card-body {
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: var(--unit-4);
+    min-width: 0;
+    flex: 1;
 }
 
 .recep-card-desc {
@@ -162,7 +169,7 @@
 
 .recep-input {
     min-height: 38px;
-    padding: var(--unit-2) var(--unit-3);
+    padding: 0 var(--unit-2);
     border: 1px solid rgba(13, 13, 13, 0.12);
     border-radius: var(--radius-medium);
     font-size: 0.9375rem;
@@ -188,6 +195,43 @@
 .recep-table-wrap {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    min-width: 0;
+}
+
+/* Panel avec tableau : scroll interne (disques = panel-body > wrap ; commande/dons = panel > wrap) */
+.recep-panel:has(.recep-table-wrap) .recep-panel-body {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding: 0;
+}
+.recep-panel:has(.recep-table-wrap) .recep-table-wrap {
+    flex: 1;
+    min-height: 120px;
+}
+.recep-panel:has(> .recep-table-wrap) {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+.recep-panel:has(> .recep-table-wrap) > .recep-table-wrap {
+    flex: 1;
+    min-height: 120px;
+}
+
+.recep-table-wrap::-webkit-scrollbar {
+    height: 10px;
+}
+.recep-table-wrap::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.06);
+    border-radius: 4px;
+}
+.recep-table-wrap::-webkit-scrollbar-thumb {
+    background: var(--bleu1);
+    border-radius: 4px;
+}
+.recep-table-wrap::-webkit-scrollbar-thumb:hover {
+    background: var(--bleu2);
 }
 
 .recep-panel > .recep-table-wrap {
@@ -507,7 +551,7 @@
 
 .recep-progress-bar {
     height: 100%;
-    background: linear-gradient(90deg, var(--bleu1), var(--valid));
+    background: var(--bleu1);
     border-radius: 4px;
     transition: width 0.4s ease;
     min-width: 0;
@@ -639,3 +683,4 @@
         margin-left: 0;
     }
 }
+

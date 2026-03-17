@@ -17,6 +17,17 @@ function escapeHtml(s) {
     return div.innerHTML;
 }
 
+/** Convertit YYYY-MM-DD en DD/MM/AAAA */
+function formatDateDDMMAAAA(isoDate) {
+    if (!isoDate || typeof isoDate !== 'string') return isoDate || '';
+    const parts = isoDate.trim().split(/[-/]/);
+    if (parts.length !== 3) return isoDate;
+    const [y, m, d] = parts;
+    if (y.length === 4 && m.length <= 2 && d.length <= 2) return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+    if (d.length === 4 && m.length <= 2 && y.length <= 2) return `${y.padStart(2, '0')}/${m.padStart(2, '0')}/${d}`;
+    return isoDate;
+}
+
 export default class DonsManager {
     constructor(modalManager) {
         this.modalManager = modalManager;
@@ -149,8 +160,13 @@ export default class DonsManager {
     }
 
     addTableLine() {
+        if (this._addingLine) return;
+        this._addingLine = true;
         const tbody = document.getElementById('dons-tbody');
-        if (!tbody) return;
+        if (!tbody) {
+            this._addingLine = false;
+            return;
+        }
         const lines = tbody.querySelectorAll('.dons-line');
         const nextIndex = lines.length;
         const today = new Date().toISOString().slice(0, 10);
@@ -158,8 +174,8 @@ export default class DonsManager {
         tr.className = 'dons-line';
         tr.dataset.lineIndex = String(nextIndex);
         tr.innerHTML = `
-            <td class="col-num">${nextIndex + 1}</td>
-            <td class="col-type">
+            <td class="col-num" data-label="N°">${nextIndex + 1}</td>
+            <td class="col-type" data-label="Type">
                 <div class="type-cell-wrapper">
                     <select class="dons-select-type" name="type">
                         <option value="">Type...</option>
@@ -171,27 +187,27 @@ export default class DonsManager {
                     <input type="text" class="dons-input-type-other" name="type_other" placeholder="Précisez..." style="display:none;" maxlength="100">
                 </div>
             </td>
-            <td class="col-marque">
+            <td class="col-marque" data-label="Marque">
                 <select class="dons-select-marque" name="marque">
                     <option value="">Marque...</option>
                     ${this.marques.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}
                 </select>
             </td>
-            <td class="col-modele">
+            <td class="col-modele" data-label="Modèle">
                 <select class="dons-select-modele" name="modele">
                     <option value="">Modèle...</option>
                 </select>
             </td>
-            <td class="col-sn">
+            <td class="col-sn" data-label="S/N">
                 <input type="text" class="dons-input-sn" placeholder="S/N" maxlength="100">
             </td>
-            <td class="col-date">
-                <input type="text" class="dons-input-date" placeholder="JJ/MM/AAAA" value="${today}" maxlength="10">
+            <td class="col-date" data-label="Date">
+                <input type="date" class="dons-input-date" value="${today}" title="Cliquez pour choisir la date">
             </td>
-            <td class="col-stagiaire">
+            <td class="col-stagiaire" data-label="Stagiaire AFPA">
                 <input type="text" class="dons-input-stagiaire" placeholder="Nom stagiaire" maxlength="255">
             </td>
-            <td class="col-actions">
+            <td class="col-actions" data-label="Action">
                 <button type="button" class="btn-remove-line" data-line="${nextIndex}" title="Supprimer la ligne">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -201,6 +217,7 @@ export default class DonsManager {
         this.attachLineListeners(tr);
         this.updateLineNumbers();
         this.updateRemoveButtonsState();
+        setTimeout(() => { this._addingLine = false; }, 0);
     }
 
     removeTableLine(lineIndex) {
@@ -390,14 +407,14 @@ export default class DonsManager {
 
         const payload = {
             lotName: lotName || 'don',
-            date: dateStr,
+            date: formatDateDDMMAAAA(dateStr),
             lines: lines.map(l => ({
                 num: l.num,
                 type: l.type,
                 marqueName: l.marqueName,
                 modeleName: l.modeleName,
                 serialNumber: l.serialNumber,
-                date: l.date,
+                date: formatDateDDMMAAAA(l.date),
                 stagiaire: l.stagiaire
             })),
             basePath: DONS_PDF_BASE

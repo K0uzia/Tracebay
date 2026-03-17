@@ -1128,6 +1128,10 @@ class PageManager {
             }
             import('./assets/js/modules/reception/dons.js')
                 .then(module => {
+                    if (window.donsManager) {
+                        window.donsManager.destroy();
+                        window.donsManager = null;
+                    }
                     const DonsManager = module.default;
                     window.donsManager = new DonsManager(window.modalManager);
                     logger.debug('✅ DonsManager initialisé depuis app.js');
@@ -1443,28 +1447,42 @@ class PageManager {
 
     setReceptionPageTitle(pageName) {
         const titles = {
-            entrer: 'Lots',
+            entrer: 'Réception de Lots',
             inventaire: 'Inventaire',
             historique: 'Historique',
             tracabilite: 'Traçabilité',
-            disques: 'Disques',
-            commande: 'Commande',
-            dons: 'Dons'
+            disques: 'Réception de Disques',
+            commande: 'Réception de Commande',
+            dons: 'Réception de Dons'
         };
         const titleEl = document.getElementById('reception-page-title');
         if (titleEl) titleEl.textContent = titles[pageName] || 'Réception';
+
+        // Synchroniser l'icône du h2 avec celle du bouton actif de la sidebar
+        const mainTitleIcon = document.querySelector('.r-main-title-icon');
+        const activeBtn = document.querySelector(`[data-reception-page="true"][data-page="${pageName}"]`);
+        const sidebarIcon = activeBtn?.querySelector('.r-nav-icon i');
+        if (mainTitleIcon && sidebarIcon) {
+            mainTitleIcon.className = 'r-main-title-icon ' + (sidebarIcon.className || '').trim();
+        } else if (mainTitleIcon) {
+            mainTitleIcon.className = 'r-main-title-icon fa-solid fa-folder-open';
+        }
     }
 
     setReceptionPageDescription(pageName) {
         const descriptions = {
             entrer: 'Saisissez les numéros de série et les informations des machines.',
+            inventaire: 'Gérez l\'état des PC et assignez les techniciens.',
             disques: 'Saisissez les disques puis enregistrez en traçabilité.',
-            commande: 'Constituer une liste de produits et générer le PDF.'
+            commande: 'Constituer une liste de produits et générer le PDF.',
+            dons: 'Enregistrez les dons de matériel aux stagiaires et générez le certificat.'
         };
         const descEl = document.getElementById('reception-page-desc');
+        const descTextEl = document.getElementById('reception-page-desc-text');
         if (!descEl) return;
         const text = descriptions[pageName] || '';
-        descEl.textContent = text;
+        if (descTextEl) descTextEl.textContent = text;
+        else descEl.textContent = text;
         descEl.classList.toggle('is-empty', !text);
     }
 

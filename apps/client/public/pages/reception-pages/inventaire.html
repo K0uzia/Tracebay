@@ -1,31 +1,35 @@
-<section class="recep-page inventaire-container">
-    <div class="recep-card-body">
-        <p class="recep-card-desc"><i class="recep-desc-icon fa-solid fa-info-circle" aria-hidden="true"></i> Gérez l'état des PC et assignez les techniciens.</p>
-        <div class="recep-panel">
-            <div class="recep-toolbar inventaire-filters">
-                <div class="recep-filter-group filter-group">
-                    <label class="recep-label" for="filter-state"><i class="fa-solid fa-filter" aria-hidden="true"></i> État</label>
-                    <select class="recep-input" id="filter-state">
-                        <option value="">Tous les états</option>
-                        <option value="Reconditionnés">Reconditionnés</option>
-                        <option value="Pour pièces">Pour pièces</option>
-                        <option value="HS">HS</option>
-                        <option value="Non défini">Non défini</option>
-                    </select>
-                </div>
-                <div class="recep-toolbar-actions">
-                    <button type="button" class="recep-btn reception-btn-refresh" id="btn-refresh-lots" title="Recharger la liste des lots">
-                        <i class="fa-solid fa-sync" aria-hidden="true"></i> Rafraîchir
-                    </button>
-                </div>
-            </div>
-            <div class="recep-panel-body">
-            <div class="recep-list lots-list-inv" id="lots-list">
-                <div class="recep-loading loading">
-                    <i class="fa-solid fa-spinner" aria-hidden="true"></i>
-                    <span>Chargement des lots...</span>
+<section class="recep-page lot-page inventaire-container">
+    <div class="lot-page__body">
+        <div class="lot-card lot-card--config">
+            <div class="lot-card__inner">
+                <div class="lot-config">
+                    <div class="lot-config__field">
+                        <label class="lot-config__label" for="filter-state"><i class="fa-solid fa-filter" aria-hidden="true"></i> État :</label>
+                        <select class="lot-config__input" id="filter-state">
+                            <option value="">Tous les états</option>
+                            <option value="Reconditionnés">Reconditionnés</option>
+                            <option value="Pour pièces">Pour pièces</option>
+                            <option value="HS">HS</option>
+                            <option value="Non défini">Non défini</option>
+                        </select>
+                    </div>
+                    <div class="lot-config__actions">
+                        <button type="button" class="lot-btn lot-btn--primary" id="btn-refresh-lots" title="Recharger la liste des lots">
+                            <i class="fa-solid fa-sync" aria-hidden="true"></i> Rafraîchir
+                        </button>
+                    </div>
                 </div>
             </div>
+        </div>
+
+        <div class="lot-card lot-card--list">
+            <div class="lot-card__inner lot-card__inner--list">
+                <div class="recep-list lots-list-inv" id="lots-list">
+                    <div class="recep-loading loading">
+                        <i class="fa-solid fa-spinner" aria-hidden="true"></i>
+                        <span>Chargement des lots...</span>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -1,41 +1,47 @@
-<section class="recep-page commande-container">
-    <div class="recep-card-body">
-        <p class="recep-card-desc"><i class="recep-desc-icon fa-solid fa-info-circle" aria-hidden="true"></i> Constituer une liste de produits et générer le PDF.</p>
-        <div class="recep-panel">
-            <div class="recep-toolbar commande-toolbar">
-                <div class="recep-toolbar-field">
-                    <label class="recep-label" for="commande-name"><i class="fa-solid fa-file-lines"></i> Nom de la commande</label>
-                    <input class="recep-input" type="text" id="commande-name" placeholder="Ex : Commande fournitures mars 2025" maxlength="255" autocomplete="off">
-                </div>
-                <div class="recep-toolbar-actions commande-actions">
-                    <button type="button" class="recep-btn recep-btn-secondary" id="commande-btn-add-line" title="Ajouter une ligne">Ajouter une ligne</button>
-                    <button type="button" class="recep-btn" id="commande-btn-add-product" title="Ajouter un produit">Ajouter un produit</button>
-                    <button type="button" class="recep-btn recep-btn-primary" id="commande-btn-save-pdf" title="Enregistrer le PDF">Enregistrer</button>
+<section class="recep-page lot-page commande-container">
+    <div class="lot-page__body">
+        <div class="lot-card lot-card--config">
+            <div class="lot-card__inner">
+                <div class="lot-config">
+                    <div class="lot-config__field">
+                        <label class="lot-config__label" for="commande-name"><i class="fa-solid fa-file-lines"></i> Nom de la commande</label>
+                        <input class="lot-config__input" type="text" id="commande-name" placeholder="Ex : Commande fournitures mars 2025" maxlength="255" autocomplete="off">
+                    </div>
+                    <div class="lot-config__actions">
+                        <button type="button" class="lot-btn lot-btn--secondary" id="commande-btn-add-line" title="Ajouter une ligne">Ajouter une ligne</button>
+                        <button type="button" class="lot-btn lot-btn--secondary" id="commande-btn-add-product" title="Ajouter un produit">Ajouter un produit</button>
+                        <button type="button" class="lot-btn lot-btn--primary" id="commande-btn-save-pdf" title="Enregistrer le PDF">Enregistrer</button>
+                    </div>
                 </div>
             </div>
-            <div class="recep-table-wrap commande-table-wrapper">
-                <table class="recep-table commande-table" id="commande-table">
-                    <thead>
-                        <tr>
-                            <th class="col-num"><i class="fa-solid fa-hashtag"></i> N°</th>
-                            <th class="col-produit"><i class="fa-solid fa-box"></i> Produit</th>
-                            <th class="col-quantite"><i class="fa-solid fa-sort-numeric-up"></i> Quantité</th>
-                            <th class="col-prix"><i class="fa-solid fa-euro-sign"></i> Prix</th>
-                            <th class="col-liens"><i class="fa-solid fa-link"></i> Liens</th>
-                            <th class="col-actions"><i class="fa-solid fa-screwdriver-wrench"></i></th>
-                        </tr>
-                    </thead>
-                    <tbody id="commande-tbody">
-                        <tr class="commande-line" data-line-index="0">
-                            <td class="col-num">1</td>
-                            <td class="col-produit"><select class="commande-select-product recep-input" data-line="0"><option value="">— Produit —</option></select></td>
-                            <td class="col-quantite"><input type="number" min="0" step="1" class="commande-input-quantite recep-input" data-line="0" placeholder="0"></td>
-                            <td class="col-prix"><input type="number" min="0" step="0.01" class="commande-input-prix recep-input" data-line="0" placeholder="0,00"></td>
-                            <td class="col-liens"><input type="text" class="commande-input-lien recep-input" data-line="0" placeholder="URL"></td>
-                            <td class="col-actions"><button type="button" class="recep-btn-icon btn-remove-line" data-line="0" title="Supprimer" disabled><i class="fas fa-trash" aria-hidden="true"></i></button></td>
-                        </tr>
-                    </tbody>
-                </table>
+        </div>
+
+        <div class="lot-card lot-card--table">
+            <div class="lot-card__inner lot-card__inner--scroll">
+                <div class="lot-table-wrap">
+                    <table class="lot-table" id="commande-table">
+                        <thead>
+                            <tr>
+                                <th class="lot-table__th--num"><i class="fa-solid fa-hashtag" aria-hidden="true"></i> </th>
+                                <th class="lot-table__th--produit"><i class="fa-solid fa-box" aria-hidden="true"></i> Produit</th>
+                                <th class="lot-table__th--quantite"><i class="fa-solid fa-sort-numeric-up" aria-hidden="true"></i> Quantité</th>
+                                <th class="lot-table__th--prix"><i class="fa-solid fa-euro-sign" aria-hidden="true"></i> Prix</th>
+                                <th class="lot-table__th--liens"><i class="fa-solid fa-link" aria-hidden="true"></i> Liens</th>
+                                <th class="lot-table__th--action"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i></th>
+                            </tr>
+                        </thead>
+                        <tbody id="commande-tbody">
+                            <tr class="commande-line" data-line-index="0">
+                                <td class="col-num" data-label="N°">1</td>
+                                <td class="col-produit" data-label="Produit"><select class="commande-select-product recep-input" data-line="0"><option value="">— Produit —</option></select></td>
+                                <td class="col-quantite" data-label="Quantité"><input type="number" min="0" step="1" class="commande-input-quantite recep-input" data-line="0" placeholder="0"></td>
+                                <td class="col-prix" data-label="Prix"><input type="number" min="0" step="0.01" class="commande-input-prix recep-input" data-line="0" placeholder="0,00"></td>
+                                <td class="col-liens" data-label="Liens"><input type="text" class="commande-input-lien recep-input" data-line="0" placeholder="URL"></td>
+                                <td class="col-actions" data-label="Action"><button type="button" class="recep-btn-icon btn-remove-line" data-line="0" title="Supprimer" disabled><i class="fas fa-trash" aria-hidden="true"></i></button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
