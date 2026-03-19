@@ -1,8 +1,6 @@
 /**
- * DISQUES - Module JS
- * Traçabilité des disques shreddés : saisie S/N, type, taille ; détection auto ; enregistrement via API.
- * Même disposition que Entrée (pas d'historique sur cette page).
- * Les disques de la session en cours sont conservés en mémoire au changement d'onglet.
+ * DISQUES - Même structure UI qu’Entrer (carte config + tableau éditable ligne à ligne).
+ * Colonnes : sélection, n°, S/N, type disque, marque, modèle, taille, interface/shred, action.
  */
 
 import getLogger from '../../config/Logger.js';
@@ -11,15 +9,14 @@ import { createSession } from './disquesApi.js';
 
 const logger = getLogger();
 
-/** Cache des disques de la session en cours (persiste au changement d'onglet) */
 let sessionDisksCache = [];
 
-/** Interfaces selon le type : HDD = SATA ou SAS ; SSD = M.2, NVMe ou SATA */
 const INTERFACES_HDD = [{ value: 'SATA', label: 'SATA' }, { value: 'SAS', label: 'SAS' }];
 const INTERFACES_SSD = [{ value: 'M.2', label: 'M.2' }, { value: 'NVMe', label: 'NVMe' }, { value: 'SATA', label: 'SATA' }];
 const INTERFACES_ALL = [{ value: 'SATA', label: 'SATA' }, { value: 'SAS', label: 'SAS' }, { value: 'NVMe', label: 'NVMe' }, { value: 'M.2', label: 'M.2' }];
 
-/** Shred : si déjà défini (ex. Destruction physique) on garde, sinon SSD → Secure E. + Sanitize, HDD → DoD */
+const SIZE_PRESETS = ['250 Go', '500 Go', '1 To', '2 To', '4 To', '8 To'];
+
 function getShredForDisk(disk) {
     const existing = (disk.shred || '').trim();
     if (existing && existing === 'Destruction physique') return existing;
@@ -27,6 +24,21 @@ function getShredForDisk(disk) {
     if (t === 'SSD') return 'Secure E. + Sanitize';
     if (t === 'HDD') return 'DoD';
     return '-';
+}
+
+function emptyDisk() {
+    const d = {
+        serial: '',
+        marque: '-',
+        modele: '-',
+        size: '-',
+        disk_type: '',
+        interface: 'SATA',
+        shred: '',
+        autoDetected: false
+    };
+    d.shred = getShredForDisk(d);
+    return d;
 }
 
 const VALUE_AUTRE = '__autre__';
@@ -39,15 +51,22 @@ export default class DisquesManager {
         this.marques = [];
         this.modeles = [];
         this.listeners = [];
+        this._barcodeBuf = '';
+        this._barcodeTimer = null;
+        this._onSerialEnter = null;
+        this._onBarcodeKeydown = null;
         this.init();
     }
 
     async init() {
         logger.debug('Initialisation DisquesManager');
         await this.loadReferenceData();
+        if (!this.sessionDisks.length) {
+            this.sessionDisks = [emptyDisk()];
+        }
         this.setupEventListeners();
         this.renderSessionTable();
-        this.focusSerialInput();
+        setTimeout(() => this.focusSerialInput(), 100);
         logger.debug('DisquesManager prêt');
     }
 
@@ -73,41 +92,368 @@ export default class DisquesManager {
                     });
                 }
             });
-            this.updateDisquesMarqueSelect();
         } catch (err) {
             logger.error('Erreur chargement marques/modèles disques:', err);
             this.marques = [];
             this.modeles = [];
-            this.updateDisquesMarqueSelect();
         }
     }
 
-    updateDisquesMarqueSelect() {
-        const sel = document.getElementById('disques-marque');
-        const selModeleModal = document.getElementById('disques-select-marque-for-modele');
-        [sel, selModeleModal].forEach(s => {
-            if (!s) return;
-            const current = s.value;
-            s.innerHTML = '<option value="">-- Marque --</option>' +
-                this.marques.map(m => `<option value="${escapeHtml(String(m.id))}">${escapeHtml(m.name)}</option>`).join('') +
-                `<option value="${VALUE_AUTRE}">Autre</option>`;
-            if (current && Array.from(s.options).some(o => o.value === current)) s.value = current;
-        });
-        const marqueId = sel?.value && sel.value !== VALUE_AUTRE ? sel.value : '';
-        this.updateDisquesModeleSelect(marqueId, document.getElementById('disques-modele'));
+    addListener(el, event, handler) {
+        if (!el) return;
+        el.addEventListener(event, handler);
+        this.listeners.push({ element: el, event, handler });
     }
 
-    updateDisquesModeleSelect(marqueId, selectElement) {
-        const sel = selectElement || document.getElementById('disques-modele');
+    destroy() {
+        this.syncAllFromDom();
+        sessionDisksCache = [...(this.sessionDisks || [])];
+        if (this._onSerialEnter) {
+            document.removeEventListener('keydown', this._onSerialEnter);
+            this._onSerialEnter = null;
+        }
+        if (this._onBarcodeKeydown) {
+            document.removeEventListener('keydown', this._onBarcodeKeydown);
+            this._onBarcodeKeydown = null;
+        }
+        if (this._barcodeTimer) clearTimeout(this._barcodeTimer);
+        this.listeners.forEach(({ element, event, handler }) => {
+            element?.removeEventListener(event, handler);
+        });
+        this.listeners = [];
+        logger.debug('Destruction DisquesManager (session conservée: ' + sessionDisksCache.length + ' ligne(s))');
+    }
+
+    focusSerialInput() {
+        const inp = document.querySelector('#disques-session-tbody tr:last-child input[name="disques_serial"]');
+        if (inp) inp.focus();
+    }
+
+    syncAllFromDom() {
+        const tbody = document.getElementById('disques-session-tbody');
+        if (!tbody) return;
+        const rows = [...tbody.querySelectorAll('tr')];
+        if (rows.length) {
+            this.sessionDisks = rows.map(tr => this.readRow(tr));
+        }
+    }
+
+    readRow(tr) {
+        const autoDetected = tr.dataset.lsblk === '1';
+        const serial = tr.querySelector('input[name="disques_serial"]')?.value?.trim() || '';
+        const disk_type = tr.querySelector('select[name="disk_type"]')?.value?.trim() || '';
+        const marqueSel = tr.querySelector('select[name="disques_marque"]');
+        const marqueAutre = tr.querySelector('input[name="disques_marque_autre"]');
+        let marque = '-';
+        if (marqueSel?.value === VALUE_AUTRE && marqueAutre?.value?.trim()) {
+            marque = marqueAutre.value.trim();
+        } else if (marqueSel?.value && marqueSel.value !== VALUE_AUTRE) {
+            const m = this.marques.find(x => String(x.id) === String(marqueSel.value));
+            marque = m ? m.name : '-';
+        }
+        const modeleSel = tr.querySelector('select[name="disques_modele"]');
+        const modeleAutre = tr.querySelector('input[name="disques_modele_autre"]');
+        let modele = '-';
+        if (modeleSel?.value === VALUE_AUTRE && modeleAutre?.value?.trim()) {
+            modele = modeleAutre.value.trim();
+        } else if (modeleSel?.value && modeleSel.value !== VALUE_AUTRE) {
+            const m = this.modeles.find(x => String(x.id) === String(modeleSel.value));
+            modele = m ? m.name : '-';
+        }
+        const sizeSel = tr.querySelector('select[name="disques_size"]');
+        const sizeCustom = tr.querySelector('input[name="disques_size_custom"]');
+        let size = '-';
+        if (sizeSel?.value === 'autre' && sizeCustom?.value?.trim()) {
+            size = sizeCustom.value.trim();
+        } else if (sizeSel?.value) {
+            size = sizeSel.value;
+        }
+        const interfaceVal = tr.querySelector('select[name="disques_interface"]')?.value || 'SATA';
+        const destruction = tr.querySelector('.js-disques-destruction')?.checked === true;
+        let shred = destruction ? 'Destruction physique' : '';
+        const d = {
+            serial,
+            marque,
+            modele,
+            size,
+            disk_type: disk_type || '-',
+            interface: interfaceVal,
+            shred,
+            autoDetected
+        };
+        if (!d.shred) d.shred = getShredForDisk(d);
+        return d;
+    }
+
+    buildMarqueCell(d) {
+        const current = (d.marque || '').trim();
+        let val = '';
+        let autre = '';
+        if (!current || current === '-') {
+            val = '';
+        } else {
+            const m = this.marques.find(x => (x.name || '').trim() === current);
+            if (m) val = String(m.id);
+            else {
+                val = VALUE_AUTRE;
+                autre = escapeAttr(current);
+            }
+        }
+        const opts = '<option value="">--</option>' +
+            this.marques.map(m =>
+                `<option value="${escapeHtml(String(m.id))}" ${String(m.id) === val ? 'selected' : ''}>${escapeHtml(m.name)}</option>`
+            ).join('') +
+            `<option value="${VALUE_AUTRE}" ${val === VALUE_AUTRE ? 'selected' : ''}>Autre</option>`;
+        const showAutre = val === VALUE_AUTRE ? 'inline-block' : 'none';
+        return `<select name="disques_marque" class="js-disques-marque">${opts}</select>` +
+            `<input type="text" name="disques_marque_autre" class="type-other-input disques-marque-autre" style="display:${showAutre}" value="${autre}" placeholder="Autre marque" autocomplete="off">`;
+    }
+
+    buildModeleCell(d) {
+        const marqueName = (d.marque || '').trim();
+        const marque = this.marques.find(x => (x.name || '').trim() === marqueName);
+        const marqueId = marque ? String(marque.id) : '';
+        const modeleName = (d.modele || '').trim();
+        let val = '';
+        let autre = '';
+        if (!modeleName || modeleName === '-') {
+            val = '';
+        } else if (marqueId) {
+            const mo = this.modeles.find(x =>
+                String(x.marque_id) === marqueId && (x.name || '').trim() === modeleName
+            );
+            if (mo) val = String(mo.id);
+            else {
+                val = VALUE_AUTRE;
+                autre = escapeAttr(modeleName);
+            }
+        } else {
+            val = VALUE_AUTRE;
+            autre = escapeAttr(modeleName);
+        }
+        const filtered = marqueId
+            ? this.modeles.filter(m => String(m.marque_id) === String(marqueId))
+            : [];
+        const opts = '<option value="">--</option>' +
+            filtered.map(m =>
+                `<option value="${escapeHtml(String(m.id))}" ${String(m.id) === val ? 'selected' : ''}>${escapeHtml(m.name)}</option>`
+            ).join('') +
+            `<option value="${VALUE_AUTRE}" ${val === VALUE_AUTRE ? 'selected' : ''}>Autre</option>`;
+        const showAutre = val === VALUE_AUTRE ? 'inline-block' : 'none';
+        return `<select name="disques_modele" class="js-disques-modele">${opts}</select>` +
+            `<input type="text" name="disques_modele_autre" class="type-other-input disques-modele-autre" style="display:${showAutre}" value="${autre}" placeholder="Autre modèle" autocomplete="off">`;
+    }
+
+    buildSizeCell(d) {
+        const raw = (d.size || '').trim();
+        let selVal = '';
+        let custom = '';
+        if (!raw || raw === '-') {
+            selVal = '';
+        } else if (SIZE_PRESETS.includes(raw)) {
+            selVal = raw;
+        } else {
+            selVal = 'autre';
+            custom = escapeAttr(raw);
+        }
+        const opts = '<option value="">--</option>' +
+            SIZE_PRESETS.map(p =>
+                `<option value="${escapeHtml(p)}" ${selVal === p ? 'selected' : ''}>${escapeHtml(p)}</option>`
+            ).join('') +
+            `<option value="autre" ${selVal === 'autre' ? 'selected' : ''}>Autre</option>`;
+        const showC = selVal === 'autre' ? 'inline-block' : 'none';
+        return `<select name="disques_size">${opts}</select>` +
+            `<input type="text" name="disques_size_custom" class="type-other-input" style="display:${showC}" value="${custom}" placeholder="Ex: 512 Go" autocomplete="off">`;
+    }
+
+    buildInterfaceSelect(d) {
+        const dt = (d.disk_type || '').toUpperCase();
+        const list = dt === 'HDD' ? INTERFACES_HDD : dt === 'SSD' ? INTERFACES_SSD : INTERFACES_ALL;
+        let cur = (d.interface || 'SATA').trim();
+        if (!list.some(o => o.value === cur)) cur = list[0]?.value || 'SATA';
+        const opts = list.map(o =>
+            `<option value="${escapeHtml(o.value)}" ${o.value === cur ? 'selected' : ''}>${escapeHtml(o.label)}</option>`
+        ).join('');
+        return `<select name="disques_interface">${opts}</select>`;
+    }
+
+    buildRowHtml(d, i) {
+        const serial = escapeHtml((d.serial || ''));
+        const dt = (d.disk_type || '').trim();
+        const diskTypeSelect =
+            `<select name="disk_type" class="js-disques-disk-type">` +
+            `<option value="">--</option>` +
+            `<option value="HDD" ${dt === 'HDD' ? 'selected' : ''}>HDD</option>` +
+            `<option value="SSD" ${dt === 'SSD' ? 'selected' : ''}>SSD</option>` +
+            `</select>`;
+        const destruct = (d.shred || '') === 'Destruction physique';
+        const shredPreview = escapeHtml(d.shred || getShredForDisk(d));
+        const lsblk = d.autoDetected ? '1' : '0';
+        return `
+            <tr data-row-index="${i}" data-lsblk="${lsblk}">
+                <td data-label="Sélection"><input type="checkbox" class="row-checkbox js-disques-row-check" title="Sélectionner"></td>
+                <td data-label="N°"><span>${i + 1}</span></td>
+                <td data-label="S/N"><input type="text" name="disques_serial" value="${serial}" placeholder="S/N" autocomplete="off"></td>
+                <td data-label="Type">${diskTypeSelect}</td>
+                <td data-label="Marque"><div class="type-cell-wrapper">${this.buildMarqueCell(d)}</div></td>
+                <td data-label="Modèle"><div class="type-cell-wrapper">${this.buildModeleCell(d)}</div></td>
+                <td data-label="Taille"><div class="type-cell-wrapper">${this.buildSizeCell(d)}</div></td>
+                <td data-label="Intf. / Shred"><div class="type-cell-wrapper disques-intf-shred-cell">${this.buildInterfaceSelect(d)}
+                    <label class="disques-row-dest-label"><input type="checkbox" class="js-disques-destruction" ${destruct ? 'checked' : ''}> Destruction physique</label>
+                    <span class="js-disques-shred-label disques-shred-text">${shredPreview}</span>
+                </div></td>
+                <td data-label="Action"><button type="button" class="btn-delete-row" data-row-index="${i}" title="Supprimer la ligne"><i class="fa-solid fa-trash"></i></button></td>
+            </tr>`;
+    }
+
+    renderSessionTable() {
+        const tbody = document.getElementById('disques-session-tbody');
+        const selAll = document.getElementById('disques-select-all');
+        if (!tbody) return;
+        tbody.innerHTML = this.sessionDisks.map((d, i) => this.buildRowHtml(d, i)).join('');
+        if (selAll) selAll.checked = false;
+        this.updateSaveButtonState();
+    }
+
+    updateSaveButtonState() {
+        const btn = document.getElementById('disques-btn-save');
+        if (btn) {
+            btn.disabled = !this.sessionDisks.some(d => (d.serial || '').trim());
+        }
+    }
+
+    updateShredCell(tr) {
+        const d = this.readRow(tr);
+        const span = tr.querySelector('.js-disques-shred-label');
+        if (span) span.textContent = d.shred || '-';
+    }
+
+    populateModeleSelect(tr, marqueId) {
+        const sel = tr.querySelector('select[name="disques_modele"]');
+        const autre = tr.querySelector('.disques-modele-autre');
         if (!sel) return;
         const current = sel.value;
         const filtered = marqueId && marqueId !== VALUE_AUTRE
             ? this.modeles.filter(m => String(m.marque_id) === String(marqueId))
             : [];
-        sel.innerHTML = '<option value="">-- Modèle --</option>' +
-            filtered.map(m => `<option value="${escapeHtml(String(m.id))}">${escapeHtml(m.name)}</option>`).join('') +
+        sel.innerHTML = '<option value="">--</option>' +
+            filtered.map(m =>
+                `<option value="${escapeHtml(String(m.id))}">${escapeHtml(m.name)}</option>`
+            ).join('') +
             `<option value="${VALUE_AUTRE}">Autre</option>`;
         if (current && Array.from(sel.options).some(o => o.value === current)) sel.value = current;
+        else sel.value = '';
+        if (autre) {
+            autre.style.display = sel.value === VALUE_AUTRE ? 'inline-block' : 'none';
+            if (sel.value !== VALUE_AUTRE) autre.value = '';
+        }
+    }
+
+    refillInterfaceSelect(tr) {
+        const typeSel = tr.querySelector('select[name="disk_type"]');
+        const iface = tr.querySelector('select[name="disques_interface"]');
+        if (!typeSel || !iface) return;
+        const dt = (typeSel.value || '').toUpperCase();
+        const list = dt === 'HDD' ? INTERFACES_HDD : dt === 'SSD' ? INTERFACES_SSD : INTERFACES_ALL;
+        const cur = iface.value;
+        iface.innerHTML = list.map(o =>
+            `<option value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</option>`
+        ).join('');
+        iface.value = list.some(o => o.value === cur) ? cur : (list[0]?.value || 'SATA');
+    }
+
+    handleTableChange(e) {
+        const t = e.target;
+        const tr = t.closest('tr');
+        if (!tr || !tr.closest('#disques-session-tbody')) return;
+
+        if (t.matches('select[name="disques_marque"]')) {
+            const autre = tr.querySelector('.disques-marque-autre');
+            if (autre) {
+                autre.style.display = t.value === VALUE_AUTRE ? 'inline-block' : 'none';
+                if (t.value !== VALUE_AUTRE) autre.value = '';
+            }
+            this.populateModeleSelect(tr, t.value === VALUE_AUTRE ? '' : t.value);
+        }
+        if (t.matches('select[name="disques_modele"]')) {
+            const autre = tr.querySelector('.disques-modele-autre');
+            if (autre) {
+                autre.style.display = t.value === VALUE_AUTRE ? 'inline-block' : 'none';
+                if (t.value !== VALUE_AUTRE) autre.value = '';
+            }
+        }
+        if (t.matches('select[name="disk_type"]')) {
+            this.refillInterfaceSelect(tr);
+        }
+        if (t.matches('select[name="disques_size"]')) {
+            const cust = tr.querySelector('input[name="disques_size_custom"]');
+            if (cust) {
+                cust.style.display = t.value === 'autre' ? 'inline-block' : 'none';
+                if (t.value !== 'autre') cust.value = '';
+            }
+        }
+        this.updateShredCell(tr);
+    }
+
+    removeDiskAt(index) {
+        this.syncAllFromDom();
+        if (index < 0 || index >= this.sessionDisks.length) return;
+        this.sessionDisks.splice(index, 1);
+        if (!this.sessionDisks.length) this.sessionDisks.push(emptyDisk());
+        this.renderSessionTable();
+        this.focusSerialInput();
+    }
+
+    addDisk(diskOrSerial, interfaceOrUndef, sizeOrUndef, fromLsblk = false) {
+        let d;
+        if (diskOrSerial && typeof diskOrSerial === 'object') {
+            d = {
+                serial: (diskOrSerial.serial || '').trim(),
+                marque: (diskOrSerial.marque || '').trim() || '-',
+                modele: (diskOrSerial.modele || '').trim() || '-',
+                size: (diskOrSerial.size || '').trim() || '-',
+                disk_type: (diskOrSerial.disk_type || '').trim() || '',
+                interface: (diskOrSerial.interface || '').trim() || 'SATA',
+                shred: (diskOrSerial.shred || '').trim() || '',
+                autoDetected: !!diskOrSerial.autoDetected || !!fromLsblk
+            };
+            if (diskOrSerial.physicalDestruction === true) d.shred = 'Destruction physique';
+            else if (!d.shred) d.shred = getShredForDisk(d);
+        } else {
+            d = {
+                serial: (diskOrSerial || '').trim(),
+                marque: '-',
+                modele: '-',
+                size: (sizeOrUndef || '').trim() || '-',
+                disk_type: '-',
+                interface: (interfaceOrUndef || 'SATA').trim(),
+                shred: '',
+                autoDetected: false
+            };
+            d.shred = getShredForDisk(d);
+        }
+        if (!d.serial) {
+            window.app?.showNotification?.('Saisissez un numéro de série', 'warning');
+            return;
+        }
+        const serialNorm = d.serial.toUpperCase();
+        if (this.sessionDisks.some(ex => (ex.serial || '').trim().toUpperCase() === serialNorm)) {
+            window.app?.showNotification?.('Déjà scanné', 'warning');
+            return;
+        }
+        this.syncAllFromDom();
+        this.sessionDisks.push(d);
+        this.renderSessionTable();
+        this.focusSerialInput();
+        window.app?.showNotification?.('Disque ajouté', 'success');
+    }
+
+    addManualLine() {
+        this.syncAllFromDom();
+        this.sessionDisks.push(emptyDisk());
+        this.renderSessionTable();
+        this.focusSerialInput();
+        window.app?.showNotification?.('Ligne ajoutée', 'success');
     }
 
     async submitNewMarque() {
@@ -130,7 +476,8 @@ export default class DisquesManager {
             window.app?.showNotification?.(`Marque "${newMarque}" ajoutée`, 'success');
             this.modalManager?.close?.('disques-modal-add-marque');
             input.value = '';
-            this.updateDisquesMarqueSelect();
+            this.syncAllFromDom();
+            this.renderSessionTable();
         } catch (err) {
             logger.error('submitNewMarque:', err);
             window.app?.showNotification?.(err?.message || 'Erreur lors de l\'ajout de la marque', 'error');
@@ -146,7 +493,9 @@ export default class DisquesManager {
         }
         const marqueId = selectMarque.value;
         const newModele = inputModele.value.trim();
-        const exists = this.modeles.some(m => m.marque_id == marqueId && (m.name || '').trim().toLowerCase() === newModele.toLowerCase());
+        const exists = this.modeles.some(m =>
+            m.marque_id == marqueId && (m.name || '').trim().toLowerCase() === newModele.toLowerCase()
+        );
         if (exists) {
             window.app?.showNotification?.('Ce modèle existe déjà pour cette marque', 'warning');
             return;
@@ -173,232 +522,108 @@ export default class DisquesManager {
             this.modalManager?.close?.('disques-modal-add-modele');
             inputModele.value = '';
             selectMarque.value = '';
-            this.updateDisquesMarqueSelect();
+            this.syncAllFromDom();
+            this.renderSessionTable();
         } catch (err) {
             logger.error('submitNewModele:', err);
             window.app?.showNotification?.(err?.message || 'Erreur lors de l\'ajout du modèle', 'error');
         }
     }
 
-    addListener(el, event, handler) {
-        if (!el) return;
-        el.addEventListener(event, handler);
-        this.listeners.push({ element: el, event, handler });
-    }
-
-    destroy() {
-        sessionDisksCache = [...(this.sessionDisks || [])];
-        this.listeners.forEach(({ element, event, handler }) => {
-            element?.removeEventListener(event, handler);
-        });
-        this.listeners = [];
-        logger.debug('Destruction DisquesManager (session conservée: ' + sessionDisksCache.length + ' disque(s))');
-    }
-
-    focusSerialInput() {
-        const input = document.getElementById('disques-serial');
-        if (input) setTimeout(() => input.focus(), 100);
-    }
-
-    getEffectiveSize() {
-        const sel = document.getElementById('disques-size');
-        const custom = document.getElementById('disques-size-custom');
-        const v = sel?.value || '';
-        if (v === 'autre' && custom?.value?.trim()) return custom.value.trim();
-        return v || '';
-    }
-
-    getMarqueFromForm() {
-        const sel = document.getElementById('disques-marque');
-        const autre = document.getElementById('disques-marque-autre');
-        if (sel?.value === VALUE_AUTRE && autre?.value?.trim()) return autre.value.trim();
-        if (sel?.value && sel.value !== VALUE_AUTRE) {
-            const m = this.marques.find(x => String(x.id) === String(sel.value));
-            return m ? m.name : sel.value;
-        }
-        return '';
-    }
-
-    getModeleFromForm() {
-        const sel = document.getElementById('disques-modele');
-        const autre = document.getElementById('disques-modele-autre');
-        if (sel?.value === VALUE_AUTRE && autre?.value?.trim()) return autre.value.trim();
-        if (sel?.value && sel.value !== VALUE_AUTRE) {
-            const m = this.modeles.find(x => String(x.id) === String(sel.value));
-            return m ? m.name : sel.value;
-        }
-        return '';
-    }
-
-    renderSessionTable() {
-        const tbody = document.getElementById('disques-session-tbody');
-        const emptyMsg = document.getElementById('disques-session-empty');
-        const saveBtn = document.getElementById('disques-btn-save');
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        this.sessionDisks.forEach((d, i) => {
-            const tr = document.createElement('tr');
-            const canEdit = d.autoDetected === true;
-            const editBtn = canEdit
-                ? `<button type="button" class="btn btn-sm disques-edit" data-index="${i}" title="Éditer S/N, marque, modèle, taille, type, interface"><i class="fa-solid fa-pencil"></i></button>`
-                : '';
-            tr.innerHTML = `
-                <td data-label="N°">${i + 1}</td>
-                <td data-label="S/N">${escapeHtml(d.serial || '-')}</td>
-                <td data-label="Marque">${escapeHtml(d.marque || '-')}</td>
-                <td data-label="Modèle">${escapeHtml(d.modele || '-')}</td>
-                <td data-label="Taille">${escapeHtml(d.size || '-')}</td>
-                <td data-label="Type">${escapeHtml(d.disk_type || '-')}</td>
-                <td data-label="Interface">${escapeHtml(d.interface || '-')}</td>
-                <td data-label="Shred">${escapeHtml(d.shred || '-')}</td>
-                <td class="th-action" data-label="Action">${editBtn}<button type="button" class="btn btn-sm disques-remove" data-index="${i}" title="Retirer"><i class="fa-solid fa-trash-alt"></i></button></td>
-            `;
-            tbody.appendChild(tr);
-        });
-        if (emptyMsg) emptyMsg.style.display = this.sessionDisks.length ? 'none' : 'block';
-        if (saveBtn) saveBtn.disabled = this.sessionDisks.length === 0;
-    }
-
-    /**
-     * Ajoute un disque. disk peut être un objet complet ou (serial, interface, size) pour lsblk.
-     * Shred : Destruction physique si physicalDestruction, sinon calcul auto (SSD/HDD).
-     */
-    addDisk(diskOrSerial, interfaceOrUndef, sizeOrUndef, fromLsblk = false) {
-        let d;
-        if (diskOrSerial && typeof diskOrSerial === 'object') {
-            d = {
-                serial: (diskOrSerial.serial || '').trim(),
-                marque: (diskOrSerial.marque || '').trim() || '-',
-                modele: (diskOrSerial.modele || '').trim() || '-',
-                size: (diskOrSerial.size || '').trim() || '-',
-                disk_type: (diskOrSerial.disk_type || '').trim() || '-',
-                interface: (diskOrSerial.interface || '').trim() || '-',
-                shred: (diskOrSerial.shred || '').trim() || '',
-                autoDetected: !!diskOrSerial.autoDetected || !!fromLsblk
-            };
-            if (diskOrSerial.physicalDestruction === true) d.shred = 'Destruction physique';
-            else if (!d.shred) d.shred = getShredForDisk(d);
-        } else {
-            d = {
-                serial: (diskOrSerial || '').trim(),
-                marque: '-',
-                modele: '-',
-                size: (sizeOrUndef || '').trim() || '-',
-                disk_type: '-',
-                interface: (interfaceOrUndef || 'SATA').trim(),
-                shred: '',
-                autoDetected: false
-            };
-            d.shred = getShredForDisk(d);
-        }
-        if (!d.serial) {
-            window.app?.showNotification?.('Saisissez un numéro de série', 'warning');
-            return;
-        }
-        const serialNorm = (d.serial || '').trim().toUpperCase();
-        const alreadyScanned = this.sessionDisks.some(ex => (ex.serial || '').trim().toUpperCase() === serialNorm);
-        if (alreadyScanned) {
-            window.app?.showNotification?.('Déjà scanné', 'warning');
-            return;
-        }
-        this.sessionDisks.push(d);
-        this.renderSessionTable();
-        this.focusSerialInput();
-        window.app?.showNotification?.('Disque ajouté', 'success');
-    }
-
-    /**
-     * Met à jour les options du select Interface selon le Type (HDD / SSD).
-     * HDD → SATA, SAS ; SSD → M.2, NVMe, SATA.
-     */
-    updateInterfaceOptions(diskType) {
-        const sel = document.getElementById('disques-interface');
-        if (!sel) return;
-        const list = (diskType || '').toUpperCase() === 'HDD' ? INTERFACES_HDD
-            : (diskType || '').toUpperCase() === 'SSD' ? INTERFACES_SSD
-                : INTERFACES_ALL;
-        const current = sel.value;
-        sel.innerHTML = list.map(o => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</option>`).join('');
-        const hasCurrent = list.some(o => o.value === current);
-        sel.value = hasCurrent ? current : (list[0]?.value || 'SATA');
-    }
-
-    removeDisk(index) {
-        this.sessionDisks.splice(index, 1);
-        this.renderSessionTable();
-    }
-
     setupEventListeners() {
-        const serialInput = document.getElementById('disques-serial');
-        const sizeSelect = document.getElementById('disques-size');
-        const sizeCustom = document.getElementById('disques-size-custom');
-        const diskTypeSelect = document.getElementById('disques-disk-type');
-        const interfaceSelect = document.getElementById('disques-interface');
+        const table = document.getElementById('disques-session-table');
+        if (table) {
+            const onChange = e => this.handleTableChange(e);
+            table.addEventListener('change', onChange);
+            this.listeners.push({ element: table, event: 'change', handler: onChange });
+            const onClick = e => {
+                const btn = e.target.closest('.btn-delete-row');
+                if (!btn || !table.contains(btn)) return;
+                const idx = parseInt(btn.dataset.rowIndex, 10);
+                if (!Number.isNaN(idx)) this.removeDiskAt(idx);
+            };
+            table.addEventListener('click', onClick);
+            this.listeners.push({ element: table, event: 'click', handler: onClick });
+        }
 
-        this.updateInterfaceOptions(diskTypeSelect?.value);
-
-        const destructionPhysiqueCheck = document.getElementById('disques-destruction-physique');
-        const addFromForm = () => {
-            this.addDisk({
-                serial: serialInput?.value?.trim() || '',
-                marque: this.getMarqueFromForm() || '-',
-                modele: this.getModeleFromForm() || '-',
-                size: this.getEffectiveSize(),
-                disk_type: diskTypeSelect?.value || '',
-                interface: interfaceSelect?.value || 'SATA',
-                physicalDestruction: destructionPhysiqueCheck?.checked === true
+        const selAll = document.getElementById('disques-select-all');
+        if (selAll) {
+            this.addListener(selAll, 'change', () => {
+                document.querySelectorAll('#disques-session-tbody .js-disques-row-check').forEach(c => {
+                    c.checked = selAll.checked;
+                });
             });
-            if (serialInput) serialInput.value = '';
-            if (destructionPhysiqueCheck) destructionPhysiqueCheck.checked = false;
+        }
+
+        this._onSerialEnter = e => {
+            if (e.target.name !== 'disques_serial' || e.key !== 'Enter') return;
+            if (!e.target.closest('#disques-session-tbody')) return;
+            const sn = (e.target.value || '').trim();
+            if (!sn) return;
+            e.preventDefault();
+            e.stopPropagation();
+            this.syncAllFromDom();
+            const tbody = document.getElementById('disques-session-tbody');
+            const row = e.target.closest('tr');
+            const rows = [...tbody.querySelectorAll('tr')];
+            const idx = rows.indexOf(row);
+            const dup = this.sessionDisks.some((d, i) =>
+                i !== idx && (d.serial || '').trim().toUpperCase() === sn.toUpperCase()
+            );
+            if (dup) {
+                window.app?.showNotification?.('S/N déjà présent', 'warning');
+                return;
+            }
+            this.sessionDisks.splice(idx + 1, 0, emptyDisk());
+            this.renderSessionTable();
+            const newRows = [...tbody.querySelectorAll('tr')];
+            const focusEl = newRows[idx + 1]?.querySelector('input[name="disques_serial"]');
+            if (focusEl) {
+                focusEl.focus();
+                focusEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+            window.app?.showNotification?.('S/N enregistré, prêt pour le prochain scan', 'success');
         };
+        document.addEventListener('keydown', this._onSerialEnter);
 
-        const btnAdd = document.getElementById('disques-btn-add');
-        if (btnAdd) this.addListener(btnAdd, 'click', addFromForm);
+        this._onBarcodeKeydown = e => {
+            if (!document.getElementById('disques-session-tbody')) return;
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+            if (e.key === 'Enter' && this._barcodeBuf.length > 3) {
+                const code = this._barcodeBuf.trim();
+                this._barcodeBuf = '';
+                clearTimeout(this._barcodeTimer);
+                this.addDiskFromBarcode(code);
+                return;
+            }
+            if (e.key.length === 1) {
+                this._barcodeBuf += e.key;
+                clearTimeout(this._barcodeTimer);
+                this._barcodeTimer = setTimeout(() => {
+                    this._barcodeBuf = '';
+                }, 100);
+            }
+        };
+        document.addEventListener('keydown', this._onBarcodeKeydown);
 
-        if (sizeSelect) {
-            this.addListener(sizeSelect, 'change', () => {
-                const show = sizeSelect.value === 'autre';
-                if (sizeCustom) sizeCustom.style.display = show ? 'inline-block' : 'none';
-            });
-        }
-
-        if (diskTypeSelect) {
-            this.addListener(diskTypeSelect, 'change', () => this.updateInterfaceOptions(diskTypeSelect.value));
-        }
-
-        const marqueSelect = document.getElementById('disques-marque');
-        const marqueAutre = document.getElementById('disques-marque-autre');
-        const modeleSelect = document.getElementById('disques-modele');
-        const modeleAutre = document.getElementById('disques-modele-autre');
-        if (marqueSelect) {
-            this.addListener(marqueSelect, 'change', () => {
-                const isAutre = marqueSelect.value === VALUE_AUTRE;
-                if (marqueAutre) marqueAutre.style.display = isAutre ? 'inline-block' : 'none';
-                if (!isAutre) marqueAutre.value = '';
-                this.updateDisquesModeleSelect(marqueSelect.value === VALUE_AUTRE ? '' : marqueSelect.value, modeleSelect);
-                if (modeleAutre) modeleAutre.style.display = 'none';
-                modeleAutre.value = '';
-            });
-        }
-        if (modeleSelect) {
-            this.addListener(modeleSelect, 'change', () => {
-                const isAutre = modeleSelect.value === VALUE_AUTRE;
-                if (modeleAutre) modeleAutre.style.display = isAutre ? 'inline-block' : 'none';
-                if (!isAutre) modeleAutre.value = '';
-            });
-        }
+        const btnAddLine = document.getElementById('disques-btn-add-line');
+        if (btnAddLine) this.addListener(btnAddLine, 'click', () => this.addManualLine());
 
         const btnAddMarque = document.getElementById('disques-btn-add-marque');
         if (btnAddMarque) this.addListener(btnAddMarque, 'click', () => this.modalManager?.open?.('disques-modal-add-marque'));
         const btnAddModele = document.getElementById('disques-btn-add-modele');
-        if (btnAddModele) this.addListener(btnAddModele, 'click', () => {
-            const sel = document.getElementById('disques-select-marque-for-modele');
-            if (sel) {
-                sel.innerHTML = '<option value="">-- Sélectionner une marque --</option>' +
-                    this.marques.map(m => `<option value="${escapeHtml(String(m.id))}">${escapeHtml(m.name)}</option>`).join('');
-            }
-            this.modalManager?.open?.('disques-modal-add-modele');
-        });
+        if (btnAddModele) {
+            this.addListener(btnAddModele, 'click', () => {
+                const sel = document.getElementById('disques-select-marque-for-modele');
+                if (sel) {
+                    sel.innerHTML = '<option value="">-- Sélectionner une marque --</option>' +
+                        this.marques.map(m =>
+                            `<option value="${escapeHtml(String(m.id))}">${escapeHtml(m.name)}</option>`
+                        ).join('');
+                }
+                this.modalManager?.open?.('disques-modal-add-modele');
+            });
+        }
         const btnSubmitMarque = document.getElementById('disques-btn-submit-marque');
         if (btnSubmitMarque) this.addListener(btnSubmitMarque, 'click', () => this.submitNewMarque());
         const btnSubmitModele = document.getElementById('disques-btn-submit-modele');
@@ -408,198 +633,41 @@ export default class DisquesManager {
         if (btnLsblk) this.addListener(btnLsblk, 'click', () => this.runLsblk());
 
         const btnNewSession = document.getElementById('disques-btn-new-session');
-        if (btnNewSession) this.addListener(btnNewSession, 'click', () => {
-            this.sessionDisks = [];
-            this.renderSessionTable();
-            this.focusSerialInput();
-            window.app?.showNotification?.('Nouvelle session', 'info');
-        });
+        if (btnNewSession) {
+            this.addListener(btnNewSession, 'click', () => {
+                this.sessionDisks = [emptyDisk()];
+                this.renderSessionTable();
+                const sa = document.getElementById('disques-select-all');
+                if (sa) sa.checked = false;
+                this.focusSerialInput();
+                window.app?.showNotification?.('Nouvelle session', 'info');
+            });
+        }
 
         const btnSave = document.getElementById('disques-btn-save');
         if (btnSave) this.addListener(btnSave, 'click', () => this.saveSession());
 
         const lsblkAddSelected = document.getElementById('lsblk-btn-add-selected');
         if (lsblkAddSelected) this.addListener(lsblkAddSelected, 'click', () => this.addLsblkSelected());
-
-        const sessionTable = document.getElementById('disques-session-table');
-        if (sessionTable) {
-            const onTableClick = (e) => {
-                const removeBtn = e.target.closest('.disques-remove');
-                if (removeBtn && removeBtn.dataset.index != null) {
-                    this.removeDisk(parseInt(removeBtn.dataset.index, 10));
-                    return;
-                }
-                const editBtn = e.target.closest('.disques-edit');
-                if (editBtn && editBtn.dataset.index != null) {
-                    this.openEditDiskModal(parseInt(editBtn.dataset.index, 10));
-                }
-            };
-            sessionTable.addEventListener('click', onTableClick);
-            this.listeners.push({ element: sessionTable, event: 'click', handler: onTableClick });
-        }
-
-        const btnSaveEditDisk = document.getElementById('disques-edit-disk-save');
-        if (btnSaveEditDisk) this.addListener(btnSaveEditDisk, 'click', () => this.saveEditDisk());
-
-        const editSizeSelect = document.getElementById('disques-edit-size');
-        if (editSizeSelect) {
-            this.addListener(editSizeSelect, 'change', () => {
-                const custom = document.getElementById('disques-edit-size-custom');
-                if (custom) custom.style.display = editSizeSelect.value === 'autre' ? 'inline-block' : 'none';
-            });
-        }
-        const editDiskType = document.getElementById('disques-edit-disk-type');
-        if (editDiskType) {
-            this.addListener(editDiskType, 'change', () => this.updateEditInterfaceOptions(editDiskType.value));
-        }
-        const editMarqueSel = document.getElementById('disques-edit-marque');
-        const editMarqueAutre = document.getElementById('disques-edit-marque-autre');
-        const editModeleSel = document.getElementById('disques-edit-modele');
-        const editModeleAutre = document.getElementById('disques-edit-modele-autre');
-        if (editMarqueSel) {
-            this.addListener(editMarqueSel, 'change', () => {
-                const isAutre = editMarqueSel.value === VALUE_AUTRE;
-                if (editMarqueAutre) editMarqueAutre.style.display = isAutre ? 'inline-block' : 'none';
-                if (!isAutre) editMarqueAutre.value = '';
-                this.updateDisquesModeleSelect(editMarqueSel.value === VALUE_AUTRE ? '' : editMarqueSel.value, editModeleSel);
-                if (editModeleAutre) {
-                    editModeleAutre.style.display = 'none';
-                    editModeleAutre.value = '';
-                }
-            });
-        }
-        if (editModeleSel) {
-            this.addListener(editModeleSel, 'change', () => {
-                const isAutre = editModeleSel.value === VALUE_AUTRE;
-                if (editModeleAutre) editModeleAutre.style.display = isAutre ? 'inline-block' : 'none';
-                if (!isAutre) editModeleAutre.value = '';
-            });
-        }
     }
 
-    openEditDiskModal(index) {
-        const d = this.sessionDisks[index];
-        if (!d) return;
-        this._editingDiskIndex = index;
-        const modal = document.getElementById('modal-disques-edit-disk');
-        if (!modal) return;
-        document.getElementById('disques-edit-serial').value = d.serial || '';
-        const marqueVal = (d.marque || '').trim();
-        const modeleVal = (d.modele || '').trim();
-        const editMarqueSel = document.getElementById('disques-edit-marque');
-        const editMarqueAutre = document.getElementById('disques-edit-marque-autre');
-        const editModeleSel = document.getElementById('disques-edit-modele');
-        const editModeleAutre = document.getElementById('disques-edit-modele-autre');
-        if (editMarqueSel) {
-            const marqueMatch = this.marques.find(m => (m.name || '').trim() === marqueVal);
-            if (marqueMatch) {
-                editMarqueSel.value = String(marqueMatch.id);
-                if (editMarqueAutre) editMarqueAutre.style.display = 'none';
-                editMarqueAutre.value = '';
-                this.updateDisquesModeleSelect(marqueMatch.id, editModeleSel);
-                const modeleMatch = this.modeles.find(m => (m.name || '').trim() === modeleVal && m.marque_id == marqueMatch.id);
-                if (editModeleSel) {
-                    if (modeleMatch) {
-                        editModeleSel.value = String(modeleMatch.id);
-                        if (editModeleAutre) editModeleAutre.style.display = 'none';
-                        editModeleAutre.value = '';
-                    } else {
-                        editModeleSel.value = VALUE_AUTRE;
-                        if (editModeleAutre) {
-                            editModeleAutre.style.display = 'inline-block';
-                            editModeleAutre.value = modeleVal;
-                        }
-                    }
-                }
-            } else {
-                editMarqueSel.value = VALUE_AUTRE;
-                if (editMarqueAutre) {
-                    editMarqueAutre.style.display = 'inline-block';
-                    editMarqueAutre.value = marqueVal;
-                }
-                if (editModeleSel) {
-                    editModeleSel.innerHTML = '<option value="">-- Modèle --</option><option value="' + VALUE_AUTRE + '">Autre</option>';
-                    editModeleSel.value = VALUE_AUTRE;
-                    if (editModeleAutre) {
-                        editModeleAutre.style.display = 'inline-block';
-                        editModeleAutre.value = modeleVal;
-                    }
-                }
-            }
-        }
-        const sizeVal = (d.size || '').trim();
-        const sizeSelect = document.getElementById('disques-edit-size');
-        const sizeCustom = document.getElementById('disques-edit-size-custom');
-        if (sizeSelect) {
-            const hasOption = Array.from(sizeSelect.options).some(o => o.value === sizeVal);
-            sizeSelect.value = hasOption ? sizeVal : (sizeVal ? 'autre' : '');
-            if (sizeCustom) {
-                sizeCustom.style.display = sizeSelect.value === 'autre' ? 'inline-block' : 'none';
-                sizeCustom.value = sizeSelect.value === 'autre' ? sizeVal : '';
-            }
-        }
-        document.getElementById('disques-edit-disk-type').value = d.disk_type || '';
-        this.updateEditInterfaceOptions(d.disk_type);
-        document.getElementById('disques-edit-interface').value = d.interface || 'SATA';
-        const editDestructionCheck = document.getElementById('disques-edit-destruction-physique');
-        if (editDestructionCheck) editDestructionCheck.checked = (d.shred || '') === 'Destruction physique';
-        this.modalManager?.open?.('modal-disques-edit-disk');
-    }
-
-    updateEditInterfaceOptions(diskType) {
-        const sel = document.getElementById('disques-edit-interface');
-        if (!sel) return;
-        const list = (diskType || '').toUpperCase() === 'HDD' ? INTERFACES_HDD
-            : (diskType || '').toUpperCase() === 'SSD' ? INTERFACES_SSD
-                : INTERFACES_ALL;
-        const current = sel.value;
-        sel.innerHTML = list.map(o => `<option value="${escapeHtml(o.value)}">${escapeHtml(o.label)}</option>`).join('');
-        sel.value = list.some(o => o.value === current) ? current : (list[0]?.value || 'SATA');
-    }
-
-    saveEditDisk() {
-        if (this._editingDiskIndex == null) return;
-        const serial = (document.getElementById('disques-edit-serial')?.value || '').trim();
-        if (!serial) {
-            window.app?.showNotification?.('S/N obligatoire', 'warning');
+    addDiskFromBarcode(serial) {
+        if (!serial) return;
+        this.syncAllFromDom();
+        const norm = serial.toUpperCase();
+        if (this.sessionDisks.some(d => (d.serial || '').trim().toUpperCase() === norm)) {
+            window.app?.showNotification?.('S/N déjà scanné', 'warning');
             return;
         }
-        const sizeSelect = document.getElementById('disques-edit-size');
-        const sizeCustom = document.getElementById('disques-edit-size-custom');
-        const size = (sizeSelect?.value === 'autre' && sizeCustom?.value?.trim()) ? sizeCustom.value.trim() : (sizeSelect?.value || '');
-        const editDestructionCheck = document.getElementById('disques-edit-destruction-physique');
-        const editMarqueSel = document.getElementById('disques-edit-marque');
-        const editMarqueAutre = document.getElementById('disques-edit-marque-autre');
-        const editModeleSel = document.getElementById('disques-edit-modele');
-        const editModeleAutre = document.getElementById('disques-edit-modele-autre');
-        let marque = '-';
-        if (editMarqueSel?.value === VALUE_AUTRE && editMarqueAutre?.value?.trim()) marque = editMarqueAutre.value.trim();
-        else if (editMarqueSel?.value && editMarqueSel.value !== VALUE_AUTRE) {
-            const m = this.marques.find(x => String(x.id) === String(editMarqueSel.value));
-            marque = m ? m.name : '-';
-        }
-        let modele = '-';
-        if (editModeleSel?.value === VALUE_AUTRE && editModeleAutre?.value?.trim()) modele = editModeleAutre.value.trim();
-        else if (editModeleSel?.value && editModeleSel.value !== VALUE_AUTRE) {
-            const m = this.modeles.find(x => String(x.id) === String(editModeleSel.value));
-            modele = m ? m.name : '-';
-        }
-        const d = {
+        this.addDisk({
             serial,
-            marque,
-            modele,
-            size: size || '-',
-            disk_type: (document.getElementById('disques-edit-disk-type')?.value || '').trim() || '-',
-            interface: (document.getElementById('disques-edit-interface')?.value || 'SATA').trim(),
-            shred: editDestructionCheck?.checked ? 'Destruction physique' : '',
-            autoDetected: true
-        };
-        if (!d.shred) d.shred = getShredForDisk(d);
-        this.sessionDisks[this._editingDiskIndex] = d;
-        this._editingDiskIndex = null;
-        this.renderSessionTable();
-        this.modalManager?.close?.('modal-disques-edit-disk');
-        window.app?.showNotification?.('Ligne mise à jour', 'success');
+            marque: '-',
+            modele: '-',
+            size: '-',
+            disk_type: '',
+            interface: 'SATA',
+            autoDetected: false
+        });
     }
 
     async runLsblk() {
@@ -610,8 +678,7 @@ export default class DisquesManager {
         try {
             const result = await window.electron.invoke('run-lsblk', {});
             if (!result.success) {
-                const msg = result.error || 'Détection échouée';
-                window.app?.showNotification?.(msg, 'error');
+                window.app?.showNotification?.(result.error || 'Détection échouée', 'error');
                 return;
             }
             const disks = result.disks || [];
@@ -647,32 +714,53 @@ export default class DisquesManager {
     addLsblkSelected() {
         const listEl = document.getElementById('lsblk-disks-list');
         if (!listEl) return;
+        this.syncAllFromDom();
         const checked = listEl.querySelectorAll('.lsblk-disk-check:checked');
+        let added = 0;
         checked.forEach(cb => {
             const i = parseInt(cb.dataset.index, 10);
-            const d = this.lsblkPendingDisks[i];
-            if (d) this.addDisk({
-                serial: d.serial || d.name || '',
-                marque: (d.vendor || '').trim() || '-',
-                modele: (d.model || '').trim() || '-',
-                size: (d.size || '').trim() || '-',
-                disk_type: (d.disk_type || '').trim() || '-',
-                interface: (d.type || 'SATA').trim(),
+            const src = this.lsblkPendingDisks[i];
+            if (!src) return;
+            const serial = (src.serial || src.name || '').trim();
+            if (!serial) return;
+            const norm = serial.toUpperCase();
+            if (this.sessionDisks.some(ex => (ex.serial || '').trim().toUpperCase() === norm)) return;
+            const row = {
+                serial,
+                marque: (src.vendor || '').trim() || '-',
+                modele: (src.model || '').trim() || '-',
+                size: (src.size || '').trim() || '-',
+                disk_type: (src.disk_type || '').trim() || '-',
+                interface: (src.type || 'SATA').trim(),
+                shred: '',
                 autoDetected: true
-            }, undefined, undefined, true);
+            };
+            row.shred = getShredForDisk(row);
+            this.sessionDisks.push(row);
+            added += 1;
         });
         this.modalManager?.close?.('modal-lsblk-disks');
         this.lsblkPendingDisks = [];
+        if (added) {
+            this.renderSessionTable();
+            this.focusSerialInput();
+            window.app?.showNotification?.(`${added} disque(s) ajouté(s)`, 'success');
+        }
     }
 
     async saveSession() {
-        if (!this.sessionDisks.length) {
-            window.app?.showNotification?.('Aucun disque à enregistrer', 'warning');
+        this.syncAllFromDom();
+        const filled = this.sessionDisks.filter(d => (d.serial || '').trim());
+        if (!filled.length) {
+            window.app?.showNotification?.('Aucun disque à enregistrer (S/N requis)', 'warning');
             return;
         }
-        if (this._savingSession) {
+        const serials = filled.map(d => (d.serial || '').trim().toUpperCase());
+        if (new Set(serials).size !== serials.length) {
+            window.app?.showNotification?.('Des numéros de série sont en doublon', 'warning');
             return;
         }
+        if (this._savingSession) return;
         this._savingSession = true;
         const nameEl = document.getElementById('disques-session-name');
         const sessionName = (nameEl && nameEl.value) ? nameEl.value.trim() : '';
@@ -680,9 +768,9 @@ export default class DisquesManager {
         const btnSave = document.getElementById('disques-btn-save');
         if (btnSave) btnSave.disabled = true;
         try {
-            const disksPayload = this.sessionDisks.map(({ autoDetected, ...rest }) => rest);
+            const disksPayload = filled.map(({ autoDetected, ...rest }) => rest);
             const session = await createSession({ name: sessionName || undefined, date: dateStr, disks: disksPayload });
-            this.sessionDisks = [];
+            this.sessionDisks = [emptyDisk()];
             this.renderSessionTable();
             if (nameEl) nameEl.value = '';
             window.app?.showNotification?.('Session enregistrée en traçabilité', 'success');
@@ -732,14 +820,14 @@ export default class DisquesManager {
             window.app?.showNotification?.(err?.message || 'Erreur lors de l\'enregistrement', 'error');
         } finally {
             this._savingSession = false;
-            if (btnSave) btnSave.disabled = false;
+            this.updateSaveButtonState();
         }
     }
 }
 
 function escapeHtml(s) {
     const div = document.createElement('div');
-    div.textContent = s;
+    div.textContent = s == null ? '' : String(s);
     return div.innerHTML;
 }
 

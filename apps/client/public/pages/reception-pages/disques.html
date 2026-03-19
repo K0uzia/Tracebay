@@ -1,4 +1,4 @@
-<section class="recep-page lot-page disques-container">
+<section class="recep-page lot-page entrer-page">
     <div class="lot-page__body">
         <div class="lot-card lot-card--config">
             <div class="lot-card__inner">
@@ -8,135 +8,41 @@
                         <input class="lot-config__input" type="text" id="disques-session-name" name="session_name" placeholder="Ex: Session shred mars 2025" maxlength="255" autocomplete="off">
                     </div>
                     <div class="lot-config__actions">
-                        <button type="button" class="lot-btn lot-btn--secondary" id="disques-btn-add-marque" data-modal-open="disques-modal-add-marque" title="Ajouter une marque"><i class="fa-solid fa-plus"></i> Ajouter une marque</button>
-                        <button type="button" class="lot-btn lot-btn--secondary" id="disques-btn-add-modele" data-modal-open="disques-modal-add-modele" title="Ajouter un modèle"><i class="fa-solid fa-plus"></i> Ajouter un modèle</button>
+                        <button type="button" class="lot-btn lot-btn--secondary" id="disques-btn-add-marque" data-modal-open="disques-modal-add-marque" title="Ajouter une marque"><i class="fa-solid fa-plus"></i> marque</button>
+                        <button type="button" class="lot-btn lot-btn--secondary" id="disques-btn-add-modele" data-modal-open="disques-modal-add-modele" title="Ajouter un modèle"><i class="fa-solid fa-plus"></i> modèle</button>
+                        <button type="button" class="lot-btn lot-btn--secondary" id="disques-btn-add-line" title="Ajouter une ligne"><i class="fa-solid fa-plus"></i> ligne</button>
                         <button type="button" class="lot-btn lot-btn--secondary" id="disques-btn-lsblk" title="Détecter les disques (Linux)"><i class="fa-solid fa-memory"></i> Détection auto</button>
-                        <button type="button" class="lot-btn lot-btn--secondary" id="disques-btn-new-session" title="Nouvelle session"><i class="fa-solid fa-arrow-rotate-right"></i> Nouveau lot</button>
-                        <button type="button" class="lot-btn lot-btn--primary" id="disques-btn-save" disabled title="Enregistrer"><i class="fa-solid fa-save"></i> Enregistrer</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="lot-card lot-card--form">
-            <div class="lot-card__inner">
-                <div class="lot-config disques-form-section">
-                    <div class="lot-config__field">
-                        <label class="lot-config__label" for="disques-serial">S/N *</label>
-                        <input class="lot-config__input" type="text" id="disques-serial" name="serial" placeholder="Scan ou saisie" autocomplete="off" autofocus>
-                    </div>
-                    <div class="lot-config__field form-group-marque">
-                        <label class="lot-config__label" for="disques-marque">Marque</label>
-                        <div class="disques-marque-row">
-                            <select class="lot-config__input" id="disques-marque" name="marque"><option value="">Marque</option></select>
-                            <input type="text" id="disques-marque-autre" placeholder="Autre marque" class="lot-config__input disques-autre-input" style="display: none;" autocomplete="off">
-                        </div>
-                    </div>
-                    <div class="lot-config__field form-group-modele">
-                        <label class="lot-config__label" for="disques-modele">Modèle</label>
-                        <div class="disques-modele-row">
-                            <select class="lot-config__input" id="disques-modele" name="modele"><option value="">Modèle</option></select>
-                            <input type="text" id="disques-modele-autre" placeholder="Autre modèle" class="lot-config__input disques-autre-input" style="display: none;" autocomplete="off">
-                        </div>
-                    </div>
-                    <div class="lot-config__field form-group-taille">
-                        <label class="lot-config__label" for="disques-size">Taille</label>
-                        <div class="disques-size-row">
-                            <select class="lot-config__input" id="disques-size" name="size">
-                                <option value="">Choisir</option>
-                                <option value="250 Go">250 Go</option>
-                                <option value="500 Go">500 Go</option>
-                                <option value="1 To">1 To</option>
-                                <option value="2 To">2 To</option>
-                                <option value="4 To">4 To</option>
-                                <option value="8 To">8 To</option>
-                                <option value="autre">Autre</option>
-                            </select>
-                            <input type="text" id="disques-size-custom" name="size_custom" placeholder="Ex: 512 Go" class="lot-config__input disques-size-custom" style="display: none;" autocomplete="off">
-                        </div>
-                    </div>
-                    <div class="lot-config__field">
-                        <label class="lot-config__label" for="disques-disk-type">Type</label>
-                        <select class="lot-config__input" id="disques-disk-type" name="disk_type">
-                            <option value="">--</option>
-                            <option value="HDD">HDD</option>
-                            <option value="SSD">SSD</option>
-                        </select>
-                    </div>
-                    <div class="lot-config__field">
-                        <label class="lot-config__label" for="disques-interface">Interface</label>
-                        <select class="lot-config__input" id="disques-interface" name="interface">
-                            <option value="SATA">SATA</option>
-                            <option value="SAS">SAS</option>
-                            <option value="NVMe">NVMe</option>
-                            <option value="M.2">M.2</option>
-                        </select>
-                    </div>
-                    <div class="lot-config__field form-group-destruction-physique">
-                        <label class="disques-checkbox-label">
-                            <input type="checkbox" id="disques-destruction-physique" name="destruction_physique" title="Disque HS, destruction physique" class="lot-checkbox">
-                            Destruction physique <br> (disque HS)
-                        </label>
-                    </div>
-                    <div class="lot-config__actions">
-                        <button type="button" class="lot-btn lot-btn--secondary" id="disques-btn-add" title="Ajouter le disque"><i class="fa-solid fa-plus"></i> Ajouter</button>
+                        <button type="button" class="lot-btn lot-btn--secondary" id="disques-btn-new-session" title="Nouvelle session"><i class="fa-solid fa-arrow-rotate-right"></i>Nouveau lot</button>
+                        <button type="button" class="lot-btn lot-btn--primary" id="disques-btn-save" disabled title="Enregistrer"><i class="fa-solid fa-save"></i>Enregistrer</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="lot-card lot-card--table">
-            <div class="lot-card__inner lot-card__inner--scroll">
-                <div class="lot-table-wrap">
-                    <table class="lot-table" id="disques-session-table">
-                        <thead>
-                            <tr>
-                                <th class="lot-table__th--num"><i class="fa-solid fa-hashtag" aria-hidden="true"></i> </th>
-                                <th class="lot-table__th--sn"><i class="fa-solid fa-barcode" aria-hidden="true"></i> S/N</th>
-                                <th class="lot-table__th--marque"><i class="fa-solid fa-building" aria-hidden="true"></i> Marque</th>
-                                <th class="lot-table__th--modele"><i class="fa-solid fa-cube" aria-hidden="true"></i> Modèle</th>
-                                <th class="lot-table__th--size"><i class="fa-solid fa-database" aria-hidden="true"></i> Taille</th>
-                                <th class="lot-table__th--disk-type"><i class="fa-solid fa-hard-drive" aria-hidden="true"></i> Type</th>
-                                <th class="lot-table__th--interface"><i class="fa-solid fa-plug" aria-hidden="true"></i> Interface</th>
-                                <th class="lot-table__th--shred"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i> Shred</th>
-                                <th class="lot-table__th--action"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i></th>
-                            </tr>
-                        </thead>
-                        <tbody id="disques-session-tbody"></tbody>
-                    </table>
-                    <p id="disques-session-empty" class="disques-empty-msg" style="display: none;"><i class="fa-solid fa-hard-drive" aria-hidden="true"></i> Aucun disque dans la session. Scannez ou ajoutez manuellement.</p>
-                </div>
+            <div class="lot-table-wrap">
+                <table class="lot-table" id="disques-session-table">
+                    <thead>
+                        <tr>
+                            <th class="lot-table__th--select"><input type="checkbox" id="disques-select-all" title="Tout sélectionner" class="lot-checkbox"></th>
+                            <th class="lot-table__th--num"><i class="fa-solid fa-hashtag" aria-hidden="true"></i></th>
+                            <th class="lot-table__th--sn"><i class="fa-solid fa-barcode" aria-hidden="true"></i> S/N</th>
+                            <th class="lot-table__th--type"><i class="fa-solid fa-hard-drive" aria-hidden="true"></i> Type</th>
+                            <th class="lot-table__th--marque"><i class="fa-solid fa-building" aria-hidden="true"></i> Marque</th>
+                            <th class="lot-table__th--modele"><i class="fa-solid fa-cube" aria-hidden="true"></i> Modèle</th>
+                            <th class="lot-table__th--date"><i class="fa-solid fa-database" aria-hidden="true"></i> Taille</th>
+                            <th class="lot-table__th--entree"><i class="fa-solid fa-plug" aria-hidden="true"></i> Intf. / Shred</th>
+                            <th class="lot-table__th--action"><i class="fa-solid fa-trash" aria-hidden="true"></i> Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="disques-session-tbody"></tbody>
+                </table>
             </div>
         </div>
     </div>
 </section>
 
-<!-- Modales disques (éditer disque, lsblk, marque, modèle) - IDs conservés pour le JS -->
-<dialog class="universal-modal" id="modal-disques-edit-disk" data-modal-id="modal-disques-edit-disk">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2><i class="fa-solid fa-pencil"></i> Éditer le disque</h2>
-            <button type="button" class="modal-close-btn" data-modal-close="modal-disques-edit-disk" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
-        </div>
-        <div class="modal-body">
-            <p class="modal-help">Modifiez S/N, marque, modèle, taille, type et interface.</p>
-            <div class="disques-edit-form form-field">  
-                <div class="form-group"><label for="disques-edit-serial">S/N</label><input type="text" id="disques-edit-serial" placeholder="Numéro de série" class="recep-input"></div>
-                <div class="form-group"><label for="disques-edit-marque">Marque</label><div class="disques-marque-row"><select id="disques-edit-marque" class="recep-input"><option value="">Marque</option></select><input type="text" id="disques-edit-marque-autre" placeholder="Autre marque" class="recep-input disques-autre-input" style="display: none;" autocomplete="off"></div></div>
-                <div class="form-group"><label for="disques-edit-modele">Modèle</label><div class="disques-modele-row"><select id="disques-edit-modele" class="recep-input"><option value="">Modèle</option></select><input type="text" id="disques-edit-modele-autre" placeholder="Autre modèle" class="recep-input disques-autre-input" style="display: none;" autocomplete="off"></div></div>
-                <div class="form-group"><label for="disques-edit-size">Taille</label><div class="disques-size-row"><select id="disques-edit-size" class="recep-input"><option value="">Choisir</option><option value="250 Go">250 Go</option><option value="500 Go">500 Go</option><option value="1 To">1 To</option><option value="2 To">2 To</option><option value="4 To">4 To</option><option value="8 To">8 To</option><option value="autre">Autre</option></select><input type="text" id="disques-edit-size-custom" placeholder="Ex: 512 Go" class="recep-input disques-size-custom" style="display: none;"></div></div>
-                <div class="form-group"><label for="disques-edit-disk-type">Type</label><select id="disques-edit-disk-type" class="recep-input"><option value="">--</option><option value="HDD">HDD</option><option value="SSD">SSD</option></select></div>
-                <div class="form-group"><label for="disques-edit-interface">Interface</label><select id="disques-edit-interface" class="recep-input"><option value="SATA">SATA</option><option value="SAS">SAS</option><option value="NVMe">NVMe</option><option value="M.2">M.2</option></select></div>
-                <div class="form-group form-group-destruction-physique"><label class="disques-checkbox-label"><input type="checkbox" id="disques-edit-destruction-physique" name="destruction_physique" class="recep-checkbox" title="Disque HS"> Destruction physique (disque HS)</label></div>
-            </div>
-        </div>
-        <div class="modal-footer">
-            <button type="button" class="recep-btn recep-btn-secondary" data-modal-close="modal-disques-edit-disk">Annuler</button>
-            <button type="button" class="recep-btn recep-btn-primary" id="disques-edit-disk-save" title="Enregistrer"><i class="fa-solid fa-check" aria-hidden="true"></i> Enregistrer</button>
-        </div>
-    </div>
-</dialog>
-
+<!-- Modales disques (lsblk, marque, modèle) -->
 <dialog class="universal-modal" id="modal-lsblk-disks" data-modal-id="modal-lsblk-disks">
     <div class="modal-content">
         <div class="modal-header">
