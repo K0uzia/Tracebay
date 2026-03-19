@@ -388,7 +388,10 @@
 }
 
 @media (max-width: 768px) {
-    .disques-container .lot-table-wrap { overflow-x: visible; }
+    .disques-container .lot-table-wrap {
+        overflow-x: hidden;
+        scrollbar-width: none;
+    }
     .disques-container .lot-table { min-width: 0; }
     .disques-container .lot-table thead {
         position: absolute;
@@ -401,9 +404,10 @@
         white-space: nowrap;
         border: 0;
     }
+    /* Grille 6 cols : N°+S/N | Marque+Modèle+Taille | Type+Interface+Shred | Action */
     .disques-container .lot-table tbody tr {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(6, 1fr);
         gap: 0 var(--unit-3);
         margin-bottom: var(--unit-3);
         padding: var(--unit-3);
@@ -424,6 +428,7 @@
         gap: var(--unit-1);
         padding: var(--unit-2) 0;
         border-bottom: none;
+        min-width: 0;
     }
     .disques-container .lot-table tbody td:last-of-type { padding-bottom: 0; }
     .disques-container .lot-table tbody td::before {
@@ -436,14 +441,109 @@
         display: block;
         margin-bottom: 2px;
     }
-    .disques-container .lot-card--form .lot-config {
-        flex-direction: column;
-        align-items: stretch;
+    .disques-container .lot-table tbody td:nth-child(1),
+    .disques-container .lot-table tbody td:nth-child(2) {
+        grid-column: span 3;
+        flex-direction: row;
+        align-items: center;
+        gap: var(--unit-2);
     }
-    .disques-container .lot-card--form .lot-config__field { min-width: 0; }
-    .disques-container .disques-marque-row select,
-    .disques-container .disques-modele-row select,
-    .disques-container .disques-size-row select { min-width: 0; }
+    .disques-container .lot-table tbody td:nth-child(1)::before,
+    .disques-container .lot-table tbody td:nth-child(2)::before {
+        margin-bottom: 0;
+        flex-shrink: 0;
+    }
+    .disques-container .lot-table tbody td:nth-child(3),
+    .disques-container .lot-table tbody td:nth-child(4),
+    .disques-container .lot-table tbody td:nth-child(5) {
+        grid-column: span 2;
+    }
+    .disques-container .lot-table tbody td:nth-child(6),
+    .disques-container .lot-table tbody td:nth-child(7),
+    .disques-container .lot-table tbody td:nth-child(8) {
+        grid-column: span 2;
+    }
+    .disques-container .lot-table tbody td:nth-child(9) {
+        grid-column: span 6;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: var(--unit-2);
+    }
+    .disques-container .lot-table tbody td:nth-child(9)::before {
+        flex-basis: 100%;
+        margin-bottom: 2px;
+    }
+
+    /*
+     * Formulaire ajout disque : grille 6 cols
+     * L1 S/N pleine largeur | L2 Marque + Modèle + Taille | L3 Type + Interface + checkbox | L4 bouton Ajouter
+     */
+    .disques-container .lot-card--form .disques-form-section.lot-config {
+        display: grid;
+        grid-template-columns: repeat(6, 1fr);
+        gap: var(--unit-3) var(--unit-2);
+        align-items: end;
+    }
+    .disques-container .lot-card--form .disques-form-section > .lot-config__field:nth-child(1) {
+        grid-column: 1 / -1;
+    }
+    .disques-container .lot-card--form .disques-form-section > .lot-config__field:nth-child(2),
+    .disques-container .lot-card--form .disques-form-section > .lot-config__field:nth-child(3),
+    .disques-container .lot-card--form .disques-form-section > .lot-config__field:nth-child(4) {
+        grid-column: span 2;
+        min-width: 0;
+    }
+    .disques-container .lot-card--form .disques-form-section > .lot-config__field:nth-child(5),
+    .disques-container .lot-card--form .disques-form-section > .lot-config__field:nth-child(6),
+    .disques-container .lot-card--form .disques-form-section > .lot-config__field:nth-child(7) {
+        grid-column: span 2;
+        min-width: 0;
+    }
+    .disques-container .lot-card--form .disques-form-section > .lot-config__field:nth-child(7) {
+        align-self: center;
+    }
+    .disques-container .lot-card--form .disques-form-section > .lot-config__actions {
+        grid-column: 1 / -1;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        margin-top: var(--unit-1);
+    }
+    .disques-container .lot-card--form .disques-form-section .lot-config__field {
+        min-width: 0;
+    }
+    .disques-container .lot-card--form .disques-form-section .disques-marque-row,
+    .disques-container .lot-card--form .disques-form-section .disques-modele-row,
+    .disques-container .lot-card--form .disques-form-section .disques-size-row {
+        display: flex;
+        flex-direction: column;
+        gap: var(--unit-1);
+        min-width: 0;
+    }
+    .disques-container .lot-card--form .disques-form-section .disques-marque-row select,
+    .disques-container .lot-card--form .disques-form-section .disques-modele-row select,
+    .disques-container .lot-card--form .disques-form-section .disques-size-row select {
+        min-width: 0;
+        max-width: none;
+        width: 100%;
+    }
+    .disques-container .lot-card--form .disques-form-section .disques-autre-input,
+    .disques-container .lot-card--form .disques-form-section .disques-size-custom {
+        max-width: none;
+        width: 100%;
+    }
+    .disques-container .lot-card--form .disques-form-section .disques-checkbox-label {
+        display: flex;
+        align-items: flex-start;
+        gap: var(--unit-2);
+        font-size: 0.8125rem;
+        line-height: 1.35;
+        margin: 0;
+    }
+    .disques-container .lot-card--form .disques-form-section .disques-checkbox-label .lot-checkbox {
+        margin-top: 0.2em;
+        flex-shrink: 0;
+    }
 }
 
 @media (max-width: 480px) {

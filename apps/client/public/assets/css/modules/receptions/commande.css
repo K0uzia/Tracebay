@@ -321,15 +321,20 @@
 }
 
 @media (max-width: 768px) {
-    .commande-container .lot-table-wrap { overflow-x: visible; }
+    /* Comme entrer : évite le scroll horizontal fantôme et permet de défiler toutes les lignes au vertical */
+    .commande-container .lot-table-wrap {
+        overflow-x: hidden;
+        scrollbar-width: none;
+    }
     .commande-container .lot-table { min-width: 0; }
     .commande-container .lot-table thead {
         position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
         overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
     }
+    /* Grille 6 cols comme Entrer : N°+Produit | Qté+Prix+F.port | Liens pleine largeur | Action */
     .commande-container .lot-table tbody tr {
         display: grid;
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(6, 1fr);
         gap: 0 var(--unit-3);
         margin-bottom: var(--unit-3);
         padding: var(--unit-3);
@@ -350,6 +355,7 @@
         gap: var(--unit-1);
         padding: var(--unit-2) 0;
         border-bottom: none;
+        min-width: 0;
     }
     .commande-container .lot-table tbody td:last-of-type { padding-bottom: 0; }
     .commande-container .lot-table tbody td::before {
@@ -361,6 +367,39 @@
         color: var(--bleu2);
         display: block;
         margin-bottom: 2px;
+    }
+    .commande-container .lot-table tbody td:nth-child(1),
+    .commande-container .lot-table tbody td:nth-child(2) {
+        grid-column: span 3;
+        flex-direction: row;
+        align-items: center;
+        gap: var(--unit-2);
+    }
+    .commande-container .lot-table tbody td:nth-child(1)::before,
+    .commande-container .lot-table tbody td:nth-child(2)::before {
+        margin-bottom: 0;
+        flex-shrink: 0;
+    }
+    .commande-container .lot-table tbody td:nth-child(2) .commande-select-product {
+        flex: 1;
+        min-width: 0;
+    }
+    .commande-container .lot-table tbody td:nth-child(3),
+    .commande-container .lot-table tbody td:nth-child(4),
+    .commande-container .lot-table tbody td:nth-child(5) {
+        grid-column: span 2;
+    }
+    .commande-container .lot-table tbody td:nth-child(6) {
+        grid-column: span 6;
+    }
+    .commande-container .lot-table tbody td:nth-child(6) .commande-input-lien {
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+    .commande-container .lot-table tbody td:nth-child(7) {
+        grid-column: span 6;
+        align-items: center;
     }
 }
 
