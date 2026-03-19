@@ -5,7 +5,8 @@
 
 /* ---------- Conteneur page entrer uniquement (ne pas réutiliser pour disques/commande/dons) ---------- */
 .entrer-page {
-    max-width: 1200px;
+    width: 100%;
+    max-width: min(1200px, 100%);
     margin: 0 auto;
     padding: var(--unit-2);
     display: flex;
@@ -14,16 +15,20 @@
     min-width: 0;
     flex: 1;
     min-height: 0;
+    box-sizing: border-box;
 }
 
 .entrer-page .lot-page__body {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: stretch;
+    width: 100%;
+    max-width: 100%;
     gap: var(--unit-4);
     min-width: 0;
     flex: 1;
     min-height: 0;
+    box-sizing: border-box;
 }
 
 /* ---------- Cartes (fond blanc, ombre légère style 3.1.8) ---------- */
@@ -33,7 +38,9 @@
     box-shadow: var(--shadow-small);
     overflow: hidden;
     min-width: 0;
-    width: 85vw;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .entrer-page .lot-card__inner {

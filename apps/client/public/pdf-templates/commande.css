@@ -118,8 +118,14 @@ body {
 .pdf-table .col-num { min-width: 2.5em; }
 .pdf-table .col-produit { min-width: 120px; }
 .pdf-table .col-quantite { min-width: 4em; }
-.pdf-table .col-prix { min-width: 5em; }
+.pdf-table .col-prix { min-width: 5em; white-space: nowrap; }
+.pdf-table .col-frais-port { min-width: 4.5em; white-space: nowrap; }
 .pdf-table .col-liens { min-width: 80px; }
+.pdf-table .col-liens a {
+    color: #2D3073;
+    text-decoration: underline;
+    word-break: break-all;
+}
 
 @media print {
     body { padding: 0; }

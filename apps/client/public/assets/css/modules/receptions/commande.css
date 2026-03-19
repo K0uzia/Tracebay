@@ -5,7 +5,8 @@
 
 /* ---------- Conteneur page ---------- */
 .commande-container.lot-page {
-    max-width: 1200px;
+    width: 100%;
+    max-width: min(1200px, 100%);
     margin: 0 auto;
     padding: var(--unit-2);
     display: flex;
@@ -14,16 +15,21 @@
     min-width: 0;
     flex: 1;
     min-height: 0;
+    box-sizing: border-box;
 }
 
 .commande-container .lot-page__body {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    /* stretch : largeur = parent ; évite align-items:center + min-width tableau → débordement à droite */
+    align-items: stretch;
+    width: 100%;
+    max-width: 100%;
     gap: var(--unit-4);
     min-width: 0;
     flex: 1;
     min-height: 0;
+    box-sizing: border-box;
 }
 
 /* ---------- Cartes ---------- */
@@ -33,7 +39,9 @@
     box-shadow: var(--shadow-small);
     overflow: hidden;
     min-width: 0;
-    width: 85vw;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .commande-container .lot-card__inner {
@@ -169,7 +177,7 @@
 
 .commande-container .lot-table {
     width: 100%;
-    min-width: 720px;
+    min-width: 820px;
     border-collapse: collapse;
     font-size: 0.875rem;
     color: var(--text2);
@@ -212,6 +220,7 @@
 .commande-container .lot-table__th--produit { min-width: 140px; }
 .commande-container .lot-table__th--quantite { min-width: 80px; }
 .commande-container .lot-table__th--prix { min-width: 88px; }
+.commande-container .lot-table__th--frais-port { min-width: 100px; }
 .commande-container .lot-table__th--liens { min-width: 120px; }
 .commande-container .lot-table__th--action { width: 72px; text-align: center; }
 
@@ -244,7 +253,8 @@
 }
 
 .commande-container .lot-table .commande-input-quantite,
-.commande-container .lot-table .commande-input-prix {
+.commande-container .lot-table .commande-input-prix,
+.commande-container .lot-table .commande-input-frais-port {
     width: 100%;
     max-width: 90px;
     box-sizing: border-box;

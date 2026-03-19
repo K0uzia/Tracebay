@@ -17,6 +17,22 @@ function escapeHtml(s) {
     return div.innerHTML;
 }
 
+/** Évite les doublons dans les listes produit si l'API renvoie des entrées répétées. */
+function dedupeCommandeProducts(list) {
+    if (!Array.isArray(list) || list.length === 0) return [];
+    const seen = new Set();
+    const out = [];
+    for (const p of list) {
+        const id = p?.id != null ? String(p.id) : null;
+        const name = (p?.name || p?.title || '').trim();
+        const key = id != null && id !== '' ? `id:${id}` : `name:${name.toLowerCase()}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(p);
+    }
+    return out;
+}
+
 export default class CommandeManager {
     constructor(modalManager) {
         this.modalManager = modalManager;
@@ -55,7 +71,8 @@ export default class CommandeManager {
                 return;
             }
             const data = await res.json();
-            this.products = Array.isArray(data) ? data : (data.items || data.products || []);
+            const raw = Array.isArray(data) ? data : (data.items || data.products || []);
+            this.products = dedupeCommandeProducts(raw);
             this.refreshProductSelects();
         } catch (err) {
             logger.error('Erreur chargement produits commande:', err);
@@ -83,6 +100,7 @@ export default class CommandeManager {
             const select = row.querySelector('.commande-select-product');
             const quantityInput = row.querySelector('.commande-input-quantite');
             const priceInput = row.querySelector('.commande-input-prix');
+            const shippingInput = row.querySelector('.commande-input-frais-port');
             const linkInput = row.querySelector('.commande-input-lien');
             const productId = select?.value ?? '';
             const productName = select?.selectedOptions?.[0]?.textContent ?? this.products.find(p => String(p.id) === String(productId) || String(p.name) === productId)?.name ?? productId;
@@ -92,10 +110,50 @@ export default class CommandeManager {
                 produit: productName,
                 quantity: (quantityInput?.value ?? '').trim(),
                 price: (priceInput?.value ?? '').trim(),
+                shipping: (shippingInput?.value ?? '').trim(),
                 link: (linkInput?.value ?? '').trim()
             });
         });
         return lines;
+    }
+
+    /**
+     * Vide le nom de commande et le tableau (une seule ligne vide) après PDF enregistré.
+     */
+    resetFormAfterPdfSuccess() {
+        const nameInput = document.getElementById('commande-name');
+        if (nameInput) nameInput.value = '';
+
+        const tbody = document.getElementById('commande-tbody');
+        if (!tbody) return;
+
+        const rows = tbody.querySelectorAll('.commande-line');
+        for (let i = 1; i < rows.length; i++) {
+            rows[i].remove();
+        }
+
+        let row = tbody.querySelector('.commande-line');
+        if (!row) {
+            this.addTableLine();
+            row = tbody.querySelector('.commande-line');
+        }
+
+        if (row) {
+            const sel = row.querySelector('.commande-select-product');
+            const q = row.querySelector('.commande-input-quantite');
+            const p = row.querySelector('.commande-input-prix');
+            const f = row.querySelector('.commande-input-frais-port');
+            const l = row.querySelector('.commande-input-lien');
+            if (sel) sel.value = '';
+            if (q) q.value = '';
+            if (p) p.value = '';
+            if (f) f.value = '';
+            if (l) l.value = '';
+        }
+
+        this.refreshProductSelects();
+        this.updateLineNumbers();
+        this.updateRemoveButtonsState();
     }
 
     addTableLine() {
@@ -126,8 +184,11 @@ export default class CommandeManager {
             <td class="col-quantite" data-label="Quantité">
                 <input type="number" min="0" step="1" class="commande-input-quantite" data-line="${nextIndex}" placeholder="0" inputmode="numeric">
             </td>
-            <td class="col-prix" data-label="Prix">
+            <td class="col-prix" data-label="Prix (€)">
                 <input type="number" min="0" step="0.01" class="commande-input-prix" data-line="${nextIndex}" placeholder="0,00" inputmode="decimal">
+            </td>
+            <td class="col-frais-port" data-label="Frais de port (€)">
+                <input type="number" min="0" step="0.01" class="commande-input-frais-port" data-line="${nextIndex}" placeholder="0,00 (opt.)" inputmode="decimal">
             </td>
             <td class="col-liens" data-label="Liens">
                 <input type="text" class="commande-input-lien" data-line="${nextIndex}" placeholder="URL ou référence">
@@ -207,6 +268,7 @@ export default class CommandeManager {
             if (form) {
                 this.addListener(form, 'submit', (e) => {
                     e.preventDefault();
+                    e.stopImmediatePropagation();
                     this.submitAddProduct();
                 });
             }
@@ -304,6 +366,7 @@ export default class CommandeManager {
                 } catch (apiErr) {
                     logger.warn('Backend commandes.create non disponible:', apiErr);
                 }
+                this.resetFormAfterPdfSuccess();
             } else {
                 window.app?.showNotification?.(result?.error || 'Échec génération PDF', 'error');
             }

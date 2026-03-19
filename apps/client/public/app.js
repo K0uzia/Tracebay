@@ -1108,18 +1108,29 @@ class PageManager {
                     window.disquesManagerInitializing = false;
                 });
         } else if (pageName === 'commande') {
+            if (window.commandeManagerInitializing) {
+                logger.debug('⏳ CommandeManager déjà en cours d\'initialisation, skip');
+                return;
+            }
             if (window.commandeManager) {
                 window.commandeManager.destroy();
                 window.commandeManager = null;
             }
+            window.commandeManagerInitializing = true;
             import('./assets/js/modules/reception/commande.js')
                 .then(module => {
+                    if (window.commandeManager) {
+                        window.commandeManager.destroy();
+                        window.commandeManager = null;
+                    }
                     const CommandeManager = module.default;
                     window.commandeManager = new CommandeManager(window.modalManager);
+                    window.commandeManagerInitializing = false;
                     logger.debug('✅ CommandeManager initialisé depuis app.js');
                 })
                 .catch(error => {
                     logger.error('❌ Erreur import CommandeManager:', error);
+                    window.commandeManagerInitializing = false;
                 });
         } else if (pageName === 'dons') {
             if (window.donsManager) {

@@ -5,7 +5,8 @@
 
 /* ========== Layout page ========== */
 .recep-page {
-    max-width: 1280px;
+    width: 100%;
+    max-width: min(1280px, 100%);
     margin: 0 auto;
     padding: var(--unit-2);
     display: flex;
@@ -14,6 +15,7 @@
     min-width: 0;
     flex: 1;
     min-height: 0;
+    box-sizing: border-box;
 }
 
 .recep-card-body {

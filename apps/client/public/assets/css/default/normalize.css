@@ -39,8 +39,10 @@ main {
   display: flex;
   flex-direction: column;
   width: 100%;
+  min-width: 0; /* flex : peut rétrécir avec le viewport (évite débordement horizontal global) */
   overflow-y: auto;
   overflow-x: hidden;
+  box-sizing: border-box;
   }
 
 

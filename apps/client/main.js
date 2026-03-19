@@ -1302,6 +1302,94 @@ function escapeHtml(s) {
         .replace(/'/g, '&#39;');
 }
 
+/**
+ * Texte court affiché dans le PDF pour une colonne « liens » (le href reste l’URL complète).
+ * http(s) → hostname seul (sans www.) ; mailto/tel → extrait utile ; sinon troncature.
+ */
+function getPdfLinkDisplayLabel(original, href) {
+    const o = String(original).trim();
+    try {
+        const u = new URL(href);
+        if (u.protocol === 'http:' || u.protocol === 'https:') {
+            let host = u.hostname || '';
+            if (host.toLowerCase().startsWith('www.')) host = host.slice(4);
+            return host || o;
+        }
+        if (u.protocol === 'mailto:') {
+            const path = decodeURIComponent((u.pathname || '').replace(/^\/+/, ''));
+            if (path.includes('@')) {
+                const domain = path.split('@').pop().split('?')[0];
+                return domain || 'E-mail';
+            }
+            return 'E-mail';
+        }
+        if (u.protocol === 'tel:') {
+            const num = (u.pathname || '').replace(/\s/g, '');
+            return num.length > 28 ? `${num.slice(0, 25)}…` : num || 'Tél.';
+        }
+    } catch (_) {
+        /* href non standard */
+    }
+    if (o.length <= 48) return o;
+    return `${o.slice(0, 45)}…`;
+}
+
+/**
+ * Lien cliquable dans le PDF (annotations URI Chromium → lecteurs PDF).
+ * Toute saisie non vide devient un <a> ; schémas dangereux neutralisés.
+ * href : http(s), mailto, tel, ou préfixe https:// (y compris texte « approximatif »).
+ * Affichage : domaine seul pour les URLs longues (ex. alibaba.com au lieu de la query complète).
+ */
+function formatPdfClickableLink(raw) {
+    if (raw == null) return escapeHtml('-');
+    const s = String(raw).trim();
+    if (!s || s === '-') return escapeHtml('-');
+
+    const href = buildPdfSafeLinkHref(s);
+    const safeHref = escapeHtml(href);
+    const display = escapeHtml(getPdfLinkDisplayLabel(s, href));
+    return `<a href="${safeHref}" target="_blank" rel="noopener noreferrer">${display}</a>`;
+}
+
+/** Prix / montant pour PDF commande : nombre → format fr-FR avec €, sinon texte échappé. */
+function formatCommandePriceForPdf(raw) {
+    const s = String(raw ?? '').trim();
+    if (!s || s === '-') return '-';
+    const compact = s.replace(/\s/g, '');
+    const normalized = compact.includes(',') && !compact.includes('.')
+        ? compact.replace(',', '.')
+        : compact.replace(',', '');
+    const n = parseFloat(normalized);
+    if (Number.isFinite(n) && normalized !== '' && /^-?\d*\.?\d+$/.test(normalized)) {
+        const formatted = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(n);
+        return escapeHtml(formatted);
+    }
+    return escapeHtml(s);
+}
+
+function commandeLineHasShipping(line) {
+    const v = line?.shipping ?? line?.frais_port ?? line?.fraisPort;
+    return String(v ?? '').trim() !== '';
+}
+
+function buildPdfSafeLinkHref(s) {
+    const t = s.trim();
+    const lower = t.toLowerCase();
+    if (lower.startsWith('javascript:') || lower.startsWith('data:') || lower.startsWith('vbscript:')) {
+        return 'about:blank';
+    }
+    if (/^https?:\/\//i.test(t)) return t;
+    if (/^mailto:/i.test(t) || /^tel:/i.test(t)) return t;
+    if (/^www\./i.test(t)) return 'https://' + t;
+    if (/^\/\//.test(t)) return 'https:' + t;
+    // Sous-domaine.domaine ou domaine.tld[/...] sans espace
+    if (!/\s/.test(t) && /^[\w.-]+\.[a-z]{2,}([/:?#].*)?$/i.test(t)) {
+        return 'https://' + t;
+    }
+    // Fallback : tout est cliquable (URL souvent invalide mais annotation présente dans le PDF)
+    return 'https://' + t.replace(/\s/g, '%20');
+}
+
 /** Libellés français pour les types (code API -> affichage PDF) */
 const TYPE_LABELS = { portable: 'Portable', fixe: 'Fixe', ecran: 'Écran', autres: 'Autres' };
 function typeLabel(code) {
@@ -1847,7 +1935,7 @@ ipcMain.handle('generate-disques-pdf', async (_event, payload) => {
 
 /**
  * Générer le PDF d'une commande via le template HTML/CSS (commande.html + commande.css).
- * Placeholders : {{commande_name}}, {{date}}, {{rows}}
+ * Placeholders : {{commande_name}}, {{date}}, {{pdf_table_head}}, {{rows}}
  */
 async function generateCommandePdfFromHtmlTemplate(payload, fullPath) {
     const templateDir = path.join(__dirname, 'public', 'pdf-templates');
@@ -1864,19 +1952,34 @@ async function generateCommandePdfFromHtmlTemplate(payload, fullPath) {
     const dateStr = (date && /^\d{4}-\d{2}-\d{2}/.test(String(date).trim())) ? String(date).trim().slice(0, 10) : new Date().toISOString().slice(0, 10);
     const dateFormatted = formatDateForPdf(dateStr);
 
+    const showShippingCol = Array.isArray(lines) && lines.some(commandeLineHasShipping);
+    const pdfTableHead = [
+        '<th class="col-num">N°</th>',
+        '<th class="col-produit">Produit</th>',
+        '<th class="col-quantite">Quantité</th>',
+        '<th class="col-prix">Prix</th>',
+        ...(showShippingCol ? ['<th class="col-frais-port">Frais de port (€)</th>'] : []),
+        '<th class="col-liens">Liens</th>'
+    ].join('');
+
     const rows = lines
         .map((line) => {
             const num = line.num != null ? line.num : 0;
             const produit = escapeHtml((line.produit || '-').toString().trim());
             const quantity = escapeHtml((line.quantity || '-').toString().trim());
-            const price = escapeHtml((line.price || '-').toString().trim());
-            const link = escapeHtml((line.link || '-').toString().trim());
-            return `<tr><td class="col-num">${num}</td><td class="col-produit">${produit}</td><td class="col-quantite">${quantity}</td><td class="col-prix">${price}</td><td class="col-liens">${link}</td></tr>`;
+            const price = formatCommandePriceForPdf(line.price);
+            const shipRaw = (line.shipping ?? line.frais_port ?? line.fraisPort ?? '').toString().trim();
+            const shippingTd = showShippingCol
+                ? `<td class="col-frais-port">${shipRaw ? formatCommandePriceForPdf(shipRaw) : ''}</td>`
+                : '';
+            const linkCell = formatPdfClickableLink((line.link || '-').toString().trim());
+            return `<tr><td class="col-num">${num}</td><td class="col-produit">${produit}</td><td class="col-quantite">${quantity}</td><td class="col-prix">${price}</td>${shippingTd}<td class="col-liens">${linkCell}</td></tr>`;
         })
         .join('\n');
 
     html = html.replace(/\{\{\s*commande_name\s*\}\}/g, escapeHtml((commandeName || 'Commande').toString().trim()));
     html = html.replace(/\{\{\s*date\s*\}\}/g, escapeHtml(dateFormatted));
+    html = html.replace(/\{\{\s*pdf_table_head\s*\}\}/g, pdfTableHead);
     html = html.replace(/\{\{\s*rows\s*\}\}/g, rows);
 
     html = html.replace(
@@ -1912,17 +2015,30 @@ async function generateCommandePdfFromHtmlTemplate(payload, fullPath) {
         return null;
     }
 
+    // Pas d'offscreen : sinon Chromium omet souvent les annotations de lien dans le PDF.
     const win = new BrowserWindow({
         show: false,
-        webPreferences: { nodeIntegration: false, contextIsolation: true, offscreen: true }
+        webPreferences: { nodeIntegration: false, contextIsolation: true }
     });
     try {
         await win.loadFile(outputPath);
-        const pdfBuffer = await win.webContents.printToPDF({
-            printBackground: true,
-            pageSize: 'A4',
-            preferCSSPageSize: true
-        });
+        await win.webContents.executeJavaScript('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))');
+        let pdfBuffer;
+        try {
+            pdfBuffer = await win.webContents.printToPDF({
+                printBackground: true,
+                pageSize: 'A4',
+                preferCSSPageSize: true,
+                generateTaggedPDF: true
+            });
+        } catch (pdfErr) {
+            console.warn('⚠️ printToPDF (tagged) commande, nouvel essai sans generateTaggedPDF:', pdfErr?.message);
+            pdfBuffer = await win.webContents.printToPDF({
+                printBackground: true,
+                pageSize: 'A4',
+                preferCSSPageSize: true
+            });
+        }
         fs.writeFileSync(fullPath, pdfBuffer);
         return { success: true, pdf_path: path.resolve(fullPath) };
     } finally {
