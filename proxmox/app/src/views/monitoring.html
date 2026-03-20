@@ -159,7 +159,6 @@
         <div class="sub-tab" data-sub="disques">Lots disques</div>
         <div class="sub-tab" data-sub="marques">Marques & Modèles</div>
         <div class="sub-tab" data-sub="commandes">Commandes</div>
-        <div class="sub-tab" data-sub="entrees">Entrées</div>
       </div>
 
       <div class="sub-panel active" id="sub-lots">
@@ -240,28 +239,27 @@
       </div>
 
       <div class="sub-panel" id="sub-commandes">
-        <div class="card">
-          <div class="card-header">
-            <h2>Commandes en base</h2>
-            <button class="btn btn-secondary btn-sm" onclick="loadCommandes()"><i class="fa-solid fa-rotate-right"></i> Actualiser</button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="card">
+            <div class="card-header">
+              <h2>Commandes en base</h2>
+              <button class="btn btn-secondary btn-sm" onclick="loadCommandes()"><i class="fa-solid fa-rotate-right"></i> Actualiser</button>
+            </div>
+            <div class="table-wrap">
+              <table><thead><tr><th>#</th><th>Nom</th><th>Date</th><th>Lignes</th><th>PDF</th><th>Actions</th></tr></thead>
+              <tbody id="commandes-table"><tr class="empty-row"><td colspan="6">Chargement…</td></tbody></table>
+            </div>
           </div>
-          <div class="table-wrap">
-            <table><thead><tr><th>#</th><th>Nom</th><th>Date</th><th>Lignes</th><th>PDF</th><th>Actions</th></tr></thead>
-            <tbody id="commandes-table"><tr class="empty-row"><td colspan="6">Chargement…</td></tbody></table>
-          </div>
-        </div>
-      </div>
-
-      <div class="sub-panel" id="sub-entrees">
-        <div class="card">
-          <div class="card-header">
-            <h2>Entrées réception</h2>
-            <button class="btn btn-primary btn-sm" onclick="openEntreeModal()">+ Nouvelle entrée</button>
-            <button class="btn btn-secondary btn-sm" onclick="loadEntrees()"><i class="fa-solid fa-rotate-right"></i></button>
-          </div>
-          <div class="table-wrap">
-            <table><thead><tr><th>#</th><th>Date</th><th>Type</th><th>Lot / Session</th><th>Description</th><th>Créé le</th></tr></thead>
-            <tbody id="entrees-table"><tr class="empty-row"><td colspan="6">Chargement…</td></tbody></table>
+          <div class="card">
+            <div class="card-header">
+              <h2>Matériels commandables</h2>
+              <button class="btn btn-primary btn-sm" onclick="addCommandeProduct()">+ Ajouter</button>
+              <button class="btn btn-secondary btn-sm" onclick="loadCommandeProducts()"><i class="fa-solid fa-rotate-right"></i></button>
+            </div>
+            <div class="table-wrap">
+              <table><thead><tr><th>#</th><th>Nom</th><th>Actions</th></tr></thead>
+              <tbody id="commande-products-table"><tr class="empty-row"><td colspan="3">Chargement…</td></tr></tbody></table>
+            </div>
           </div>
         </div>
       </div>
@@ -789,43 +787,6 @@
   </div>
 </div>
 
-<!-- Entrée réception modal -->
-<div class="modal-overlay" id="entree-modal">
-  <div class="modal">
-    <div class="modal-header"><h3>Nouvelle entrée</h3><button class="modal-close" onclick="closeModal('entree-modal')">×</button></div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label class="form-label">Date</label>
-        <input type="date" id="entree-form-date" class="form-input">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Type</label>
-        <select id="entree-form-type" class="form-input">
-          <option value="manual">Manuelle</option>
-          <option value="lot">Lot</option>
-          <option value="disque">Disques</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label class="form-label">ID Lot (optionnel)</label>
-        <input type="number" id="entree-form-lot-id" class="form-input" placeholder="—">
-      </div>
-      <div class="form-group">
-        <label class="form-label">ID Session disques (optionnel)</label>
-        <input type="number" id="entree-form-disque-session-id" class="form-input" placeholder="—">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Description</label>
-        <textarea id="entree-form-description" class="form-input" rows="3" placeholder="Commentaire…"></textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" onclick="closeModal('entree-modal')">Annuler</button>
-      <button class="btn btn-primary" onclick="saveEntree()">Créer</button>
-    </div>
-  </div>
-</div>
-
 <!-- PDF preview modal (affiche le PDF ou "Fichier introuvable" + chemin) -->
 <div class="modal-overlay" id="pdf-preview-modal">
   <div class="modal" style="max-width:90vw;width:800px;max-height:90vh;display:flex;flex-direction:column">
@@ -984,8 +945,7 @@ document.querySelectorAll('.sub-tab').forEach(el => {
     parent.querySelectorAll('.sub-panel').forEach(p => p.classList.toggle('active', p.id === 'sub-' + sub));
     if (sub === 'marques') loadMarques();
     if (sub === 'disques') loadDisquesSessions();
-    if (sub === 'commandes') loadCommandes();
-    if (sub === 'entrees') loadEntrees();
+    if (sub === 'commandes') { loadCommandes(); loadCommandeProducts(); }
     if (sub === 'sc-cats') loadCategories();
     if (sub === 'sc-links') loadShortcutLinks();
   });
@@ -1287,6 +1247,7 @@ async function loadLots() {
       <td>${fmtDate(l.received_at)}</td>
       <td>${pdfCell}</td>
       <td><div class="actions-cell">
+        <button class="btn btn-secondary btn-sm btn-icon" title="Ouvrir emplacement PDF" onclick="openLotPdfLocation(${l.id}, '${(l.pdf_path||'').replace(/\\/g,'\\\\').replace(/'/g, "\\'")}')"><i class="fa-solid fa-folder-open"></i></button>
         <button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="openLotModal(${l.id})"><i class="fa-solid fa-pen"></i></button>
         <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteLot(${l.id})"><i class="fa-solid fa-trash"></i></button>
       </div></td>
@@ -1398,53 +1359,61 @@ async function openCommandeDetail(id) {
   openModal('commande-detail-modal');
 }
 
-// ── Entrées réception (admin) ───────────────────────────────────────────────
-async function loadEntrees() {
-  const tbody = document.getElementById('entrees-table');
+async function loadCommandeProducts() {
+  const tbody = document.getElementById('commande-products-table');
   if (!tbody) return;
   try {
-    const data = await api('GET', '/api/admin/entrees?limit=200');
-    const list = (data.data || []).slice();
-    if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucune entrée</td></tr>'; return; }
-    tbody.innerHTML = list.map(e => {
-      const ref = [e.lot_name, e.disque_session_name].filter(Boolean).join(' / ') || '—';
-      return `<tr>
-        <td>${e.id}</td>
-        <td>${fmtDate(e.date)}</td>
-        <td>${escHtml(e.type || '—')}</td>
-        <td>${escHtml(ref)}</td>
-        <td class="table-cell-ellipsis" title="${escHtml(e.description || '')}">${escHtml((e.description || '—').slice(0, 60))}${(e.description||'').length > 60 ? '…' : ''}</td>
-        <td>${fmtDate(e.created_at)}</td>
-      </tr>`;
-    }).join('');
-  } catch (err) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Erreur de chargement</td></tr>';
+    const data = await api('GET', '/api/commandes/products');
+    const items = data.items || [];
+    if (!items.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucun matériel</td></tr>'; return; }
+    tbody.innerHTML = items.map(p => `<tr>
+      <td>${p.id}</td>
+      <td>${escHtml(p.name || '—')}</td>
+      <td><div class="actions-cell">
+        <button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="editCommandeProduct(${p.id}, '${(p.name||'').replace(/\\/g,'\\\\').replace(/'/g, "\\'")}')"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteCommandeProduct(${p.id})"><i class="fa-solid fa-trash"></i></button>
+      </div></td>
+    </tr>`).join('');
+  } catch {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Erreur de chargement</td></tr>';
   }
 }
 
-function openEntreeModal() {
-  document.getElementById('entree-form-date').value = new Date().toISOString().slice(0, 10);
-  document.getElementById('entree-form-type').value = 'manual';
-  document.getElementById('entree-form-lot-id').value = '';
-  document.getElementById('entree-form-disque-session-id').value = '';
-  document.getElementById('entree-form-description').value = '';
-  openModal('entree-modal');
+async function addCommandeProduct() {
+  const name = prompt('Nom du matériel à ajouter :');
+  if (name == null) return;
+  const trimmed = String(name).trim();
+  if (!trimmed) { toast('Nom requis', 'error'); return; }
+  const data = await api('POST', '/api/commandes/products', { name: trimmed });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Matériel ajouté');
+  loadCommandeProducts();
 }
 
-async function saveEntree() {
-  const date = document.getElementById('entree-form-date').value;
-  const type = document.getElementById('entree-form-type').value || 'manual';
-  const lotId = document.getElementById('entree-form-lot-id').value.trim();
-  const disqueSessionId = document.getElementById('entree-form-disque-session-id').value.trim();
-  const description = document.getElementById('entree-form-description').value.trim() || null;
-  const body = { date, type, description };
-  if (lotId) body.lot_id = parseInt(lotId, 10);
-  if (disqueSessionId) body.disque_session_id = parseInt(disqueSessionId, 10);
-  const data = await api('POST', '/api/admin/entrees', body);
+async function editCommandeProduct(id, currentName) {
+  const name = prompt('Nouveau nom du matériel :', currentName || '');
+  if (name == null) return;
+  const trimmed = String(name).trim();
+  if (!trimmed) { toast('Nom requis', 'error'); return; }
+  const data = await api('PUT', '/api/commandes/products/' + id, { name: trimmed });
   if (data.error) { toast(data.error, 'error'); return; }
-  toast('Entrée créée');
-  closeModal('entree-modal');
-  loadEntrees();
+  toast('Matériel mis à jour');
+  loadCommandeProducts();
+}
+
+async function deleteCommandeProduct(id) {
+  if (!confirm('Supprimer ce matériel ?')) return;
+  const data = await api('DELETE', '/api/commandes/products/' + id);
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Matériel supprimé');
+  loadCommandeProducts();
+}
+
+async function openLotPdfLocation(lotId, pdfPath) {
+  if (!pdfPath) { toast('Aucun PDF pour ce lot', 'error'); return; }
+  const data = await api('POST', '/api/admin/open-path', { path: pdfPath });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Emplacement ouvert');
 }
 
 // ── Lots disques (admin) ───────────────────────────────────────────────────

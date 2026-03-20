@@ -17,6 +17,14 @@ const CONTAINER_DB_NAME = process.env.CONTAINER_DB_NAME || '';
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'SECRET_RETIRE';
 const JWT_SECRET = process.env.JWT_SECRET || 'SECRET_RETIRE';
+const TEAM_BASE_PATH = process.env.TEAM_BASE_PATH || '/mnt/team/#TEAM';
+
+function isAllowedLocalPath(targetPath: string): boolean {
+  if (!targetPath) return false;
+  const normalized = path.resolve(targetPath);
+  const allowedBase = path.resolve(TEAM_BASE_PATH);
+  return normalized === allowedBase || normalized.startsWith(allowedBase + path.sep);
+}
 
 // ─────────────────────────────────────────────
 // JWT admin (HMAC-SHA256, payload base64)
@@ -627,6 +635,36 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       fastify.log.error({ err }, 'admin DELETE /lots/:id');
       reply.statusCode = 500;
       return { error: 'Database error' };
+    }
+  });
+
+  fastify.post('/api/admin/open-path', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const body = request.body as { path?: string };
+    const rawPath = (body?.path || '').toString().trim();
+    if (!rawPath) {
+      reply.statusCode = 400;
+      return { error: 'Chemin requis' };
+    }
+    const resolved = path.resolve(rawPath);
+    if (!isAllowedLocalPath(resolved)) {
+      reply.statusCode = 403;
+      return { error: 'Chemin non autorisé' };
+    }
+    const statPath = fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()
+      ? resolved
+      : path.dirname(resolved);
+    if (!fs.existsSync(statPath)) {
+      reply.statusCode = 404;
+      return { error: 'Chemin introuvable' };
+    }
+    try {
+      child_process.spawn('xdg-open', [statPath], { detached: true, stdio: 'ignore' }).unref();
+      return { success: true, openedPath: statPath };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'POST /api/admin/open-path');
+      reply.statusCode = 500;
+      return { error: 'Impossible d’ouvrir le chemin' };
     }
   });
 

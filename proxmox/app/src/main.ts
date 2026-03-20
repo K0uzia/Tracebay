@@ -385,6 +385,11 @@ function broadcastUserCount() {
       }
     };
 
+    const sendAuthRequired = (reply: FastifyReply) => {
+      reply.statusCode = 401;
+      return { error: 'Token manquant ou invalide', code: 'AUTH_REQUIRED', message: 'Authentification requise' };
+    };
+
     fastify.post('/api/auth/register', async (request: FastifyRequest, reply: FastifyReply) => {
       const { username, password } = request.body as { username: string; password: string };
 
@@ -2086,6 +2091,11 @@ function broadcastUserCount() {
               let tokenUsername: string | null = null;
               const raw = (message.token || message.data?.token || '').toString().replace(/^Bearer\s+/i, '').trim();
               fastify.log.info({ hasToken: raw.length > 0 }, '[WS] auth message received');
+              if (!raw) {
+                const r = getRawSocket(socket);
+                if (r) r.send(JSON.stringify({ type: 'auth_required', message: 'Token requis' }));
+                break;
+              }
               try {
                 const jwtSecret = process.env.JWT_SECRET || 'changeme';
                 const decoded = jwt.verify(raw, jwtSecret) as { username?: string };
@@ -2239,8 +2249,7 @@ function broadcastUserCount() {
     fastify.get('/api/shortcuts', async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = getAuthUserId(request);
       if (userId === null) {
-        reply.statusCode = 401;
-        return { error: 'Token manquant ou invalide' };
+        return sendAuthRequired(reply);
       }
       try {
         const result = await query(
@@ -2250,8 +2259,7 @@ function broadcastUserCount() {
            ORDER BY category_id ASC NULLS FIRST, order_index ASC`,
           [userId]
         );
-        const rows = (result.rows as any[]).map((r: any) => ({ ...r, type: r.type ?? null, path: r.path ?? null }));
-        return { success: true, shortcuts: rows };
+        return { success: true, shortcuts: result.rows };
       } catch (error) {
         console.error('Error fetching shortcuts:', error);
         reply.statusCode = 500;
@@ -2262,10 +2270,9 @@ function broadcastUserCount() {
     fastify.post('/api/shortcuts', async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = getAuthUserId(request);
       if (userId === null) {
-        reply.statusCode = 401;
-        return { error: 'Token manquant ou invalide' };
+        return sendAuthRequired(reply);
       }
-      const { title, description, url, category_id, categoryId, type, path } = request.body as any;
+      const { title, description, url, category_id, categoryId } = request.body as any;
       const finalCategoryId = category_id || categoryId;
 
       if (!title || !title.trim() || !url || !url.trim()) {
@@ -2286,10 +2293,10 @@ function broadcastUserCount() {
         }
 
         const result = await query(
-          `INSERT INTO shortcuts (user_id, name, description, url, category_id, order_index, type, path)
-           VALUES ($1, $2, $3, $4, $5, (SELECT COALESCE(MAX(order_index) + 1, 0) FROM shortcuts WHERE user_id = $1 AND (category_id = $5 OR (category_id IS NULL AND $5 IS NULL))), $6, $7)
-           RETURNING id, name AS title, description, url, category_id, order_index, created_at, type, path`,
-          [userId, title.trim(), description || null, url.trim(), finalCategoryId || null, type && String(type).trim() || null, path && String(path).trim() || null]
+          `INSERT INTO shortcuts (user_id, name, description, url, category_id, order_index)
+           VALUES ($1, $2, $3, $4, $5, (SELECT COALESCE(MAX(order_index) + 1, 0) FROM shortcuts WHERE user_id = $1 AND (category_id = $5 OR (category_id IS NULL AND $5 IS NULL))))
+           RETURNING id, name AS title, description, url, category_id, order_index, created_at`,
+          [userId, title.trim(), description || null, url.trim(), finalCategoryId || null]
         );
         return { success: true, shortcut: result.rows[0] };
       } catch (error: any) {
@@ -2302,11 +2309,10 @@ function broadcastUserCount() {
     fastify.put('/api/shortcuts/:id', async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = getAuthUserId(request);
       if (userId === null) {
-        reply.statusCode = 401;
-        return { error: 'Token manquant ou invalide' };
+        return sendAuthRequired(reply);
       }
       const { id } = request.params as { id: string };
-      const { title, description, url, category_id, categoryId, type, path } = request.body as any;
+      const { title, description, url, category_id, categoryId } = request.body as any;
       const finalCategoryId = category_id ?? categoryId;
 
       try {
@@ -2336,8 +2342,6 @@ function broadcastUserCount() {
         if (description !== undefined) { updates.push(`description = $${paramIndex++}`); values.push(description != null ? String(description).trim() : null); }
         if (url !== undefined) { updates.push(`url = $${paramIndex++}`); values.push(url != null ? String(url).trim() : null); }
         if (finalCategoryId !== undefined) { updates.push(`category_id = $${paramIndex++}`); values.push(finalCategoryId || null); }
-        if (type !== undefined) { updates.push(`type = $${paramIndex++}`); values.push(type != null ? String(type).trim() : null); }
-        if (path !== undefined) { updates.push(`path = $${paramIndex++}`); values.push(path != null ? String(path).trim() : null); }
         if (updates.length === 0) {
           reply.statusCode = 400;
           return { error: 'No fields to update' };
@@ -2347,7 +2351,7 @@ function broadcastUserCount() {
         const whereIdParam = values.length - 1;
         const whereUserIdParam = values.length;
         const result = await query(
-          `UPDATE shortcuts SET ${updates.join(', ')} WHERE id = $${whereIdParam} AND user_id = $${whereUserIdParam} RETURNING id, name AS title, description, url, category_id, order_index, created_at, type, path`,
+          `UPDATE shortcuts SET ${updates.join(', ')} WHERE id = $${whereIdParam} AND user_id = $${whereUserIdParam} RETURNING id, name AS title, description, url, category_id, order_index, created_at`,
           values
         );
         if (result.rowCount === 0) {
@@ -2365,8 +2369,7 @@ function broadcastUserCount() {
     fastify.delete('/api/shortcuts/:id', async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = getAuthUserId(request);
       if (userId === null) {
-        reply.statusCode = 401;
-        return { error: 'Token manquant ou invalide' };
+        return sendAuthRequired(reply);
       }
       const { id } = request.params as { id: string };
       try {
@@ -2395,6 +2398,50 @@ function broadcastUserCount() {
         return { success: true, items: result.rows };
       } catch (error) {
         console.error('Error fetching commande products:', error);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.get('/api/commandes/categories', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) return sendAuthRequired(reply);
+      try {
+        const result = await query(
+          'SELECT id, name FROM commande_categories ORDER BY name'
+        );
+        return { success: true, items: result.rows };
+      } catch (error: any) {
+        if (error?.code === '42P01') return { success: true, items: [] };
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.get('/api/commandes/tracabilite', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) return sendAuthRequired(reply);
+      try {
+        const result = await query(
+          'SELECT id, name, date, pdf_path, created_at FROM commandes ORDER BY date DESC, created_at DESC'
+        );
+        return { success: true, data: result.rows };
+      } catch (error) {
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.get('/api/dons/tracabilite', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) return sendAuthRequired(reply);
+      try {
+        const result = await query(
+          'SELECT id, donor_name, recipient_name, date, material_type, pdf_path, created_at FROM dons ORDER BY date DESC, created_at DESC'
+        );
+        return { success: true, data: result.rows };
+      } catch (error: any) {
+        if (error?.code === '42P01') return { success: true, data: [] };
         reply.statusCode = 500;
         return { error: 'Database error' };
       }
@@ -2463,8 +2510,7 @@ function broadcastUserCount() {
     fastify.get('/api/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = getAuthUserId(request);
       if (userId === null) {
-        reply.statusCode = 401;
-        return { error: 'Token manquant ou invalide' };
+        return sendAuthRequired(reply);
       }
       try {
         const { limit = '100', offset = '0', type } = request.query as { limit?: string; offset?: string; type?: string };
@@ -2495,8 +2541,7 @@ function broadcastUserCount() {
     fastify.post('/api/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = getAuthUserId(request);
       if (userId === null) {
-        reply.statusCode = 401;
-        return { error: 'Token manquant ou invalide' };
+        return sendAuthRequired(reply);
       }
       const body = request.body as { date?: string; type?: string; lot_id?: number; disque_session_id?: number; description?: string };
       const date = body.date || new Date().toISOString().slice(0, 10);
