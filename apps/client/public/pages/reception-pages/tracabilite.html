@@ -1,30 +1,35 @@
-<section class="recep-page tracabilite-container">
-    <div class="recep-card-body">
-        <p class="recep-card-desc"><i class="recep-desc-icon fa-solid fa-info-circle" aria-hidden="true"></i> Liste complète des lots avec accès aux documents.</p>
-        <div class="recep-panel">
-            <div class="recep-toolbar tracabilite-filters">
-                <div class="recep-filter-group filter-group">
-                    <label class="recep-label" for="filter-tracabilite-year"><i class="fa-solid fa-calendar" aria-hidden="true"></i> Année</label>
-                    <select class="recep-input" id="filter-tracabilite-year"></select>
-                </div>
-                <div class="recep-filter-group filter-group">
-                    <label class="recep-label" for="filter-tracabilite-type"><i class="fa-solid fa-filter" aria-hidden="true"></i> Type</label>
-                    <select class="recep-input" id="filter-tracabilite-type">
-                        <option value="tous">Tous</option>
-                        <option value="lots">Lot</option>
-                        <option value="disques">Disque</option>
-                        <option value="commandes">Commande</option>
-                        <option value="dons">Don</option>
-                    </select>
-                </div>
-                <div class="recep-toolbar-actions">
-                    <button type="button" class="recep-btn reception-btn-refresh" id="btn-refresh-tracabilite" title="Recharger">
-                        <i class="fa-solid fa-sync" aria-hidden="true"></i> Rafraîchir
-                    </button>
+<section class="recep-page lot-page tracabilite-container">
+    <div class="lot-page__body">
+        <div class="lot-card lot-card--config">
+            <div class="lot-card__inner">
+                <div class="lot-config tracabilite-filters">
+                    <div class="lot-config__field">
+                        <label class="lot-config__label" for="filter-tracabilite-year"><i class="fa-solid fa-calendar" aria-hidden="true"></i> Année</label>
+                        <select class="lot-config__input" id="filter-tracabilite-year"></select>
+                    </div>
+                    <div class="lot-config__field">
+                        <label class="lot-config__label" for="filter-tracabilite-type"><i class="fa-solid fa-filter" aria-hidden="true"></i> Type</label>
+                        <select class="lot-config__input" id="filter-tracabilite-type">
+                            <option value="tous">Tous</option>
+                            <option value="lots">Lot</option>
+                            <option value="disques">Disque</option>
+                            <option value="commandes">Commande</option>
+                            <option value="dons">Don</option>
+                        </select>
+                    </div>
+                    <div class="lot-config__actions">
+                        <button type="button" class="lot-btn lot-btn--secondary" id="btn-refresh-tracabilite" title="Recharger">
+                            <i class="fa-solid fa-sync" aria-hidden="true"></i> Rafraîchir
+                        </button>
+                    </div>
                 </div>
             </div>
-            <div class="recep-panel-body tracabilite-content-wrapper">
-                <div id="tracabilite-grouped" class="tracabilite-grouped"></div>
+        </div>
+        <div class="lot-card lot-card--table">
+            <div class="lot-card__inner">
+                <div class="tracabilite-content-wrapper">
+                    <div id="tracabilite-grouped" class="tracabilite-grouped"></div>
+                </div>
             </div>
         </div>
     </div>

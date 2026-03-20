@@ -526,6 +526,7 @@ export default class TracabiliteManager {
         const pdfPath = lot.pdf_path || lot.pdf_url || lot.pdfPath || lot.path || lot.document_path || '';
         const isGenerating = this._generatingPdfLotId === String(lot.id);
         const dateForFile = lot.finished_at ? this.formatDateForFilename(lot.finished_at) : this.formatDateForFilename(new Date().toISOString());
+        const lotDisplayName = (lot.lot_name || lot.name || '').trim();
         const sanitizedName = (lot.lot_name || lot.name || '').replace(/[\s]+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim() || `Lot_${lot.id}`;
         const downloadFileName = `${sanitizedName}_${dateForFile}.pdf`;
 
@@ -533,8 +534,7 @@ export default class TracabiliteManager {
             <div class="lot-card" data-lot-id="${lot.id}">
                 <div class="lot-card-header">
                     <div class="lot-card-title">
-                        <h4><i class="fa-solid fa-desktop" aria-hidden="true"></i> Lot #${lot.id}</h4>
-                        ${lot.lot_name ? `<span class="lot-name">${lot.lot_name}</span>` : ''}
+                        <h4><i class="fa-solid fa-desktop" aria-hidden="true"></i> ${this.escapeHtml(lotDisplayName || `Lot #${lot.id}`)}</h4>
                     </div>
                     <div class="lot-card-date">
                         <span class="date-label">Terminé le</span>
@@ -552,15 +552,15 @@ export default class TracabiliteManager {
                         <span class="stat-value">${total}</span>
                     </div>
                     <div class="stat">
-                        <span class="stat-label">Reconditionnés</span>
+                        <span class="stat-label"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> Reconditionnés</span>
                         <span class="stat-value">${recond}</span>
                     </div>
                     <div class="stat">
-                        <span class="stat-label">Pour pièces</span>
+                        <span class="stat-label"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Pour pièces</span>
                         <span class="stat-value">${pieces}</span>
                     </div>
                     <div class="stat">
-                        <span class="stat-label">HS</span>
+                        <span class="stat-label"><i class="fa-solid fa-circle-xmark" aria-hidden="true"></i> HS</span>
                         <span class="stat-value">${hs}</span>
                     </div>
                 </div>

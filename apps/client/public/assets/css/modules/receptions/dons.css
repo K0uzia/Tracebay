@@ -119,47 +119,6 @@
 }
 
 /* ---------- Boutons ---------- */
-.dons-container .lot-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--unit-1);
-    max-width: 155px;
-    min-height: 40px;
-    padding: var(--unit-1) var(--unit-2);
-    border-radius: var(--radius-medium);
-    font-weight: 500;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: var(--transition);
-    border: none;
-    white-space: nowrap;
-}
-
-.dons-container .lot-btn--primary {
-    background-color: var(--valid);
-    color: var(--blanc);
-    box-shadow: var(--shadow-small);
-}
-
-.dons-container .lot-btn--primary:hover {
-    filter: brightness(1.08);
-    box-shadow: 0 4px 8px rgba(0, 128, 0, 0.25);
-    color: var(--blanc);
-}
-
-.dons-container .lot-btn--secondary {
-    background: #fff;
-    color: var(--bleu2);
-    border: 1px solid rgba(62, 59, 140, 0.25);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-}
-
-.dons-container .lot-btn--secondary:hover {
-    background: rgba(62, 59, 140, 0.06);
-    border-color: var(--bleu1);
-    color: var(--bleu1);
-}
 
 /* ---------- Tableau ---------- */
 .dons-container .lot-table-wrap {

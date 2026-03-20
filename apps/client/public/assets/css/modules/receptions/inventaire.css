@@ -144,6 +144,22 @@
     color: var(--blanc);
 }
 
+#btn-refresh-lots {
+    background: #fff;
+    color: var(--bleu2);
+    border: 1px solid rgba(62, 59, 140, 0.25);
+    border-radius: var(--radius-medium);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+#btn-refresh-lots:hover {
+    background: rgba(62, 59, 140, 0.06);
+    border-color: var(--bleu1);
+    color: var(--bleu1);
+    filter: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
 /* ---------- Liste des lots ---------- */
 .inventaire-container .lots-list-inv {
     display: flex;
@@ -380,17 +396,19 @@
     width: var(--unit-4);
     height: var(--unit-4);
     padding: 0;
-    background-color: var(--bleu1);
-    color: var(--blanc);
-    border: none;
-    border-radius: var(--radius-small);
+    background: #fff;
+    color: var(--bleu2);
+    border: 1px solid rgba(62, 59, 140, 0.25);
+    border-radius: var(--radius-medium);
     cursor: pointer;
     transition: var(--transition);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .inventaire-container .lot-content .btn-edit-pc:hover {
-    filter: brightness(1.08);
-    color: var(--jaune);
+    background: rgba(62, 59, 140, 0.06);
+    border-color: var(--bleu1);
+    color: var(--bleu1);
 }
 
 /* ---------- États vides / chargement ---------- */
@@ -439,26 +457,61 @@
 .inventaire-container .btn-retry-lots {
     margin-top: var(--unit-3);
     padding: var(--unit-2) var(--unit-3);
-    background-color: var(--bleu1);
-    color: var(--blanc);
-    border: none;
-    border-radius: var(--radius-small);
+    background: #fff;
+    color: var(--bleu2);
+    border: 1px solid rgba(62, 59, 140, 0.25);
+    border-radius: var(--radius-medium);
     cursor: pointer;
-    font-weight: 500;
-    font-size: 0.875rem;
+    font: var(--font-btn);
     transition: var(--transition);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .inventaire-container .btn-retry-lots:hover {
-    filter: brightness(1.08);
-    color: var(--jaune);
+    background: rgba(62, 59, 140, 0.06);
+    border-color: var(--bleu1);
+    color: var(--bleu1);
+}
+
+#modal-edit-pc .modal-cancel-btn,
+#modal-edit-pc .modal-submit-btn {
+    border-radius: var(--radius-medium);
+    font: var(--font-btn);
+    min-height: 38px;
+    padding: var(--unit-1) var(--unit-3);
+}
+
+#modal-edit-pc .modal-cancel-btn {
+    background: rgba(198, 40, 40, 0.12);
+    color: #7a1818;
+    border: 1px solid rgba(198, 40, 40, 0.45);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+#modal-edit-pc .modal-cancel-btn:hover {
+    background: rgba(198, 40, 40, 0.2);
+    border-color: rgba(198, 40, 40, 0.65);
+    color: #5a1010;
+}
+
+#modal-edit-pc .modal-submit-btn {
+    background: rgba(0, 128, 0, 0.14);
+    color: #1f5e20;
+    border: 1px solid rgba(0, 128, 0, 0.45);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+#modal-edit-pc .modal-submit-btn:hover {
+    background: rgba(0, 128, 0, 0.24);
+    color: #124013;
+    border-color: rgba(0, 128, 0, 0.65);
 }
 
 /* ---------- Modale édition PC : infos en ligne (label | valeur), formulaire inchangé ---------- */
 #modal-edit-pc .pc-info-box {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--unit-2) var(--unit-4);
+    gap: var(--unit-2);
     margin-bottom: var(--unit-4);
     padding: var(--unit-3);
     background: rgba(62, 59, 140, 0.05);

@@ -122,47 +122,6 @@
 }
 
 /* ---------- Boutons ---------- */
-.commande-container .lot-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--unit-1);
-    max-width: 155px;
-    min-height: 40px;
-    padding: var(--unit-1) var(--unit-2);
-    border-radius: var(--radius-medium);
-    font-weight: 500;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: var(--transition);
-    border: none;
-    white-space: nowrap;
-}
-
-.commande-container .lot-btn--primary {
-    background-color: var(--valid);
-    color: var(--blanc);
-    box-shadow: var(--shadow-small);
-}
-
-.commande-container .lot-btn--primary:hover {
-    filter: brightness(1.08);
-    box-shadow: 0 4px 8px rgba(0, 128, 0, 0.25);
-    color: var(--blanc);
-}
-
-.commande-container .lot-btn--secondary {
-    background: #fff;
-    color: var(--bleu2);
-    border: 1px solid rgba(62, 59, 140, 0.25);
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-}
-
-.commande-container .lot-btn--secondary:hover {
-    background: rgba(62, 59, 140, 0.06);
-    border-color: var(--bleu1);
-    color: var(--bleu1);
-}
 
 /* ---------- Tableau ---------- */
 .commande-container .lot-table-wrap {
@@ -230,7 +189,7 @@
 .commande-container .lot-table__th--prix { min-width: 88px; }
 .commande-container .lot-table__th--frais-port { min-width: 100px; }
 .commande-container .lot-table__th--liens { min-width: 120px; }
-.commande-container .lot-table__th--action { width: 24px; text-align: center !important; margin: 0; }
+.commande-container .lot-table__th--action { width: 24px; text-align: center; margin: 0; }
 
 /* Inputs et selects dans le tableau (toutes les lignes, y compris ajoutées au clic) */
 .commande-container .lot-table td input,

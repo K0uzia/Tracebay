@@ -686,3 +686,173 @@
     }
 }
 
+/* Boutons de modales - module Réception (style harmonisé) */
+.r-root .universal-modal .modal-cancel-btn,
+.r-root .universal-modal .modal-submit-btn {
+    border-radius: var(--radius-medium);
+    font: var(--font-btn);
+}
+
+.r-root .universal-modal .modal-cancel-btn {
+    background: rgba(198, 40, 40, 0.12);
+    color: #7a1818;
+    border: 1px solid rgba(198, 40, 40, 0.45);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.r-root .universal-modal .modal-cancel-btn:hover {
+    background: rgba(198, 40, 40, 0.2);
+    border-color: rgba(198, 40, 40, 0.65);
+    color: #5a1010;
+}
+
+.r-root .universal-modal .modal-submit-btn {
+    background: rgba(0, 128, 0, 0.14);
+    color: #1f5e20;
+    border: 1px solid rgba(0, 128, 0, 0.45);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.r-root .universal-modal .modal-submit-btn:hover {
+    background: rgba(0, 128, 0, 0.24);
+    color: #124013;
+    border-color: rgba(0, 128, 0, 0.65);
+}
+
+.r-root .universal-modal .modal-actions .recep-btn-secondary {
+    background: rgba(198, 40, 40, 0.12);
+    color: #7a1818;
+    border: 1px solid rgba(198, 40, 40, 0.45);
+    border-radius: var(--radius-medium);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.r-root .universal-modal .modal-actions .recep-btn-secondary:hover {
+    background: rgba(198, 40, 40, 0.2);
+    color: #5a1010;
+    border-color: rgba(198, 40, 40, 0.65);
+}
+
+.r-root .universal-modal .modal-actions .recep-btn-primary {
+    background: rgba(0, 128, 0, 0.14);
+    color: #1f5e20;
+    border: 1px solid rgba(0, 128, 0, 0.45);
+    border-radius: var(--radius-medium);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.r-root .universal-modal .modal-actions .recep-btn-primary:hover {
+    background: rgba(0, 128, 0, 0.24);
+    color: #124013;
+    border-color: rgba(0, 128, 0, 0.65);
+}
+
+.r-root .recep-page .lot-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--unit-1);
+    max-width: 155px;
+    min-height: 40px;
+    padding: var(--unit-1) var(--unit-2);
+    border-radius: var(--radius-medium);
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+    white-space: nowrap;
+}
+
+.r-root .recep-page .lot-card__inner .lot-btn--primary {
+    background: rgba(0, 128, 0, 0.14);
+    color: #1f5e20;
+    border: 1px solid rgba(0, 128, 0, 0.45);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.r-root .recep-page .lot-card__inner .lot-btn--primary:hover {
+    background: rgba(0, 128, 0, 0.24);
+    color: #124013;
+    border-color: rgba(0, 128, 0, 0.65);
+}
+
+.r-root .recep-page .lot-card__inner .lot-btn--secondary {
+    background: rgba(62, 59, 140, 0.14);
+    color: var(--bleu2);
+    border: 1px solid rgba(62, 59, 140, 0.45);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.r-root .recep-page .lot-card__inner .lot-btn--secondary:hover {
+    background: rgba(62, 59, 140, 0.06);
+    color: var(--bleu1);
+    border-color: var(--bleu1);
+}
+
+.r-root .recep-page .lot-card__inner #btn-add-manual,
+.r-root .recep-page .lot-card__inner #disques-btn-add-line,
+.r-root .recep-page .lot-card__inner #commande-btn-add-line,
+.r-root .recep-page .lot-card__inner #dons-btn-add-line {
+    background: rgba(242, 130, 65, 0.16);
+    color: #8a3e12;
+    border-color: rgba(242, 130, 65, 0.4);
+}
+
+.r-root .recep-page .lot-card__inner #btn-add-manual:hover,
+.r-root .recep-page .lot-card__inner #disques-btn-add-line:hover,
+.r-root .recep-page .lot-card__inner #commande-btn-add-line:hover,
+.r-root .recep-page .lot-card__inner #dons-btn-add-line:hover {
+    background: rgba(242, 130, 65, 0.24);
+    color: #6f300d;
+    border-color: rgba(242, 130, 65, 0.6);
+}
+
+.r-root .recep-page .lot-card__inner #btn-cancel-lot,
+.r-root .recep-page .lot-card__inner #disques-btn-new-session {
+    background: rgba(242, 188, 27, 0.2);
+    color: #6a5200;
+    border-color: rgba(242, 188, 27, 0.5);
+}
+
+.r-root .recep-page .lot-card__inner #btn-cancel-lot:hover,
+.r-root .recep-page .lot-card__inner #disques-btn-new-session:hover {
+    background: rgba(242, 188, 27, 0.3);
+    color: #4d3b00;
+    border-color: rgba(242, 188, 27, 0.7);
+}
+
+.recep-page .lot-card-actions .btn-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--unit-1);
+    min-height: 36px;
+    padding: var(--unit-1) var(--unit-2);
+    background: #fff;
+    color: var(--bleu2);
+    border: 1px solid rgba(62, 59, 140, 0.25);
+    border-radius: var(--radius-medium);
+    font: var(--font-btn);
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.recep-page .lot-card-actions .btn-action:hover {
+    background: rgba(62, 59, 140, 0.06);
+    border-color: var(--bleu1);
+    color: var(--bleu1);
+}
+
+.recep-page .lot-card-actions .btn-action i {
+    color: currentColor;
+    opacity: 0.95;
+}
+
+.recep-page .lot-card-actions .btn-action:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
