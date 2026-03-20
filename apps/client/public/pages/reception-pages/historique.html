@@ -1,25 +1,30 @@
-<section class="recep-page historique-container">
-    <div class="recep-card-body">
-        <p class="recep-card-desc"><i class="recep-desc-icon fa-solid fa-info-circle" aria-hidden="true"></i> Lots terminés et lots disques (certificats d'effacement).</p>
-        <div class="recep-panel">
-            <div class="recep-toolbar historique-filters">
-                <div class="recep-filter-group filter-group filter-group-search">
-                    <label class="recep-label" for="filter-search-historique"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Recherche</label>
-                    <input class="recep-input" type="text" id="filter-search-historique" placeholder="Rechercher par nom du lot…" autocomplete="off">
-                </div>
-                <div class="recep-toolbar-actions">
-                    <button type="button" class="recep-btn reception-btn-refresh" id="btn-refresh-historique" title="Recharger l'historique">
-                        <i class="fa-solid fa-sync" aria-hidden="true"></i> Rafraîchir
-                    </button>
-                </div>
-            </div>
-            <div class="recep-panel-body">
-            <div class="recep-list lots-list" id="historique-list">
-                <div class="recep-loading loading">
-                    <i class="fa-solid fa-spinner" aria-hidden="true"></i>
-                    <span>Chargement de l'historique...</span>
+<section class="recep-page lot-page historique-container">
+    <div class="lot-page__body">
+        <div class="lot-card lot-card--config">
+            <div class="lot-card__inner">
+                <div class="lot-config historique-filters">
+                    <div class="lot-config__field lot-config__field--search">
+                        <label class="lot-config__label" for="filter-search-historique"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Recherche</label>
+                        <input class="lot-config__input" type="text" id="filter-search-historique" placeholder="Rechercher par nom du lot…" autocomplete="off">
+                    </div>
+                    <div class="lot-config__actions">
+                        <button type="button" class="lot-btn lot-btn--secondary" id="btn-refresh-historique" title="Recharger l'historique">
+                            <i class="fa-solid fa-sync" aria-hidden="true"></i> Rafraîchir
+                        </button>
+                    </div>
                 </div>
             </div>
+        </div>
+        <div class="lot-card lot-card--table">
+            <div class="lot-card__inner">
+                <div class="historique-list-wrap">
+                    <div class="recep-list lots-list" id="historique-list">
+                        <div class="recep-loading loading">
+                            <i class="fa-solid fa-spinner" aria-hidden="true"></i>
+                            <span>Chargement de l'historique...</span>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -33,46 +38,45 @@
             <button type="button" class="modal-close-btn" data-modal-close="modal-lot-details" title="Fermer" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
         </div>
         <div class="modal-body">
-            <!-- Vue détail lot (style dashboard) -->
-            <div class="recep-detail-hero">
-                <div class="recep-detail-hero-image" aria-hidden="true">
-                    <i class="fa-solid fa-boxes-stacked"></i>
-                </div>
-                <div class="recep-detail-hero-content">
-                    <h3 class="recep-detail-hero-title">
+            <div class="historique-lot-detail">
+                <div class="historique-lot-detail__top">
+                    <h3 class="historique-lot-detail__title">
+                        <i class="fa-solid fa-boxes-stacked" aria-hidden="true"></i>
                         Lot #<span id="modal-lot-number">-</span>
-                        <span class="recep-tag recep-tag--green" id="recep-detail-status">Terminé</span>
                     </h3>
-                    <div class="recep-detail-hero-meta">
-                        <span><i class="fa-solid fa-calendar"></i> Créé le <span id="modal-lot-created">-</span></span>
-                        <span><i class="fa-solid fa-check-double"></i> Terminé le <span id="modal-lot-finished">-</span></span>
-                        <span><i class="fa-solid fa-desktop"></i> <span id="modal-lot-total">-</span> PC</span>
+                    <span class="recep-tag recep-tag--green" id="recep-detail-status">Terminé</span>
+                </div>
+                <div class="historique-lot-detail__meta">
+                    <div class="historique-lot-detail__meta-item">
+                        <span class="k">Créé le</span>
+                        <span class="v" id="modal-lot-created">-</span>
                     </div>
-                    <div class="lot-details-info" style="margin-top: 0;">
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <span class="info-label">Reconditionnés</span>
-                                <span class="info-value" id="modal-lot-recond">-</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">HS</span>
-                                <span class="info-value" id="modal-lot-hs">-</span>
-                            </div>
-                        </div>
+                    <div class="historique-lot-detail__meta-item">
+                        <span class="k">Terminé le</span>
+                        <span class="v" id="modal-lot-finished">-</span>
+                    </div>
+                    <div class="historique-lot-detail__meta-item">
+                        <span class="k">Nombre de PC</span>
+                        <span class="v"><span id="modal-lot-total">-</span></span>
+                    </div>
+                    <div class="historique-lot-detail__meta-item">
+                        <span class="k">Reconditionnés</span>
+                        <span class="v"><span id="modal-lot-recond">-</span></span>
+                    </div>
+                    <div class="historique-lot-detail__meta-item">
+                        <span class="k">HS</span>
+                        <span class="v"><span id="modal-lot-hs">-</span></span>
                     </div>
                 </div>
-            </div>
-            <div class="recep-detail-stats">
-                <div class="recep-stat-card">
-                    <h4 class="recep-stat-card-title">Taux reconditionnement</h4>
-                    <span class="recep-stat-card-value" id="recep-stat-recond">0%</span>
+                <div class="historique-lot-detail__health">
+                    <div class="historique-lot-detail__health-row">
+                        <span>Taux reconditionnement</span>
+                        <strong id="recep-stat-recond">0%</strong>
+                    </div>
                     <div class="recep-progress-wrap">
                         <div class="recep-progress-bar" id="recep-progress-recond" style="width: 0%;"></div>
                     </div>
-                </div>
-                <div class="recep-stat-card">
-                    <h4 class="recep-stat-card-title">État du lot</h4>
-                    <span class="recep-stat-card-value recep-stat-card-change recep-stat-card-change--up" id="recep-stat-state">-</span>
+                    <div class="historique-lot-detail__state" id="recep-stat-state">-</div>
                 </div>
             </div>
             <h3 class="recep-modal-subtitle">PC du lot</h3>
@@ -88,7 +92,7 @@
                             <th class="col-os">OS</th>
                             <th>État</th>
                             <th>Technicien</th>
-                            <th>Date / Heure</th>
+                            <th><i class="fa-solid fa-calendar-days" aria-hidden="true"></i> Date / Heure</th>
                         </tr>
                     </thead>
                     <tbody id="modal-lot-items"></tbody>
@@ -120,7 +124,7 @@
                             <th class="col-os">OS</th>
                             <th>État</th>
                             <th>Technicien</th>
-                            <th>Date / Heure</th>
+                            <th><i class="fa-solid fa-calendar-days" aria-hidden="true"></i> Date / Heure</th>
                         </tr>
                     </thead>
                     <tbody id="modal-edit-items-body"></tbody>

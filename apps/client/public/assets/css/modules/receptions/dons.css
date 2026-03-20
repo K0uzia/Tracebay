@@ -4,6 +4,12 @@
  */
 
 /* ---------- Conteneur page ---------- */
+.recep-section > .recep-page.dons-container {
+    flex: 1 1 auto;
+    min-height: auto;
+    height: auto;
+}
+
 .dons-container.lot-page {
     width: 100%;
     max-width: min(1200px, 100%);
@@ -317,14 +323,10 @@
 @media (max-width: 980px) {
     .dons-container.lot-page { padding: var(--unit-2); gap: var(--unit-3); }
     .dons-container .lot-card--config { flex-shrink: 0; }
-    .dons-container .lot-card--table {
-        flex: 1; min-height: 0; display: flex; flex-direction: column;
-    }
+    .dons-container .lot-card--table { display: block; min-height: auto; }
     .dons-container .lot-card__inner { padding: var(--unit-3); }
-    .dons-container .lot-card__inner--scroll {
-        flex: 1; min-height: 0; display: flex; flex-direction: column;
-    }
-    .dons-container .lot-table-wrap { flex: 1; min-height: 120px; }
+    .dons-container .lot-card__inner--scroll { display: block; min-height: auto; overflow: visible; }
+    .dons-container .lot-table-wrap { min-height: 0; }
     .dons-container .lot-config {
         flex-direction: column; align-items: stretch; gap: var(--unit-3);
     }

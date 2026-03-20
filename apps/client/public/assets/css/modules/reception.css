@@ -220,6 +220,15 @@
     flex-direction: column;
 }
 
+html.reception-single-scroll,
+body.reception-single-scroll {
+    overflow: hidden !important;
+}
+
+body.reception-single-scroll main {
+    overflow: hidden !important;
+}
+
 .recep-section > .recep-page {
     flex: 1;
     min-height: 0;

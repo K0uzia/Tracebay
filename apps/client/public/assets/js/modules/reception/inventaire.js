@@ -202,10 +202,10 @@ export default class InventaireManager {
                                     <th class="lot-table__th--marque"><i class="fa-solid fa-building" aria-hidden="true"></i> Marque</th>
                                     <th class="lot-table__th--modele"><i class="fa-solid fa-cube" aria-hidden="true"></i> Modèle</th>
                                     <th class="lot-table__th--os"><i class="fa-solid fa-desktop" aria-hidden="true"></i> OS</th>
-                                    <th class="lot-table__th--state">État</th>
-                                    <th class="lot-table__th--date"><i class="fa-solid fa-calendar-clock" aria-hidden="true"></i> Date</th>
+                                    <th class="lot-table__th--state"><i class="fa-solid fa-circle-check" aria-hidden="true"></i> État</th>
+                                    <th class="lot-table__th--date"><i class="fa-solid fa-calendar-days" aria-hidden="true"></i> Date / Heure</th>
                                     <th class="lot-table__th--technicien"><i class="fa-solid fa-user" aria-hidden="true"></i> Technicien</th>
-                                    <th class="lot-table__th--action"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i> Action</th>
+                                    <th class="lot-table__th--action"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -306,7 +306,25 @@ export default class InventaireManager {
         document.getElementById('modal-pc-type').textContent = item.type || '-';
         document.getElementById('modal-pc-entry').textContent = item.entry_type || '-';
         document.getElementById('modal-pc-date-changed').textContent = this.formatDateTime(item.state_changed_at) || '-';
-        document.getElementById('modal-pc-state').value = item.state || '';
+        const stateSelect = document.getElementById('modal-pc-state');
+        const stateOtherInput = document.getElementById('modal-pc-state-other');
+        const currentState = (item.state || '').trim();
+        const knownStates = ['Reconditionnés', 'Pour pièces', 'HS'];
+        if (stateSelect) {
+            if (knownStates.includes(currentState)) {
+                stateSelect.value = currentState;
+                if (stateOtherInput) {
+                    stateOtherInput.value = '';
+                    stateOtherInput.style.display = 'none';
+                }
+            } else {
+                stateSelect.value = 'autres';
+                if (stateOtherInput) {
+                    stateOtherInput.value = currentState;
+                    stateOtherInput.style.display = 'block';
+                }
+            }
+        }
         document.getElementById('modal-pc-technician').value = item.technician || '';
 
         this.modalManager.open('modal-edit-pc');
@@ -335,6 +353,16 @@ export default class InventaireManager {
             filterState.addEventListener('change', () => this.applyFilters());
         }
 
+        const modalStateSelect = document.getElementById('modal-pc-state');
+        const modalStateOther = document.getElementById('modal-pc-state-other');
+        if (modalStateSelect && modalStateOther) {
+            modalStateSelect.addEventListener('change', () => {
+                const isOther = modalStateSelect.value === 'autres';
+                modalStateOther.style.display = isOther ? 'block' : 'none';
+                if (!isOther) modalStateOther.value = '';
+            });
+        }
+
         // Sauvegarder l'édition PC - retirer les anciens listeners pour éviter les doublons
         const savePcBtn = document.getElementById('btn-save-pc-edit');
         if (savePcBtn) {
@@ -361,12 +389,14 @@ export default class InventaireManager {
                 return;
             }
 
-            const state = document.getElementById('modal-pc-state').value;
+            const stateSelectValue = document.getElementById('modal-pc-state').value;
+            const stateOtherValue = (document.getElementById('modal-pc-state-other')?.value || '').trim();
+            const state = stateSelectValue === 'autres' ? stateOtherValue : stateSelectValue;
             const technician = document.getElementById('modal-pc-technician').value.trim();
             const osValue = (document.getElementById('modal-pc-os-select')?.value || 'linux').trim();
 
             if (!state || state.trim() === '') {
-                this.showNotification('Veuillez sélectionner un état', 'error');
+                this.showNotification(stateSelectValue === 'autres' ? 'Veuillez préciser un état' : 'Veuillez sélectionner un état', 'error');
                 return;
             }
             

@@ -1820,7 +1820,7 @@ async function generateDisquesPdfFromHtmlTemplate(payload, fullPath) {
             const diskType = escapeHtml((d.disk_type || '-').toString().trim());
             const iface = escapeHtml((d.interface || '-').toString().trim());
             const shred = escapeHtml((d.shred || '-').toString().trim());
-            return `<tr><td class="col-num">${num}</td><td class="col-sn">${sn}</td><td class="col-marque">${marque}</td><td class="col-modele">${modele}</td><td class="col-size">${size}</td><td class="col-disk-type">${diskType}</td><td class="col-interface">${iface}</td><td class="col-shred">${shred}</td></tr>`;
+            return `<tr><td class="col-select">☑</td><td class="col-num">${num}</td><td class="col-sn">${sn}</td><td class="col-marque">${marque}</td><td class="col-modele">${modele}</td><td class="col-size">${size}</td><td class="col-disk-type">${diskType}</td><td class="col-interface">${iface}</td><td class="col-shred">${shred}</td></tr>`;
         })
         .join('\n');
 
@@ -2054,6 +2054,7 @@ async function generateCommandePdfFromHtmlTemplate(payload, fullPath) {
 ipcMain.handle('generate-commande-pdf', async (_event, payload) => {
     const {
         commandeName,
+        category,
         date,
         lines = [],
         basePath = COMMANDES_PDF_BASE
@@ -2061,17 +2062,22 @@ ipcMain.handle('generate-commande-pdf', async (_event, payload) => {
     if (!commandeName || !String(commandeName).trim()) {
         return { success: false, error: 'Nom de la commande requis' };
     }
+    if (!category || !String(category).trim()) {
+        return { success: false, error: 'Catégorie requise' };
+    }
     const rawDate = (date && String(date).trim()) ? String(date).trim() : new Date().toISOString().slice(0, 10);
     const dateStr = /^\d{4}-\d{2}-\d{2}/.test(rawDate) ? rawDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const sanitizedCategory = String(category).trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim() || 'Divers';
+    const targetBasePath = path.join(basePath, sanitizedCategory);
     try {
-        fs.mkdirSync(basePath, { recursive: true });
+        fs.mkdirSync(targetBasePath, { recursive: true });
     } catch (e) {
         console.error('❌ generate-commande-pdf mkdir:', e.message);
         return { success: false, error: 'Impossible de créer le dossier: ' + e.message };
     }
     const sanitizedName = String(commandeName).trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim() || 'commande';
     const fileName = `${sanitizedName}_${dateStr}.pdf`;
-    const fullPath = path.join(basePath, fileName);
+    const fullPath = path.join(targetBasePath, fileName);
 
     try {
         const result = await generateCommandePdfFromHtmlTemplate({ commandeName, date: dateStr, lines }, fullPath);

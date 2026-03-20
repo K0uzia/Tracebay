@@ -4,6 +4,12 @@
  */
 
 /* ---------- Conteneur page ---------- */
+.recep-section > .recep-page.commande-container {
+    flex: 1 1 auto;
+    min-height: auto;
+    height: auto;
+}
+
 .commande-container.lot-page {
     width: 100%;
     max-width: min(1200px, 100%);
@@ -67,7 +73,7 @@
 
 .commande-container .lot-config__field {
     min-width: 0;
-    max-width: 195px;
+    max-width: 220px;
     display: flex;
     flex-direction: column;
     gap: var(--unit-1);
@@ -111,6 +117,8 @@
     flex-wrap: wrap;
     align-items: center;
     gap: var(--unit-2);
+    justify-content: flex-end;
+    flex: 1 1 auto;
 }
 
 /* ---------- Boutons ---------- */
@@ -222,7 +230,7 @@
 .commande-container .lot-table__th--prix { min-width: 88px; }
 .commande-container .lot-table__th--frais-port { min-width: 100px; }
 .commande-container .lot-table__th--liens { min-width: 120px; }
-.commande-container .lot-table__th--action { width: 72px; text-align: center; }
+.commande-container .lot-table__th--action { width: 24px; text-align: center !important; margin: 0; }
 
 /* Inputs et selects dans le tableau (toutes les lignes, y compris ajoutées au clic) */
 .commande-container .lot-table td input,
@@ -298,14 +306,10 @@
 @media (max-width: 980px) {
     .commande-container.lot-page { padding: var(--unit-2); gap: var(--unit-3); }
     .commande-container .lot-card--config { flex-shrink: 0; }
-    .commande-container .lot-card--table {
-        flex: 1; min-height: 0; display: flex; flex-direction: column;
-    }
+    .commande-container .lot-card--table { display: block; min-height: auto; }
     .commande-container .lot-card__inner { padding: var(--unit-3); }
-    .commande-container .lot-card__inner--scroll {
-        flex: 1; min-height: 0; display: flex; flex-direction: column;
-    }
-    .commande-container .lot-table-wrap { flex: 1; min-height: 120px; }
+    .commande-container .lot-card__inner--scroll { display: block; min-height: auto; overflow: visible; }
+    .commande-container .lot-table-wrap { min-height: 0; }
     .commande-container .lot-config {
         flex-direction: column; align-items: stretch; gap: var(--unit-3);
     }

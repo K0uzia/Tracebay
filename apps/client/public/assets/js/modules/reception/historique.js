@@ -954,6 +954,8 @@ export default class HistoriqueManager {
         if (itemsContainer) {
             itemsContainer.innerHTML = items.map((item, idx) => {
                 const itemState = item.state || '';
+                const knownStates = ['Reconditionnés', 'Pour pièces', 'HS'];
+                const isOtherState = itemState && !knownStates.includes(itemState);
                 return `
                 <tr data-item-id="${item.id}">
                     <td><span class="item-number">${idx + 1}</span></td>
@@ -972,7 +974,16 @@ export default class HistoriqueManager {
                             <option value="Reconditionnés" ${itemState === 'Reconditionnés' ? 'selected' : ''}>Reconditionnés</option>
                             <option value="Pour pièces" ${itemState === 'Pour pièces' ? 'selected' : ''}>Pour pièces</option>
                             <option value="HS" ${itemState === 'HS' ? 'selected' : ''}>HS</option>
+                            <option value="autres" ${isOtherState ? 'selected' : ''}>Autres</option>
                         </select>
+                        <input
+                            type="text"
+                            class="item-state-other-input"
+                            data-item-id="${item.id}"
+                            value="${isOtherState ? this.escapeHtml(itemState) : ''}"
+                            placeholder="Précisez l'état"
+                            style="margin-top:6px;display:${isOtherState ? 'block' : 'none'};"
+                        >
                     </td>
                     <td>
                         <input type="text" class="item-technician-input" data-item-id="${item.id}" value="${item.technician || ''}" placeholder="Technicien">
@@ -981,6 +992,16 @@ export default class HistoriqueManager {
                 </tr>
             `;
             }).join('');
+            itemsContainer.querySelectorAll('.item-state-select').forEach(sel => {
+                sel.addEventListener('change', () => {
+                    const row = sel.closest('tr');
+                    const otherInput = row?.querySelector('.item-state-other-input');
+                    if (!otherInput) return;
+                    const isOther = sel.value === 'autres';
+                    otherInput.style.display = isOther ? 'block' : 'none';
+                    if (!isOther) otherInput.value = '';
+                });
+            });
         }
 
         // Mettre à jour le numéro du lot dans la modale
@@ -1006,13 +1027,16 @@ export default class HistoriqueManager {
             const osSelect = row.querySelector('.item-os-select');
 
             if (itemId && technicianInput) {
-                const state = stateSelect.value.trim();
+                const otherStateInput = row.querySelector('.item-state-other-input');
+                const stateSelectValue = stateSelect.value.trim();
+                const customState = (otherStateInput?.value || '').trim();
+                const state = stateSelectValue === 'autres' ? customState : stateSelectValue;
                 const technician = technicianInput.value.trim();
                 const os = osSelect ? (osSelect.value || 'linux') : 'linux';
                 
                 // Valider que l'état est défini
                 if (!state || state === '') {
-                    this.showNotification('Veuillez sélectionner un état pour tous les items', 'warning');
+                    this.showNotification(stateSelectValue === 'autres' ? 'Veuillez préciser un état pour tous les items' : 'Veuillez sélectionner un état pour tous les items', 'warning');
                     return;
                 }
                 

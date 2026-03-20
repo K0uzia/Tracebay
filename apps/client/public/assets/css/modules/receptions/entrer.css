@@ -4,6 +4,12 @@
  */
 
 /* ---------- Conteneur page : Entrer + Disques (même classe .entrer-page sur la section Disques) ---------- */
+.recep-section > .recep-page.entrer-page {
+    flex: 1 1 auto;
+    min-height: auto;
+    height: auto;
+}
+
 .entrer-page {
     width: 100%;
     max-width: min(1200px, 100%);
@@ -13,8 +19,10 @@
     flex-direction: column;
     gap: var(--unit-4);
     min-width: 0;
-    flex: 1;
-    min-height: 0;
+    flex: 0 0 auto;
+    min-height: auto;
+    height: auto;
+    overflow: visible;
     box-sizing: border-box;
 }
 
@@ -26,8 +34,10 @@
     max-width: 100%;
     gap: var(--unit-4);
     min-width: 0;
-    flex: 1;
-    min-height: 0;
+    flex: 0 0 auto;
+    min-height: auto;
+    height: auto;
+    overflow: visible;
     box-sizing: border-box;
 }
 
@@ -36,7 +46,7 @@
     background: var(--recep-panel-bg, #ffffff);
     border-radius: var(--recep-panel-radius, 12px);
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
-    overflow: hidden;
+    overflow: visible;
     min-width: 0;
     width: 100%;
     max-width: 100%;
@@ -311,7 +321,7 @@
 .entrer-page .lot-table__th--sn { min-width: 100px; }
 .entrer-page .lot-table__th--marque,
 .entrer-page .lot-table__th--modele { min-width: 100px; }
-.entrer-page .lot-table__th--action { width: 72px; text-align: center; }
+.entrer-page .lot-table__th--action { width: 24px; text-align: center; }
 
 .entrer-page .lot-table__th--select { width: 5px; text-align: center; }
 .entrer-page .lot-table tbody td:nth-child(1),
@@ -561,28 +571,15 @@ dialog.universal-modal.modal-delete-row[open] {
         flex-shrink: 0;
     }
 
-    .entrer-page .lot-card--table {
-        flex: 1;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-    }
+    .entrer-page .lot-card--table { display: block; min-height: auto; }
 
     .entrer-page .lot-card__inner {
         padding: var(--unit-3);
     }
 
-    .entrer-page .lot-card__inner--scroll {
-        flex: 1;
-        min-height: 0;
-        display: flex;
-        flex-direction: column;
-    }
+    .entrer-page .lot-card__inner--scroll { display: block; min-height: auto; overflow: visible; }
 
-    .entrer-page .lot-table-wrap {
-        flex: 1;
-        min-height: 120px;
-    }
+    .entrer-page .lot-table-wrap { min-height: 0; }
 
     .entrer-page .lot-config {
         flex-direction: column;

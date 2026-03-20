@@ -33,18 +33,35 @@ function dedupeCommandeProducts(list) {
     return out;
 }
 
+function dedupeCommandeCategories(list) {
+    if (!Array.isArray(list) || list.length === 0) return [];
+    const seen = new Set();
+    const out = [];
+    for (const c of list) {
+        const rawName = (c?.name || c?.label || c?.category || '').trim();
+        if (!rawName) continue;
+        const key = rawName.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push({ name: rawName });
+    }
+    return out;
+}
+
 export default class CommandeManager {
     constructor(modalManager) {
         this.modalManager = modalManager;
         this.products = [];
+        this.categories = [];
         this.listeners = [];
         this.init();
     }
 
     async init() {
         logger.debug('Initialisation CommandeManager');
-        await this.loadProducts();
+        await Promise.all([this.loadProducts(), this.loadCategories()]);
         this.refreshProductSelects();
+        this.refreshCategorySelect();
         this.setupEventListeners();
         logger.debug('CommandeManager prêt');
     }
@@ -54,6 +71,35 @@ export default class CommandeManager {
             element?.removeEventListener(event, handler);
         });
         this.listeners = [];
+    }
+
+    async loadCategories() {
+        try {
+            const res = await api.get('commandes.categories.list', { useCache: false });
+            if (!res.ok) {
+                this.categories = [];
+                return;
+            }
+            const data = await res.json();
+            const raw = Array.isArray(data) ? data : (data.items || data.categories || []);
+            this.categories = dedupeCommandeCategories(raw);
+            this.refreshCategorySelect();
+        } catch (err) {
+            logger.error('Erreur chargement catégories commande:', err);
+            this.categories = [];
+        }
+    }
+
+    refreshCategorySelect() {
+        const select = document.getElementById('commande-category');
+        if (!select) return;
+        const current = (select.value || '').trim();
+        const options = '<option value="">-- Catégorie --</option>' +
+            this.categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+        select.innerHTML = options;
+        if (current && Array.from(select.options).some(o => o.value === current)) {
+            select.value = current;
+        }
     }
 
     addListener(element, event, handler) {
@@ -122,7 +168,9 @@ export default class CommandeManager {
      */
     resetFormAfterPdfSuccess() {
         const nameInput = document.getElementById('commande-name');
+        const categorySelect = document.getElementById('commande-category');
         if (nameInput) nameInput.value = '';
+        if (categorySelect) categorySelect.value = '';
 
         const tbody = document.getElementById('commande-tbody');
         if (!tbody) return;
@@ -259,6 +307,9 @@ export default class CommandeManager {
         const btnAddProduct = document.getElementById('commande-btn-add-product');
         if (btnAddProduct) this.addListener(btnAddProduct, 'click', () => this.openAddProductModal());
 
+        const btnAddCategory = document.getElementById('commande-btn-add-category');
+        if (btnAddCategory) this.addListener(btnAddCategory, 'click', () => this.openAddCategoryModal());
+
         const btnSavePdf = document.getElementById('commande-btn-save-pdf');
         if (btnSavePdf) this.addListener(btnSavePdf, 'click', () => this.savePdf());
 
@@ -280,6 +331,28 @@ export default class CommandeManager {
             modal.querySelectorAll('[data-modal-close]').forEach(btn => {
                 this.addListener(btn, 'click', () => {
                     modal.close();
+                });
+            });
+        }
+
+        const categoryModal = document.getElementById('commande-modal-add-category');
+        if (categoryModal) {
+            const form = document.getElementById('commande-form-add-category');
+            if (form) {
+                this.addListener(form, 'submit', (e) => {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    this.submitAddCategory();
+                });
+            }
+            categoryModal.querySelectorAll('[data-close-modal]').forEach(btn => {
+                this.addListener(btn, 'click', () => {
+                    categoryModal.close();
+                });
+            });
+            categoryModal.querySelectorAll('[data-modal-close]').forEach(btn => {
+                this.addListener(btn, 'click', () => {
+                    categoryModal.close();
                 });
             });
         }
@@ -327,12 +400,63 @@ export default class CommandeManager {
         }
     }
 
+    openAddCategoryModal() {
+        const modal = document.getElementById('commande-modal-add-category');
+        const input = document.getElementById('commande-new-category-name');
+        if (modal && input) {
+            input.value = '';
+            modal.showModal();
+            input.focus();
+        }
+    }
+
+    async submitAddCategory() {
+        if (this._submittingAddCategory) return;
+        const input = document.getElementById('commande-new-category-name');
+        const modal = document.getElementById('commande-modal-add-category');
+        const submitBtn = modal?.querySelector('button[type="submit"]');
+        if (!input?.value?.trim()) {
+            window.app?.showNotification?.('Saisissez un nom de catégorie', 'warning');
+            return;
+        }
+        const name = input.value.trim();
+        this._submittingAddCategory = true;
+        if (submitBtn) submitBtn.disabled = true;
+        try {
+            const res = await api.post('commandes.categories.create', { name });
+            if (!res.ok) {
+                const errData = await res.json().catch(() => ({}));
+                window.app?.showNotification?.(errData?.message || `Erreur ${res.status}`, 'error');
+                return;
+            }
+            await this.loadCategories();
+            const select = document.getElementById('commande-category');
+            if (select) select.value = name;
+            input.value = '';
+            modal?.close();
+            window.app?.showNotification?.('Catégorie ajoutée', 'success');
+        } catch (err) {
+            logger.error('Erreur ajout catégorie:', err);
+            window.app?.showNotification?.(err?.message || 'Erreur lors de l\'ajout', 'error');
+        } finally {
+            this._submittingAddCategory = false;
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    }
+
     async savePdf() {
         const nameInput = document.getElementById('commande-name');
+        const categorySelect = document.getElementById('commande-category');
         const commandeName = (nameInput?.value ?? '').trim();
+        const category = (categorySelect?.value ?? '').trim();
         if (!commandeName) {
             window.app?.showNotification?.('Saisissez le nom de la commande', 'warning');
             nameInput?.focus();
+            return;
+        }
+        if (!category) {
+            window.app?.showNotification?.('Sélectionnez une catégorie', 'warning');
+            categorySelect?.focus();
             return;
         }
 
@@ -349,6 +473,7 @@ export default class CommandeManager {
             window.app?.showNotification?.('Génération du PDF...', 'info');
             const result = await invoke('generate-commande-pdf', {
                 commandeName,
+                category,
                 date: dateStr,
                 lines,
                 basePath: COMMANDES_PDF_BASE
@@ -358,6 +483,7 @@ export default class CommandeManager {
                 try {
                     const createRes = await api.post('commandes.create', {
                         commande_name: commandeName,
+                        category,
                         date: dateStr,
                         pdf_path: result.pdf_path,
                         lines

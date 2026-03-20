@@ -174,7 +174,8 @@ body {
     background: #f0f7ff;
 }
 
-.pdf-table .col-num { min-width: 2.5em; }
+.pdf-table .col-select { width: 22px; text-align: center; }
+.pdf-table .col-num { min-width: 2.2em; }
 .pdf-table .col-sn { min-width: 100px; }
 .pdf-table .col-marque { min-width: 50px; }
 .pdf-table .col-modele { min-width: 60px; }

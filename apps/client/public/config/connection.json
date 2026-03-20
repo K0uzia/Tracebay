@@ -89,6 +89,10 @@
         "list": "/api/commandes/products",
         "create": "/api/commandes/products"
       },
+      "categories": {
+        "list": "/api/commandes/categories",
+        "create": "/api/commandes/categories"
+      },
       "create": "/api/commandes",
       "tracabilite": "/api/commandes/tracabilite"
     },

@@ -1,16 +1,152 @@
-/* Réception – page Historique – design SaaS */
+.historique-container.lot-page {
+    width: 100%;
+    max-width: min(1200px, 100%);
+    margin: 0 auto;
+    padding: var(--unit-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-4);
+    min-width: 0;
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box;
+}
 
-.recep-panel-body .lots-list {
+.historique-container .lot-page__body {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 100%;
+    gap: var(--unit-4);
+    min-width: 0;
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow: visible;
+}
+
+.historique-container .lot-card {
+    background: var(--recep-panel-bg);
+    border-radius: var(--recep-panel-radius);
+    box-shadow: var(--shadow-small);
+    overflow: hidden;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.historique-container .lot-card--config {
+    flex: 0 0 auto !important;
+    display: block !important;
+}
+
+.historique-container .lot-card--table {
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+}
+
+.historique-container .lot-card--table > .lot-card__inner {
+    background: transparent;
+}
+
+.historique-container .lot-card__inner { padding: var(--unit-4); }
+
+.historique-container .historique-list-wrap {
+    overflow: visible;
+    min-width: 0;
+}
+
+.historique-container .lot-config {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--unit-2);
+}
+
+.historique-container .lot-config__field {
+    min-width: 0;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+
+.historique-container .lot-config__field--search { flex: 1 1 auto; }
+
+.historique-container .lot-config__label {
+    font-weight: 600;
+    font-size: 0.8125rem;
+    color: var(--bleu2);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-1);
+}
+
+.historique-container .lot-config__label i { color: var(--bleu1); }
+
+.historique-container .lot-config__input {
+    width: 100%;
+    min-height: 40px;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid rgba(13, 13, 13, 0.12);
+    border-radius: var(--radius-medium);
+    font-size: 0.9375rem;
+    background: #fff;
+    color: var(--text2);
+    box-sizing: border-box;
+}
+
+.historique-container .lot-config__input:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 3px rgba(62, 59, 140, 0.2);
+}
+
+.historique-container .lot-config__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    flex-wrap: wrap;
+}
+
+.historique-container .lot-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--unit-1);
+    min-height: 40px;
+    padding: var(--unit-1) var(--unit-2);
+    border-radius: var(--radius-medium);
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    border: 1px solid rgba(62, 59, 140, 0.25);
+    background: #fff;
+    color: var(--bleu2);
+}
+
+.historique-container .lot-btn:hover {
+    background: rgba(62, 59, 140, 0.06);
+    border-color: var(--bleu1);
+    color: var(--bleu1);
+}
+
+.historique-container .lots-list {
     display: flex;
     flex-direction: column;
     gap: var(--unit-2);
+    padding: var(--unit-3);
 }
 
 .historique-lot-card {
     background: var(--recep-panel-bg, #fff);
     border: 1px solid rgba(13, 13, 13, 0.06);
     border-radius: var(--recep-panel-radius, 12px);
-    box-shadow: var(--recep-panel-shadow, 0 1px 3px rgba(0,0,0,0.06));
+    box-shadow: var(--recep-panel-shadow, 0 1px 3px rgba(0, 0, 0, 0.06));
     overflow: hidden;
 }
 
@@ -38,13 +174,8 @@
     color: var(--h2);
 }
 
-.historique-lot-title .historique-type-icon {
-    color: var(--bleu1);
-}
-
-.historique-lot-stats .historique-stat strong {
-    color: var(--bleu2);
-}
+.historique-lot-title .historique-type-icon { color: var(--bleu1); }
+.historique-lot-stats .historique-stat strong { color: var(--bleu2); }
 
 .historique-lot-title .badge-created,
 .historique-lot-title .badge-recovered,
@@ -118,17 +249,17 @@
     background-color: var(--valid);
     color: var(--blanc);
 }
+
 .historique-lot-actions .btn-to-recover:hover:not(:disabled) { filter: brightness(1.08); }
 .historique-lot-actions .btn-to-recover.disabled { opacity: 0.6; cursor: not-allowed; }
+
 .historique-lot-actions .btn-recovered {
     background-color: rgba(13, 13, 13, 0.1);
     color: var(--text2);
     cursor: default;
 }
 
-.historique-disque-card .historique-lot-stats {
-    margin-left: 0;
-}
+.historique-disque-card .historique-lot-stats { margin-left: 0; }
 
 .historique-container .empty-state {
     text-align: center;
@@ -149,6 +280,7 @@
 .historique-container .empty-state.error-state i { color: var(--error); }
 .historique-container .empty-state p { margin: 0 0 var(--unit-1); font-weight: 500; color: var(--bleu2); }
 .historique-container .empty-state small { opacity: 0.9; }
+
 .historique-container .btn-retry-lots,
 .historique-container .btn-retry-historique {
     margin-top: var(--unit-3);
@@ -160,12 +292,179 @@
     cursor: pointer;
     font: var(--font-btn);
 }
+
 .historique-container .btn-retry-lots:hover,
 .historique-container .btn-retry-historique:hover { background-color: var(--btn-hover); color: var(--jaune); }
-
-.historique-filters { margin-bottom: var(--unit-3); }
-.historique-filters .filter-group-search .recep-input { min-width: 240px; }
 
 .details-table.recep-table th.col-os { min-width: 80px; }
 .edit-items-table-wrapper,
 .lot-details-table { margin-top: var(--unit-2); }
+
+#modal-edit-lot-items .modal-body {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#modal-edit-lot-items .edit-items-table-wrapper {
+    overflow: visible !important;
+    max-height: none !important;
+}
+
+#modal-edit-lot-items .edit-items-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+}
+
+#modal-edit-lot-items .edit-items-table thead,
+#modal-lot-details .details-table thead {
+    position: static !important;
+}
+
+#modal-edit-lot-items .edit-items-table th,
+#modal-lot-details .details-table th {
+    background: var(--bleu2) !important;
+    color: var(--text) !important;
+    opacity: 1 !important;
+}
+
+#modal-edit-lot-items .edit-items-table th,
+#modal-edit-lot-items .edit-items-table td {
+    padding: var(--unit-1) var(--unit-2);
+    font-size: 0.8125rem;
+    white-space: normal;
+    word-break: break-word;
+}
+
+#modal-lot-details .historique-lot-detail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-3);
+    padding: var(--unit-3);
+    border: 1px solid rgba(13, 13, 13, 0.08);
+    border-radius: var(--radius-medium);
+    background: #fff;
+}
+
+#modal-lot-details .historique-lot-detail__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--unit-2);
+}
+
+#modal-lot-details .historique-lot-detail__title {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-2);
+    font: var(--block-title-h3);
+    color: var(--h2);
+}
+
+#modal-lot-details .historique-lot-detail__title i {
+    color: var(--bleu1);
+}
+
+#modal-lot-details .historique-lot-detail__meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--unit-2);
+}
+
+#modal-lot-details .historique-lot-detail__meta-item {
+    border: 1px solid rgba(13, 13, 13, 0.08);
+    border-radius: var(--radius-small);
+    padding: var(--unit-2);
+    background: rgba(13, 13, 13, 0.02);
+}
+
+#modal-lot-details .historique-lot-detail__meta-item .k {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text2);
+    margin-bottom: 2px;
+}
+
+#modal-lot-details .historique-lot-detail__meta-item .v {
+    display: block;
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: var(--h2);
+}
+
+#modal-lot-details .historique-lot-detail__health {
+    border-top: 1px solid rgba(13, 13, 13, 0.08);
+    padding-top: var(--unit-2);
+}
+
+#modal-lot-details .historique-lot-detail__health-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--unit-2);
+    margin-bottom: var(--unit-1);
+    color: var(--text2);
+}
+
+#modal-lot-details .historique-lot-detail__state {
+    margin-top: var(--unit-2);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--bleu2);
+}
+
+@media (max-width: 980px) {
+    .historique-container.lot-page {
+        padding: var(--unit-2) !important;
+        gap: var(--unit-3) !important;
+        min-height: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    .historique-container .lot-page__body,
+    .historique-container .lot-card,
+    .historique-container .lot-card__inner,
+    .historique-container .historique-list-wrap,
+    .historique-container #historique-list {
+        min-height: auto !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    .historique-container .lot-card__inner { padding: var(--unit-2) !important; }
+    .historique-container .lot-config {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--unit-2) !important;
+    }
+    .historique-container .lot-config__field { max-width: none !important; }
+    .historique-container .lot-config__actions {
+        justify-content: flex-start !important;
+        width: 100% !important;
+    }
+    .historique-container .lot-btn {
+        min-height: 40px !important;
+        flex: 1 1 auto !important;
+    }
+    #modal-lot-details .historique-lot-detail__meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .historique-container .lot-card__inner { padding: var(--unit-2) !important; }
+    .historique-container .lot-config__actions { width: 100% !important; }
+    .historique-container .lot-btn { width: 100% !important; }
+    .historique-container .lots-list { padding: var(--unit-1) !important; }
+    .historique-lot-header { padding: var(--unit-3) !important; }
+    .historique-lot-actions { gap: var(--unit-1) !important; }
+    .historique-lot-actions button { width: 100% !important; justify-content: center !important; }
+    #modal-lot-details .historique-lot-detail {
+        padding: var(--unit-2);
+    }
+    #modal-lot-details .historique-lot-detail__meta {
+        grid-template-columns: 1fr;
+    }
+}

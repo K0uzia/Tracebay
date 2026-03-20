@@ -298,10 +298,9 @@ export default class DisquesManager {
                 <td data-label="Marque"><div class="type-cell-wrapper">${this.buildMarqueCell(d)}</div></td>
                 <td data-label="Modèle"><div class="type-cell-wrapper">${this.buildModeleCell(d)}</div></td>
                 <td data-label="Taille"><div class="type-cell-wrapper">${this.buildSizeCell(d)}</div></td>
-                <td data-label="Intf. / Shred"><div class="type-cell-wrapper disques-intf-shred-cell">${this.buildInterfaceSelect(d)}
-                    <label class="disques-row-dest-label"><input type="checkbox" class="js-disques-destruction" ${destruct ? 'checked' : ''}> Destruction physique</label>
-                    <span class="js-disques-shred-label disques-shred-text">${shredPreview}</span>
-                </div></td>
+                <td data-label="Interface"><div class="type-cell-wrapper">${this.buildInterfaceSelect(d)}</div></td>
+                <td data-label="Destr. phy."><label class="disques-row-dest-label" title="Destruction physique"><input type="checkbox" class="js-disques-destruction" ${destruct ? 'checked' : ''}></label></td>
+                <td data-label="Shred"><span class="js-disques-shred-label disques-shred-text">${shredPreview}</span></td>
                 <td data-label="Action"><button type="button" class="btn-delete-row" data-row-index="${i}" title="Supprimer la ligne"><i class="fa-solid fa-trash"></i></button></td>
             </tr>`;
     }

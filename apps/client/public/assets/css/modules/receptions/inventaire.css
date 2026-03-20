@@ -299,7 +299,7 @@
 
 .inventaire-container .lot-content .lot-table td {
     padding: var(--unit-1);
-    text-align: left;
+    text-align: center;
     vertical-align: middle;
     border-bottom: 1px solid rgba(13, 13, 13, 0.06);
 }
@@ -346,18 +346,18 @@
 }
 
 /* Colonnes (inventaire : plus compact pour voir les infos + scroll horizontal) */
-.inventaire-container .lot-content .lot-table__th--num { min-width: 5px; text-align: center; }
+.inventaire-container .lot-content .lot-table__th--num { width: 5px; text-align: center; }
 .inventaire-container .lot-content .lot-table tbody td:nth-child(1) { text-align: center; }
-.inventaire-container .lot-content .lot-table__th--sn { min-width: 85px; }
-.inventaire-container .lot-content .lot-table__th--type { min-width: 72px; }
+.inventaire-container .lot-content .lot-table__th--sn { width: 120px; }
+.inventaire-container .lot-content .lot-table__th--type { width: 72px; }
 .inventaire-container .lot-content .lot-table__th--marque,
-.inventaire-container .lot-content .lot-table__th--modele { min-width: 82px; text-align: start; }
-.inventaire-container .lot-content .lot-table__th--os { min-width: 52px; text-align: center; }
+.inventaire-container .lot-content .lot-table__th--modele {text-align: start; }
+.inventaire-container .lot-content .lot-table__th--os { width: 52px; text-align: center; }
 .inventaire-container .lot-content .lot-table .col-os { text-align: center; }
-.inventaire-container .lot-content .lot-table__th--state { min-width: 88px; }
-.inventaire-container .lot-content .lot-table__th--date { min-width: 100px; }
-.inventaire-container .lot-content .lot-table__th--technicien { min-width: 80px; }
-.inventaire-container .lot-content .lot-table__th--action { width: 56px; min-width: 56px; text-align: center; }
+.inventaire-container .lot-content .lot-table__th--state { width: 88px; }
+.inventaire-container .lot-content .lot-table__th--date { width: 100px; }
+.inventaire-container .lot-content .lot-table__th--technicien { width: 80px; }
+.inventaire-container .lot-content .lot-table__th--action { width: 24px; text-align: center; }
 
 .inventaire-container .state-badge {
     display: inline-block;

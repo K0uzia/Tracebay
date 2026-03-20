@@ -1,8 +1,3 @@
-/**
- * Disques : styles hors entrer.css (modales lsblk, page historique).
- * La page Disques réutilise entrer.html / entrer.css (section .entrer-page).
- */
-
 .lsblk-disks-list {
     display: flex;
     flex-direction: column;
@@ -25,18 +20,10 @@
     color: var(--text2);
 }
 
-/* Liste modale édition disques (historique) */
 .historique-disque-edit-list {
     display: flex;
     flex-direction: column;
     gap: var(--unit-2);
-}
-
-/* Cellule interface + destruction + shred (pile verticale lisible) */
-.entrer-page .lot-table .disques-intf-shred-cell {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--unit-1);
 }
 
 .entrer-page .lot-table .disques-row-dest-label {
@@ -55,4 +42,122 @@
     font-weight: 500;
     color: var(--text2);
     line-height: 1.35;
+}
+
+#disques-session-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+    font-size: 0.86rem;
+}
+
+#disques-session-table th,
+#disques-session-table td {
+    white-space: nowrap;
+    min-width: 0;
+    padding: 5px 6px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#disques-session-table th {
+    font-size: 0.76rem;
+    letter-spacing: 0.02em;
+    padding: var(--unit-1) var(--unit-2);
+}
+
+#disques-session-table .type-cell-wrapper {
+    flex-wrap: nowrap;
+    gap: 4px;
+    min-width: 0;
+}
+
+#disques-session-table td:nth-child(5) .type-cell-wrapper,
+#disques-session-table td:nth-child(6) .type-cell-wrapper,
+#disques-session-table td:nth-child(7) .type-cell-wrapper {
+    position: relative;
+}
+
+#disques-session-table td:nth-child(5) .type-cell-wrapper .disques-marque-autre,
+#disques-session-table td:nth-child(6) .type-cell-wrapper .disques-modele-autre,
+#disques-session-table td:nth-child(7) .type-cell-wrapper input[name="disques_size_custom"] {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: calc(100% - 24px);
+    height: 34px;
+    margin: 0;
+    z-index: 2;
+    border-right: none;
+}
+
+#disques-session-table td input[type="text"],
+#disques-session-table td select {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    display: block;
+    height: 34px;
+    padding: 6px 8px;
+    font-size: 0.84rem;
+}
+
+#disques-session-table th:nth-child(1),
+#disques-session-table td:nth-child(1) { width: 26px; text-align: center; padding: 8px; }
+#disques-session-table th:nth-child(2),
+#disques-session-table td:nth-child(2) { width: 10px; text-align: center; padding: 8px; }
+#disques-session-table th:nth-child(3),
+#disques-session-table td:nth-child(3) { width: 20%; }
+#disques-session-table th:nth-child(4),
+#disques-session-table td:nth-child(4) { width: 6%; }
+#disques-session-table th:nth-child(5),
+#disques-session-table td:nth-child(5) { width: 8%; }
+#disques-session-table th:nth-child(6),
+#disques-session-table td:nth-child(6) { width: 9%; }
+#disques-session-table th:nth-child(7),
+#disques-session-table td:nth-child(7) { width: 8%; }
+#disques-session-table th:nth-child(8),
+#disques-session-table td:nth-child(8) { width: 9%; }
+#disques-session-table th:nth-child(9),
+#disques-session-table td:nth-child(9) { width: 58px; text-align: center; }
+#disques-session-table th:nth-child(10),
+#disques-session-table td:nth-child(10) { width: 8%; }
+#disques-session-table th:nth-child(11),
+#disques-session-table td:nth-child(11) { width: 38px; text-align: center; }
+
+#disques-session-table td:nth-child(11) .btn-delete-row {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border-width: 1px;
+}
+
+#disques-session-table .lot-table__th--select .lot-checkbox,
+#disques-session-table .js-disques-row-check,
+#disques-session-table .js-disques-destruction {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    vertical-align: middle;
+}
+
+#disques-session-table td:nth-child(1),
+#disques-session-table td:nth-child(2),
+#disques-session-table td:nth-child(9),
+#disques-session-table td:nth-child(11) {
+    vertical-align: middle;
+}
+
+#disques-session-table td:nth-child(1),
+#disques-session-table td:nth-child(9) {
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+#disques-session-table td:nth-child(9) .disques-row-dest-label {
+    min-height: 34px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }

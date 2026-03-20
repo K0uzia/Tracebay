@@ -7,9 +7,16 @@
                         <label class="lot-config__label" for="commande-name"><i class="fa-solid fa-file-lines"></i> Nom de la commande</label>
                         <input class="lot-config__input" type="text" id="commande-name" placeholder="Ex : Commande fournitures mars 2025" maxlength="255" autocomplete="off">
                     </div>
+                    <div class="lot-config__field">
+                        <label class="lot-config__label" for="commande-category"><i class="fa-solid fa-folder-tree"></i> Catégorie</label>
+                        <select class="lot-config__input" id="commande-category" required>
+                            <option value="">-- Catégorie --</option>
+                        </select>
+                    </div>
                     <div class="lot-config__actions">
                         <button type="button" class="lot-btn lot-btn--secondary" id="commande-btn-add-line" title="Ajouter une ligne">Ajouter une ligne</button>
                         <button type="button" class="lot-btn lot-btn--secondary" id="commande-btn-add-product" title="Ajouter un produit">Ajouter un produit</button>
+                        <button type="button" class="lot-btn lot-btn--secondary" id="commande-btn-add-category" title="Ajouter une catégorie">Ajouter une catégorie</button>
                         <button type="button" class="lot-btn lot-btn--primary" id="commande-btn-save-pdf" title="Enregistrer le PDF">Enregistrer</button>
                     </div>
                 </div>
@@ -63,6 +70,27 @@
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="recep-btn recep-btn-secondary" data-close-modal="commande-modal-add-product">Annuler</button>
+                    <button type="submit" class="recep-btn recep-btn-primary">Enregistrer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</dialog>
+
+<dialog class="universal-modal" id="commande-modal-add-category" data-modal-id="commande-modal-add-category">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-folder-plus"></i> Ajouter une catégorie</h2>
+            <button type="button" class="modal-close-btn" data-modal-close="commande-modal-add-category" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="modal-body">
+            <form id="commande-form-add-category">
+                <div class="form-group">
+                    <label for="commande-new-category-name">Nom de la catégorie</label>
+                    <input type="text" id="commande-new-category-name" placeholder="Ex : RJ45" required autocomplete="off">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="recep-btn recep-btn-secondary" data-close-modal="commande-modal-add-category">Annuler</button>
                     <button type="submit" class="recep-btn recep-btn-primary">Enregistrer</button>
                 </div>
             </form>

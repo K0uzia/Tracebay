@@ -783,6 +783,7 @@ class PageManager {
                 if (recepSection) {
                     recepSection.innerHTML = html;
                     this.closeAllDialogsIn(recepSection);
+                    recepSection.scrollTop = 0;
                 }
                 this.setReceptionNavActive(pageName);
                 this.setReceptionPageTitle(pageName);
@@ -815,6 +816,7 @@ class PageManager {
 
             this.saveCurrentPage(pageName);
             this.trackPageVisit(pageName);
+            this.setReceptionScrollMode(pageName, isReceptionSubPage);
             // Pour les sous-pages reception, utiliser la config 'reception'
             const layoutPageName = isReceptionSubPage ? 'reception' : pageName;
             this.updateLayout(layoutPageName);
@@ -825,6 +827,12 @@ class PageManager {
             this.attachReceptionPageListeners();
             this.initializeFileManagers();
             this.initializeAppManagers();
+            if (isReceptionSubPage) {
+                requestAnimationFrame(() => {
+                    const recepSection = document.querySelector('.recep-section');
+                    if (recepSection) recepSection.scrollTop = 0;
+                });
+            }
             // #region agent log
             if (isReceptionSubPage) {
                 requestAnimationFrame(() => {
@@ -1432,6 +1440,7 @@ class PageManager {
         const buttons = document.querySelectorAll('[data-page]');
         
         buttons.forEach(button => {
+            if (button.dataset.receptionPage === 'true') return;
             if (!button.dataset.listenerAttached) {
                 button.addEventListener('click', (event) => {
                     event.preventDefault();
@@ -1484,6 +1493,7 @@ class PageManager {
         const descriptions = {
             entrer: 'Saisissez les numéros de série et les informations des machines.',
             inventaire: 'Gérez l\'état des PC et assignez les techniciens.',
+            historique: 'Consultez les lots terminés et les sessions disques archivées.',
             disques: 'Saisissez les disques puis enregistrez en traçabilité.',
             commande: 'Constituer une liste de produits et générer le PDF.',
             dons: 'Enregistrez les dons de matériel aux stagiaires et générez le certificat.'
@@ -1495,6 +1505,17 @@ class PageManager {
         if (descTextEl) descTextEl.textContent = text;
         else descEl.textContent = text;
         descEl.classList.toggle('is-empty', !text);
+    }
+
+    setReceptionScrollMode(pageName, isReceptionSubPage) {
+        const body = document.body;
+        const html = document.documentElement;
+        const root = document.querySelector('.r-root');
+        if (!body || !root || !html) return;
+        const onlyHistorique = !!isReceptionSubPage && pageName === 'historique';
+        body.classList.toggle('reception-single-scroll', onlyHistorique);
+        html.classList.toggle('reception-single-scroll', onlyHistorique);
+        root.classList.toggle('reception-single-scroll', onlyHistorique);
     }
 
     attachReceptionPageListeners() {

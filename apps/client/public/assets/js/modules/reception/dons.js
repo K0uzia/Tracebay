@@ -286,6 +286,7 @@ export default class DonsManager {
         if (btnAddLine) {
             this.addListener(btnAddLine, 'click', (e) => {
                 e.preventDefault();
+                e.stopImmediatePropagation();
                 this.addTableLine();
             });
         }
@@ -311,7 +312,7 @@ export default class DonsManager {
             });
         }
 
-        document.addEventListener('change', (e) => {
+        this.addListener(document, 'change', (e) => {
             if (e.target.classList.contains('dons-select-marque')) {
                 const row = e.target.closest('tr');
                 const modeleSelect = row?.querySelector('.dons-select-modele');

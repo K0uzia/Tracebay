@@ -380,6 +380,9 @@ export default class TracabiliteManager {
                 </div>
                 <div class="lot-card-actions">
                     ${hasPdf ? `
+                        <button type="button" class="btn-action btn-open-pdf-location-disque" data-session-id="${session.id}" title="Ouvrir le dossier du PDF">
+                            <i class="fa-solid fa-folder-open" aria-hidden="true"></i> Emplacement PDF
+                        </button>
                         <button type="button" class="btn-action btn-view-pdf-disque" data-pdf-url="${pdfUrl.replace(/"/g, '&quot;')}" data-download-filename="disques-session-${session.id}.pdf" title="Ouvrir le PDF dans le navigateur">
                             <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le PDF
                         </button>
@@ -429,6 +432,9 @@ export default class TracabiliteManager {
                 </div>
                 <div class="lot-card-actions">
                     ${hasPdf ? `
+                        <button type="button" class="btn-action btn-open-pdf-location-commande" data-commande-id="${this.escapeHtml(String(commande.id || ''))}" data-date="${this.escapeHtml(dateStr || '')}" title="Ouvrir le dossier du PDF">
+                            <i class="fa-solid fa-folder-open" aria-hidden="true"></i> Emplacement PDF
+                        </button>
                         <button type="button" class="btn-action btn-view-pdf-commande" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Ouvrir le PDF de la commande">
                             <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le PDF
                         </button>
@@ -473,6 +479,9 @@ export default class TracabiliteManager {
                 </div>
                 <div class="lot-card-actions">
                     ${hasPdf ? `
+                        <button type="button" class="btn-action btn-open-pdf-location-don" data-don-id="${this.escapeHtml(String(don.id || ''))}" title="Ouvrir le dossier du PDF">
+                            <i class="fa-solid fa-folder-open" aria-hidden="true"></i> Emplacement PDF
+                        </button>
                         <button type="button" class="btn-action btn-view-pdf-don" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Ouvrir le certificat de don (PDF)">
                             <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le certificat
                         </button>
@@ -558,6 +567,9 @@ export default class TracabiliteManager {
 
                 <div class="lot-card-actions">
                     ${pdfPath ? `
+                        <button type="button" class="btn-action btn-open-pdf-location-lot" data-lot-id="${lot.id}" title="Ouvrir le dossier du PDF">
+                            <i class="fa-solid fa-folder-open" aria-hidden="true"></i> Emplacement PDF
+                        </button>
                         <button type="button" class="btn-action btn-view-pdf" data-pdf-url="${(api.getServerUrl() + '/api/lots/' + lot.id + '/pdf?v=' + Date.now()).replace(/"/g, '&quot;')}" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}" title="Ouvrir le PDF du lot dans le navigateur">
                             <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le PDF
                         </button>
@@ -591,6 +603,31 @@ export default class TracabiliteManager {
      * Attacher les événements aux lignes
      */
     attachRowEventListeners() {
+        document.querySelectorAll('.btn-open-pdf-location-lot').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openLotPdfLocation(btn.dataset.lotId);
+            });
+        });
+        document.querySelectorAll('.btn-open-pdf-location-disque').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openDisquePdfLocation(btn.dataset.sessionId);
+            });
+        });
+        document.querySelectorAll('.btn-open-pdf-location-commande').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openCommandePdfLocation(btn.dataset.commandeId);
+            });
+        });
+        document.querySelectorAll('.btn-open-pdf-location-don').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openDonPdfLocation(btn.dataset.donId);
+            });
+        });
+
         // Générer PDF
         document.querySelectorAll('.btn-generate-pdf').forEach(btn => {
             btn.addEventListener('click', (e) => {
@@ -730,6 +767,113 @@ export default class TracabiliteManager {
             logger.error('Téléchargement PDF disques:', err);
             this.showNotification('Erreur lors du téléchargement du PDF', 'error');
         }
+    }
+
+    getMonthNameFr(monthIdx) {
+        const months = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+        return months[Math.max(0, Math.min(11, monthIdx))];
+    }
+
+    normalizeDateForPath(dateStr) {
+        const raw = String(dateStr || '').trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+        const d = new Date(raw);
+        if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0, 10);
+        return d.toISOString().slice(0, 10);
+    }
+
+    getCandidatePdfPathFromItem(item) {
+        const candidates = [
+            item?.local_pdf_path,
+            item?.localPdfPath,
+            item?.pdf_path,
+            item?.pdfPath,
+            item?.path,
+            item?.file_path,
+            item?.save_path,
+            item?.save_path_hint,
+            item?.pdf_directory,
+            item?.pdf_dir
+        ].filter(Boolean);
+        return candidates[0] || null;
+    }
+
+    isAllowedLocalPath(candidatePath) {
+        const p = String(candidatePath || '').trim();
+        if (!p) return false;
+        if (/^https?:\/\//i.test(p)) return false;
+        if (p.startsWith('/api/')) return false;
+        const normalized = p.replace(/\\/g, '/');
+        return normalized.startsWith('/mnt/team/#TEAM/');
+    }
+
+    toDirectoryPath(candidatePath) {
+        if (!candidatePath || /^https?:\/\//i.test(candidatePath)) return null;
+        const normalized = String(candidatePath).trim().replace(/\\/g, '/');
+        if (/\.pdf$/i.test(normalized)) {
+            return normalized.replace(/\/[^/]+$/i, '');
+        }
+        return normalized;
+    }
+
+    buildTracabiliteDir(dateStr) {
+        const normalized = this.normalizeDateForPath(dateStr);
+        const year = normalized.slice(0, 4);
+        const month = parseInt(normalized.slice(5, 7), 10) || 1;
+        const monthName = this.getMonthNameFr(month - 1);
+        return `/mnt/team/#TEAM/#TRAÇABILITÉ/${year}/${monthName}`;
+    }
+
+    async openPathOnDesktop(targetPath) {
+        if (!window.electron || typeof window.electron.invoke !== 'function') {
+            this.showNotification('Ouverture de dossier disponible uniquement dans l’application desktop', 'warning');
+            return;
+        }
+        try {
+            const result = await window.electron.invoke('open-path', { path: targetPath });
+            if (!result?.success) {
+                this.showNotification(result?.error || 'Impossible d’ouvrir le dossier', 'error');
+                return;
+            }
+            this.showNotification('Emplacement PDF ouvert', 'success');
+        } catch (err) {
+            logger.error('openPathOnDesktop:', err);
+            this.showNotification(err?.message || 'Impossible d’ouvrir le dossier', 'error');
+        }
+    }
+
+    async openLotPdfLocation(lotId) {
+        const lot = this.lots.find(l => String(l.id) === String(lotId));
+        if (!lot) return;
+        const candidate = this.getCandidatePdfPathFromItem(lot);
+        const explicit = this.isAllowedLocalPath(candidate) ? this.toDirectoryPath(candidate) : null;
+        const fallback = this.buildTracabiliteDir(lot.finished_at || lot.created_at);
+        await this.openPathOnDesktop(explicit || fallback);
+    }
+
+    async openDisquePdfLocation(sessionId) {
+        const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
+        if (!session) return;
+        const candidate = this.getCandidatePdfPathFromItem(session);
+        const explicit = this.isAllowedLocalPath(candidate) ? this.toDirectoryPath(candidate) : null;
+        const fallback = this.buildTracabiliteDir(session.date || session.created_at).replace('/#TRAÇABILITÉ/', '/#TRAÇABILITÉ/Disques/');
+        await this.openPathOnDesktop(explicit || fallback);
+    }
+
+    async openCommandePdfLocation(commandeId) {
+        const commande = this.commandes.find(c => String(c.id) === String(commandeId));
+        if (!commande) return;
+        const candidate = this.getCandidatePdfPathFromItem(commande);
+        const explicit = this.isAllowedLocalPath(candidate) ? this.toDirectoryPath(candidate) : null;
+        await this.openPathOnDesktop(explicit || '/mnt/team/#TEAM/#COMMANDES');
+    }
+
+    async openDonPdfLocation(donId) {
+        const don = this.dons.find(d => String(d.id) === String(donId));
+        if (!don) return;
+        const candidate = this.getCandidatePdfPathFromItem(don);
+        const explicit = this.isAllowedLocalPath(candidate) ? this.toDirectoryPath(candidate) : null;
+        await this.openPathOnDesktop(explicit || '/mnt/team/#TEAM/#TRAÇABILITÉ/don_stagiaires');
     }
 
     openEmailModalDisque(sessionId) {
