@@ -1697,7 +1697,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // COMMANDES (entête + lignes) — admin
   // ─────────────────────────────────────────────
 
-  fastify.get('/api/commandes', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/admin/commandes', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { limit = '100', offset = '0' } = request.query as any;
     const limitNum = Math.min(parseInt(limit, 10) || 100, 200);
@@ -1717,7 +1717,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.get('/api/commandes/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/admin/commandes/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
@@ -1779,7 +1779,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // ─────────────────────────────────────────────
   // DONS — admin
   // ─────────────────────────────────────────────
-  fastify.get('/api/dons', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/admin/dons', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { limit = '100', offset = '0' } = request.query as any;
     const limitNum = Math.min(parseInt(limit, 10) || 100, 200);
@@ -1802,7 +1802,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.get('/api/dons/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.get('/api/admin/dons/:id', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
