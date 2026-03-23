@@ -240,9 +240,11 @@
 .historique-lot-actions .btn-view-disque,
 .historique-lot-actions .btn-edit-disque-items,
 .historique-lot-actions .btn-view-don-details-hist,
-.historique-lot-actions .btn-edit-don-hist,
+.historique-lot-actions .btn-edit-don-name-hist,
+.historique-lot-actions .btn-edit-don-items-hist,
 .historique-lot-actions .btn-view-commande-details-hist,
-.historique-lot-actions .btn-edit-commande-hist {
+.historique-lot-actions .btn-edit-commande-name-hist,
+.historique-lot-actions .btn-edit-commande-items-hist {
     background: #fff;
     color: var(--bleu2);
     border: 1px solid rgba(62, 59, 140, 0.25);
@@ -256,9 +258,11 @@
 .historique-lot-actions .btn-view-disque:hover,
 .historique-lot-actions .btn-edit-disque-items:hover,
 .historique-lot-actions .btn-view-don-details-hist:hover,
-.historique-lot-actions .btn-edit-don-hist:hover,
+.historique-lot-actions .btn-edit-don-name-hist:hover,
+.historique-lot-actions .btn-edit-don-items-hist:hover,
 .historique-lot-actions .btn-view-commande-details-hist:hover,
-.historique-lot-actions .btn-edit-commande-hist:hover {
+.historique-lot-actions .btn-edit-commande-name-hist:hover,
+.historique-lot-actions .btn-edit-commande-items-hist:hover {
     background: rgba(62, 59, 140, 0.06);
     border-color: var(--bleu1);
     color: var(--bleu1);
@@ -360,6 +364,57 @@
     font-size: 0.8125rem;
     white-space: normal;
     word-break: break-word;
+}
+
+#modal-edit-disque-items .edit-items-table,
+#modal-edit-commande-items-hist .edit-items-table,
+#modal-edit-don-items-hist .edit-items-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+}
+
+#modal-edit-disque-items .edit-items-table th,
+#modal-edit-disque-items .edit-items-table td,
+#modal-edit-commande-items-hist .edit-items-table th,
+#modal-edit-commande-items-hist .edit-items-table td,
+#modal-edit-don-items-hist .edit-items-table th,
+#modal-edit-don-items-hist .edit-items-table td {
+    padding: var(--unit-1) var(--unit-2);
+    font-size: 0.8125rem;
+    white-space: normal;
+    word-break: break-word;
+}
+
+#modal-edit-disque-items .edit-items-table input,
+#modal-edit-disque-items .edit-items-table select,
+#modal-edit-lot-items .edit-items-table input,
+#modal-edit-lot-items .edit-items-table select,
+#modal-edit-commande-items-hist .edit-items-table input,
+#modal-edit-commande-items-hist .edit-items-table select,
+#modal-edit-don-items-hist .edit-items-table input,
+#modal-edit-don-items-hist .edit-items-table select {
+    width: 100%;
+    min-height: 34px;
+    padding: 4px 8px;
+    border: 1px solid rgba(13, 13, 13, 0.16);
+    border-radius: var(--radius-small);
+    font-size: 0.8125rem;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+#modal-edit-disque-items .edit-items-table input:focus,
+#modal-edit-disque-items .edit-items-table select:focus,
+#modal-edit-lot-items .edit-items-table input:focus,
+#modal-edit-lot-items .edit-items-table select:focus,
+#modal-edit-commande-items-hist .edit-items-table input:focus,
+#modal-edit-commande-items-hist .edit-items-table select:focus,
+#modal-edit-don-items-hist .edit-items-table input:focus,
+#modal-edit-don-items-hist .edit-items-table select:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 2px rgba(62, 59, 140, 0.18);
 }
 
 #modal-lot-details .historique-lot-detail {

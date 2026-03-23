@@ -12,6 +12,9 @@ const logger = getLogger();
 
 
 const VALUE_AUTRE_DISQUES = '__autre__';
+const VALUE_AUTRE_GENERIC = '__autre__';
+const LOT_TYPE_OPTIONS = ['', 'portable', 'fixe', 'Autre'];
+const DON_TYPE_OPTIONS = ['', 'portable', 'fixe', 'Autre'];
 
 export default class HistoriqueManager {
     constructor(modalManager) {
@@ -64,6 +67,10 @@ export default class HistoriqueManager {
                 try {
                     const data = await commandesRes.json();
                     this.commandes = this.extractListFromApiPayload(data, ['commandes', 'items', 'data', 'results', 'rows']);
+                    this.commandes = this.commandes.map((c) => ({
+                        ...c,
+                        lines: this.parseLinesArray(c?.lines ?? c?.lignes)
+                    }));
                     this.commandes.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
                 } catch (_) { this.commandes = []; }
             } else {
@@ -74,6 +81,10 @@ export default class HistoriqueManager {
                 try {
                     const data = await donsRes.json();
                     this.dons = this.extractListFromApiPayload(data, ['dons', 'items', 'data', 'results', 'rows']);
+                    this.dons = this.dons.map((d) => ({
+                        ...d,
+                        lines: this.parseLinesArray(d?.lines)
+                    }));
                     this.dons.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
                 } catch (_) { this.dons = []; }
             } else {
@@ -203,8 +214,11 @@ export default class HistoriqueManager {
                         <button type="button" class="btn-view-don-details-hist" data-don-id="${this.escapeHtml(String(don.id || ''))}" title="Voir les détails du don">
                             <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir détails
                         </button>
-                        <button type="button" class="btn-edit-don-hist" data-don-id="${this.escapeHtml(String(don.id || ''))}" title="Éditer le don">
-                            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Éditer
+                        <button type="button" class="btn-edit-don-name-hist" data-don-id="${this.escapeHtml(String(don.id || ''))}" title="Éditer le nom du don">
+                            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Éditer nom
+                        </button>
+                        <button type="button" class="btn-edit-don-items-hist" data-don-id="${this.escapeHtml(String(don.id || ''))}" title="Éditer le matériel du don">
+                            <i class="fa-solid fa-list-check" aria-hidden="true"></i> Éditer matériel
                         </button>
                     </div>
                 </div>
@@ -232,8 +246,11 @@ export default class HistoriqueManager {
                         <button type="button" class="btn-view-commande-details-hist" data-commande-id="${this.escapeHtml(String(commande.id || ''))}" title="Voir les détails de la commande">
                             <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir détails
                         </button>
-                        <button type="button" class="btn-edit-commande-hist" data-commande-id="${this.escapeHtml(String(commande.id || ''))}" title="Éditer la commande">
-                            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Éditer
+                        <button type="button" class="btn-edit-commande-name-hist" data-commande-id="${this.escapeHtml(String(commande.id || ''))}" title="Éditer le nom et la catégorie">
+                            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Éditer nom
+                        </button>
+                        <button type="button" class="btn-edit-commande-items-hist" data-commande-id="${this.escapeHtml(String(commande.id || ''))}" title="Éditer le matériel de la commande">
+                            <i class="fa-solid fa-list-check" aria-hidden="true"></i> Éditer matériel
                         </button>
                     </div>
                 </div>
@@ -323,7 +340,7 @@ export default class HistoriqueManager {
                             <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir détails
                         </button>
                         <button type="button" class="btn-edit-lot" data-lot-id="${lot.id}" title="Modifier le nom du lot">
-                            <i class="fa-solid fa-edit" aria-hidden="true"></i> Éditer lot
+                            <i class="fa-solid fa-edit" aria-hidden="true"></i> Éditer nom
                         </button>
                         <button type="button" class="btn-edit-items" data-lot-id="${lot.id}" title="Modifier le matériel (état, technicien par PC)">
                             <i class="fa-solid fa-list-check" aria-hidden="true"></i> Éditer matériel
@@ -380,6 +397,69 @@ export default class HistoriqueManager {
             if (Array.isArray(payload.data)) return payload.data;
         }
         return [];
+    }
+
+    parseLinesArray(rawLines) {
+        if (Array.isArray(rawLines)) return rawLines;
+        if (rawLines == null) return [];
+        if (typeof rawLines === 'object') {
+            if (Array.isArray(rawLines.lines)) return rawLines.lines;
+            if (Array.isArray(rawLines.items)) return rawLines.items;
+            if (Array.isArray(rawLines.data)) return rawLines.data;
+            if (Array.isArray(rawLines.results)) return rawLines.results;
+            return [];
+        }
+        if (typeof rawLines === 'string') {
+            try {
+                const parsed = JSON.parse(rawLines);
+                if (Array.isArray(parsed)) return parsed;
+                if (parsed && typeof parsed === 'object') {
+                    if (Array.isArray(parsed.lines)) return parsed.lines;
+                    if (Array.isArray(parsed.items)) return parsed.items;
+                    if (Array.isArray(parsed.data)) return parsed.data;
+                    if (Array.isArray(parsed.results)) return parsed.results;
+                }
+                return [];
+            } catch (_) {
+                return [];
+            }
+        }
+        return [];
+    }
+
+    normalizeTypeValue(rawType) {
+        const value = String(rawType || '').trim().toLowerCase();
+        if (!value) return '';
+        if (value === 'pc portable') return 'portable';
+        if (value === 'pc fixe') return 'fixe';
+        return value;
+    }
+
+    hasAuthToken() {
+        const token = String(localStorage.getItem('workspace_jwt') || '').trim();
+        return token.length > 20 && token.includes('.');
+    }
+
+    resolveDetailEndpoint(kind, id) {
+        const key = kind === 'commande' ? 'commandes.get' : 'dons.get';
+        const dynamic = window.SERVER_CONFIG?.getEndpoint?.(key);
+        if (dynamic && /:id/.test(dynamic)) {
+            return dynamic.replace(':id', String(id));
+        }
+        if (kind === 'commande') return `/api/commandes/${id}`;
+        return null;
+    }
+
+    async loadCommandeProductsReference() {
+        if (Array.isArray(this.commandeProductsRef) && this.commandeProductsRef.length) return;
+        this.commandeProductsRef = [];
+        try {
+            const res = await api.get('/api/commandes/products', { useCache: false });
+            if (!res.ok) return;
+            const data = await res.json();
+            const list = this.extractListFromApiPayload(data, ['items', 'products', 'data', 'rows']);
+            this.commandeProductsRef = Array.isArray(list) ? list : [];
+        } catch (_) { /* noop */ }
     }
 
     /**
@@ -508,10 +588,16 @@ export default class HistoriqueManager {
                 this.viewCommandeDetails(btn.dataset.commandeId);
             });
         });
-        document.querySelectorAll('.btn-edit-commande-hist').forEach(btn => {
+        document.querySelectorAll('.btn-edit-commande-name-hist').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.editCommandeFromHistorique(btn.dataset.commandeId);
+            });
+        });
+        document.querySelectorAll('.btn-edit-commande-items-hist').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                this.editCommandeItemsFromHistorique(btn.dataset.commandeId);
             });
         });
         document.querySelectorAll('.btn-view-don-details-hist').forEach(btn => {
@@ -520,10 +606,16 @@ export default class HistoriqueManager {
                 this.viewDonDetails(btn.dataset.donId);
             });
         });
-        document.querySelectorAll('.btn-edit-don-hist').forEach(btn => {
+        document.querySelectorAll('.btn-edit-don-name-hist').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 e.stopPropagation();
                 this.editDonFromHistorique(btn.dataset.donId);
+            });
+        });
+        document.querySelectorAll('.btn-edit-don-items-hist').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                this.editDonItemsFromHistorique(btn.dataset.donId);
             });
         });
     }
@@ -531,20 +623,127 @@ export default class HistoriqueManager {
     async editCommandeFromHistorique(commandeId) {
         const commande = this.commandes.find(c => String(c.id) === String(commandeId));
         if (!commande) return;
-        const currentName = String(commande.commande_name || commande.name || '').trim();
-        const currentCategory = String(commande.category || '').trim();
-        const newName = window.prompt('Nom de la commande', currentName);
-        if (newName == null) return;
-        const newCategory = window.prompt('Catégorie', currentCategory);
-        if (newCategory == null) return;
+        this.currentEditingCommandeId = String(commandeId);
+        const nameInput = document.getElementById('input-commande-name-hist');
+        const catInput = document.getElementById('input-commande-category-hist');
+        if (nameInput) nameInput.value = String(commande.commande_name || commande.name || '').trim();
+        if (catInput) catInput.value = String(commande.category || '').trim();
+        this.modalManager.open('modal-edit-commande-hist');
+    }
+
+    async saveCommandeFromHistorique() {
+        const commandeId = this.currentEditingCommandeId;
+        if (!commandeId) return;
+        const nameInput = document.getElementById('input-commande-name-hist');
+        const catInput = document.getElementById('input-commande-category-hist');
+        const newName = String(nameInput?.value || '').trim();
+        const newCategory = String(catInput?.value || '').trim();
+        if (!newName) {
+            this.showNotification('Le nom de la commande est obligatoire', 'warning');
+            return;
+        }
         try {
             const res = await api.put(`/api/commandes/${commandeId}`, {
-                commande_name: newName.trim(),
-                category: newCategory.trim()
+                commande_name: newName,
+                category: newCategory
             });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             await this.loadData();
+            this.modalManager.close('modal-edit-commande-hist');
             this.showNotification('Commande mise à jour', 'success');
+        } catch (err) {
+            this.showNotification(err?.message || 'Édition impossible', 'error');
+        }
+    }
+
+    async editCommandeItemsFromHistorique(commandeId) {
+        let commande = this.commandes.find(c => String(c.id) === String(commandeId));
+        if (!commande) return;
+        let lines = this.parseLinesArray(commande.lines || commande.lignes);
+        const endpoint = this.resolveDetailEndpoint('commande', commandeId);
+        if (lines.length === 0 && endpoint && this.hasAuthToken()) {
+            try {
+                const res = await api.get(endpoint, { useCache: false });
+                if (res.ok) {
+                    const data = await res.json();
+                    const full = data?.commande || data?.item || data;
+                    if (full && typeof full === 'object') {
+                        commande = { ...commande, ...full };
+                        lines = this.parseLinesArray(full.lines || full.lignes);
+                    }
+                }
+            } catch (_) { /* noop */ }
+        }
+        await this.loadCommandeProductsReference();
+        this.currentEditingCommandeId = String(commandeId);
+        const tbody = document.getElementById('modal-edit-commande-items-body');
+        if (!tbody) return;
+        if (lines.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6">Aucune ligne disponible</td></tr>`;
+        } else {
+            tbody.innerHTML = lines.map((line, idx) => `
+                <tr data-line-index="${idx}">
+                    <td>${idx + 1}</td>
+                    <td>
+                        <select class="hist-cmd-product-select">
+                            ${(() => {
+                                const val = String(line?.product_name || line?.produit || '').trim();
+                                const names = (this.commandeProductsRef || []).map(p => String(p?.name || '').trim()).filter(Boolean);
+                                const isKnown = val && names.includes(val);
+                                return '<option value="">-- Produit --</option>'
+                                    + names.map(n => `<option value="${this.escapeAttr(n)}" ${val === n ? 'selected' : ''}>${this.escapeHtml(n)}</option>`).join('')
+                                    + `<option value="${VALUE_AUTRE_GENERIC}" ${val && !isKnown ? 'selected' : ''}>Autre</option>`;
+                            })()}
+                        </select>
+                        <input type="text" class="hist-cmd-product-other" value="${this.escapeAttr(String(line?.product_name || line?.produit || ''))}" placeholder="Produit libre" style="margin-top:6px;display:${(() => {
+                            const val = String(line?.product_name || line?.produit || '').trim();
+                            const names = (this.commandeProductsRef || []).map(p => String(p?.name || '').trim()).filter(Boolean);
+                            return val && !names.includes(val) ? 'block' : 'none';
+                        })()};">
+                    </td>
+                    <td><input type="number" class="hist-cmd-quantity" min="0" step="1" value="${this.escapeAttr(String(line?.quantity ?? ''))}" placeholder="Qté"></td>
+                    <td><input type="number" class="hist-cmd-price" min="0" step="0.01" value="${this.escapeAttr(String(line?.unit_price ?? line?.price ?? ''))}" placeholder="Prix"></td>
+                    <td><input type="number" class="hist-cmd-shipping" min="0" step="0.01" value="${this.escapeAttr(String(line?.shipping_cost ?? line?.shipping ?? ''))}" placeholder="Port"></td>
+                    <td><input type="text" class="hist-cmd-link" value="${this.escapeAttr(String(line?.link || ''))}" placeholder="Lien"></td>
+                </tr>
+            `).join('');
+            tbody.querySelectorAll('.hist-cmd-product-select').forEach((sel) => {
+                sel.addEventListener('change', () => {
+                    const row = sel.closest('tr');
+                    const otherInput = row?.querySelector('.hist-cmd-product-other');
+                    if (!otherInput) return;
+                    const isOther = sel.value === VALUE_AUTRE_GENERIC;
+                    otherInput.style.display = isOther ? 'block' : 'none';
+                    if (!isOther) otherInput.value = sel.value || '';
+                });
+            });
+        }
+        this.modalManager.open('modal-edit-commande-items-hist');
+    }
+
+    async saveCommandeItemsFromHistorique() {
+        const commandeId = this.currentEditingCommandeId;
+        if (!commandeId) return;
+        const rows = Array.from(document.querySelectorAll('#modal-edit-commande-items-body tr[data-line-index]'));
+        const lines = rows.map((row) => {
+            const productSel = row.querySelector('.hist-cmd-product-select');
+            const productOther = row.querySelector('.hist-cmd-product-other');
+            const productName = productSel?.value === VALUE_AUTRE_GENERIC
+                ? String(productOther?.value || '').trim()
+                : String(productSel?.value || '').trim();
+            return {
+            product_name: productName || null,
+            quantity: Number(row.querySelector('.hist-cmd-quantity')?.value || 0) || 0,
+            price: String(row.querySelector('.hist-cmd-price')?.value || '').trim(),
+            shipping: String(row.querySelector('.hist-cmd-shipping')?.value || '').trim(),
+            link: String(row.querySelector('.hist-cmd-link')?.value || '').trim() || null
+        };});
+        try {
+            const res = await api.put(`/api/commandes/${commandeId}`, { lines });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await this.loadData();
+            this.modalManager.close('modal-edit-commande-items-hist');
+            this.showNotification('Matériel commande mis à jour', 'success');
         } catch (err) {
             this.showNotification(err?.message || 'Édition impossible', 'error');
         }
@@ -553,16 +752,17 @@ export default class HistoriqueManager {
     async viewCommandeDetails(commandeId) {
         let commande = this.commandes.find(c => String(c.id) === String(commandeId));
         if (!commande) return;
-        let lines = Array.isArray(commande.lines) ? commande.lines : [];
-        if (lines.length === 0) {
+        let lines = this.parseLinesArray(commande.lines || commande.lignes);
+        const endpoint = this.resolveDetailEndpoint('commande', commandeId);
+        if (lines.length === 0 && endpoint && this.hasAuthToken()) {
             try {
-                const res = await api.get(`/api/commandes/${commandeId}`, { useCache: false });
+                const res = await api.get(endpoint, { useCache: false });
                 if (res.ok) {
                     const data = await res.json();
                     const full = data?.commande || data?.item || data;
                     if (full && typeof full === 'object') {
                         commande = { ...commande, ...full };
-                        lines = Array.isArray(full.lines) ? full.lines : (Array.isArray(full.lignes) ? full.lignes : []);
+                        lines = this.parseLinesArray(full.lines || full.lignes);
                     }
                 }
             } catch (_) { /* on garde la version de base */ }
@@ -599,16 +799,17 @@ export default class HistoriqueManager {
     async viewDonDetails(donId) {
         let don = this.dons.find(d => String(d.id) === String(donId));
         if (!don) return;
-        let lines = Array.isArray(don.lines) ? don.lines : [];
-        if (lines.length === 0) {
+        let lines = this.parseLinesArray(don.lines);
+        const endpoint = this.resolveDetailEndpoint('don', donId);
+        if (lines.length === 0 && endpoint && this.hasAuthToken()) {
             try {
-                const res = await api.get(`/api/dons/${donId}`, { useCache: false });
+                const res = await api.get(endpoint, { useCache: false });
                 if (res.ok) {
                     const data = await res.json();
                     const full = data?.don || data?.item || data;
                     if (full && typeof full === 'object') {
                         don = { ...don, ...full };
-                        lines = Array.isArray(full.lines) ? full.lines : [];
+                        lines = this.parseLinesArray(full.lines);
                     }
                 }
             } catch (_) { /* on garde la version de base */ }
@@ -650,14 +851,197 @@ export default class HistoriqueManager {
     async editDonFromHistorique(donId) {
         const don = this.dons.find(d => String(d.id) === String(donId));
         if (!don) return;
-        const currentName = String(don.lot_name || don.name || '').trim();
-        const newName = window.prompt('Nom du don / lot', currentName);
-        if (newName == null) return;
+        this.currentEditingDonId = String(donId);
+        const lotNameInput = document.getElementById('input-don-lot-name-hist');
+        if (lotNameInput) lotNameInput.value = String(don.lot_name || don.name || '').trim();
+        this.modalManager.open('modal-edit-don-hist');
+    }
+
+    async saveDonFromHistorique() {
+        const donId = this.currentEditingDonId;
+        if (!donId) return;
+        const lotNameInput = document.getElementById('input-don-lot-name-hist');
+        const newName = String(lotNameInput?.value || '').trim();
+        if (!newName) {
+            this.showNotification('Le nom du lot du don est obligatoire', 'warning');
+            return;
+        }
         try {
-            const res = await api.put(`/api/dons/${donId}`, { lot_name: newName.trim() });
+            const res = await api.put(`/api/dons/${donId}`, { lot_name: newName });
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             await this.loadData();
+            this.modalManager.close('modal-edit-don-hist');
             this.showNotification('Don mis à jour', 'success');
+        } catch (err) {
+            this.showNotification(err?.message || 'Édition impossible', 'error');
+        }
+    }
+
+    async editDonItemsFromHistorique(donId) {
+        let don = this.dons.find(d => String(d.id) === String(donId));
+        if (!don) return;
+        let lines = this.parseLinesArray(don.lines);
+        const endpoint = this.resolveDetailEndpoint('don', donId);
+        if (lines.length === 0 && endpoint && this.hasAuthToken()) {
+            try {
+                const res = await api.get(endpoint, { useCache: false });
+                if (res.ok) {
+                    const data = await res.json();
+                    const full = data?.don || data?.item || data;
+                    if (full && typeof full === 'object') {
+                        don = { ...don, ...full };
+                        lines = this.parseLinesArray(full.lines);
+                    }
+                }
+            } catch (_) { /* noop */ }
+        }
+        await this.loadReferenceDataDisques();
+        this.currentEditingDonId = String(donId);
+        const tbody = document.getElementById('modal-edit-don-items-body');
+        if (!tbody) return;
+        if (lines.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7">Aucune ligne disponible</td></tr>`;
+        } else {
+            tbody.innerHTML = lines.map((line, idx) => `
+                <tr data-line-index="${idx}">
+                    <td>${idx + 1}</td>
+                    <td>
+                        <select class="hist-don-type-select">
+                            ${(() => {
+                                const val = this.normalizeTypeValue(line?.type);
+                                const known = DON_TYPE_OPTIONS.slice(1, -1);
+                                const isOther = val && !known.includes(val);
+                                return DON_TYPE_OPTIONS.map(opt => {
+                                    const value = opt === 'Autre' ? VALUE_AUTRE_GENERIC : opt;
+                                    const selected = (opt === 'Autre' && isOther) || (opt !== 'Autre' && val === opt);
+                                    return `<option value="${this.escapeAttr(value)}" ${selected ? 'selected' : ''}>${this.escapeHtml(opt || '-- Type --')}</option>`;
+                                }).join('');
+                            })()}
+                        </select>
+                        <input type="text" class="hist-don-type-other" value="${this.escapeAttr(this.normalizeTypeValue(line?.type))}" placeholder="Type libre" style="margin-top:6px;display:${(() => {
+                            const val = this.normalizeTypeValue(line?.type);
+                            const known = DON_TYPE_OPTIONS.slice(1, -1);
+                            return val && !known.includes(val) ? 'block' : 'none';
+                        })()};">
+                    </td>
+                    <td>
+                        ${(() => {
+                            const marqueVal = String(line?.marqueName || line?.marque || '').trim();
+                            const marqueMatch = this.marques.find(m => (m.name || '').trim() === marqueVal);
+                            const marqueSelVal = marqueMatch ? String(marqueMatch.id) : (marqueVal ? VALUE_AUTRE_DISQUES : '');
+                            const options = '<option value="">-- Marque --</option>'
+                                + this.marques.map(m => `<option value="${m.id}" ${marqueSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')
+                                + `<option value="${VALUE_AUTRE_DISQUES}" ${marqueSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>`;
+                            return `<select class="hist-don-marque-select">${options}</select>
+                                    <input type="text" class="hist-don-marque-other" value="${this.escapeAttr(marqueVal)}" placeholder="Marque libre" style="margin-top:6px;display:${marqueSelVal === VALUE_AUTRE_DISQUES ? 'block' : 'none'};">`;
+                        })()}
+                    </td>
+                    <td>
+                        ${(() => {
+                            const marqueVal = String(line?.marqueName || line?.marque || '').trim();
+                            const modeleVal = String(line?.modeleName || line?.modele || '').trim();
+                            const marqueMatch = this.marques.find(m => (m.name || '').trim() === marqueVal);
+                            const modelesForMarque = marqueMatch ? this.modeles.filter(m => m.marque_id == marqueMatch.id) : [];
+                            const modeleMatch = modelesForMarque.find(m => (m.name || '').trim() === modeleVal);
+                            const modeleSelVal = modeleMatch ? String(modeleMatch.id) : (modeleVal ? VALUE_AUTRE_DISQUES : '');
+                            const options = '<option value="">-- Modèle --</option>'
+                                + modelesForMarque.map(m => `<option value="${m.id}" ${modeleSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')
+                                + `<option value="${VALUE_AUTRE_DISQUES}" ${modeleSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>`;
+                            return `<select class="hist-don-modele-select">${options}</select>
+                                    <input type="text" class="hist-don-modele-other" value="${this.escapeAttr(modeleVal)}" placeholder="Modèle libre" style="margin-top:6px;display:${modeleSelVal === VALUE_AUTRE_DISQUES ? 'block' : 'none'};">`;
+                        })()}
+                    </td>
+                    <td><input type="text" class="hist-don-serial" value="${this.escapeAttr(String(line?.serialNumber || line?.serial || ''))}" placeholder="S/N"></td>
+                    <td><input type="text" class="hist-don-date" value="${this.escapeAttr(String(line?.date || ''))}" placeholder="Date"></td>
+                    <td><input type="text" class="hist-don-stagiaire" value="${this.escapeAttr(String(line?.stagiaire || ''))}" placeholder="Stagiaire"></td>
+                </tr>
+            `).join('');
+            tbody.querySelectorAll('.hist-don-type-select').forEach((sel) => {
+                sel.addEventListener('change', () => {
+                    const row = sel.closest('tr');
+                    const otherInput = row?.querySelector('.hist-don-type-other');
+                    if (!otherInput) return;
+                    const isOther = sel.value === VALUE_AUTRE_GENERIC;
+                    otherInput.style.display = isOther ? 'block' : 'none';
+                    if (!isOther) otherInput.value = sel.value || '';
+                });
+            });
+            tbody.querySelectorAll('.hist-don-marque-select').forEach((sel) => {
+                sel.addEventListener('change', () => {
+                    const row = sel.closest('tr');
+                    const marqueOther = row?.querySelector('.hist-don-marque-other');
+                    const modeleSel = row?.querySelector('.hist-don-modele-select');
+                    const modeleOther = row?.querySelector('.hist-don-modele-other');
+                    const isAutre = sel.value === VALUE_AUTRE_DISQUES;
+                    if (marqueOther) marqueOther.style.display = isAutre ? 'block' : 'none';
+                    if (modeleSel) {
+                        const filtered = sel.value && sel.value !== VALUE_AUTRE_DISQUES
+                            ? this.modeles.filter(m => String(m.marque_id) === String(sel.value))
+                            : [];
+                        modeleSel.innerHTML = '<option value="">-- Modèle --</option>'
+                            + filtered.map(m => `<option value="${m.id}">${this.escapeHtml(m.name)}</option>`).join('')
+                            + `<option value="${VALUE_AUTRE_DISQUES}">Autre</option>`;
+                    }
+                    if (modeleOther) {
+                        modeleOther.style.display = 'none';
+                        modeleOther.value = '';
+                    }
+                });
+            });
+            tbody.querySelectorAll('.hist-don-modele-select').forEach((sel) => {
+                sel.addEventListener('change', () => {
+                    const row = sel.closest('tr');
+                    const modeleOther = row?.querySelector('.hist-don-modele-other');
+                    if (!modeleOther) return;
+                    const isAutre = sel.value === VALUE_AUTRE_DISQUES;
+                    modeleOther.style.display = isAutre ? 'block' : 'none';
+                    if (!isAutre) modeleOther.value = '';
+                });
+            });
+        }
+        this.modalManager.open('modal-edit-don-items-hist');
+    }
+
+    async saveDonItemsFromHistorique() {
+        const donId = this.currentEditingDonId;
+        if (!donId) return;
+        const rows = Array.from(document.querySelectorAll('#modal-edit-don-items-body tr[data-line-index]'));
+        const lines = rows.map((row) => {
+            const typeSel = row.querySelector('.hist-don-type-select');
+            const typeOther = row.querySelector('.hist-don-type-other');
+            const type = typeSel?.value === VALUE_AUTRE_GENERIC
+                ? String(typeOther?.value || '').trim()
+                : String(typeSel?.value || '').trim();
+            const marqueSel = row.querySelector('.hist-don-marque-select');
+            const marqueOther = row.querySelector('.hist-don-marque-other');
+            const modeleSel = row.querySelector('.hist-don-modele-select');
+            const modeleOther = row.querySelector('.hist-don-modele-other');
+            let marque = null;
+            if (marqueSel?.value === VALUE_AUTRE_DISQUES) marque = String(marqueOther?.value || '').trim() || null;
+            else if (marqueSel?.value) {
+                const m = this.marques.find(x => String(x.id) === String(marqueSel.value));
+                marque = m?.name || null;
+            }
+            let modele = null;
+            if (modeleSel?.value === VALUE_AUTRE_DISQUES) modele = String(modeleOther?.value || '').trim() || null;
+            else if (modeleSel?.value) {
+                const m = this.modeles.find(x => String(x.id) === String(modeleSel.value));
+                modele = m?.name || null;
+            }
+            return {
+            type: this.normalizeTypeValue(type) || null,
+            marque,
+            modele,
+            serial: String(row.querySelector('.hist-don-serial')?.value || '').trim() || null,
+            date: String(row.querySelector('.hist-don-date')?.value || '').trim() || null,
+            stagiaire: String(row.querySelector('.hist-don-stagiaire')?.value || '').trim() || null
+        };});
+        try {
+            const res = await api.put(`/api/dons/${donId}`, { lines });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await this.loadData();
+            this.modalManager.close('modal-edit-don-items-hist');
+            this.showNotification('Matériel don mis à jour', 'success');
         } catch (err) {
             this.showNotification(err?.message || 'Édition impossible', 'error');
         }
@@ -844,16 +1228,25 @@ export default class HistoriqueManager {
                 `<option value="${VALUE_AUTRE_DISQUES}" ${modeleSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>`;
             const showMarqueAutre = marqueSelVal === VALUE_AUTRE_DISQUES;
             const showModeleAutre = modeleSelVal === VALUE_AUTRE_DISQUES;
-            return `<div class="historique-disque-edit-row disques-edit-form" data-disk-index="${i}">
-                <span class="historique-disque-edit-num">${i + 1}.</span>
-                <div class="form-group"><label>S/N *</label><input type="text" class="disque-edit-serial" value="${this.escapeAttr(d.serial || '')}" placeholder="S/N"></div>
-                <div class="form-group"><label>Marque</label><div class="disques-marque-row"><select class="disque-edit-marque">${marqueOpts}</select><input type="text" class="disque-edit-marque-autre" value="${showMarqueAutre ? this.escapeAttr(marqueVal) : ''}" placeholder="Autre marque" style="display:${showMarqueAutre ? 'inline-block' : 'none'};"></div></div>
-                <div class="form-group"><label>Modèle</label><div class="disques-modele-row"><select class="disque-edit-modele">${modeleOpts}</select><input type="text" class="disque-edit-modele-autre" value="${showModeleAutre ? this.escapeAttr(modeleVal) : ''}" placeholder="Autre modèle" style="display:${showModeleAutre ? 'inline-block' : 'none'};"></div></div>
-                <div class="form-group"><label>Taille</label><div class="disques-size-row"><select class="disque-edit-size-select">${sizeOpts.map(o => `<option value="${o}" ${sizeOpt === o ? 'selected' : ''}>${o || '--'}</option>`).join('')}</select><input type="text" class="disque-edit-size-custom" value="${sizeOpt === 'autre' ? this.escapeAttr(sizeVal) : ''}" placeholder="Ex: 512 Go" style="display:${sizeOpt === 'autre' ? 'inline-block' : 'none'};"></div></div>
-                <div class="form-group"><label>Type</label><select class="disque-edit-type">${typeOpts.map(o => `<option value="${o}" ${(d.disk_type || '') === o ? 'selected' : ''}>${o || '--'}</option>`).join('')}</select></div>
-                <div class="form-group"><label>Interface</label><select class="disque-edit-interface">${ifaceOpts.map(o => `<option value="${o}" ${(d.interface || '') === o ? 'selected' : ''}>${o}</option>`).join('')}</select></div>
-                <div class="form-group"><label class="disques-checkbox-label"><input type="checkbox" class="disque-edit-destruction-physique" ${(d.shred || '') === 'Destruction physique' ? 'checked' : ''}> Destruction physique</label></div>
-            </div>`;
+            return `<tr class="historique-disque-edit-row" data-disk-index="${i}">
+                <td>${i + 1}</td>
+                <td><input type="text" class="disque-edit-serial" value="${this.escapeAttr(d.serial || '')}" placeholder="S/N"></td>
+                <td>
+                    <select class="disque-edit-marque">${marqueOpts}</select>
+                    <input type="text" class="disque-edit-marque-autre" value="${showMarqueAutre ? this.escapeAttr(marqueVal) : ''}" placeholder="Autre marque" style="margin-top:6px;display:${showMarqueAutre ? 'block' : 'none'};">
+                </td>
+                <td>
+                    <select class="disque-edit-modele">${modeleOpts}</select>
+                    <input type="text" class="disque-edit-modele-autre" value="${showModeleAutre ? this.escapeAttr(modeleVal) : ''}" placeholder="Autre modèle" style="margin-top:6px;display:${showModeleAutre ? 'block' : 'none'};">
+                </td>
+                <td>
+                    <select class="disque-edit-size-select">${sizeOpts.map(o => `<option value="${o}" ${sizeOpt === o ? 'selected' : ''}>${o || '--'}</option>`).join('')}</select>
+                    <input type="text" class="disque-edit-size-custom" value="${sizeOpt === 'autre' ? this.escapeAttr(sizeVal) : ''}" placeholder="Ex: 512 Go" style="margin-top:6px;display:${sizeOpt === 'autre' ? 'block' : 'none'};">
+                </td>
+                <td><select class="disque-edit-type">${typeOpts.map(o => `<option value="${o}" ${(d.disk_type || '') === o ? 'selected' : ''}>${o || '--'}</option>`).join('')}</select></td>
+                <td><select class="disque-edit-interface">${ifaceOpts.map(o => `<option value="${o}" ${(d.interface || '') === o ? 'selected' : ''}>${o}</option>`).join('')}</select></td>
+                <td style="text-align:center;"><input type="checkbox" class="disque-edit-destruction-physique" ${(d.shred || '') === 'Destruction physique' ? 'checked' : ''} title="Destruction physique"></td>
+            </tr>`;
         }).join('');
         container.querySelectorAll('.disque-edit-size-select').forEach(sel => {
             sel.addEventListener('change', () => {
@@ -1124,6 +1517,24 @@ export default class HistoriqueManager {
         if (applyDisqueItemsBtn) {
             applyDisqueItemsBtn.addEventListener('click', () => this.applyDisqueItemsEdits());
         }
+
+        const saveCommandeBtn = document.getElementById('btn-save-commande-hist');
+        if (saveCommandeBtn) {
+            saveCommandeBtn.addEventListener('click', () => this.saveCommandeFromHistorique());
+        }
+
+        const saveDonBtn = document.getElementById('btn-save-don-hist');
+        if (saveDonBtn) {
+            saveDonBtn.addEventListener('click', () => this.saveDonFromHistorique());
+        }
+        const saveCommandeItemsBtn = document.getElementById('btn-save-commande-items-hist');
+        if (saveCommandeItemsBtn) {
+            saveCommandeItemsBtn.addEventListener('click', () => this.saveCommandeItemsFromHistorique());
+        }
+        const saveDonItemsBtn = document.getElementById('btn-save-don-items-hist');
+        if (saveDonItemsBtn) {
+            saveDonItemsBtn.addEventListener('click', () => this.saveDonItemsFromHistorique());
+        }
     }
 
     /**
@@ -1275,12 +1686,13 @@ export default class HistoriqueManager {
     /**
      * Éditer l'état du matériel et les techniciens
      */
-    editLotItems(lotId) {
+    async editLotItems(lotId) {
         const lot = this.lots.find(l => l.id == lotId);
         if (!lot) {
             logger.error('Lot non trouvé:', lotId);
             return;
         }
+        await this.loadReferenceDataDisques();
 
         // Utiliser la modale d'édition des items (similaire à inventaire)
         const modal = document.getElementById('modal-edit-lot-items');
@@ -1312,13 +1724,45 @@ export default class HistoriqueManager {
                 const itemState = item.state || '';
                 const knownStates = ['Reconditionnés', 'Pour pièces', 'HS'];
                 const isOtherState = itemState && !knownStates.includes(itemState);
+                const itemType = this.normalizeTypeValue(item.type);
+                const isOtherType = itemType && !LOT_TYPE_OPTIONS.slice(1, -1).includes(itemType);
+                const itemMarque = String(item.marque_name || '').trim();
+                const itemModele = String(item.modele_name || '').trim();
+                const marqueMatch = this.marques.find(m => (m.name || '').trim() === itemMarque);
+                const marqueSelVal = marqueMatch ? String(marqueMatch.id) : (itemMarque ? VALUE_AUTRE_DISQUES : '');
+                const modelesForMarque = marqueMatch ? this.modeles.filter(m => String(m.marque_id) === String(marqueMatch.id)) : [];
+                const modeleMatch = modelesForMarque.find(m => (m.name || '').trim() === itemModele);
+                const modeleSelVal = modeleMatch ? String(modeleMatch.id) : (itemModele ? VALUE_AUTRE_DISQUES : '');
                 return `
                 <tr data-item-id="${item.id}">
                     <td><span class="item-number">${idx + 1}</span></td>
                     <td><span class="item-text">${item.serial_number || '-'}</span></td>
-                    <td><span class="item-text">${item.type || '-'}</span></td>
-                    <td><span class="item-text">${item.marque_name || '-'}</span></td>
-                    <td><span class="item-text">${item.modele_name || '-'}</span></td>
+                    <td>
+                        <select class="item-type-select" data-item-id="${item.id}">
+                            ${LOT_TYPE_OPTIONS.map(opt => {
+                                const value = opt === 'Autre' ? VALUE_AUTRE_GENERIC : opt;
+                                const selected = (opt === 'Autre' && isOtherType) || (opt !== 'Autre' && itemType === opt);
+                                return `<option value="${this.escapeAttr(value)}" ${selected ? 'selected' : ''}>${this.escapeHtml(opt || '-- Type --')}</option>`;
+                            }).join('')}
+                        </select>
+                        <input type="text" class="item-type-other-input" data-item-id="${item.id}" value="${isOtherType ? this.escapeAttr(itemType) : ''}" placeholder="Précisez le type" style="margin-top:6px;display:${isOtherType ? 'block' : 'none'};">
+                    </td>
+                    <td>
+                        <select class="item-marque-select" data-item-id="${item.id}">
+                            <option value="">-- Marque --</option>
+                            ${this.marques.map(m => `<option value="${m.id}" ${marqueSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')}
+                            <option value="${VALUE_AUTRE_DISQUES}" ${marqueSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>
+                        </select>
+                        <input type="text" class="item-marque-other-input" data-item-id="${item.id}" value="${marqueSelVal === VALUE_AUTRE_DISQUES ? this.escapeAttr(itemMarque) : ''}" placeholder="Précisez la marque" style="margin-top:6px;display:${marqueSelVal === VALUE_AUTRE_DISQUES ? 'block' : 'none'};">
+                    </td>
+                    <td>
+                        <select class="item-modele-select" data-item-id="${item.id}">
+                            <option value="">-- Modèle --</option>
+                            ${modelesForMarque.map(m => `<option value="${m.id}" ${modeleSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')}
+                            <option value="${VALUE_AUTRE_DISQUES}" ${modeleSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>
+                        </select>
+                        <input type="text" class="item-modele-other-input" data-item-id="${item.id}" value="${modeleSelVal === VALUE_AUTRE_DISQUES ? this.escapeAttr(itemModele) : ''}" placeholder="Précisez le modèle" style="margin-top:6px;display:${modeleSelVal === VALUE_AUTRE_DISQUES ? 'block' : 'none'};">
+                    </td>
                     <td class="col-os">
                         <select class="item-os-select" data-item-id="${item.id}">
                             ${OS_OPTIONS.map(o => `<option value="${o.value}" ${getOsOption(item.os).value === o.value ? 'selected' : ''}>${o.label}</option>`).join('')}
@@ -1358,6 +1802,48 @@ export default class HistoriqueManager {
                     if (!isOther) otherInput.value = '';
                 });
             });
+            itemsContainer.querySelectorAll('.item-type-select').forEach(sel => {
+                sel.addEventListener('change', () => {
+                    const row = sel.closest('tr');
+                    const otherInput = row?.querySelector('.item-type-other-input');
+                    if (!otherInput) return;
+                    const isOther = sel.value === VALUE_AUTRE_GENERIC;
+                    otherInput.style.display = isOther ? 'block' : 'none';
+                    if (!isOther) otherInput.value = sel.value || '';
+                });
+            });
+            itemsContainer.querySelectorAll('.item-marque-select').forEach(sel => {
+                sel.addEventListener('change', () => {
+                    const row = sel.closest('tr');
+                    const marqueOther = row?.querySelector('.item-marque-other-input');
+                    const modeleSel = row?.querySelector('.item-modele-select');
+                    const modeleOther = row?.querySelector('.item-modele-other-input');
+                    const isAutre = sel.value === VALUE_AUTRE_DISQUES;
+                    if (marqueOther) marqueOther.style.display = isAutre ? 'block' : 'none';
+                    if (modeleSel) {
+                        const filtered = sel.value && sel.value !== VALUE_AUTRE_DISQUES
+                            ? this.modeles.filter(m => String(m.marque_id) === String(sel.value))
+                            : [];
+                        modeleSel.innerHTML = '<option value="">-- Modèle --</option>'
+                            + filtered.map(m => `<option value="${m.id}">${this.escapeHtml(m.name)}</option>`).join('')
+                            + `<option value="${VALUE_AUTRE_DISQUES}">Autre</option>`;
+                    }
+                    if (modeleOther) {
+                        modeleOther.style.display = 'none';
+                        modeleOther.value = '';
+                    }
+                });
+            });
+            itemsContainer.querySelectorAll('.item-modele-select').forEach(sel => {
+                sel.addEventListener('change', () => {
+                    const row = sel.closest('tr');
+                    const modeleOther = row?.querySelector('.item-modele-other-input');
+                    if (!modeleOther) return;
+                    const isOther = sel.value === VALUE_AUTRE_DISQUES;
+                    modeleOther.style.display = isOther ? 'block' : 'none';
+                    if (!isOther) modeleOther.value = '';
+                });
+            });
         }
 
         // Mettre à jour le numéro du lot dans la modale
@@ -1369,9 +1855,11 @@ export default class HistoriqueManager {
     /**
      * Apliquer les changements à l'édition des items
      */
-    applyItemEdits() {
+    async applyItemEdits() {
         const lot = this.lots.find(l => l.id == this.currentEditingLotId);
         if (!lot) return;
+
+        await this.loadReferenceDataDisques();
 
         const updates = [];
 
@@ -1400,7 +1888,33 @@ export default class HistoriqueManager {
                     itemId,
                     state: state,
                     technician: technician || null,
-                    os: os || 'linux'
+                    os: os || 'linux',
+                    type: (() => {
+                        const typeSel = row.querySelector('.item-type-select');
+                        const typeOther = row.querySelector('.item-type-other-input');
+                        const rawType = typeSel?.value === VALUE_AUTRE_GENERIC ? String(typeOther?.value || '').trim() : String(typeSel?.value || '').trim();
+                        return this.normalizeTypeValue(rawType);
+                    })() || null,
+                    marque_name: (() => {
+                        const marqueSel = row.querySelector('.item-marque-select');
+                        const marqueOther = row.querySelector('.item-marque-other-input');
+                        if (marqueSel?.value === VALUE_AUTRE_DISQUES) return String(marqueOther?.value || '').trim() || null;
+                        if (marqueSel?.value) {
+                            const m = this.marques.find(x => String(x.id) === String(marqueSel.value));
+                            return m?.name || null;
+                        }
+                        return null;
+                    })(),
+                    modele_name: (() => {
+                        const modeleSel = row.querySelector('.item-modele-select');
+                        const modeleOther = row.querySelector('.item-modele-other-input');
+                        if (modeleSel?.value === VALUE_AUTRE_DISQUES) return String(modeleOther?.value || '').trim() || null;
+                        if (modeleSel?.value) {
+                            const m = this.modeles.find(x => String(x.id) === String(modeleSel.value));
+                            return m?.name || null;
+                        }
+                        return null;
+                    })()
                 });
             }
         });
@@ -1432,7 +1946,10 @@ export default class HistoriqueManager {
                 body: JSON.stringify({
                     state: update.state,
                     technician: update.technician || null,
-                    os: update.os || 'linux'
+                    os: update.os || 'linux',
+                    type: update.type || null,
+                    marque_name: update.marque_name || null,
+                    modele_name: update.modele_name || null
                 })
             });
             if (!response.ok) {
@@ -1473,7 +1990,7 @@ export default class HistoriqueManager {
         .then(() => {
             this.showNotification('Matériel mis à jour', 'success');
             this.modalManager.close('modal-edit-lot-items');
-            this.loadLots();
+            this.loadData();
         })
         .catch(err => {
             logger.error('Erreur:', err);

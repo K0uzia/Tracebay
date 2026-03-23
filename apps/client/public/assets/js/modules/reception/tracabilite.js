@@ -478,7 +478,9 @@ export default class TracabiliteManager {
         const remotePdfUrl = commande.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : '/' + rawPdfPath)) : '');
         const hasPdf = (isLocalPath && rawPdfPath) || (remotePdfUrl && remotePdfUrl.length > 0);
         const safeUrl = remotePdfUrl ? (remotePdfUrl + (remotePdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;') : '';
-        const downloadFilename = (name.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') || 'commande') + '_' + (dateStr || '') + '.pdf';
+        const safeDate = this.normalizeDateForPath(dateStr || new Date().toISOString().slice(0, 10));
+        const safeName = (name.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') || 'commande');
+        const downloadFilename = `${safeName}_${safeDate}.pdf`;
         return `
             <div class="lot-card lot-card-commande" data-commande-id="${this.escapeHtml(String(commande.id || ''))}">
                 <div class="lot-card-header">
@@ -504,6 +506,9 @@ export default class TracabiliteManager {
                         ${isLocalPath ? `
                             <button type="button" class="btn-action btn-view-local-pdf-commande" data-pdf-path="${this.escapeHtml(rawPdfPath)}" title="Ouvrir le PDF local de la commande">
                                 <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le PDF
+                            </button>
+                            <button type="button" class="btn-action btn-download-local-pdf-commande" data-pdf-path="${this.escapeHtml(rawPdfPath)}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Télécharger le PDF local de la commande">
+                                <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger PDF
                             </button>
                         ` : `
                             <button type="button" class="btn-action btn-view-pdf-commande" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Ouvrir le PDF de la commande">
@@ -539,7 +544,9 @@ export default class TracabiliteManager {
         const pdfUrl = don.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : '/' + rawPdfPath)) : '');
         const hasPdf = (isLocalPath && rawPdfPath) || (pdfUrl && pdfUrl.length > 0);
         const safeUrl = pdfUrl ? (pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;') : '';
-        const downloadFilename = (lotName ? lotName.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') : 'don') + '_' + (dateStr || '') + '.pdf';
+        const safeDate = this.normalizeDateForPath(dateStr || new Date().toISOString().slice(0, 10));
+        const safeName = (lotName ? lotName.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') : 'don');
+        const downloadFilename = `${safeName}_${safeDate}.pdf`;
         return `
             <div class="lot-card lot-card-don" data-don-id="${this.escapeHtml(String(don.id || ''))}">
                 <div class="lot-card-header">
@@ -825,6 +832,14 @@ export default class TracabiliteManager {
                 const pdfPath = (btn.dataset.pdfPath || '').replace(/&quot;/g, '"');
                 if (!pdfPath) return;
                 await this.openPathOnDesktop(pdfPath);
+            });
+        });
+        document.querySelectorAll('.btn-download-local-pdf-commande').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const pdfPath = (btn.dataset.pdfPath || '').replace(/&quot;/g, '"');
+                const filename = (btn.dataset.downloadFilename || '').replace(/&quot;/g, '"') || 'commande.pdf';
+                await this.downloadLocalPdf(pdfPath, filename);
             });
         });
 

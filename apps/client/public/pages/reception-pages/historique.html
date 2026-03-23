@@ -193,8 +193,23 @@
             <button type="button" class="modal-close-btn" data-modal-close="modal-edit-disque-items" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
         </div>
         <div class="modal-body">
-            <p class="modal-help">Modifiez S/N, marque, modèle, taille, type et interface pour chaque disque.</p>
-            <div id="modal-edit-disque-items-list" class="historique-disque-edit-list"></div>
+            <div class="edit-items-table-wrapper recep-table-wrap">
+                <table class="edit-items-table recep-table">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>S/N</th>
+                            <th>Marque</th>
+                            <th>Modèle</th>
+                            <th>Taille</th>
+                            <th>Type</th>
+                            <th>Interface</th>
+                            <th>Shred</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-edit-disque-items-list"></tbody>
+                </table>
+            </div>
         </div>
         <div class="modal-footer">
             <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-disque-items">Annuler</button>
@@ -330,6 +345,109 @@
         </div>
         <div class="modal-footer">
             <button type="button" class="modal-cancel-btn" data-modal-close="modal-don-details" title="Fermer">Fermer</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog class="universal-modal" id="modal-edit-commande-hist" data-modal-id="modal-edit-commande-hist">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-pen-to-square"></i> Éditer nom commande</h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-commande-hist" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="input-commande-name-hist">Nom de la commande</label>
+                <input type="text" id="input-commande-name-hist" placeholder="Nom de la commande">
+            </div>
+            <div class="form-group">
+                <label for="input-commande-category-hist">Catégorie</label>
+                <input type="text" id="input-commande-category-hist" placeholder="Catégorie">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-commande-hist">Annuler</button>
+            <button type="button" class="modal-submit-btn" id="btn-save-commande-hist"><i class="fa-solid fa-check" aria-hidden="true"></i> Enregistrer</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog class="universal-modal" id="modal-edit-don-hist" data-modal-id="modal-edit-don-hist">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-pen-to-square"></i> Éditer nom don</h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-don-hist" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="input-don-lot-name-hist">Nom du lot</label>
+                <input type="text" id="input-don-lot-name-hist" placeholder="Nom du lot de don">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-don-hist">Annuler</button>
+            <button type="button" class="modal-submit-btn" id="btn-save-don-hist"><i class="fa-solid fa-check" aria-hidden="true"></i> Enregistrer</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog class="universal-modal" id="modal-edit-commande-items-hist" data-modal-id="modal-edit-commande-items-hist">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-list-check"></i> Éditer matériel commande</h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-commande-items-hist" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="edit-items-table-wrapper recep-table-wrap">
+                <table class="edit-items-table recep-table">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Produit</th>
+                            <th>Qté</th>
+                            <th>Prix (€)</th>
+                            <th>Port (€)</th>
+                            <th>Lien</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-edit-commande-items-body"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-commande-items-hist">Annuler</button>
+            <button type="button" class="modal-submit-btn" id="btn-save-commande-items-hist"><i class="fa-solid fa-check" aria-hidden="true"></i> Enregistrer</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog class="universal-modal" id="modal-edit-don-items-hist" data-modal-id="modal-edit-don-items-hist">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-list-check"></i> Éditer matériel don</h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-don-items-hist" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="edit-items-table-wrapper recep-table-wrap">
+                <table class="edit-items-table recep-table">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Type</th>
+                            <th>Marque</th>
+                            <th>Modèle</th>
+                            <th>S/N</th>
+                            <th>Date</th>
+                            <th>Stagiaire</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-edit-don-items-body"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-don-items-hist">Annuler</button>
+            <button type="button" class="modal-submit-btn" id="btn-save-don-items-hist"><i class="fa-solid fa-check" aria-hidden="true"></i> Enregistrer</button>
         </div>
     </div>
 </dialog>

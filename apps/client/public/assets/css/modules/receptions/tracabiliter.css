@@ -340,7 +340,9 @@
 .tracabilite-container .lot-card-actions .btn-view-pdf,
 .tracabilite-container .lot-card-actions .btn-view-pdf-disque,
 .tracabilite-container .lot-card-actions .btn-view-pdf-commande,
-.tracabilite-container .lot-card-actions .btn-view-pdf-don {
+.tracabilite-container .lot-card-actions .btn-view-pdf-don,
+.tracabilite-container .lot-card-actions .btn-view-local-pdf-commande,
+.tracabilite-container .lot-card-actions .btn-view-local-pdf-don {
     background: rgba(62, 59, 140, 0.14);
     color: var(--bleu2);
     border-color: rgba(62, 59, 140, 0.45);
@@ -349,7 +351,9 @@
 .tracabilite-container .lot-card-actions .btn-view-pdf:hover,
 .tracabilite-container .lot-card-actions .btn-view-pdf-disque:hover,
 .tracabilite-container .lot-card-actions .btn-view-pdf-commande:hover,
-.tracabilite-container .lot-card-actions .btn-view-pdf-don:hover {
+.tracabilite-container .lot-card-actions .btn-view-pdf-don:hover,
+.tracabilite-container .lot-card-actions .btn-view-local-pdf-commande:hover,
+.tracabilite-container .lot-card-actions .btn-view-local-pdf-don:hover {
     background: rgba(62, 59, 140, 0.22);
     color: var(--bleu2);
     border-color: rgba(62, 59, 140, 0.65);
@@ -358,7 +362,9 @@
 .tracabilite-container .lot-card-actions .btn-download-pdf,
 .tracabilite-container .lot-card-actions .btn-download-pdf-disque,
 .tracabilite-container .lot-card-actions .btn-download-pdf-commande,
-.tracabilite-container .lot-card-actions .btn-download-pdf-don {
+.tracabilite-container .lot-card-actions .btn-download-pdf-don,
+.tracabilite-container .lot-card-actions .btn-download-local-pdf-commande,
+.tracabilite-container .lot-card-actions .btn-download-local-pdf-don {
     background: rgba(45, 48, 115, 0.14);
     color: var(--bleu2);
     border-color: rgba(45, 48, 115, 0.45);
@@ -367,7 +373,9 @@
 .tracabilite-container .lot-card-actions .btn-download-pdf:hover,
 .tracabilite-container .lot-card-actions .btn-download-pdf-disque:hover,
 .tracabilite-container .lot-card-actions .btn-download-pdf-commande:hover,
-.tracabilite-container .lot-card-actions .btn-download-pdf-don:hover {
+.tracabilite-container .lot-card-actions .btn-download-pdf-don:hover,
+.tracabilite-container .lot-card-actions .btn-download-local-pdf-commande:hover,
+.tracabilite-container .lot-card-actions .btn-download-local-pdf-don:hover {
     background: rgba(45, 48, 115, 0.22);
     color: var(--bleu2);
     border-color: rgba(45, 48, 115, 0.65);
@@ -388,14 +396,18 @@
 }
 
 .tracabilite-container .lot-card-actions .btn-regenerate-pdf,
-.tracabilite-container .lot-card-actions .btn-regenerate-pdf-disque {
+.tracabilite-container .lot-card-actions .btn-regenerate-pdf-disque,
+.tracabilite-container .lot-card-actions .btn-regenerate-pdf-commande,
+.tracabilite-container .lot-card-actions .btn-regenerate-pdf-don {
     background: rgba(242, 188, 27, 0.2);
     color: #6a5200;
     border-color: rgba(242, 188, 27, 0.5);
 }
 
 .tracabilite-container .lot-card-actions .btn-regenerate-pdf:hover,
-.tracabilite-container .lot-card-actions .btn-regenerate-pdf-disque:hover {
+.tracabilite-container .lot-card-actions .btn-regenerate-pdf-disque:hover,
+.tracabilite-container .lot-card-actions .btn-regenerate-pdf-commande:hover,
+.tracabilite-container .lot-card-actions .btn-regenerate-pdf-don:hover {
     background: rgba(242, 188, 27, 0.3);
     color: #4d3b00;
     border-color: rgba(242, 188, 27, 0.7);
