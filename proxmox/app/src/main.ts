@@ -2264,7 +2264,24 @@ function broadcastUserCount() {
         return { success: true, shortcuts: result.rows };
       } catch (error: any) {
         console.error('Error fetching shortcuts:', error);
-        if (error?.code === '42P01' || error?.code === '42703') {
+        if (error?.code === '42703') {
+          // Compat schéma legacy: colonne "title" au lieu de "name"
+          try {
+            const fallback = await query(
+              `SELECT s.id, s.title AS title, s.description, s.url, s.category_id, s.order_index, s.created_at
+               FROM shortcuts s
+               LEFT JOIN shortcut_categories sc ON sc.id = s.category_id
+               WHERE s.user_id = $1
+                  OR (s.user_id IS NULL AND sc.user_id = $1)
+               ORDER BY category_id ASC NULLS FIRST, order_index ASC`,
+              [userId]
+            );
+            return { success: true, shortcuts: fallback.rows };
+          } catch {
+            return { success: true, shortcuts: [] };
+          }
+        }
+        if (error?.code === '42P01') {
           // Déploiement partiel/migration incomplète: ne pas casser la page "Mes raccourcis"
           return { success: true, shortcuts: [] };
         }
@@ -2307,6 +2324,20 @@ function broadcastUserCount() {
         return { success: true, shortcut: result.rows[0] };
       } catch (error: any) {
         console.error('Error creating shortcut:', error);
+        if (error?.code === '42703') {
+          // Compat schéma legacy: colonne "title" au lieu de "name"
+          try {
+            const result = await query(
+              `INSERT INTO shortcuts (user_id, title, description, url, category_id, order_index)
+               VALUES ($1, $2, $3, $4, $5, (SELECT COALESCE(MAX(order_index) + 1, 0) FROM shortcuts WHERE user_id = $1 AND (category_id = $5 OR (category_id IS NULL AND $5 IS NULL))))
+               RETURNING id, title, description, url, category_id, order_index, created_at`,
+              [userId, title.trim(), description || null, url.trim(), finalCategoryId || null]
+            );
+            return { success: true, shortcut: result.rows[0] };
+          } catch (fallbackError) {
+            console.error('Error creating shortcut on legacy schema:', fallbackError);
+          }
+        }
         reply.statusCode = 500;
         return { error: 'Database error' };
       }
@@ -2367,6 +2398,37 @@ function broadcastUserCount() {
         return { success: true, shortcut: result.rows[0] };
       } catch (error: any) {
         console.error('Error updating shortcut:', error);
+        if (error?.code === '42703') {
+          // Compat schéma legacy: colonne "title" au lieu de "name"
+          try {
+            const updates: string[] = [];
+            const values: any[] = [];
+            let paramIndex = 1;
+            if (title !== undefined) { updates.push(`title = $${paramIndex++}`); values.push(title != null ? String(title).trim() : null); }
+            if (description !== undefined) { updates.push(`description = $${paramIndex++}`); values.push(description != null ? String(description).trim() : null); }
+            if (url !== undefined) { updates.push(`url = $${paramIndex++}`); values.push(url != null ? String(url).trim() : null); }
+            if (finalCategoryId !== undefined) { updates.push(`category_id = $${paramIndex++}`); values.push(finalCategoryId || null); }
+            if (updates.length === 0) {
+              reply.statusCode = 400;
+              return { error: 'No fields to update' };
+            }
+            updates.push('updated_at = NOW()');
+            values.push(id, userId);
+            const whereIdParam = values.length - 1;
+            const whereUserIdParam = values.length;
+            const fallback = await query(
+              `UPDATE shortcuts SET ${updates.join(', ')} WHERE id = $${whereIdParam} AND user_id = $${whereUserIdParam} RETURNING id, title, description, url, category_id, order_index, created_at`,
+              values
+            );
+            if (fallback.rowCount === 0) {
+              reply.statusCode = 404;
+              return { error: 'Raccourci introuvable' };
+            }
+            return { success: true, shortcut: fallback.rows[0] };
+          } catch (fallbackError) {
+            console.error('Error updating shortcut on legacy schema:', fallbackError);
+          }
+        }
         reply.statusCode = 500;
         return { error: 'Database error' };
       }
@@ -2504,6 +2566,134 @@ function broadcastUserCount() {
       }
     });
 
+    fastify.get('/api/commandes/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) return sendAuthRequired(reply);
+      const { id } = request.params as { id: string };
+      try {
+        const header = await query(
+          `SELECT id, user_id, name AS commande_name, category, date, pdf_path, created_at
+           FROM commandes
+           WHERE id = $1 AND user_id = $2`,
+          [id, userId]
+        );
+        if (header.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Commande introuvable' };
+        }
+        const lignes = await query(
+          `SELECT l.id,
+                  l.commande_id,
+                  l.commande_product_id,
+                  l.product_name,
+                  l.quantity,
+                  l.unit_price,
+                  l.shipping_cost,
+                  l.link,
+                  p.name AS product_name_ref
+           FROM commande_lignes l
+           LEFT JOIN commande_products p ON p.id = l.commande_product_id
+           WHERE l.commande_id = $1
+           ORDER BY l.id`,
+          [id]
+        );
+        return { success: true, commande: { ...header.rows[0], lines: lignes.rows } };
+      } catch (error: any) {
+        if (error?.code === '42P01') {
+          reply.statusCode = 500;
+          return { error: 'Tables commandes/commande_lignes manquantes (migration requise)' };
+        }
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.put('/api/commandes/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) return sendAuthRequired(reply);
+      const { id } = request.params as { id: string };
+      const body = request.body as any;
+      const commandeName = body?.commande_name != null ? String(body.commande_name).trim() : undefined;
+      const category = body?.category != null ? String(body.category).trim() : undefined;
+      const date = body?.date != null ? String(body.date).trim() : undefined;
+      const pdfPath = body?.pdf_path != null ? String(body.pdf_path).trim() : undefined;
+      const incomingLines = Array.isArray(body?.lines) ? body.lines : null;
+      try {
+        const existing = await query(
+          'SELECT id FROM commandes WHERE id = $1 AND user_id = $2',
+          [id, userId]
+        );
+        if (existing.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Commande introuvable' };
+        }
+
+        const updates: string[] = [];
+        const values: any[] = [];
+        let idx = 1;
+        if (commandeName !== undefined) { updates.push(`name = $${idx++}`); values.push(commandeName || null); }
+        if (category !== undefined) { updates.push(`category = $${idx++}`); values.push(category || null); }
+        if (date !== undefined) { updates.push(`date = $${idx++}`); values.push(date || null); }
+        if (pdfPath !== undefined) { updates.push(`pdf_path = $${idx++}`); values.push(pdfPath || null); }
+        if (updates.length > 0) {
+          values.push(id, userId);
+          await query(
+            `UPDATE commandes SET ${updates.join(', ')} WHERE id = $${values.length - 1} AND user_id = $${values.length}`,
+            values
+          );
+        }
+
+        if (incomingLines) {
+          await query('DELETE FROM commande_lignes WHERE commande_id = $1', [id]);
+          for (const line of incomingLines) {
+            const quantity = Number(line?.quantity || 0) || 0;
+            const unitPrice = line?.price != null && String(line.price).trim() !== '' ? Number(line.price) : (line?.unit_price != null ? Number(line.unit_price) : null);
+            const shippingCost = line?.shipping != null && String(line.shipping).trim() !== '' ? Number(line.shipping) : (line?.shipping_cost != null ? Number(line.shipping_cost) : null);
+            const link = line?.link != null ? String(line.link).trim() || null : null;
+            const productName = String(line?.produit || line?.product_name || '').trim() || null;
+            const productIdRaw = line?.productId != null ? String(line.productId).trim() : (line?.commande_product_id != null ? String(line.commande_product_id).trim() : '');
+            const productId = productIdRaw !== '' && /^\d+$/.test(productIdRaw) ? Number(productIdRaw) : null;
+            await query(
+              `INSERT INTO commande_lignes (commande_id, commande_product_id, product_name, quantity, unit_price, shipping_cost, link)
+               VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+              [id, productId, productName, quantity, unitPrice, shippingCost, link]
+            );
+          }
+        }
+
+        const header = await query(
+          `SELECT id, user_id, name AS commande_name, category, date, pdf_path, created_at
+           FROM commandes
+           WHERE id = $1 AND user_id = $2`,
+          [id, userId]
+        );
+        const lignes = await query(
+          `SELECT l.id,
+                  l.commande_id,
+                  l.commande_product_id,
+                  l.product_name,
+                  l.quantity,
+                  l.unit_price,
+                  l.shipping_cost,
+                  l.link,
+                  p.name AS product_name_ref
+           FROM commande_lignes l
+           LEFT JOIN commande_products p ON p.id = l.commande_product_id
+           WHERE l.commande_id = $1
+           ORDER BY l.id`,
+          [id]
+        );
+        return { success: true, commande: { ...header.rows[0], lines: lignes.rows } };
+      } catch (error: any) {
+        if (error?.code === '42P01') {
+          reply.statusCode = 500;
+          return { error: 'Tables commandes/commande_lignes manquantes (migration requise)' };
+        }
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
     fastify.get('/api/commandes/tracabilite', async (_request: FastifyRequest, reply: FastifyReply) => {
       try {
         const result = await query(
@@ -2545,6 +2735,80 @@ function broadcastUserCount() {
         return { success: true, don: result.rows[0] };
       } catch (error: any) {
         console.error('Error creating don:', error);
+        if (error?.code === '42P01') {
+          reply.statusCode = 500;
+          return { error: 'Table dons manquante (migration requise)' };
+        }
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.get('/api/dons/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) return sendAuthRequired(reply);
+      const { id } = request.params as { id: string };
+      try {
+        const result = await query(
+          `SELECT id, user_id, lot_name, date, pdf_path, lines, created_at
+           FROM dons
+           WHERE id = $1 AND user_id = $2`,
+          [id, userId]
+        );
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Don introuvable' };
+        }
+        return { success: true, don: result.rows[0] };
+      } catch (error: any) {
+        if (error?.code === '42P01') {
+          reply.statusCode = 500;
+          return { error: 'Table dons manquante (migration requise)' };
+        }
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.put('/api/dons/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) return sendAuthRequired(reply);
+      const { id } = request.params as { id: string };
+      const body = request.body as any;
+      const lotName = body?.lot_name != null ? String(body.lot_name).trim() : (body?.name != null ? String(body.name).trim() : undefined);
+      const date = body?.date != null ? String(body.date).trim() : undefined;
+      const pdfPath = body?.pdf_path != null ? String(body.pdf_path).trim() : undefined;
+      const lines = Array.isArray(body?.lines) ? body.lines : undefined;
+      try {
+        const existing = await query(
+          'SELECT id FROM dons WHERE id = $1 AND user_id = $2',
+          [id, userId]
+        );
+        if (existing.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Don introuvable' };
+        }
+        const updates: string[] = [];
+        const values: any[] = [];
+        let idx = 1;
+        if (lotName !== undefined) { updates.push(`lot_name = $${idx++}`); values.push(lotName || null); }
+        if (date !== undefined) { updates.push(`date = $${idx++}`); values.push(date || null); }
+        if (pdfPath !== undefined) { updates.push(`pdf_path = $${idx++}`); values.push(pdfPath || null); }
+        if (lines !== undefined) { updates.push(`lines = $${idx++}::jsonb`); values.push(JSON.stringify(lines)); }
+        if (updates.length === 0) {
+          reply.statusCode = 400;
+          return { error: 'No fields to update' };
+        }
+        values.push(id, userId);
+        const result = await query(
+          `UPDATE dons
+           SET ${updates.join(', ')}
+           WHERE id = $${values.length - 1} AND user_id = $${values.length}
+           RETURNING id, user_id, lot_name, date, pdf_path, lines, created_at`,
+          values
+        );
+        return { success: true, don: result.rows[0] };
+      } catch (error: any) {
         if (error?.code === '42P01') {
           reply.statusCode = 500;
           return { error: 'Table dons manquante (migration requise)' };

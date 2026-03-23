@@ -85,12 +85,24 @@
       "folders": "/api/admin/config/folders"
     },
     "commandes": {
+      "list": "/api/commandes/tracabilite",
+      "create": "/api/commandes",
+      "get": "/api/commandes/:id",
+      "update": "/api/commandes/:id",
+      "tracabilite": "/api/commandes/tracabilite",
       "products": {
         "list": "/api/commandes/products",
         "create": "/api/commandes/products",
         "update": "/api/commandes/products/:id",
         "delete": "/api/commandes/products/:id"
       }
+    },
+    "dons": {
+      "list": "/api/dons/tracabilite",
+      "create": "/api/dons",
+      "get": "/api/dons/:id",
+      "update": "/api/dons/:id",
+      "tracabilite": "/api/dons/tracabilite"
     },
     "entrees": {
       "list": "/api/entrees",
