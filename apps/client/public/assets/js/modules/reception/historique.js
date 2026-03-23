@@ -18,6 +18,8 @@ export default class HistoriqueManager {
         this.modalManager = modalManager;
         this.lots = [];
         this.sessionsDisques = [];
+        this.commandes = [];
+        this.dons = [];
         this.marques = [];
         this.modeles = [];
         this.init();
@@ -31,13 +33,23 @@ export default class HistoriqueManager {
     }
 
     /**
-     * Charger lots terminés + sessions disques
+     * Charger lots terminés + sessions disques + commandes + dons
      */
     async loadData() {
         try {
-            const [lots, sessions] = await Promise.all([
+            const serverUrl = api.getServerUrl();
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
+            };
+            const endpointCommandes = (window.SERVER_CONFIG?.getEndpoint?.('commandes.tracabilite')) || '/api/commandes/tracabilite';
+            const endpointDons = (window.SERVER_CONFIG?.getEndpoint?.('dons.tracabilite')) || '/api/dons/tracabilite';
+
+            const [lots, sessions, commandesRes, donsRes] = await Promise.all([
                 loadLotsWithItems({ status: 'finished' }),
-                getSessions().catch(() => [])
+                getSessions().catch(() => []),
+                fetch(`${serverUrl}${endpointCommandes.startsWith('/') ? endpointCommandes : '/' + endpointCommandes}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
+                fetch(`${serverUrl}${endpointDons.startsWith('/') ? endpointDons : '/' + endpointDons}`, { method: 'GET', headers }).catch(() => ({ ok: false }))
             ]);
             this.lots = (lots || []).sort((a, b) =>
                 new Date(b.finished_at || b.created_at) - new Date(a.finished_at || a.created_at)
@@ -47,12 +59,35 @@ export default class HistoriqueManager {
                 const db = b.date || (b.created_at || '').slice(0, 10);
                 return new Date(db) - new Date(da);
             });
-            logger.info('📦 Historique : ' + this.lots.length + ' lot(s), ' + this.sessionsDisques.length + ' session(s) disques');
+
+            if (commandesRes.ok) {
+                try {
+                    const data = await commandesRes.json();
+                    this.commandes = this.extractListFromApiPayload(data, ['commandes', 'items', 'data', 'results', 'rows']);
+                    this.commandes.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
+                } catch (_) { this.commandes = []; }
+            } else {
+                this.commandes = [];
+            }
+
+            if (donsRes.ok) {
+                try {
+                    const data = await donsRes.json();
+                    this.dons = this.extractListFromApiPayload(data, ['dons', 'items', 'data', 'results', 'rows']);
+                    this.dons.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
+                } catch (_) { this.dons = []; }
+            } else {
+                this.dons = [];
+            }
+
+            logger.info('📦 Historique : ' + this.lots.length + ' lot(s), ' + this.sessionsDisques.length + ' session(s) disques, ' + this.commandes.length + ' commande(s), ' + this.dons.length + ' don(s)');
             this.renderLots();
         } catch (error) {
             logger.error('❌ Erreur chargement historique:', error);
             this.lots = [];
             this.sessionsDisques = [];
+            this.commandes = [];
+            this.dons = [];
             this.renderLotsError(error);
         }
     }
@@ -86,15 +121,18 @@ export default class HistoriqueManager {
         if (!container) return;
 
         const searchText = (document.getElementById('filter-search-historique')?.value || '').trim().toLowerCase();
+        const typeFilter = (document.getElementById('filter-type-historique')?.value || 'tous').trim();
 
         const merged = [
             ...this.lots.map(lot => ({ type: 'lot', date: lot.finished_at || lot.created_at, item: lot })),
-            ...this.sessionsDisques.map(s => ({ type: 'disque', date: s.date || (s.created_at || '').slice(0, 10), item: s }))
-        ].sort((a, b) => new Date(b.date) - new Date(a.date));
+            ...this.sessionsDisques.map(s => ({ type: 'disque', date: s.date || (s.created_at || '').slice(0, 10), item: s })),
+            ...this.dons.map(d => ({ type: 'don', date: d.date || (d.created_at || '').slice(0, 10), item: d })),
+            ...this.commandes.map(c => ({ type: 'commande', date: c.date || (c.created_at || '').slice(0, 10), item: c }))
+        ].sort((a, b) => this.parseFlexibleDate(b.date) - this.parseFlexibleDate(a.date));
 
-        let toRender = merged;
+        let toRender = merged.filter(({ type }) => typeFilter === 'tous' || type === typeFilter);
         if (searchText) {
-            toRender = merged.filter(({ type, item }) => {
+            toRender = toRender.filter(({ type, item }) => {
                 // Recherche sur le texte affiché dans le titre (h3) de la carte
                 if (type === 'lot') {
                     const id = String(item.id || '');
@@ -107,6 +145,18 @@ export default class HistoriqueManager {
                     const titleText = name.toLowerCase();
                     return titleText.includes(searchText);
                 }
+                if (type === 'don') {
+                    const lotName = String(item.lot_name || item.name || '').trim();
+                    const stagiaire = String(item.stagiaire_afpa || item.stagiaire || '').trim();
+                    const titleText = (`don ${lotName} ${stagiaire}`).toLowerCase();
+                    return titleText.includes(searchText);
+                }
+                if (type === 'commande') {
+                    const name = String(item.commande_name || item.name || '').trim();
+                    const category = String(item.category || '').trim();
+                    const titleText = (`commande ${name} ${category}`).toLowerCase();
+                    return titleText.includes(searchText);
+                }
                 return false;
             });
         }
@@ -116,16 +166,60 @@ export default class HistoriqueManager {
                 <div class="empty-state">
                     <i class="fa-solid fa-inbox"></i>
                     <p>${merged.length === 0 ? 'Aucun élément' : 'Aucun résultat'}</p>
-                    <small>${merged.length === 0 ? 'Lots terminés et sessions disques apparaîtront ici' : 'Modifiez la recherche'}</small>
+                    <small>${merged.length === 0 ? 'Lots, disques, dons et commandes apparaîtront ici' : 'Modifiez la recherche ou le filtre type'}</small>
                 </div>
             `;
             return;
         }
 
-        container.innerHTML = toRender.map(({ type, item }) =>
-            type === 'lot' ? this.createLotElement(item) : this.createDisqueElement(item)
-        ).join('');
+        container.innerHTML = toRender.map(({ type, item }) => {
+            if (type === 'lot') return this.createLotElement(item);
+            if (type === 'disque') return this.createDisqueElement(item);
+            if (type === 'don') return this.createDonElement(item);
+            return this.createCommandeElement(item);
+        }).join('');
         this.attachLotEventListeners();
+    }
+
+    createDonElement(don) {
+        const lotName = (don.lot_name || don.name || '').trim();
+        const dateFormatted = this.formatDateDDMMYYYY(don.date || (don.created_at || '').slice(0, 10));
+        const stagiaire = (don.stagiaire_afpa || don.stagiaire || '').trim() || '-';
+        const title = lotName ? `Don | ${this.escapeHtml(lotName)}` : `Don #${this.escapeHtml(String(don.id || ''))}`;
+        return `
+            <div class="historique-lot-card historique-don-card" data-type="don" data-don-id="${this.escapeHtml(String(don.id || ''))}">
+                <div class="historique-lot-header">
+                    <div class="historique-lot-title">
+                        <h3><i class="fa-solid fa-hand-holding-heart historique-type-icon" aria-hidden="true"></i> ${title}</h3>
+                        <span class="badge-created">Créé le ${this.escapeHtml(dateFormatted)}</span>
+                    </div>
+                    <div class="historique-lot-stats">
+                        <span class="historique-stat"><i class="fa-solid fa-user-graduate" aria-hidden="true"></i> ${this.escapeHtml(stagiaire)}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    createCommandeElement(commande) {
+        const name = (commande.commande_name || commande.name || '').trim() || 'Commande';
+        const dateFormatted = this.formatDateDDMMYYYY(commande.date || (commande.created_at || '').slice(0, 10));
+        const category = (commande.category || '').trim() || '-';
+        const lineCount = Array.isArray(commande.lines) ? commande.lines.length : (commande.line_count ?? 0);
+        return `
+            <div class="historique-lot-card historique-commande-card" data-type="commande" data-commande-id="${this.escapeHtml(String(commande.id || ''))}">
+                <div class="historique-lot-header">
+                    <div class="historique-lot-title">
+                        <h3><i class="fa-solid fa-file-invoice historique-type-icon" aria-hidden="true"></i> ${this.escapeHtml(name)}</h3>
+                        <span class="badge-created">Créé le ${this.escapeHtml(dateFormatted)}</span>
+                    </div>
+                    <div class="historique-lot-stats">
+                        <span class="historique-stat"><i class="fa-solid fa-tag" aria-hidden="true"></i> ${this.escapeHtml(category)}</span>
+                        <span class="historique-stat"><strong>${lineCount}</strong> ligne(s)</span>
+                    </div>
+                </div>
+            </div>
+        `;
     }
 
     /**
@@ -229,12 +323,44 @@ export default class HistoriqueManager {
      */
     formatDateDDMMYYYY(dateStr) {
         if (!dateStr) return '-';
-        const d = new Date(dateStr);
+        const d = this.parseFlexibleDate(dateStr);
         if (isNaN(d.getTime())) return '-';
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = d.getFullYear();
         return `${day}/${month}/${year}`;
+    }
+
+    parseFlexibleDate(raw) {
+        const value = String(raw || '').trim();
+        if (!value) return new Date(0);
+        if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+            const d = new Date(value.slice(0, 10));
+            if (!Number.isNaN(d.getTime())) return d;
+        }
+        const fr = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (fr) {
+            const [, dd, mm, yyyy] = fr;
+            const d = new Date(`${yyyy}-${mm}-${dd}`);
+            if (!Number.isNaN(d.getTime())) return d;
+        }
+        const fallback = new Date(value);
+        return Number.isNaN(fallback.getTime()) ? new Date(0) : fallback;
+    }
+
+    extractListFromApiPayload(payload, keys = []) {
+        if (Array.isArray(payload)) return payload;
+        if (!payload || typeof payload !== 'object') return [];
+        for (const key of keys) {
+            if (Array.isArray(payload[key])) return payload[key];
+        }
+        if (payload.data && typeof payload.data === 'object') {
+            for (const key of keys) {
+                if (Array.isArray(payload.data[key])) return payload.data[key];
+            }
+            if (Array.isArray(payload.data)) return payload.data;
+        }
+        return [];
     }
 
     /**
@@ -744,6 +870,10 @@ export default class HistoriqueManager {
         if (searchInput) {
             searchInput.addEventListener('input', () => this.renderLots());
         }
+        const typeSelect = document.getElementById('filter-type-historique');
+        if (typeSelect) {
+            typeSelect.addEventListener('change', () => this.renderLots());
+        }
 
         // Bouton appliquer les modifications des items
         const applyBtn = document.getElementById('btn-apply-item-edits');
@@ -1176,5 +1306,7 @@ export default class HistoriqueManager {
         logger.debug('🧹 Destruction HistoriqueManager');
         this.lots = [];
         this.sessionsDisques = [];
+        this.commandes = [];
+        this.dons = [];
     }
 }

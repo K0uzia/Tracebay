@@ -44,25 +44,6 @@
     flex-shrink: 0;
 }
 
-.r-brand::before,
-.r-brand::after {
-    position: absolute;
-    left: 25px;
-    top: 15%;
-    bottom: -55px;
-    height: 3px;
-    background-color: var(--orange);
-    border-radius: 5px;
-    content: '';
-}
-.r-brand::before {
-    width: 40px;
-}
-
-.r-brand::after {
-    width: 25px;
-    margin-top: 6px;
-}
 
 .r-nav {
     display: flex;
@@ -283,11 +264,6 @@ body.reception-single-scroll main {
         transform: rotate(180deg);
         min-height: 3rem;
         justify-content: center;
-    }
-
-    .r-brand::before,
-    .r-brand::after{
-        display: none;
     }
 
     .r-nav {

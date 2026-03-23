@@ -95,14 +95,22 @@ export default class ShortcutManager {
             const shortStatus = shortcutsRes.status;
             const is5xx = (s) => s >= 500 && s < 600;
             if (is5xx(catStatus) || is5xx(shortStatus)) {
-                this.loadError = { status: shortStatus >= 500 ? shortStatus : catStatus, which: shortStatus >= 500 ? 'shortcuts' : 'categories' };
-                logger.error('Erreur serveur API raccourcis (5xx):', this.loadError);
+                const which = shortStatus >= 500 ? 'shortcuts' : 'categories';
+                const failingRes = shortStatus >= 500 ? shortcutsRes : categoriesRes;
+                const endpoint = which === 'shortcuts' ? '/api/shortcuts' : '/api/shortcuts/categories';
+                const detail = await this.readErrorDetail(failingRes);
+                this.loadError = { status: shortStatus >= 500 ? shortStatus : catStatus, which, endpoint, detail };
+                logger.error(`Erreur serveur API raccourcis (${this.loadError.status}) sur ${endpoint}: ${detail}`);
                 this.categories = [];
                 return;
             }
 
             if (!categoriesRes.ok || !shortcutsRes.ok) {
-                logger.error('Erreur réponse API:', { categories: categoriesRes.status, shortcuts: shortcutsRes.status });
+                const failingRes = !shortcutsRes.ok ? shortcutsRes : categoriesRes;
+                const endpoint = !shortcutsRes.ok ? '/api/shortcuts' : '/api/shortcuts/categories';
+                const detail = await this.readErrorDetail(failingRes);
+                this.loadError = { status: failingRes.status, which: !shortcutsRes.ok ? 'shortcuts' : 'categories', endpoint, detail };
+                logger.error(`Erreur API raccourcis (${failingRes.status}) sur ${endpoint}: ${detail}`);
                 this.categories = [];
                 return;
             }
@@ -139,7 +147,23 @@ export default class ShortcutManager {
             });
         } catch (error) {
             logger.error('❌ Erreur chargement raccourcis:', error);
+            this.loadError = { status: 0, which: 'shortcuts', endpoint: '/api/shortcuts', detail: error?.message || 'Erreur réseau' };
             this.categories = [];
+        }
+    }
+
+    async readErrorDetail(response) {
+        try {
+            const text = await response.clone().text();
+            if (!text) return `HTTP ${response.status}`;
+            try {
+                const json = JSON.parse(text);
+                return json?.message || json?.error || `HTTP ${response.status}`;
+            } catch (_) {
+                return text.slice(0, 180);
+            }
+        } catch (_) {
+            return `HTTP ${response?.status || 'N/A'}`;
         }
     }
 
@@ -210,7 +234,9 @@ export default class ShortcutManager {
 
         if (this.loadError) {
             const status = this.loadError.status || 500;
-            grid.innerHTML = `<p class="shortcut-empty-message shortcut-error-message">Erreur serveur (${status}). Impossible de charger les raccourcis. Vérifiez les logs du serveur ou réessayez plus tard.</p>`;
+            const endpoint = this.escapeHtml(this.loadError.endpoint || '/api/shortcuts');
+            const detail = this.escapeHtml(this.loadError.detail || 'Erreur serveur');
+            grid.innerHTML = `<p class="shortcut-empty-message shortcut-error-message">Erreur API (${status}) sur ${endpoint}. ${detail}</p>`;
             return;
         }
         if (filteredCategories.length === 0) {

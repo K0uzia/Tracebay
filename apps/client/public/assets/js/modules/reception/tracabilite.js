@@ -17,6 +17,7 @@ export default class TracabiliteManager {
         this.sessionsDisques = [];
         this.commandes = [];
         this.dons = [];
+        this.apiIssues = [];
         this.currentEmailLotId = null;
         this.currentEmailSessionId = null;
         this.init();
@@ -53,6 +54,7 @@ export default class TracabiliteManager {
      */
     async loadLots() {
         try {
+            this.apiIssues = [];
             const serverUrl = api.getServerUrl();
             const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` };
             const endpointCommandes = (window.SERVER_CONFIG?.getEndpoint?.('commandes.tracabilite')) || '/api/commandes/tracabilite';
@@ -77,20 +79,30 @@ export default class TracabiliteManager {
             if (commandesRes.ok) {
                 try {
                     const data = await commandesRes.json();
-                    this.commandes = Array.isArray(data) ? data : (data.items || data.commandes || []);
-                    this.commandes.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+                    this.commandes = this.extractListFromApiPayload(data, ['commandes', 'items', 'data', 'results', 'rows']);
+                    this.commandes.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
                 } catch (_) { this.commandes = []; }
             } else {
                 this.commandes = [];
+                this.apiIssues.push({
+                    module: 'commandes',
+                    endpoint: endpointCommandes,
+                    status: commandesRes?.status || 'N/A'
+                });
             }
             if (donsRes.ok) {
                 try {
                     const data = await donsRes.json();
-                    this.dons = Array.isArray(data) ? data : (data.items || data.dons || []);
-                    this.dons.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+                    this.dons = this.extractListFromApiPayload(data, ['dons', 'items', 'data', 'results', 'rows']);
+                    this.dons.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
                 } catch (_) { this.dons = []; }
             } else {
                 this.dons = [];
+                this.apiIssues.push({
+                    module: 'dons',
+                    endpoint: endpointDons,
+                    status: donsRes?.status || 'N/A'
+                });
             }
 
             logger.info('📦 Traçabilité : ' + this.lots.length + ' lot(s), ' + this.sessionsDisques.length + ' disque(s), ' + this.commandes.length + ' commande(s), ' + this.dons.length + ' don(s)');
@@ -101,6 +113,7 @@ export default class TracabiliteManager {
             this.sessionsDisques = [];
             this.commandes = [];
             this.dons = [];
+            this.apiIssues = [];
             this.renderLotsError(error);
         }
     }
@@ -132,6 +145,7 @@ export default class TracabiliteManager {
     renderTable() {
         const container = document.getElementById('tracabilite-grouped');
         if (!container) return;
+        const issuesHtml = this.renderApiIssuesBanner();
 
         // Filtrer pour les lots terminés : soit tous les items ont état + technicien, soit le backend a marqué le lot (status + finished_at)
         const finishedLots = this.lots.filter(lot => {
@@ -175,17 +189,17 @@ export default class TracabiliteManager {
         });
         const sessionsForYear = this.sessionsDisques.filter(s => {
             const dateStr = s.date || (s.created_at || '').slice(0, 10);
-            const y = dateStr ? new Date(dateStr).getFullYear().toString() : '';
+            const y = this.parseFlexibleDate(dateStr).getFullYear().toString();
             return y === selectedYear;
         });
         const commandesForYear = this.commandes.filter(c => {
             const dateStr = c.date || (c.created_at || '').slice(0, 10);
-            const y = dateStr ? new Date(dateStr).getFullYear().toString() : '';
+            const y = this.parseFlexibleDate(dateStr).getFullYear().toString();
             return y === selectedYear;
         });
         const donsForYear = this.dons.filter(d => {
             const dateStr = d.date || (d.created_at || '').slice(0, 10);
-            const y = dateStr ? new Date(dateStr).getFullYear().toString() : '';
+            const y = this.parseFlexibleDate(dateStr).getFullYear().toString();
             return y === selectedYear;
         });
 
@@ -197,6 +211,7 @@ export default class TracabiliteManager {
         const totalItems = (showLots ? lotsForYear.length : 0) + (showDisques ? sessionsForYear.length : 0) + (showCommandes ? commandesForYear.length : 0) + (showDons ? donsForYear.length : 0);
         if (totalItems === 0) {
             container.innerHTML = `
+                ${issuesHtml}
                 <div class="empty-state">
                     <i class="fa-solid fa-inbox"></i>
                     <p>Aucun élément pour ${selectedYear}${typeFilter !== 'tous' ? ' (filtre : ' + typeFilter + ')' : ''}</p>
@@ -259,8 +274,23 @@ export default class TracabiliteManager {
             html += `</div>`;
         }
 
-        container.innerHTML = html;
+        container.innerHTML = `${issuesHtml}${html}`;
         this.attachRowEventListeners();
+    }
+
+    renderApiIssuesBanner() {
+        if (!Array.isArray(this.apiIssues) || this.apiIssues.length === 0) return '';
+        const rows = this.apiIssues.map(i =>
+            `<li><strong>${this.escapeHtml(i.module)}</strong> : ${this.escapeHtml(String(i.endpoint))} (HTTP ${this.escapeHtml(String(i.status))})</li>`
+        ).join('');
+        return `
+            <div class="empty-state error-state" style="margin-bottom:1rem;">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <p>Routes API manquantes ou indisponibles</p>
+                <small>Les données ci-dessous ne peuvent pas être chargées tant que ces endpoints ne répondent pas.</small>
+                <ul style="margin-top:.5rem;text-align:left;display:inline-block;">${rows}</ul>
+            </div>
+        `;
     }
 
     /**
@@ -303,7 +333,7 @@ export default class TracabiliteManager {
         const grouped = {};
         (commandes || []).forEach(c => {
             const dateStr = (c.date || (c.created_at || '')).toString().slice(0, 10);
-            const date = dateStr ? new Date(dateStr) : new Date();
+            const date = this.parseFlexibleDate(dateStr);
             const year = date.getFullYear().toString();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             if (!grouped[year]) grouped[year] = {};
@@ -320,7 +350,7 @@ export default class TracabiliteManager {
         const grouped = {};
         (dons || []).forEach(d => {
             const dateStr = (d.date || (d.created_at || '')).toString().slice(0, 10);
-            const date = dateStr ? new Date(dateStr) : new Date();
+            const date = this.parseFlexibleDate(dateStr);
             const year = date.getFullYear().toString();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             if (!grouped[year]) grouped[year] = {};
@@ -328,6 +358,38 @@ export default class TracabiliteManager {
             grouped[year][month].push(d);
         });
         return grouped;
+    }
+
+    parseFlexibleDate(raw) {
+        const value = String(raw || '').trim();
+        if (!value) return new Date(0);
+        if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
+            const d = new Date(value.slice(0, 10));
+            if (!Number.isNaN(d.getTime())) return d;
+        }
+        const fr = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (fr) {
+            const [, dd, mm, yyyy] = fr;
+            const d = new Date(`${yyyy}-${mm}-${dd}`);
+            if (!Number.isNaN(d.getTime())) return d;
+        }
+        const fallback = new Date(value);
+        return Number.isNaN(fallback.getTime()) ? new Date(0) : fallback;
+    }
+
+    extractListFromApiPayload(payload, keys = []) {
+        if (Array.isArray(payload)) return payload;
+        if (!payload || typeof payload !== 'object') return [];
+        for (const key of keys) {
+            if (Array.isArray(payload[key])) return payload[key];
+        }
+        if (payload.data && typeof payload.data === 'object') {
+            for (const key of keys) {
+                if (Array.isArray(payload.data[key])) return payload.data[key];
+            }
+            if (Array.isArray(payload.data)) return payload.data;
+        }
+        return [];
     }
 
     /**

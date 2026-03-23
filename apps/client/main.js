@@ -2196,8 +2196,17 @@ ipcMain.handle('generate-don-pdf', async (_event, payload) => {
     } = payload || {};
     const rawDate = (date && String(date).trim()) ? String(date).trim() : new Date().toISOString().slice(0, 10);
     const dateStr = /^\d{4}-\d{2}-\d{2}/.test(rawDate) ? rawDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const [yearPart, monthPart] = dateStr.split('-');
+    const year = /^\d{4}$/.test(yearPart || '') ? yearPart : new Date().toISOString().slice(0, 4);
+    const monthNumber = /^(0[1-9]|1[0-2])$/.test(monthPart || '') ? Number(monthPart) : Number(new Date().toISOString().slice(5, 7));
+    const monthNamesFr = [
+        'Janvier', 'Fevrier', 'Mars', 'Avril', 'Mai', 'Juin',
+        'Juillet', 'Aout', 'Septembre', 'Octobre', 'Novembre', 'Decembre'
+    ];
+    const monthName = monthNamesFr[monthNumber - 1] || 'Inconnu';
+    const targetBasePath = path.join(basePath, year, monthName);
     try {
-        fs.mkdirSync(basePath, { recursive: true });
+        fs.mkdirSync(targetBasePath, { recursive: true });
     } catch (e) {
         console.error('❌ generate-don-pdf mkdir:', e.message);
         return { success: false, error: 'Impossible de créer le dossier: ' + e.message };
@@ -2206,7 +2215,7 @@ ipcMain.handle('generate-don-pdf', async (_event, payload) => {
         ? String(lotName).trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim()
         : 'don';
     const fileName = `${sanitizedName}_${dateStr}.pdf`;
-    const fullPath = path.join(basePath, fileName);
+    const fullPath = path.join(targetBasePath, fileName);
 
     try {
         const result = await generateDonsPdfFromHtmlTemplate({ lotName: sanitizedName === 'don' ? '' : (lotName || '').trim(), date: dateStr, lines }, fullPath);

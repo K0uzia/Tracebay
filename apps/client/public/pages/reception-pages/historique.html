@@ -7,6 +7,16 @@
                         <label class="lot-config__label" for="filter-search-historique"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Recherche</label>
                         <input class="lot-config__input" type="text" id="filter-search-historique" placeholder="Rechercher par nom du lot…" autocomplete="off">
                     </div>
+                    <div class="lot-config__field">
+                        <label class="lot-config__label" for="filter-type-historique"><i class="fa-solid fa-filter" aria-hidden="true"></i> Type</label>
+                        <select class="lot-config__input" id="filter-type-historique">
+                            <option value="tous">Tous</option>
+                            <option value="lot">Lot</option>
+                            <option value="disque">Disque</option>
+                            <option value="don">Don</option>
+                            <option value="commande">Commande</option>
+                        </select>
+                    </div>
                     <div class="lot-config__actions">
                         <button type="button" class="lot-btn lot-btn--secondary" id="btn-refresh-historique" title="Recharger l'historique">
                             <i class="fa-solid fa-sync" aria-hidden="true"></i> Rafraîchir

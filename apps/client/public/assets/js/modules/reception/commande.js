@@ -488,9 +488,18 @@ export default class CommandeManager {
                         pdf_path: result.pdf_path,
                         lines
                     });
-                    if (!createRes.ok) logger.warn('Backend commandes.create:', createRes.status);
+                    if (!createRes.ok) {
+                        let detail = `HTTP ${createRes.status}`;
+                        try {
+                            const errData = await createRes.json();
+                            detail = errData?.message || errData?.error || detail;
+                        } catch (_) { /* keep default detail */ }
+                        logger.warn('Backend commandes.create:', createRes.status, detail);
+                        window.app?.showNotification?.(`PDF local créé mais enregistrement serveur impossible (${detail})`, 'warning');
+                    }
                 } catch (apiErr) {
                     logger.warn('Backend commandes.create non disponible:', apiErr);
+                    window.app?.showNotification?.(`PDF local créé mais serveur indisponible (${apiErr?.message || 'erreur inconnue'})`, 'warning');
                 }
                 this.resetFormAfterPdfSuccess();
             } else {
