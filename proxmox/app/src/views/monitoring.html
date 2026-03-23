@@ -159,6 +159,7 @@
         <div class="sub-tab" data-sub="disques">Lots disques</div>
         <div class="sub-tab" data-sub="marques">Marques & Modèles</div>
         <div class="sub-tab" data-sub="commandes">Commandes</div>
+        <div class="sub-tab" data-sub="dons">Dons</div>
       </div>
 
       <div class="sub-panel active" id="sub-lots">
@@ -263,6 +264,18 @@
           </div>
         </div>
       </div>
+      <div class="sub-panel" id="sub-dons">
+        <div class="card">
+          <div class="card-header">
+            <h2>Dons en base</h2>
+            <button class="btn btn-secondary btn-sm" onclick="loadDons()"><i class="fa-solid fa-rotate-right"></i> Actualiser</button>
+          </div>
+          <div class="table-wrap">
+            <table><thead><tr><th>#</th><th>Nom lot</th><th>Date</th><th>PDF</th><th>Actions</th></tr></thead>
+            <tbody id="dons-table"><tr class="empty-row"><td colspan="5">Chargement…</td></tr></tbody></table>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ── Raccourcis web ── -->
@@ -300,13 +313,7 @@
 
     <!-- ── Config Applications ── -->
     <div class="page" id="page-config-apps">
-      <div class="page-header">
-        <span class="icon-page"><i class="fa-solid fa-desktop"></i></span>
-        <div>
-          <h1>Applications</h1>
-          <p>Applications lancées depuis le client (par preset)</p>
-        </div>
-      </div>
+      <div class="page-header"><h1>Applications</h1><p>Applications lancées depuis le client (par preset)</p></div>
       <div class="card config-card-apps">
         <div class="card-body config-presets-grid" id="app-presets-container">
           <div class="loading-inline">Chargement…</div>
@@ -316,13 +323,7 @@
 
     <!-- ── Config Dossiers ── -->
     <div class="page" id="page-config-folders">
-      <div class="page-header">
-        <span class="icon-page"><i class="fa-solid fa-folder-tree"></i></span>
-        <div>
-          <h1>Dossiers</h1>
-          <p>Dossiers accessibles depuis le client (par preset)</p>
-        </div>
-      </div>
+      <div class="page-header"><h1>Dossiers</h1><p>Dossiers accessibles depuis le client (par preset)</p></div>
       <div class="card config-card-folders">
         <div class="card-body config-presets-grid" id="folder-presets-container">
           <div class="loading-inline">Chargement…</div>
@@ -946,6 +947,7 @@ document.querySelectorAll('.sub-tab').forEach(el => {
     if (sub === 'marques') loadMarques();
     if (sub === 'disques') loadDisquesSessions();
     if (sub === 'commandes') { loadCommandes(); loadCommandeProducts(); }
+    if (sub === 'dons') loadDons();
     if (sub === 'sc-cats') loadCategories();
     if (sub === 'sc-links') loadShortcutLinks();
   });
@@ -1220,7 +1222,7 @@ async function deleteAgenda(id) {
 }
 
 // ── Réception ───────────────────────────────────────────────────────────────
-function loadReception() { loadLots(); }
+function loadReception() { loadLots(); loadCommandes(); loadCommandeProducts(); loadDons(); }
 
 async function loadLots() {
   const search = document.getElementById('lots-search').value;
@@ -1341,6 +1343,39 @@ async function loadCommandes() {
   } catch (e) {
     tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Erreur de chargement</td></tr>';
   }
+}
+
+async function loadDons() {
+  const tbody = document.getElementById('dons-table');
+  if (!tbody) return;
+  try {
+    const data = await api('GET', '/api/dons?limit=200');
+    const list = (data.data || []).slice();
+    if (!list.length) {
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Aucun don</td></tr>';
+      return;
+    }
+    tbody.innerHTML = list.map(d => {
+      const pdfCell = d.pdf_path ? `<span class="pdf-path" title="${escHtml(d.pdf_path)}">${escHtml((d.pdf_path || '').slice(-40))}</span>` : '—';
+      return `<tr>
+        <td>${d.id}</td>
+        <td>${escHtml(d.lot_name || '—')}</td>
+        <td>${fmtDate(d.date)}</td>
+        <td>${pdfCell}</td>
+        <td><button class="btn btn-secondary btn-sm" onclick="openDonDetail(${d.id})">Détail</button></td>
+      </tr>`;
+    }).join('');
+  } catch (e) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Erreur de chargement</td></tr>';
+  }
+}
+
+async function openDonDetail(id) {
+  const data = await api('GET', '/api/dons/' + id);
+  if (data.error) { toast(data.error, 'error'); return; }
+  const d = data.don || {};
+  const lines = Array.isArray(d.lines) ? d.lines : [];
+  toast(`Don #${d.id || id} • lot: ${d.lot_name || '—'} • ${lines.length} ligne(s)`, 'success');
 }
 
 async function openCommandeDetail(id) {

@@ -1777,6 +1777,52 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   // ─────────────────────────────────────────────
+  // DONS — admin
+  // ─────────────────────────────────────────────
+  fastify.get('/api/dons', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { limit = '100', offset = '0' } = request.query as any;
+    const limitNum = Math.min(parseInt(limit, 10) || 100, 200);
+    const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
+    try {
+      const result = await query(
+        `SELECT id, lot_name, date, pdf_path, created_at
+         FROM dons
+         ORDER BY date DESC, created_at DESC
+         LIMIT $1 OFFSET $2`,
+        [limitNum, offsetNum]
+      );
+      const countResult = await query<{ count: string }>('SELECT COUNT(*) AS count FROM dons');
+      const total = parseInt(countResult.rows[0]?.count || '0', 10);
+      return { success: true, data: result.rows, pagination: { total, limit: limitNum, offset: offsetNum } };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'GET /api/dons');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.get('/api/dons/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    if (!checkAdminAuth(request, reply)) return;
+    const { id } = request.params as { id: string };
+    try {
+      const result = await query(
+        'SELECT id, lot_name, date, pdf_path, lines, created_at FROM dons WHERE id = $1',
+        [id]
+      );
+      if (result.rowCount === 0) {
+        reply.statusCode = 404;
+        return { error: 'Don introuvable' };
+      }
+      return { success: true, don: result.rows[0] };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'GET /api/dons/:id');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  // ─────────────────────────────────────────────
   // ENTRÉES RÉCEPTION — admin (préfixe /api/admin pour éviter doublon avec main.ts /api/entrees)
   // ─────────────────────────────────────────────
 

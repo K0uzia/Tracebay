@@ -2253,9 +2253,11 @@ function broadcastUserCount() {
       }
       try {
         const result = await query(
-          `SELECT id, name AS title, description, url, category_id, order_index, created_at
-           FROM shortcuts
-           WHERE user_id = $1
+          `SELECT s.id, s.name AS title, s.description, s.url, s.category_id, s.order_index, s.created_at
+           FROM shortcuts s
+           LEFT JOIN shortcut_categories sc ON sc.id = s.category_id
+           WHERE s.user_id = $1
+              OR (s.user_id IS NULL AND sc.user_id = $1)
            ORDER BY category_id ASC NULLS FIRST, order_index ASC`,
           [userId]
         );
@@ -2502,9 +2504,7 @@ function broadcastUserCount() {
       }
     });
 
-    fastify.get('/api/commandes/tracabilite', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = getAuthUserId(request);
-      if (userId === null) return sendAuthRequired(reply);
+    fastify.get('/api/commandes/tracabilite', async (_request: FastifyRequest, reply: FastifyReply) => {
       try {
         const result = await query(
           `SELECT c.id,
@@ -2554,9 +2554,7 @@ function broadcastUserCount() {
       }
     });
 
-    fastify.get('/api/dons/tracabilite', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = getAuthUserId(request);
-      if (userId === null) return sendAuthRequired(reply);
+    fastify.get('/api/dons/tracabilite', async (_request: FastifyRequest, reply: FastifyReply) => {
       try {
         const result = await query(
           'SELECT id, user_id, lot_name, date, pdf_path, lines, created_at FROM dons ORDER BY date DESC, created_at DESC'
