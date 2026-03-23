@@ -310,6 +310,9 @@ CREATE TABLE IF NOT EXISTS commandes (
   pdf_path VARCHAR(1024),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE IF EXISTS commandes
+  ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS category VARCHAR(255);
 CREATE INDEX IF NOT EXISTS idx_commandes_date ON commandes(date DESC);
 CREATE INDEX IF NOT EXISTS idx_commandes_created_at ON commandes(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_commandes_user_id ON commandes(user_id);
@@ -338,6 +341,11 @@ CREATE TABLE IF NOT EXISTS dons (
   lines JSONB DEFAULT '[]'::jsonb,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+ALTER TABLE IF EXISTS dons
+  ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  ADD COLUMN IF NOT EXISTS lot_name VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS pdf_path VARCHAR(1024),
+  ADD COLUMN IF NOT EXISTS lines JSONB DEFAULT '[]'::jsonb;
 CREATE INDEX IF NOT EXISTS idx_dons_date ON dons(date DESC);
 CREATE INDEX IF NOT EXISTS idx_dons_created_at ON dons(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_dons_user_id ON dons(user_id);
