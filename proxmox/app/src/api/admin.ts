@@ -1740,7 +1740,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.post('/api/commandes', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/api/admin/commandes', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     const body = request.body as { name?: string; date?: string; pdf_path?: string; lignes?: Array<{ commande_product_id?: number; product_name?: string; quantity?: number; unit_price?: number }> };
     const name = body.name != null ? String(body.name).trim() || null : null;
@@ -1770,7 +1770,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       );
       return { success: true, commande: { ...cmd, lignes: lignesResult.rows } };
     } catch (err: any) {
-      fastify.log.error({ err }, 'POST /api/commandes');
+      fastify.log.error({ err }, 'POST /api/admin/commandes');
       reply.statusCode = 500;
       return { error: 'Database error' };
     }
