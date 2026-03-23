@@ -8,6 +8,8 @@ import getLogger from '../../config/Logger.js';
 import { loadLotsWithItems } from './lotsApi.js';
 import { getSessions, getSession, getSessionPdfUrl, updateSession } from './disquesApi.js';
 const logger = getLogger();
+const COMMANDES_PDF_BASE = '/mnt/team/#TEAM/#COMMANDES/';
+const DONS_PDF_BASE = '/mnt/team/#TEAM/#TRAÇABILITÉ/don_stagiaires';
 
 
 export default class TracabiliteManager {
@@ -397,7 +399,7 @@ export default class TracabiliteManager {
      */
     formatDateDDMMYYYY(dateStr) {
         if (!dateStr) return '-';
-        const d = new Date(dateStr);
+        const d = this.parseFlexibleDate(dateStr);
         if (isNaN(d.getTime())) return '-';
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -468,12 +470,14 @@ export default class TracabiliteManager {
      */
     createCommandeCard(commande) {
         const name = (commande.commande_name || commande.name || '').trim() || 'Commande';
-        const dateStr = commande.date || (commande.created_at || '').slice(0, 10);
-        const dateFormatted = dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? this.formatDateDDMMYYYY(dateStr) : '-';
+        const dateStr = String(commande.date || commande.created_at || '').trim();
+        const dateFormatted = this.formatDateDDMMYYYY(dateStr);
         const lineCount = Array.isArray(commande.lines) ? commande.lines.length : (commande.line_count ?? 0);
-        const pdfUrl = commande.pdf_url || (commande.pdf_path ? (api.getServerUrl() + (commande.pdf_path.startsWith('/') ? commande.pdf_path : '/' + commande.pdf_path)) : '');
-        const hasPdf = pdfUrl && pdfUrl.length > 0;
-        const safeUrl = (pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;');
+        const rawPdfPath = String(commande.pdf_path || '').trim();
+        const isLocalPath = rawPdfPath.startsWith('/mnt/') || rawPdfPath.startsWith('/home/') || rawPdfPath.startsWith('/Users/');
+        const remotePdfUrl = commande.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : '/' + rawPdfPath)) : '');
+        const hasPdf = (isLocalPath && rawPdfPath) || (remotePdfUrl && remotePdfUrl.length > 0);
+        const safeUrl = remotePdfUrl ? (remotePdfUrl + (remotePdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;') : '';
         const downloadFilename = (name.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') || 'commande') + '_' + (dateStr || '') + '.pdf';
         return `
             <div class="lot-card lot-card-commande" data-commande-id="${this.escapeHtml(String(commande.id || ''))}">
@@ -488,7 +492,7 @@ export default class TracabiliteManager {
                 </div>
                 <div class="lot-card-stats">
                     <div class="stat">
-                        <span class="stat-label">Lignes</span>
+                        <span class="stat-label">Produit</span>
                         <span class="stat-value">${lineCount}</span>
                     </div>
                 </div>
@@ -497,11 +501,20 @@ export default class TracabiliteManager {
                         <button type="button" class="btn-action btn-open-pdf-location-commande" data-commande-id="${this.escapeHtml(String(commande.id || ''))}" data-date="${this.escapeHtml(dateStr || '')}" title="Ouvrir le dossier du PDF">
                             <i class="fa-solid fa-folder-open" aria-hidden="true"></i> Emplacement PDF
                         </button>
-                        <button type="button" class="btn-action btn-view-pdf-commande" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Ouvrir le PDF de la commande">
-                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le PDF
-                        </button>
-                        <button type="button" class="btn-action btn-download-pdf-commande" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Télécharger le PDF de la commande">
-                            <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger PDF
+                        ${isLocalPath ? `
+                            <button type="button" class="btn-action btn-view-local-pdf-commande" data-pdf-path="${this.escapeHtml(rawPdfPath)}" title="Ouvrir le PDF local de la commande">
+                                <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le PDF
+                            </button>
+                        ` : `
+                            <button type="button" class="btn-action btn-view-pdf-commande" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Ouvrir le PDF de la commande">
+                                <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le PDF
+                            </button>
+                            <button type="button" class="btn-action btn-download-pdf-commande" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Télécharger le PDF de la commande">
+                                <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger PDF
+                            </button>
+                        `}
+                        <button type="button" class="btn-action btn-regenerate-pdf-commande" data-commande-id="${this.escapeHtml(String(commande.id || ''))}" title="Régénérer le PDF de la commande">
+                            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Régénérer PDF
                         </button>
                     ` : '<span class="text-muted">PDF non disponible</span>'}
                 </div>
@@ -515,12 +528,17 @@ export default class TracabiliteManager {
     createDonCard(don) {
         const lotName = (don.lot_name || don.name || '').trim();
         const title = lotName ? `Don : ${this.escapeHtml(lotName)}` : 'Don #' + (don.id || '');
-        const dateStr = don.date || (don.created_at || '').slice(0, 10);
-        const dateFormatted = dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr) ? this.formatDateDDMMYYYY(dateStr) : '-';
-        const stagiaire = (don.stagiaire_afpa || don.stagiaire || '').trim() || '-';
-        const pdfUrl = don.pdf_url || (don.pdf_path ? (api.getServerUrl() + (don.pdf_path.startsWith('/') ? don.pdf_path : '/' + don.pdf_path)) : '');
-        const hasPdf = pdfUrl && pdfUrl.length > 0;
-        const safeUrl = (pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;');
+        const dateStr = String(don.date || (don.created_at || '')).trim();
+        const dateFormatted = this.formatDateDDMMYYYY(dateStr);
+        const stagiaireFromLines = Array.isArray(don.lines)
+            ? (don.lines.map(l => String(l?.stagiaire || '').trim()).find(Boolean) || '')
+            : '';
+        const stagiaire = (don.stagiaire_afpa || don.stagiaire || stagiaireFromLines || '').trim() || '-';
+        const rawPdfPath = String(don.pdf_path || '').trim();
+        const isLocalPath = rawPdfPath.startsWith('/mnt/') || rawPdfPath.startsWith('/home/') || rawPdfPath.startsWith('/Users/');
+        const pdfUrl = don.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : '/' + rawPdfPath)) : '');
+        const hasPdf = (isLocalPath && rawPdfPath) || (pdfUrl && pdfUrl.length > 0);
+        const safeUrl = pdfUrl ? (pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;') : '';
         const downloadFilename = (lotName ? lotName.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') : 'don') + '_' + (dateStr || '') + '.pdf';
         return `
             <div class="lot-card lot-card-don" data-don-id="${this.escapeHtml(String(don.id || ''))}">
@@ -544,11 +562,23 @@ export default class TracabiliteManager {
                         <button type="button" class="btn-action btn-open-pdf-location-don" data-don-id="${this.escapeHtml(String(don.id || ''))}" title="Ouvrir le dossier du PDF">
                             <i class="fa-solid fa-folder-open" aria-hidden="true"></i> Emplacement PDF
                         </button>
-                        <button type="button" class="btn-action btn-view-pdf-don" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Ouvrir le certificat de don (PDF)">
-                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le certificat
-                        </button>
-                        <button type="button" class="btn-action btn-download-pdf-don" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Télécharger le certificat de don (PDF)">
-                            <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger PDF
+                        ${isLocalPath ? `
+                            <button type="button" class="btn-action btn-view-local-pdf-don" data-pdf-path="${this.escapeHtml(rawPdfPath)}" title="Ouvrir le certificat local">
+                                <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le certificat
+                            </button>
+                            <button type="button" class="btn-action btn-download-local-pdf-don" data-pdf-path="${this.escapeHtml(rawPdfPath)}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Télécharger le certificat local">
+                                <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger PDF
+                            </button>
+                        ` : `
+                            <button type="button" class="btn-action btn-view-pdf-don" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Ouvrir le certificat de don (PDF)">
+                                <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le certificat
+                            </button>
+                            <button type="button" class="btn-action btn-download-pdf-don" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Télécharger le certificat de don (PDF)">
+                                <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger PDF
+                            </button>
+                        `}
+                        <button type="button" class="btn-action btn-regenerate-pdf-don" data-don-id="${this.escapeHtml(String(don.id || ''))}" title="Régénérer le PDF du don">
+                            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Régénérer PDF
                         </button>
                     ` : '<span class="text-muted">Certificat non disponible</span>'}
                 </div>
@@ -789,6 +819,14 @@ export default class TracabiliteManager {
                 this.downloadDisquePdf(url, filename);
             });
         });
+        document.querySelectorAll('.btn-view-local-pdf-commande').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const pdfPath = (btn.dataset.pdfPath || '').replace(/&quot;/g, '"');
+                if (!pdfPath) return;
+                await this.openPathOnDesktop(pdfPath);
+            });
+        });
 
         // Don : voir / télécharger certificat PDF
         document.querySelectorAll('.btn-view-pdf-don').forEach(btn => {
@@ -807,6 +845,83 @@ export default class TracabiliteManager {
                 this.downloadDisquePdf(url, filename);
             });
         });
+        document.querySelectorAll('.btn-view-local-pdf-don').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const pdfPath = (btn.dataset.pdfPath || '').replace(/&quot;/g, '"');
+                if (!pdfPath) return;
+                await this.openPathOnDesktop(pdfPath);
+            });
+        });
+        document.querySelectorAll('.btn-download-local-pdf-don').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const pdfPath = (btn.dataset.pdfPath || '').replace(/&quot;/g, '"');
+                const filename = (btn.dataset.downloadFilename || '').replace(/&quot;/g, '"') || 'don.pdf';
+                await this.downloadLocalPdf(pdfPath, filename);
+            });
+        });
+        document.querySelectorAll('.btn-regenerate-pdf-commande').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.regenerateCommandePdf(btn.dataset.commandeId);
+            });
+        });
+        document.querySelectorAll('.btn-regenerate-pdf-don').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.regenerateDonPdf(btn.dataset.donId);
+            });
+        });
+    }
+
+    async regenerateCommandePdf(commandeId) {
+        try {
+            const commande = this.commandes.find(c => String(c.id) === String(commandeId));
+            if (!commande) throw new Error('Commande introuvable');
+            if (!window.electron?.invoke) throw new Error('Régénération disponible uniquement dans l’application desktop');
+            const payload = {
+                commandeName: String(commande.commande_name || commande.name || 'commande').trim(),
+                category: String(commande.category || 'Divers').trim() || 'Divers',
+                date: String(commande.date || '').trim() || new Date().toISOString().slice(0, 10),
+                lines: Array.isArray(commande.lines) ? commande.lines : [],
+                basePath: COMMANDES_PDF_BASE
+            };
+            const result = await window.electron.invoke('generate-commande-pdf', payload);
+            if (!result?.success || !result?.pdf_path) throw new Error(result?.error || 'Échec génération');
+            commande.pdf_path = result.pdf_path;
+            try {
+                await api.put(`/api/commandes/${commandeId}`, { pdf_path: result.pdf_path });
+            } catch (_) { /* backend optionnel */ }
+            this.showNotification('PDF commande régénéré', 'success');
+            this.renderTable();
+        } catch (err) {
+            this.showNotification(err?.message || 'Régénération impossible', 'error');
+        }
+    }
+
+    async regenerateDonPdf(donId) {
+        try {
+            const don = this.dons.find(d => String(d.id) === String(donId));
+            if (!don) throw new Error('Don introuvable');
+            if (!window.electron?.invoke) throw new Error('Régénération disponible uniquement dans l’application desktop');
+            const payload = {
+                lotName: String(don.lot_name || don.name || 'don').trim(),
+                date: String(don.date || '').trim() || new Date().toISOString().slice(0, 10),
+                lines: Array.isArray(don.lines) ? don.lines : [],
+                basePath: DONS_PDF_BASE
+            };
+            const result = await window.electron.invoke('generate-don-pdf', payload);
+            if (!result?.success || !result?.pdf_path) throw new Error(result?.error || 'Échec génération');
+            don.pdf_path = result.pdf_path;
+            try {
+                await api.put(`/api/dons/${donId}`, { pdf_path: result.pdf_path });
+            } catch (_) { /* backend optionnel */ }
+            this.showNotification('PDF don régénéré', 'success');
+            this.renderTable();
+        } catch (err) {
+            this.showNotification(err?.message || 'Régénération impossible', 'error');
+        }
     }
 
     async downloadDisquePdf(url, filename) {
@@ -828,6 +943,30 @@ export default class TracabiliteManager {
         } catch (err) {
             logger.error('Téléchargement PDF disques:', err);
             this.showNotification('Erreur lors du téléchargement du PDF', 'error');
+        }
+    }
+
+    async downloadLocalPdf(pdfPath, filename) {
+        try {
+            if (!window.electron?.invoke) throw new Error('Téléchargement local disponible uniquement dans l’application desktop');
+            const readResult = await window.electron.invoke('read-file-as-base64', { path: pdfPath });
+            if (!readResult?.success || !readResult?.base64) throw new Error(readResult?.error || 'Lecture du PDF local impossible');
+            const binary = atob(readResult.base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            const blob = new Blob([bytes], { type: 'application/pdf' });
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename || 'document.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+            this.showNotification('PDF téléchargé avec succès', 'success');
+        } catch (err) {
+            logger.error('Téléchargement PDF local:', err);
+            this.showNotification(err?.message || 'Erreur lors du téléchargement local', 'error');
         }
     }
 

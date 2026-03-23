@@ -7,7 +7,7 @@
                         <label class="lot-config__label" for="filter-search-historique"><i class="fa-solid fa-magnifying-glass" aria-hidden="true"></i> Recherche</label>
                         <input class="lot-config__input" type="text" id="filter-search-historique" placeholder="Rechercher par nom du lot…" autocomplete="off">
                     </div>
-                    <div class="lot-config__field">
+                    <div class="lot-config__field lot-config__field--type">
                         <label class="lot-config__label" for="filter-type-historique"><i class="fa-solid fa-filter" aria-hidden="true"></i> Type</label>
                         <select class="lot-config__input" id="filter-type-historique">
                             <option value="tous">Tous</option>
@@ -237,6 +237,99 @@
         </div>
         <div class="modal-footer">
             <button type="button" class="modal-cancel-btn" data-modal-close="modal-disque-details" title="Fermer">Fermer</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog class="universal-modal" id="modal-commande-details" data-modal-id="modal-commande-details">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-file-invoice"></i> <span id="modal-commande-title">Commande</span></h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-commande-details" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="lot-details-info">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Catégorie</span>
+                        <span class="info-value" id="modal-commande-category">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Date</span>
+                        <span class="info-value" id="modal-commande-date">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Produits</span>
+                        <span class="info-value" id="modal-commande-products">-</span>
+                    </div>
+                </div>
+            </div>
+            <h3 class="recep-modal-subtitle">Produits</h3>
+            <div class="lot-details-table recep-table-wrap">
+                <table class="details-table recep-table">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Produit</th>
+                            <th>Qté</th>
+                            <th>Prix (€)</th>
+                            <th>Port (€)</th>
+                            <th>Lien</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-commande-lines"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-commande-details" title="Fermer">Fermer</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog class="universal-modal" id="modal-don-details" data-modal-id="modal-don-details">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-hand-holding-heart"></i> <span id="modal-don-title">Don</span></h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-don-details" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="lot-details-info">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Date</span>
+                        <span class="info-value" id="modal-don-date">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Stagiaire</span>
+                        <span class="info-value" id="modal-don-stagiaire">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Lignes</span>
+                        <span class="info-value" id="modal-don-lines">-</span>
+                    </div>
+                </div>
+            </div>
+            <h3 class="recep-modal-subtitle">Matériel donné</h3>
+            <div class="lot-details-table recep-table-wrap">
+                <table class="details-table recep-table">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Type</th>
+                            <th>Marque</th>
+                            <th>Modèle</th>
+                            <th>S/N</th>
+                            <th>Date</th>
+                            <th>Stagiaire</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-don-lines-body"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-don-details" title="Fermer">Fermer</button>
         </div>
     </div>
 </dialog>

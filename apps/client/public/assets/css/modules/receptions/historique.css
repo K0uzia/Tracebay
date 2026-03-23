@@ -63,7 +63,7 @@
     display: flex;
     flex-wrap: nowrap;
     align-items: flex-end;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: var(--unit-2);
 }
 
@@ -76,6 +76,14 @@
 }
 
 .historique-container .lot-config__field--search { flex: 1 1 auto; }
+
+.historique-container .lot-config__field:not(.lot-config__field--search) {
+    max-width: 220px;
+}
+
+.historique-container .lot-config__field--type {
+    margin-left: auto;
+}
 
 .historique-container .lot-config__label {
     font-weight: 600;
@@ -110,7 +118,7 @@
     display: flex;
     align-items: center;
     gap: var(--unit-2);
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
 }
 
 .historique-container .lot-btn {
@@ -230,7 +238,11 @@
 .historique-lot-actions .btn-edit-disque-name,
 .historique-lot-actions .btn-edit-items,
 .historique-lot-actions .btn-view-disque,
-.historique-lot-actions .btn-edit-disque-items {
+.historique-lot-actions .btn-edit-disque-items,
+.historique-lot-actions .btn-view-don-details-hist,
+.historique-lot-actions .btn-edit-don-hist,
+.historique-lot-actions .btn-view-commande-details-hist,
+.historique-lot-actions .btn-edit-commande-hist {
     background: #fff;
     color: var(--bleu2);
     border: 1px solid rgba(62, 59, 140, 0.25);
@@ -242,7 +254,11 @@
 .historique-lot-actions .btn-edit-disque-name:hover,
 .historique-lot-actions .btn-edit-items:hover,
 .historique-lot-actions .btn-view-disque:hover,
-.historique-lot-actions .btn-edit-disque-items:hover {
+.historique-lot-actions .btn-edit-disque-items:hover,
+.historique-lot-actions .btn-view-don-details-hist:hover,
+.historique-lot-actions .btn-edit-don-hist:hover,
+.historique-lot-actions .btn-view-commande-details-hist:hover,
+.historique-lot-actions .btn-edit-commande-hist:hover {
     background: rgba(62, 59, 140, 0.06);
     border-color: var(--bleu1);
     color: var(--bleu1);

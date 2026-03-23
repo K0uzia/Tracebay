@@ -184,7 +184,10 @@ export default class HistoriqueManager {
     createDonElement(don) {
         const lotName = (don.lot_name || don.name || '').trim();
         const dateFormatted = this.formatDateDDMMYYYY(don.date || (don.created_at || '').slice(0, 10));
-        const stagiaire = (don.stagiaire_afpa || don.stagiaire || '').trim() || '-';
+        const stagiaireFromLines = Array.isArray(don.lines)
+            ? (don.lines.map(l => String(l?.stagiaire || '').trim()).find(Boolean) || '')
+            : '';
+        const stagiaire = (don.stagiaire_afpa || don.stagiaire || stagiaireFromLines || '').trim() || '-';
         const title = lotName ? `Don | ${this.escapeHtml(lotName)}` : `Don #${this.escapeHtml(String(don.id || ''))}`;
         return `
             <div class="historique-lot-card historique-don-card" data-type="don" data-don-id="${this.escapeHtml(String(don.id || ''))}">
@@ -195,6 +198,14 @@ export default class HistoriqueManager {
                     </div>
                     <div class="historique-lot-stats">
                         <span class="historique-stat"><i class="fa-solid fa-user-graduate" aria-hidden="true"></i> ${this.escapeHtml(stagiaire)}</span>
+                    </div>
+                    <div class="historique-lot-actions">
+                        <button type="button" class="btn-view-don-details-hist" data-don-id="${this.escapeHtml(String(don.id || ''))}" title="Voir les détails du don">
+                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir détails
+                        </button>
+                        <button type="button" class="btn-edit-don-hist" data-don-id="${this.escapeHtml(String(don.id || ''))}" title="Éditer le don">
+                            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Éditer
+                        </button>
                     </div>
                 </div>
             </div>
@@ -215,7 +226,15 @@ export default class HistoriqueManager {
                     </div>
                     <div class="historique-lot-stats">
                         <span class="historique-stat"><i class="fa-solid fa-tag" aria-hidden="true"></i> ${this.escapeHtml(category)}</span>
-                        <span class="historique-stat"><strong>${lineCount}</strong> ligne(s)</span>
+                        <span class="historique-stat"><strong>${lineCount}</strong> produit(s)</span>
+                    </div>
+                    <div class="historique-lot-actions">
+                        <button type="button" class="btn-view-commande-details-hist" data-commande-id="${this.escapeHtml(String(commande.id || ''))}" title="Voir les détails de la commande">
+                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir détails
+                        </button>
+                        <button type="button" class="btn-edit-commande-hist" data-commande-id="${this.escapeHtml(String(commande.id || ''))}" title="Éditer la commande">
+                            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Éditer
+                        </button>
                     </div>
                 </div>
             </div>
@@ -482,6 +501,213 @@ export default class HistoriqueManager {
                 this.markDisqueSessionAsRecovered(sessionId);
             });
         });
+
+        document.querySelectorAll('.btn-view-commande-details-hist').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.viewCommandeDetails(btn.dataset.commandeId);
+            });
+        });
+        document.querySelectorAll('.btn-edit-commande-hist').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.editCommandeFromHistorique(btn.dataset.commandeId);
+            });
+        });
+        document.querySelectorAll('.btn-view-don-details-hist').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.viewDonDetails(btn.dataset.donId);
+            });
+        });
+        document.querySelectorAll('.btn-edit-don-hist').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.editDonFromHistorique(btn.dataset.donId);
+            });
+        });
+    }
+
+    async editCommandeFromHistorique(commandeId) {
+        const commande = this.commandes.find(c => String(c.id) === String(commandeId));
+        if (!commande) return;
+        const currentName = String(commande.commande_name || commande.name || '').trim();
+        const currentCategory = String(commande.category || '').trim();
+        const newName = window.prompt('Nom de la commande', currentName);
+        if (newName == null) return;
+        const newCategory = window.prompt('Catégorie', currentCategory);
+        if (newCategory == null) return;
+        try {
+            const res = await api.put(`/api/commandes/${commandeId}`, {
+                commande_name: newName.trim(),
+                category: newCategory.trim()
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await this.loadData();
+            this.showNotification('Commande mise à jour', 'success');
+        } catch (err) {
+            this.showNotification(err?.message || 'Édition impossible', 'error');
+        }
+    }
+
+    async viewCommandeDetails(commandeId) {
+        let commande = this.commandes.find(c => String(c.id) === String(commandeId));
+        if (!commande) return;
+        let lines = Array.isArray(commande.lines) ? commande.lines : [];
+        if (lines.length === 0) {
+            try {
+                const res = await api.get(`/api/commandes/${commandeId}`, { useCache: false });
+                if (res.ok) {
+                    const data = await res.json();
+                    const full = data?.commande || data?.item || data;
+                    if (full && typeof full === 'object') {
+                        commande = { ...commande, ...full };
+                        lines = Array.isArray(full.lines) ? full.lines : (Array.isArray(full.lignes) ? full.lignes : []);
+                    }
+                }
+            } catch (_) { /* on garde la version de base */ }
+        }
+        const linesCount = lines.length > 0 ? lines.length : (commande.line_count ?? 0);
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+        setText('modal-commande-title', String(commande.commande_name || commande.name || 'Commande'));
+        setText('modal-commande-date', this.formatDateDDMMYYYY(commande.date || commande.created_at));
+        setText('modal-commande-category', String(commande.category || '-'));
+        setText('modal-commande-products', String(linesCount));
+        const tbody = document.getElementById('modal-commande-lines');
+        if (tbody) {
+            if (lines.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6">Aucun détail produit disponible</td></tr>`;
+            } else {
+                tbody.innerHTML = lines.map((line, idx) => `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td>${this.escapeHtml(String(line?.product_name || line?.produit || '-'))}</td>
+                        <td>${this.escapeHtml(String(line?.quantity ?? '-'))}</td>
+                        <td>${this.escapeHtml(String(line?.unit_price ?? line?.price ?? '-'))}</td>
+                        <td>${this.escapeHtml(String(line?.shipping_cost ?? line?.shipping ?? '-'))}</td>
+                        <td>${this.escapeHtml(String(line?.link || '-'))}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+        this.modalManager.open('modal-commande-details');
+    }
+
+    async viewDonDetails(donId) {
+        let don = this.dons.find(d => String(d.id) === String(donId));
+        if (!don) return;
+        let lines = Array.isArray(don.lines) ? don.lines : [];
+        if (lines.length === 0) {
+            try {
+                const res = await api.get(`/api/dons/${donId}`, { useCache: false });
+                if (res.ok) {
+                    const data = await res.json();
+                    const full = data?.don || data?.item || data;
+                    if (full && typeof full === 'object') {
+                        don = { ...don, ...full };
+                        lines = Array.isArray(full.lines) ? full.lines : [];
+                    }
+                }
+            } catch (_) { /* on garde la version de base */ }
+        }
+        const linesCount = lines.length;
+        const stagiaireFromLines = Array.isArray(lines)
+            ? (lines.map(l => String(l?.stagiaire || '').trim()).find(Boolean) || '')
+            : '';
+        const stagiaire = String(don.stagiaire_afpa || don.stagiaire || stagiaireFromLines || '-');
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+        setText('modal-don-title', String(don.lot_name || don.name || `Don #${don.id || ''}`));
+        setText('modal-don-date', this.formatDateDDMMYYYY(don.date || don.created_at));
+        setText('modal-don-stagiaire', stagiaire);
+        setText('modal-don-lines', String(linesCount));
+        const tbody = document.getElementById('modal-don-lines-body');
+        if (tbody) {
+            if (lines.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7">Aucune ligne de don disponible</td></tr>`;
+            } else {
+                tbody.innerHTML = lines.map((line, idx) => `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td>${this.escapeHtml(String(line?.type || '-'))}</td>
+                        <td>${this.escapeHtml(String(line?.marqueName || line?.marque || '-'))}</td>
+                        <td>${this.escapeHtml(String(line?.modeleName || line?.modele || '-'))}</td>
+                        <td>${this.escapeHtml(String(line?.serialNumber || line?.serial || '-'))}</td>
+                        <td>${this.escapeHtml(String(line?.date || '-'))}</td>
+                        <td>${this.escapeHtml(String(line?.stagiaire || '-'))}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+        this.modalManager.open('modal-don-details');
+    }
+
+    async editDonFromHistorique(donId) {
+        const don = this.dons.find(d => String(d.id) === String(donId));
+        if (!don) return;
+        const currentName = String(don.lot_name || don.name || '').trim();
+        const newName = window.prompt('Nom du don / lot', currentName);
+        if (newName == null) return;
+        try {
+            const res = await api.put(`/api/dons/${donId}`, { lot_name: newName.trim() });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            await this.loadData();
+            this.showNotification('Don mis à jour', 'success');
+        } catch (err) {
+            this.showNotification(err?.message || 'Édition impossible', 'error');
+        }
+    }
+
+    async openPathOnDesktop(targetPath) {
+        if (!window.electron || typeof window.electron.invoke !== 'function') {
+            this.showNotification('Ouverture disponible uniquement dans l’application desktop', 'warning');
+            return;
+        }
+        try {
+            const result = await window.electron.invoke('open-path', { path: targetPath });
+            if (!result?.success) throw new Error(result?.error || 'Impossible d’ouvrir le dossier');
+        } catch (err) {
+            this.showNotification(err?.message || 'Impossible d’ouvrir le dossier', 'error');
+        }
+    }
+
+    openPdfUrl(url) {
+        if (!url) return;
+        if (window.electron?.invoke) {
+            window.electron.invoke('open-pdf-with-system-app', {
+                url,
+                token: localStorage.getItem('workspace_jwt') || '',
+                suggestedFilename: 'commande.pdf'
+            }).catch(() => window.open(url, '_blank', 'noopener'));
+            return;
+        }
+        window.open(url, '_blank', 'noopener');
+    }
+
+    async downloadPdfUrl(url, filename) {
+        if (!url) return;
+        try {
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` }
+            });
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            const blob = await response.blob();
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = filename || 'commande.pdf';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (err) {
+            this.showNotification(err?.message || 'Téléchargement impossible', 'error');
+        }
     }
 
     /**
