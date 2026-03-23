@@ -2260,8 +2260,12 @@ function broadcastUserCount() {
           [userId]
         );
         return { success: true, shortcuts: result.rows };
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching shortcuts:', error);
+        if (error?.code === '42P01' || error?.code === '42703') {
+          // Déploiement partiel/migration incomplète: ne pas casser la page "Mes raccourcis"
+          return { success: true, shortcuts: [] };
+        }
         reply.statusCode = 500;
         return { error: 'Database error' };
       }
@@ -2418,15 +2422,133 @@ function broadcastUserCount() {
       }
     });
 
+    fastify.post('/api/commandes/categories', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) return sendAuthRequired(reply);
+      const { name } = request.body as any;
+      const trimmed = String(name || '').trim();
+      if (!trimmed) {
+        reply.statusCode = 400;
+        return { error: 'Category name is required' };
+      }
+      try {
+        const existing = await query('SELECT id, name FROM commande_categories WHERE LOWER(name) = LOWER($1) LIMIT 1', [trimmed]);
+        if (existing.rowCount && existing.rows[0]) {
+          return { success: true, category: existing.rows[0] };
+        }
+        const result = await query(
+          'INSERT INTO commande_categories (name) VALUES ($1) RETURNING id, name',
+          [trimmed]
+        );
+        return { success: true, category: result.rows[0] };
+      } catch (error: any) {
+        if (error?.code === '42P01') {
+          reply.statusCode = 500;
+          return { error: 'Table commande_categories manquante (migration requise)' };
+        }
+        if (error?.code === '23505') {
+          const existing = await query('SELECT id, name FROM commande_categories WHERE LOWER(name) = LOWER($1) LIMIT 1', [trimmed]);
+          return { success: true, category: existing.rows[0] || { name: trimmed } };
+        }
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.post('/api/commandes', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) return sendAuthRequired(reply);
+      const body = request.body as any;
+      const commandeName = String(body?.commande_name || body?.name || '').trim();
+      const category = String(body?.category || '').trim();
+      const date = String(body?.date || '').trim() || new Date().toISOString().slice(0, 10);
+      const pdfPath = String(body?.pdf_path || '').trim() || null;
+      const lines = Array.isArray(body?.lines) ? body.lines : [];
+      if (!commandeName) {
+        reply.statusCode = 400;
+        return { error: 'commande_name is required' };
+      }
+      try {
+        const header = await query(
+          `INSERT INTO commandes (user_id, name, category, date, pdf_path)
+           VALUES ($1, $2, $3, $4, $5)
+           RETURNING id, user_id, name AS commande_name, category, date, pdf_path, created_at`,
+          [userId, commandeName, category || null, date, pdfPath]
+        );
+        const commande = header.rows[0];
+        for (const line of lines) {
+          const quantity = Number(line?.quantity || 0) || 0;
+          const unitPrice = line?.price != null && String(line.price).trim() !== '' ? Number(line.price) : null;
+          const shippingCost = line?.shipping != null && String(line.shipping).trim() !== '' ? Number(line.shipping) : null;
+          const link = line?.link != null ? String(line.link).trim() || null : null;
+          const productName = String(line?.produit || line?.product_name || '').trim() || null;
+          const productIdRaw = line?.productId != null ? String(line.productId).trim() : '';
+          const productId = productIdRaw !== '' && /^\d+$/.test(productIdRaw) ? Number(productIdRaw) : null;
+          await query(
+            `INSERT INTO commande_lignes (commande_id, commande_product_id, product_name, quantity, unit_price, shipping_cost, link)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [commande.id, productId, productName, quantity, unitPrice, shippingCost, link]
+          );
+        }
+        return { success: true, commande };
+      } catch (error: any) {
+        console.error('Error creating commande:', error);
+        if (error?.code === '42P01') {
+          reply.statusCode = 500;
+          return { error: 'Tables commandes/commande_lignes manquantes (migration requise)' };
+        }
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
     fastify.get('/api/commandes/tracabilite', async (request: FastifyRequest, reply: FastifyReply) => {
       const userId = getAuthUserId(request);
       if (userId === null) return sendAuthRequired(reply);
       try {
         const result = await query(
-          'SELECT id, name, date, pdf_path, created_at FROM commandes ORDER BY date DESC, created_at DESC'
+          `SELECT c.id,
+                  c.user_id,
+                  c.name AS commande_name,
+                  c.category,
+                  c.date,
+                  c.pdf_path,
+                  c.created_at,
+                  COALESCE(COUNT(cl.id), 0)::int AS line_count
+           FROM commandes c
+           LEFT JOIN commande_lignes cl ON cl.commande_id = c.id
+           GROUP BY c.id, c.user_id, c.name, c.category, c.date, c.pdf_path, c.created_at
+           ORDER BY c.date DESC, c.created_at DESC`
         );
         return { success: true, data: result.rows };
       } catch (error) {
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.post('/api/dons', async (request: FastifyRequest, reply: FastifyReply) => {
+      const userId = getAuthUserId(request);
+      if (userId === null) return sendAuthRequired(reply);
+      const body = request.body as any;
+      const lotName = String(body?.lot_name || body?.name || '').trim() || null;
+      const date = String(body?.date || '').trim() || new Date().toISOString().slice(0, 10);
+      const pdfPath = String(body?.pdf_path || '').trim() || null;
+      const lines = Array.isArray(body?.lines) ? body.lines : [];
+      try {
+        const result = await query(
+          `INSERT INTO dons (user_id, lot_name, date, pdf_path, lines)
+           VALUES ($1, $2, $3, $4, $5::jsonb)
+           RETURNING id, user_id, lot_name, date, pdf_path, lines, created_at`,
+          [userId, lotName, date, pdfPath, JSON.stringify(lines)]
+        );
+        return { success: true, don: result.rows[0] };
+      } catch (error: any) {
+        console.error('Error creating don:', error);
+        if (error?.code === '42P01') {
+          reply.statusCode = 500;
+          return { error: 'Table dons manquante (migration requise)' };
+        }
         reply.statusCode = 500;
         return { error: 'Database error' };
       }
@@ -2437,7 +2559,7 @@ function broadcastUserCount() {
       if (userId === null) return sendAuthRequired(reply);
       try {
         const result = await query(
-          'SELECT id, donor_name, recipient_name, date, material_type, pdf_path, created_at FROM dons ORDER BY date DESC, created_at DESC'
+          'SELECT id, user_id, lot_name, date, pdf_path, lines, created_at FROM dons ORDER BY date DESC, created_at DESC'
         );
         return { success: true, data: result.rows };
       } catch (error: any) {

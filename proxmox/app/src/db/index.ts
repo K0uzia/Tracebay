@@ -138,7 +138,31 @@ export async function initializeDatabase(): Promise<void> {
         name VARCHAR(255) NOT NULL,
         created_at TIMESTAMP DEFAULT NOW()
       )`,
-      'CREATE INDEX IF NOT EXISTS idx_commande_products_name ON commande_products(name)'
+      'CREATE INDEX IF NOT EXISTS idx_commande_products_name ON commande_products(name)',
+      `CREATE TABLE IF NOT EXISTS commande_categories (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL UNIQUE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )`,
+      'CREATE INDEX IF NOT EXISTS idx_commande_categories_name ON commande_categories(name)',
+      'ALTER TABLE commandes ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id) ON DELETE SET NULL',
+      'ALTER TABLE commandes ADD COLUMN IF NOT EXISTS category VARCHAR(255)',
+      'CREATE INDEX IF NOT EXISTS idx_commandes_user_id ON commandes(user_id)',
+      'CREATE INDEX IF NOT EXISTS idx_commandes_category ON commandes(category)',
+      'ALTER TABLE commande_lignes ADD COLUMN IF NOT EXISTS shipping_cost NUMERIC(12,2)',
+      'ALTER TABLE commande_lignes ADD COLUMN IF NOT EXISTS link TEXT',
+      `CREATE TABLE IF NOT EXISTS dons (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        lot_name VARCHAR(255),
+        date DATE NOT NULL DEFAULT CURRENT_DATE,
+        pdf_path VARCHAR(1024),
+        lines JSONB DEFAULT '[]'::jsonb,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )`,
+      'CREATE INDEX IF NOT EXISTS idx_dons_date ON dons(date DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_dons_created_at ON dons(created_at DESC)',
+      'CREATE INDEX IF NOT EXISTS idx_dons_user_id ON dons(user_id)'
     ];
     for (const sql of migrations) {
       try {

@@ -292,16 +292,28 @@ CREATE TABLE IF NOT EXISTS commande_products (
 );
 CREATE INDEX IF NOT EXISTS idx_commande_products_name ON commande_products(name);
 
+-- Catégories de commande
+CREATE TABLE IF NOT EXISTS commande_categories (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL UNIQUE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_commande_categories_name ON commande_categories(name);
+
 -- Commandes (entête + lignes) — réception onglet Commande
 CREATE TABLE IF NOT EXISTS commandes (
   id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
   name VARCHAR(255),
+  category VARCHAR(255),
   date DATE NOT NULL DEFAULT CURRENT_DATE,
   pdf_path VARCHAR(1024),
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_commandes_date ON commandes(date DESC);
 CREATE INDEX IF NOT EXISTS idx_commandes_created_at ON commandes(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_commandes_user_id ON commandes(user_id);
+CREATE INDEX IF NOT EXISTS idx_commandes_category ON commandes(category);
 
 CREATE TABLE IF NOT EXISTS commande_lignes (
   id SERIAL PRIMARY KEY,
@@ -310,9 +322,25 @@ CREATE TABLE IF NOT EXISTS commande_lignes (
   product_name VARCHAR(255),
   quantity INTEGER NOT NULL DEFAULT 1,
   unit_price NUMERIC(12,2),
+  shipping_cost NUMERIC(12,2),
+  link TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_commande_lignes_commande_id ON commande_lignes(commande_id);
+
+-- Dons (réception)
+CREATE TABLE IF NOT EXISTS dons (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  lot_name VARCHAR(255),
+  date DATE NOT NULL DEFAULT CURRENT_DATE,
+  pdf_path VARCHAR(1024),
+  lines JSONB DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_dons_date ON dons(date DESC);
+CREATE INDEX IF NOT EXISTS idx_dons_created_at ON dons(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_dons_user_id ON dons(user_id);
 
 -- Entrées réception (traçabilité entrées manuelles / lots / disques)
 CREATE TABLE IF NOT EXISTS entrees (
