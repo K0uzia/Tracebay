@@ -2472,8 +2472,6 @@ function broadcastUserCount() {
     });
 
     fastify.get('/api/commandes/categories', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = getAuthUserId(request);
-      if (userId === null) return sendAuthRequired(reply);
       try {
         const result = await query(
           'SELECT id, name FROM commande_categories ORDER BY name'
@@ -2487,8 +2485,6 @@ function broadcastUserCount() {
     });
 
     fastify.post('/api/commandes/categories', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = getAuthUserId(request);
-      if (userId === null) return sendAuthRequired(reply);
       const { name } = request.body as any;
       const trimmed = String(name || '').trim();
       if (!trimmed) {
