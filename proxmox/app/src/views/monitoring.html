@@ -1326,7 +1326,7 @@ async function loadCommandes() {
   const tbody = document.getElementById('commandes-table');
   if (!tbody) return;
   try {
-    const data = await api('GET', '/api/commandes?limit=200');
+    const data = await api('GET', '/api/admin/commandes?limit=200');
     const list = (data.data || []).slice();
     if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucune commande</td></tr>'; return; }
     tbody.innerHTML = list.map(c => {
@@ -1349,7 +1349,7 @@ async function loadDons() {
   const tbody = document.getElementById('dons-table');
   if (!tbody) return;
   try {
-    const data = await api('GET', '/api/dons?limit=200');
+    const data = await api('GET', '/api/admin/dons?limit=200');
     const list = (data.data || []).slice();
     if (!list.length) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Aucun don</td></tr>';
@@ -1371,7 +1371,7 @@ async function loadDons() {
 }
 
 async function openDonDetail(id) {
-  const data = await api('GET', '/api/dons/' + id);
+  const data = await api('GET', '/api/admin/dons/' + id);
   if (data.error) { toast(data.error, 'error'); return; }
   const d = data.don || {};
   const lines = Array.isArray(d.lines) ? d.lines : [];
@@ -1379,7 +1379,7 @@ async function openDonDetail(id) {
 }
 
 async function openCommandeDetail(id) {
-  const data = await api('GET', '/api/commandes/' + id);
+  const data = await api('GET', '/api/admin/commandes/' + id);
   if (data.error) { toast(data.error, 'error'); return; }
   const c = data.commande || {};
   const lignes = c.lignes || [];

@@ -466,7 +466,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // ─────────────────────────────────────────────
 
   fastify.get('/api/admin/marques', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     try {
       const result = await query(
         `SELECT m.id, m.name,
@@ -482,7 +481,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.post('/api/admin/marques', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { name } = request.body as any;
     if (!name?.trim()) { reply.statusCode = 400; return { error: 'name requis' }; }
     try {
@@ -497,7 +495,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.put('/api/admin/marques/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     const { name } = request.body as any;
     if (!name?.trim()) { reply.statusCode = 400; return { error: 'name requis' }; }
@@ -513,7 +510,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.delete('/api/admin/marques/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
       const result = await query('DELETE FROM marques WHERE id = $1', [id]);
@@ -527,7 +523,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.get('/api/admin/marques/:id/modeles', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
       const result = await query('SELECT id, name, marque_id FROM modeles WHERE marque_id = $1 AND deleted_at IS NULL ORDER BY name', [id]);
@@ -540,7 +535,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.post('/api/admin/marques/:id/modeles', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     const { name } = request.body as any;
     if (!name?.trim()) { reply.statusCode = 400; return { error: 'name requis' }; }
@@ -555,7 +549,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.delete('/api/admin/modeles/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
       const result = await query('DELETE FROM modeles WHERE id = $1', [id]);
@@ -573,7 +566,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // ─────────────────────────────────────────────
 
   fastify.get('/api/admin/lots', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { status, search } = request.query as any;
     let sql = `SELECT l.id, l.name, l.status, l.item_count, l.description, l.received_at, l.created_at, l.updated_at, l.pdf_path
                FROM lots l WHERE l.deleted_at IS NULL`;
@@ -593,7 +585,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.put('/api/admin/lots/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     const body = request.body as any;
     const updates: string[] = [];
@@ -624,7 +615,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.delete('/api/admin/lots/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
       await query('DELETE FROM lot_items WHERE lot_id = $1', [id]);
@@ -639,7 +629,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.post('/api/admin/open-path', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const body = request.body as { path?: string };
     const rawPath = (body?.path || '').toString().trim();
     if (!rawPath) {
@@ -669,7 +658,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.get('/api/admin/lots/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
       const lotResult = await query(
@@ -698,7 +686,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.put('/api/admin/lots/items/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     const { state, technician } = request.body as { state?: string | null; technician?: string | null };
     const updates: string[] = [];
@@ -734,7 +721,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // ─────────────────────────────────────────────
 
   fastify.get('/api/admin/disques/sessions', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { year, month } = request.query as { year?: string; month?: string };
     let sql = `SELECT id, date, name, pdf_path, created_at, recovered_at FROM disques_sessions`;
     const params: any[] = [];
@@ -767,7 +753,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.get('/api/admin/disques/sessions/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
       const sessionResult = await query(
@@ -789,7 +774,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.put('/api/admin/disques/sessions/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     const body = request.body as any;
     const updates: string[] = [];
@@ -865,7 +849,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.delete('/api/admin/disques/sessions/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
       await query('DELETE FROM disques_session_disks WHERE session_id = $1', [id]);
@@ -1698,7 +1681,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // ─────────────────────────────────────────────
 
   fastify.get('/api/admin/commandes', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { limit = '100', offset = '0' } = request.query as any;
     const limitNum = Math.min(parseInt(limit, 10) || 100, 200);
     const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
@@ -1718,7 +1700,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.get('/api/admin/commandes/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
       const cmdResult = await query(
@@ -1741,7 +1722,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.post('/api/admin/commandes', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const body = request.body as { name?: string; date?: string; pdf_path?: string; lignes?: Array<{ commande_product_id?: number; product_name?: string; quantity?: number; unit_price?: number }> };
     const name = body.name != null ? String(body.name).trim() || null : null;
     const date = body.date || new Date().toISOString().slice(0, 10);
@@ -1780,7 +1760,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // DONS — admin
   // ─────────────────────────────────────────────
   fastify.get('/api/admin/dons', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { limit = '100', offset = '0' } = request.query as any;
     const limitNum = Math.min(parseInt(limit, 10) || 100, 200);
     const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
@@ -1803,7 +1782,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.get('/api/admin/dons/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
       const result = await query(
@@ -1827,7 +1805,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // ─────────────────────────────────────────────
 
   fastify.get('/api/admin/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const { limit = '100', offset = '0', type } = request.query as any;
     const limitNum = Math.min(parseInt(limit, 10) || 100, 200);
     const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
@@ -1858,7 +1835,6 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   fastify.post('/api/admin/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!checkAdminAuth(request, reply)) return;
     const body = request.body as { date?: string; type?: string; lot_id?: number; disque_session_id?: number; description?: string };
     const date = body.date || new Date().toISOString().slice(0, 10);
     const type = (body.type && String(body.type).trim()) || 'manual';

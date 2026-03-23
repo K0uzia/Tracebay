@@ -2516,8 +2516,6 @@ function broadcastUserCount() {
     });
 
     fastify.post('/api/commandes', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = getAuthUserId(request);
-      if (userId === null) return sendAuthRequired(reply);
       const body = request.body as any;
       const commandeName = String(body?.commande_name || body?.name || '').trim();
       const category = String(body?.category || '').trim();
@@ -2531,9 +2529,9 @@ function broadcastUserCount() {
       try {
         const header = await query(
           `INSERT INTO commandes (user_id, name, category, date, pdf_path)
-           VALUES ($1, $2, $3, $4, $5)
+           VALUES (NULL, $1, $2, $3, $4)
            RETURNING id, user_id, name AS commande_name, category, date, pdf_path, created_at`,
-          [userId, commandeName, category || null, date, pdfPath]
+          [commandeName, category || null, date, pdfPath]
         );
         const commande = header.rows[0];
         for (const line of lines) {
@@ -2563,15 +2561,13 @@ function broadcastUserCount() {
     });
 
     fastify.get('/api/commandes/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = getAuthUserId(request);
-      if (userId === null) return sendAuthRequired(reply);
       const { id } = request.params as { id: string };
       try {
         const header = await query(
           `SELECT id, user_id, name AS commande_name, category, date, pdf_path, created_at
            FROM commandes
-           WHERE id = $1 AND user_id = $2`,
-          [id, userId]
+           WHERE id = $1`,
+          [id]
         );
         if (header.rowCount === 0) {
           reply.statusCode = 404;
@@ -2605,8 +2601,6 @@ function broadcastUserCount() {
     });
 
     fastify.put('/api/commandes/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = getAuthUserId(request);
-      if (userId === null) return sendAuthRequired(reply);
       const { id } = request.params as { id: string };
       const body = request.body as any;
       const commandeName = body?.commande_name != null ? String(body.commande_name).trim() : undefined;
@@ -2616,8 +2610,8 @@ function broadcastUserCount() {
       const incomingLines = Array.isArray(body?.lines) ? body.lines : null;
       try {
         const existing = await query(
-          'SELECT id FROM commandes WHERE id = $1 AND user_id = $2',
-          [id, userId]
+          'SELECT id FROM commandes WHERE id = $1',
+          [id]
         );
         if (existing.rowCount === 0) {
           reply.statusCode = 404;
@@ -2632,9 +2626,9 @@ function broadcastUserCount() {
         if (date !== undefined) { updates.push(`date = $${idx++}`); values.push(date || null); }
         if (pdfPath !== undefined) { updates.push(`pdf_path = $${idx++}`); values.push(pdfPath || null); }
         if (updates.length > 0) {
-          values.push(id, userId);
+          values.push(id);
           await query(
-            `UPDATE commandes SET ${updates.join(', ')} WHERE id = $${values.length - 1} AND user_id = $${values.length}`,
+            `UPDATE commandes SET ${updates.join(', ')} WHERE id = $${values.length}`,
             values
           );
         }
@@ -2660,8 +2654,8 @@ function broadcastUserCount() {
         const header = await query(
           `SELECT id, user_id, name AS commande_name, category, date, pdf_path, created_at
            FROM commandes
-           WHERE id = $1 AND user_id = $2`,
-          [id, userId]
+           WHERE id = $1`,
+          [id]
         );
         const lignes = await query(
           `SELECT l.id,
@@ -2714,8 +2708,6 @@ function broadcastUserCount() {
     });
 
     fastify.post('/api/dons', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = getAuthUserId(request);
-      if (userId === null) return sendAuthRequired(reply);
       const body = request.body as any;
       const lotName = String(body?.lot_name || body?.name || '').trim() || null;
       const date = String(body?.date || '').trim() || new Date().toISOString().slice(0, 10);
@@ -2724,9 +2716,9 @@ function broadcastUserCount() {
       try {
         const result = await query(
           `INSERT INTO dons (user_id, lot_name, date, pdf_path, lines)
-           VALUES ($1, $2, $3, $4, $5::jsonb)
+           VALUES (NULL, $1, $2, $3, $4::jsonb)
            RETURNING id, user_id, lot_name, date, pdf_path, lines, created_at`,
-          [userId, lotName, date, pdfPath, JSON.stringify(lines)]
+          [lotName, date, pdfPath, JSON.stringify(lines)]
         );
         return { success: true, don: result.rows[0] };
       } catch (error: any) {
@@ -2741,15 +2733,13 @@ function broadcastUserCount() {
     });
 
     fastify.get('/api/dons/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = getAuthUserId(request);
-      if (userId === null) return sendAuthRequired(reply);
       const { id } = request.params as { id: string };
       try {
         const result = await query(
           `SELECT id, user_id, lot_name, date, pdf_path, lines, created_at
            FROM dons
-           WHERE id = $1 AND user_id = $2`,
-          [id, userId]
+           WHERE id = $1`,
+          [id]
         );
         if (result.rowCount === 0) {
           reply.statusCode = 404;
@@ -2767,8 +2757,6 @@ function broadcastUserCount() {
     });
 
     fastify.put('/api/dons/:id', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = getAuthUserId(request);
-      if (userId === null) return sendAuthRequired(reply);
       const { id } = request.params as { id: string };
       const body = request.body as any;
       const lotName = body?.lot_name != null ? String(body.lot_name).trim() : (body?.name != null ? String(body.name).trim() : undefined);
@@ -2777,8 +2765,8 @@ function broadcastUserCount() {
       const lines = Array.isArray(body?.lines) ? body.lines : undefined;
       try {
         const existing = await query(
-          'SELECT id FROM dons WHERE id = $1 AND user_id = $2',
-          [id, userId]
+          'SELECT id FROM dons WHERE id = $1',
+          [id]
         );
         if (existing.rowCount === 0) {
           reply.statusCode = 404;
@@ -2795,11 +2783,11 @@ function broadcastUserCount() {
           reply.statusCode = 400;
           return { error: 'No fields to update' };
         }
-        values.push(id, userId);
+        values.push(id);
         const result = await query(
           `UPDATE dons
            SET ${updates.join(', ')}
-           WHERE id = $${values.length - 1} AND user_id = $${values.length}
+           WHERE id = $${values.length}
            RETURNING id, user_id, lot_name, date, pdf_path, lines, created_at`,
           values
         );
@@ -2886,12 +2874,8 @@ function broadcastUserCount() {
       }
     });
 
-    // API Entrées (réception) — utilisateur connecté peut lister et créer
+    // API Entrées (réception) — sans auth
     fastify.get('/api/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = getAuthUserId(request);
-      if (userId === null) {
-        return sendAuthRequired(reply);
-      }
       try {
         const { limit = '100', offset = '0', type } = request.query as { limit?: string; offset?: string; type?: string };
         const limitNum = Math.min(parseInt(limit, 10) || 100, 200);
@@ -2919,10 +2903,6 @@ function broadcastUserCount() {
     });
 
     fastify.post('/api/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
-      const userId = getAuthUserId(request);
-      if (userId === null) {
-        return sendAuthRequired(reply);
-      }
       const body = request.body as { date?: string; type?: string; lot_id?: number; disque_session_id?: number; description?: string };
       const date = body.date || new Date().toISOString().slice(0, 10);
       const type = (body.type && String(body.type).trim()) || 'manual';
