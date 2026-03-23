@@ -2253,63 +2253,14 @@ ipcMain.handle('read-file-as-base64', async (_event, payload) => {
     }
 });
 
-/** Fichier de config locale (userData) : créé à l'exécution sur chaque machine (dev ou prod), jamais dans le dépôt. */
-const WORKSPACE_CONFIG_PATH = path.join(app.getPath('userData'), 'workspace-config.json');
-/** Clé Giphy : présente dans le code (donc dans la release). Au 1er lancement on crée workspace-config.json avec cette valeur ; les lancements suivants lisent depuis userData. Dev et prod fonctionnent. */
+/** Clé Giphy lue uniquement depuis l'environnement d'exécution. */
 const DEFAULT_GIPHY_API_KEY = 'mvekVgYYTsuZWKdfbyHDgUvtCEfUt4IR';
 
 function getGiphyApiKey() {
     const fromEnv = process.env.GIPHY_API_KEY && String(process.env.GIPHY_API_KEY).trim();
     if (fromEnv) return fromEnv;
-    try {
-        if (fs.existsSync(WORKSPACE_CONFIG_PATH)) {
-            const data = JSON.parse(fs.readFileSync(WORKSPACE_CONFIG_PATH, 'utf8'));
-            if (data.giphyApiKey && String(data.giphyApiKey).trim()) return String(data.giphyApiKey).trim();
-        }
-        const dir = path.dirname(WORKSPACE_CONFIG_PATH);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        let data = {};
-        try {
-            if (fs.existsSync(WORKSPACE_CONFIG_PATH)) {
-                data = JSON.parse(fs.readFileSync(WORKSPACE_CONFIG_PATH, 'utf8'));
-            }
-        } catch (_) { /* ignore */ }
-        data.giphyApiKey = DEFAULT_GIPHY_API_KEY;
-        fs.writeFileSync(WORKSPACE_CONFIG_PATH, JSON.stringify(data, null, 2), 'utf8');
-        return DEFAULT_GIPHY_API_KEY;
-    } catch (_) { /* ignore */ }
-    return '';
+    return DEFAULT_GIPHY_API_KEY;
 }
-
-ipcMain.handle('get-workspace-config', async () => {
-    try {
-        if (fs.existsSync(WORKSPACE_CONFIG_PATH)) {
-            const data = JSON.parse(fs.readFileSync(WORKSPACE_CONFIG_PATH, 'utf8'));
-            return { giphyApiKey: (data.giphyApiKey && String(data.giphyApiKey).trim()) ? String(data.giphyApiKey).trim() : '' };
-        }
-    } catch (_) { /* ignore */ }
-    return { giphyApiKey: '' };
-});
-
-ipcMain.handle('set-workspace-config', async (_event, payload) => {
-    const giphyApiKey = (payload && payload.giphyApiKey != null) ? String(payload.giphyApiKey).trim() : '';
-    try {
-        const dir = path.dirname(WORKSPACE_CONFIG_PATH);
-        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-        const data = {};
-        try {
-            if (fs.existsSync(WORKSPACE_CONFIG_PATH)) {
-                Object.assign(data, JSON.parse(fs.readFileSync(WORKSPACE_CONFIG_PATH, 'utf8')));
-            }
-        } catch (_) { /* ignore */ }
-        data.giphyApiKey = giphyApiKey;
-        fs.writeFileSync(WORKSPACE_CONFIG_PATH, JSON.stringify(data, null, 2), 'utf8');
-        return { success: true };
-    } catch (e) {
-        console.error('set-workspace-config:', e.message);
-        return { success: false, error: e.message };
-    }
-});
 
 /**
  * Obtenir la configuration de l'application

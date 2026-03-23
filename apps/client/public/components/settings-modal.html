@@ -8,17 +8,6 @@
             <h2 class="settings-modal-title"><i class="fas fa-user-cog"></i> Paramètres du compte</h2>
         </div>
         <div class="settings-modal-body">
-        <div class="settings-section" id="settingsSectionGiphy">
-            <h3><i class="fas fa-image"></i> Clé API Giphy (recherche de GIFs dans le chat)</h3>
-            <p class="settings-hint">Stockée localement (hors dépôt). Sinon définir la variable d'environnement <code>GIPHY_API_KEY</code>.</p>
-            <div class="form-group">
-                <label for="settingsGiphyApiKey">Clé API Giphy</label>
-                <input type="password" id="settingsGiphyApiKey" name="giphyApiKey" placeholder="Clé (optionnel)" autocomplete="off">
-            </div>
-            <button type="button" id="settingsBtnSaveGiphy" class="btn btn-primary">Enregistrer la clé</button>
-            <div class="settings-error hidden" id="settingsGiphyError"></div>
-        </div>
-
         <div class="settings-section">
             <h3>Changer le pseudo</h3>
             <form id="settingsFormUsername" class="settings-form">
