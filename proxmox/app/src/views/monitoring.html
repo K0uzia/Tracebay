@@ -707,7 +707,7 @@
         <h4>Disques</h4>
         <div class="table-wrap">
           <table class="data-table">
-            <thead><tr><th>N° série</th><th>Marque</th><th>Modèle</th><th>Taille</th><th>Interface</th><th>Shred</th></tr></thead>
+            <thead><tr><th>ID</th><th>N° série</th><th>Marque</th><th>Modèle</th><th>Taille</th><th>Interface</th><th>Shred</th></tr></thead>
             <tbody id="disque-session-disks-tbody"></tbody>
           </table>
         </div>
@@ -777,12 +777,20 @@
   <div class="modal" style="width:80vw;max-width:80vw">
     <div class="modal-header"><h3>Détail commande</h3><button class="modal-close" onclick="closeModal('commande-detail-modal')">×</button></div>
     <div class="modal-body">
-      <p><strong>#</strong> <span id="commande-detail-id"></span> — <strong>Nom</strong> <span id="commande-detail-name"></span> — <strong>Date</strong> <span id="commande-detail-date"></span></p>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-body" style="padding:12px">
+          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+            <div><div class="text-muted">ID</div><div id="commande-detail-id">—</div></div>
+            <div><div class="text-muted">Nom</div><div id="commande-detail-name">—</div></div>
+            <div><div class="text-muted">Date</div><div id="commande-detail-date">—</div></div>
+          </div>
+        </div>
+      </div>
       <div id="commande-detail-edit-fields" style="display:none;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
         <div class="form-group"><label>Nom</label><input id="commande-edit-name" type="text"></div>
         <div class="form-group"><label>Date</label><input id="commande-edit-date" type="datetime-local"></div>
       </div>
-      <p class="text-muted" style="font-size:12px"><strong>PDF</strong> <span id="commande-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">—</span></p>
+      <div class="form-group" style="margin-bottom:8px"><label>PDF</label><div id="commande-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">—</div></div>
       <div class="table-wrap" style="margin-top:12px">
         <table class="log-table"><thead><tr><th>Produit</th><th>Quantité</th><th>Prix unit.</th><th>Frais port</th><th>Lien</th></tr></thead>
         <tbody id="commande-detail-lignes-tbody"></tbody></table>
@@ -802,12 +810,19 @@
   <div class="modal" style="width:80vw;max-width:80vw">
     <div class="modal-header"><h3>Détail don</h3><button class="modal-close" onclick="closeModal('don-detail-modal')">×</button></div>
     <div class="modal-body">
-      <p><strong>#</strong> <span id="don-detail-id"></span> — <strong>Lot</strong> <span id="don-detail-lot"></span></p>
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-body" style="padding:12px">
+          <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
+            <div><div class="text-muted">ID</div><div id="don-detail-id">—</div></div>
+            <div><div class="text-muted">Lot</div><div id="don-detail-lot">—</div></div>
+          </div>
+        </div>
+      </div>
       <div id="don-detail-edit-fields" style="display:none;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
         <div class="form-group"><label>Nom lot</label><input id="don-edit-lot-name" type="text"></div>
         <div class="form-group"><label>Date</label><input id="don-edit-date" type="datetime-local"></div>
       </div>
-      <p class="text-muted" style="font-size:12px"><strong>PDF</strong> <span id="don-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">—</span></p>
+      <div class="form-group" style="margin-bottom:8px"><label>PDF</label><div id="don-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">—</div></div>
       <div class="table-wrap" style="margin-top:12px">
         <table class="log-table"><thead><tr><th>Matériel</th><th>Modèle</th><th>Type</th><th>S/N</th><th>Date</th><th>Nom prénom</th></tr></thead>
         <tbody id="don-detail-lines-tbody"></tbody></table>
@@ -878,7 +893,9 @@ function toast(msg, type = 'success') {
 
 function fmtDate(s) {
   if (!s) return '—';
-  return new Date(s).toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
@@ -918,6 +935,38 @@ function statusBadge(s) {
 
 function escHtml(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function autoTitleForButton(btn) {
+  if (!btn || btn.getAttribute('title')) return;
+  const txt = (btn.textContent || '').replace(/\s+/g, ' ').trim();
+  if (txt) { btn.setAttribute('title', txt); return; }
+  const icon = btn.querySelector('i');
+  const cls = icon ? icon.className : '';
+  if (cls.includes('fa-trash')) btn.setAttribute('title', 'Supprimer');
+  else if (cls.includes('fa-pen')) btn.setAttribute('title', 'Modifier');
+  else if (cls.includes('fa-rotate-right') || cls.includes('fa-arrows-rotate')) btn.setAttribute('title', 'Actualiser');
+  else if (cls.includes('fa-play')) btn.setAttribute('title', 'Démarrer');
+  else if (cls.includes('fa-stop')) btn.setAttribute('title', 'Arrêter');
+  else if (cls.includes('fa-floppy-disk')) btn.setAttribute('title', 'Enregistrer');
+}
+
+function applyButtonTitles(root = document) {
+  root.querySelectorAll('button').forEach(autoTitleForButton);
+}
+
+function initButtonTitlesObserver() {
+  applyButtonTitles();
+  const observer = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      m.addedNodes.forEach(node => {
+        if (!(node instanceof HTMLElement)) return;
+        if (node.tagName === 'BUTTON') autoTitleForButton(node);
+        applyButtonTitles(node);
+      });
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────
@@ -961,6 +1010,7 @@ function bootApp() {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app').classList.add('visible');
   document.getElementById('sidebar-username').textContent = CURRENT_USER;
+  initButtonTitlesObserver();
   navigateTo('dashboard');
   loadAllUsers();
 }
@@ -1428,7 +1478,7 @@ async function loadCommandes() {
     const base = window.location.origin;
     tbody.innerHTML = list.map(c => {
       const pdfCell = c.pdf_path
-        ? `<a href="${base}/api/commandes/${c.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="${escHtml(c.pdf_path)}">PDF</a>`
+        ? `<a href="${base}/api/admin/commandes/${c.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="${escHtml(c.pdf_path)}">PDF</a>`
         : '—';
       return `<tr>
         <td>${c.id}</td>
@@ -1437,8 +1487,8 @@ async function loadCommandes() {
         <td>${pdfCell}</td>
         <td><div class="actions-cell">
           <button class="btn btn-secondary btn-sm" onclick="openCommandeDetail(${c.id})">Détail</button>
-          <button class="btn btn-secondary btn-sm" onclick="editCommande(${c.id})">Éditer</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteCommande(${c.id})">Supprimer</button>
+          <button class="btn btn-secondary btn-sm btn-icon" title="Éditer" onclick="editCommande(${c.id})"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteCommande(${c.id})"><i class="fa-solid fa-trash"></i></button>
         </div></td>
       </tr>`;
     }).join('');
@@ -1460,7 +1510,7 @@ async function loadDons() {
     const base = window.location.origin;
     tbody.innerHTML = list.map(d => {
       const pdfCell = d.pdf_path
-        ? `<a href="${base}/api/dons/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="${escHtml(d.pdf_path)}">PDF</a>`
+        ? `<a href="${base}/api/admin/dons/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="${escHtml(d.pdf_path)}">PDF</a>`
         : '—';
       return `<tr>
         <td>${d.id}</td>
@@ -1469,8 +1519,8 @@ async function loadDons() {
         <td>${pdfCell}</td>
         <td><div class="actions-cell">
           <button class="btn btn-secondary btn-sm" onclick="openDonDetail(${d.id})">Détail</button>
-          <button class="btn btn-secondary btn-sm" onclick="editDon(${d.id})">Éditer</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteDon(${d.id})">Supprimer</button>
+          <button class="btn btn-secondary btn-sm btn-icon" title="Éditer" onclick="editDon(${d.id})"><i class="fa-solid fa-pen"></i></button>
+          <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteDon(${d.id})"><i class="fa-solid fa-trash"></i></button>
         </div></td>
       </tr>`;
     }).join('');
@@ -1534,11 +1584,11 @@ function toDateTimeLocal(value) {
 
 function renderCommandeDetailModal() {
   const c = currentCommandeDetail || {};
-  const lignes = Array.isArray(c.lignes) ? c.lignes : [];
+  const lignes = Array.isArray(c.lignes) ? c.lignes : (Array.isArray(c.lines) ? c.lines : []);
   const editable = !!commandeDetailEditable;
   const lignesHtml = lignes.length
     ? lignes.map((l, i) => {
-      const link = l.link || l.link_url || '';
+      const link = l.link || l.link_url || l.url || l.product_link || '';
       if (!editable) {
         const ship = l.shipping_cost != null ? `${Number(l.shipping_cost).toFixed(2)} €` : '—';
         return `<tr><td>${escHtml((l.product_name_ref || l.product_name || '—'))}</td><td>${l.quantity || 0}</td><td>${l.unit_price != null ? l.unit_price : '—'}</td><td>${ship}</td><td>${link ? `<a href="${escHtml(link)}" target="_blank" rel="noopener">Ouvrir</a>` : '—'}</td></tr>`;
@@ -1604,7 +1654,7 @@ async function deleteCommandeFromModal() {
 
 function renderDonDetailModal() {
   const d = currentDonDetail || {};
-  const lines = Array.isArray(d.lines) ? d.lines : [];
+  const lines = Array.isArray(d.lines) ? d.lines : (Array.isArray(d.lignes) ? d.lignes : (Array.isArray(d.items) ? d.items : []));
   const editable = !!donDetailEditable;
   const linesHtml = lines.length
     ? lines.map((l, i) => {
@@ -1799,7 +1849,7 @@ function openDisqueSessionModal(id, editable = true) {
   document.getElementById('disque-session-date-display').textContent = '—';
   const pathEl = document.getElementById('disque-session-pdf-path-display');
   if (pathEl) { pathEl.textContent = '—'; pathEl.title = ''; }
-  document.getElementById('disque-session-disks-tbody').innerHTML = '<tr><td colspan="6" class="text-muted">Chargement…</td></tr>';
+  document.getElementById('disque-session-disks-tbody').innerHTML = '<tr><td colspan="7" class="text-muted">Chargement…</td></tr>';
   openModal('disque-session-modal');
   api('GET', '/api/admin/disques/sessions/' + id).then(data => {
     if (data.error) { toast(data.error, 'error'); return; }
@@ -1810,10 +1860,11 @@ function openDisqueSessionModal(id, editable = true) {
     const disks = session.disks || [];
     const tbody = document.getElementById('disque-session-disks-tbody');
     if (!disks.length) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun disque</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Aucun disque</td></tr>';
     } else {
       tbody.innerHTML = disks.map(d => `
         <tr data-disk-id="${d.id != null ? d.id : ''}">
+          <td>${d.id != null ? d.id : '—'}</td>
           <td><input type="text" class="form-input disque-item-serial" value="${escHtml(d.serial || d.serial_number || '')}" placeholder="N° série"></td>
           <td><input type="text" class="form-input disque-item-marque" value="${escHtml(d.marque || d.brand || '')}" placeholder="Marque"></td>
           <td><input type="text" class="form-input disque-item-modele" value="${escHtml(d.modele || d.model || '')}" placeholder="Modèle"></td>

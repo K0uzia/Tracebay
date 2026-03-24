@@ -176,6 +176,7 @@ api = async (method, path, body) => {
   if (method === 'DELETE' && /^\/api\/admin\/commandes\/\d+$/.test(cleanPath)) return { success: true };
   if (method === 'PUT' && /^\/api\/admin\/commandes\/\d+$/.test(cleanPath)) return { success: true };
   if (method === 'POST' && /^\/api\/commandes\/\d+\/regenerate-pdf$/.test(cleanPath)) return { success: true };
+  if (method === 'GET' && /^\/api\/admin\/commandes\/\d+\/pdf$/.test(cleanPath)) return { success: true };
 
   // Réception - dons
   if (method === 'GET' && cleanPath === '/api/admin/dons') {
@@ -197,6 +198,7 @@ api = async (method, path, body) => {
   if (method === 'DELETE' && /^\/api\/admin\/dons\/\d+$/.test(cleanPath)) return { success: true };
   if (method === 'PUT' && /^\/api\/admin\/dons\/\d+$/.test(cleanPath)) return { success: true };
   if (method === 'POST' && /^\/api\/dons\/\d+\/regenerate-pdf$/.test(cleanPath)) return { success: true };
+  if (method === 'GET' && /^\/api\/admin\/dons\/\d+\/pdf$/.test(cleanPath)) return { success: true };
 
   // Édition générique (utilisée par la modale db-row)
   if (method === 'PUT' && /^\/api\/admin\/db\/tables\/[^/]+\/rows\/\d+$/.test(cleanPath)) return { success: true };
