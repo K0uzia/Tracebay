@@ -898,6 +898,19 @@ function fmtDate(s) {
   return d.toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
+function parseMaybeJsonArray(value) {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
@@ -1478,7 +1491,7 @@ async function loadCommandes() {
     const base = window.location.origin;
     tbody.innerHTML = list.map(c => {
       const pdfCell = c.pdf_path
-        ? `<a href="${base}/api/admin/commandes/${c.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="${escHtml(c.pdf_path)}">PDF</a>`
+        ? `<button class="btn btn-secondary btn-sm" title="${escHtml(c.pdf_path)}" onclick="openPdfPath('${(c.pdf_path || '').replace(/\\/g,'\\\\').replace(/'/g, "\\'")}')">PDF</button>`
         : '—';
       return `<tr>
         <td>${c.id}</td>
@@ -1510,7 +1523,7 @@ async function loadDons() {
     const base = window.location.origin;
     tbody.innerHTML = list.map(d => {
       const pdfCell = d.pdf_path
-        ? `<a href="${base}/api/admin/dons/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="${escHtml(d.pdf_path)}">PDF</a>`
+        ? `<button class="btn btn-secondary btn-sm" title="${escHtml(d.pdf_path)}" onclick="openPdfPath('${(d.pdf_path || '').replace(/\\/g,'\\\\').replace(/'/g, "\\'")}')">PDF</button>`
         : '—';
       return `<tr>
         <td>${d.id}</td>
@@ -1539,9 +1552,11 @@ async function openDonDetail(id) {
 }
 
 async function openCommandeDetail(id) {
-  const data = await api('GET', '/api/admin/commandes/' + id);
+  // /api/commandes/:id contient les lignes avec link/shipping_cost
+  let data = await api('GET', '/api/commandes/' + id);
+  if (data.error) data = await api('GET', '/api/admin/commandes/' + id);
   if (data.error) { toast(data.error, 'error'); return; }
-  currentCommandeDetail = data.commande || {};
+  currentCommandeDetail = data.commande || data.data || {};
   commandeDetailEditable = false;
   renderCommandeDetailModal();
   openModal('commande-detail-modal');
@@ -1584,7 +1599,9 @@ function toDateTimeLocal(value) {
 
 function renderCommandeDetailModal() {
   const c = currentCommandeDetail || {};
-  const lignes = Array.isArray(c.lignes) ? c.lignes : (Array.isArray(c.lines) ? c.lines : []);
+  const lignes = Array.isArray(c.lignes)
+    ? c.lignes
+    : (Array.isArray(c.lines) ? c.lines : parseMaybeJsonArray(c.lignes || c.lines || c.items));
   const editable = !!commandeDetailEditable;
   const lignesHtml = lignes.length
     ? lignes.map((l, i) => {
@@ -1654,20 +1671,22 @@ async function deleteCommandeFromModal() {
 
 function renderDonDetailModal() {
   const d = currentDonDetail || {};
-  const lines = Array.isArray(d.lines) ? d.lines : (Array.isArray(d.lignes) ? d.lignes : (Array.isArray(d.items) ? d.items : []));
+  const lines = Array.isArray(d.lines)
+    ? d.lines
+    : (Array.isArray(d.lignes) ? d.lignes : (Array.isArray(d.items) ? d.items : parseMaybeJsonArray(d.lines || d.lignes || d.items)));
   const editable = !!donDetailEditable;
   const linesHtml = lines.length
     ? lines.map((l, i) => {
-      const fullName = [l.nom || l.last_name || '', l.prenom || l.first_name || ''].filter(Boolean).join(' ').trim();
+      const fullName = [l.nom || l.last_name || l.name || '', l.prenom || l.first_name || l.firstname || ''].filter(Boolean).join(' ').trim();
       if (!editable) {
-        return `<tr><td>${escHtml(l.materiel || l.material || '—')}</td><td>${escHtml(l.modele || l.model || '—')}</td><td>${escHtml(l.type || '—')}</td><td>${escHtml(l.serial_number || l.serial || '—')}</td><td>${fmtDate(l.date)}</td><td>${escHtml(fullName || '—')}</td></tr>`;
+        return `<tr><td>${escHtml(l.materiel || l.material || l.product_name || '—')}</td><td>${escHtml(l.modele || l.model || '—')}</td><td>${escHtml(l.type || l.category || '—')}</td><td>${escHtml(l.serial_number || l.serial || l.sn || '—')}</td><td>${fmtDate(l.date || l.created_at)}</td><td>${escHtml(fullName || '—')}</td></tr>`;
       }
       return `<tr>
-        <td><input class="form-input don-line-materiel" data-idx="${i}" value="${escHtml(l.materiel || l.material || '')}"></td>
+        <td><input class="form-input don-line-materiel" data-idx="${i}" value="${escHtml(l.materiel || l.material || l.product_name || '')}"></td>
         <td><input class="form-input don-line-modele" data-idx="${i}" value="${escHtml(l.modele || l.model || '')}"></td>
-        <td><input class="form-input don-line-type" data-idx="${i}" value="${escHtml(l.type || '')}"></td>
-        <td><input class="form-input don-line-serial" data-idx="${i}" value="${escHtml(l.serial_number || l.serial || '')}"></td>
-        <td><input class="form-input don-line-date" data-idx="${i}" type="datetime-local" value="${toDateTimeLocal(l.date)}"></td>
+        <td><input class="form-input don-line-type" data-idx="${i}" value="${escHtml(l.type || l.category || '')}"></td>
+        <td><input class="form-input don-line-serial" data-idx="${i}" value="${escHtml(l.serial_number || l.serial || l.sn || '')}"></td>
+        <td><input class="form-input don-line-date" data-idx="${i}" type="datetime-local" value="${toDateTimeLocal(l.date || l.created_at)}"></td>
         <td><input class="form-input don-line-fullname" data-idx="${i}" value="${escHtml(fullName)}"></td>
       </tr>`;
     }).join('')
@@ -1719,6 +1738,13 @@ async function regenerateDonPdf() {
   toast('PDF don régénéré');
   await openDonDetail(currentDonDetail.id);
   loadDons();
+}
+
+async function openPdfPath(path) {
+  if (!path) { toast('Aucun PDF disponible', 'error'); return; }
+  const data = await api('POST', '/api/admin/open-path', { path });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('PDF ouvert');
 }
 
 async function deleteDonFromModal() {
