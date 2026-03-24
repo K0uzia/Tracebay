@@ -169,6 +169,94 @@ tr:hover td { background: #f8fafc; }
 .modal-body { padding: 20px; overflow-y: auto; }
 .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; gap: 10px; justify-content: flex-end; }
 
+/* ── Modal sizing by context/page ── */
+#lot-modal .modal,
+#disque-session-modal .modal,
+#commande-detail-modal .modal,
+#don-detail-modal .modal {
+  width: 80vw;
+  max-width: 80vw;
+  max-height: 92vh;
+}
+
+#db-row-modal .modal {
+  width: 80vw;
+  max-width: 80vw;
+  max-height: 90vh;
+}
+
+#pdf-preview-modal .modal {
+  width: min(1400px, 98vw);
+  max-width: min(1400px, 98vw);
+  max-height: 94vh;
+}
+
+#lot-modal .modal-body,
+#disque-session-modal .modal-body,
+#commande-detail-modal .modal-body,
+#don-detail-modal .modal-body,
+#db-row-modal .modal-body {
+  overflow: auto;
+}
+
+/* Prevent table squeeze inside large modals */
+#lot-modal .table-wrap,
+#disque-session-modal .table-wrap,
+#commande-detail-modal .table-wrap,
+#don-detail-modal .table-wrap {
+  overflow-x: auto;
+}
+
+#lot-modal table,
+#disque-session-modal table,
+#commande-detail-modal table,
+#don-detail-modal table {
+  min-width: 980px;
+}
+
+/* Keep action buttons visible without wrapping too much */
+#page-reception .modal-footer {
+  flex-wrap: wrap;
+}
+
+/* Small screens: avoid crushed content */
+@media (max-width: 900px) {
+  .modal-overlay {
+    padding: 10px;
+  }
+  #lot-modal .modal,
+  #disque-session-modal .modal,
+  #commande-detail-modal .modal,
+  #don-detail-modal .modal,
+  #db-row-modal .modal {
+    width: 98vw;
+    max-width: 98vw;
+    max-height: 95vh;
+    border-radius: 8px;
+  }
+  #lot-modal table,
+  #disque-session-modal table,
+  #commande-detail-modal table,
+  #don-detail-modal table {
+    min-width: 760px;
+  }
+}
+
+@media (max-width: 640px) {
+  .modal-header,
+  .modal-body,
+  .modal-footer {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  #lot-modal table,
+  #disque-session-modal table,
+  #commande-detail-modal table,
+  #don-detail-modal table {
+    min-width: 680px;
+  }
+}
+
 /* ── Logs terminal ── */
 .log-tabs { display: flex; gap: 2px; margin-bottom: 16px; flex-wrap: wrap; }
 .log-tab {
@@ -878,6 +966,10 @@ tr:hover td { background: #f8fafc; }
   justify-content: flex-end;
   gap: 8px;
   white-space: nowrap;
+}
+
+#page-reception .th-actions {
+  text-align: right;
 }
 
 #page-reception .btn {

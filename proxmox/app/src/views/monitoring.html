@@ -177,7 +177,7 @@
             </div>
           </div>
           <div class="table-wrap">
-            <table><thead><tr><th>#</th><th>Nom</th><th>Statut</th><th>Articles</th><th>Reçu le</th><th>PDF</th><th>Actions</th></tr></thead>
+            <table><thead><tr><th>#</th><th>Nom</th><th>Statut</th><th>Articles</th><th>Reçu le</th><th>PDF</th><th class="th-actions">Actions</th></tr></thead>
             <tbody id="lots-table"><tr class="empty-row"><td colspan="7">Chargement…</td></tr></tbody></table>
           </div>
         </div>
@@ -208,7 +208,7 @@
             </div>
           </div>
           <div class="table-wrap">
-            <table><thead><tr><th>#</th><th>Nom</th><th>Date</th><th>Disques</th><th>PDF</th><th>Actions</th></tr></thead>
+            <table><thead><tr><th>#</th><th>Nom</th><th>Date</th><th>Disques</th><th>PDF</th><th class="th-actions">Actions</th></tr></thead>
             <tbody id="disques-sessions-table"><tr class="empty-row"><td colspan="6">Chargement…</td></tr></tbody></table>
           </div>
         </div>
@@ -247,8 +247,8 @@
               <button class="btn btn-secondary btn-sm" onclick="loadCommandes()"><i class="fa-solid fa-rotate-right"></i> Actualiser</button>
             </div>
             <div class="table-wrap">
-              <table><thead><tr><th>#</th><th>Nom</th><th>Date</th><th>Lignes</th><th>PDF</th><th>Actions</th></tr></thead>
-              <tbody id="commandes-table"><tr class="empty-row"><td colspan="6">Chargement…</td></tbody></table>
+              <table><thead><tr><th>#</th><th>Nom</th><th>Date</th><th>PDF</th><th class="th-actions">Actions</th></tr></thead>
+              <tbody id="commandes-table"><tr class="empty-row"><td colspan="5">Chargement…</td></tbody></table>
             </div>
           </div>
           <div class="card">
@@ -271,8 +271,8 @@
             <button class="btn btn-secondary btn-sm" onclick="loadDons()"><i class="fa-solid fa-rotate-right"></i> Actualiser</button>
           </div>
           <div class="table-wrap">
-            <table><thead><tr><th>#</th><th>Nom lot</th><th>Date</th><th>PDF</th><th>Actions</th></tr></thead>
-            <tbody id="dons-table"><tr class="empty-row"><td colspan="5">Chargement…</td></tr></tbody></table>
+            <table><thead><tr><th>#</th><th>Nom lot</th><th>Date</th><th>PDF</th><th class="th-actions">Actions</th></tr></thead>
+              <tbody id="dons-table"><tr class="empty-row"><td colspan="5">Chargement…</td></tr></tbody></table>
           </div>
         </div>
       </div>
@@ -659,7 +659,7 @@
 
 <!-- Lot modal (edit + items) -->
 <div class="modal-overlay" id="lot-modal">
-  <div class="modal" style="max-width:720px">
+  <div class="modal" style="width:80vw;max-width:80vw">
     <div class="modal-header"><h3>Modifier le lot</h3><button class="modal-close" onclick="closeModal('lot-modal')">×</button></div>
     <div class="modal-body">
       <input type="hidden" id="lot-edit-id">
@@ -679,7 +679,7 @@
         <h4>Articles</h4>
         <div class="table-wrap">
           <table class="data-table" id="lot-items-table">
-            <thead><tr><th>#</th><th>N° série / Type</th><th>Marque / Modèle</th><th>État</th><th>Technicien</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Type</th><th>Marque</th><th>Modèle</th><th>S/N</th><th>État</th><th>Date</th><th>Technicien</th></tr></thead>
             <tbody id="lot-items-tbody"></tbody>
           </table>
         </div>
@@ -687,6 +687,8 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('lot-modal')">Fermer</button>
+      <button class="btn btn-warning btn-sm" onclick="regenerateLotPdf()">Régénérer le PDF</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteLotFromModal()">Supprimer</button>
       <button class="btn btn-primary" onclick="saveLot()">Enregistrer le lot</button>
     </div>
   </div>
@@ -694,7 +696,7 @@
 
 <!-- Lot disques modal (view/edit) -->
 <div class="modal-overlay" id="disque-session-modal">
-  <div class="modal" style="max-width:720px">
+  <div class="modal" style="width:80vw;max-width:80vw">
     <div class="modal-header"><h3>Lot disques</h3><button class="modal-close" onclick="closeModal('disque-session-modal')">×</button></div>
     <div class="modal-body">
       <input type="hidden" id="disque-session-edit-id">
@@ -715,14 +717,14 @@
       <button class="btn btn-secondary" onclick="closeModal('disque-session-modal')">Fermer</button>
       <button class="btn btn-warning btn-sm" id="disque-session-regen-btn" onclick="regenerateDisqueSessionPdf()">Régénérer le PDF</button>
       <button class="btn btn-danger btn-sm" id="disque-session-delete-btn" onclick="deleteDisqueSession()">Supprimer</button>
-      <button class="btn btn-primary" onclick="saveDisqueSession()">Enregistrer le nom</button>
+      <button class="btn btn-primary" onclick="saveDisqueSession()">Enregistrer le lot</button>
     </div>
   </div>
 </div>
 
 <!-- DB row edit modal -->
 <div class="modal-overlay" id="db-row-modal">
-  <div class="modal" style="max-width:640px">
+  <div class="modal" style="width:80vw;max-width:80vw">
     <div class="modal-header"><h3 id="db-row-modal-title">Modifier la ligne</h3><button class="modal-close" onclick="closeModal('db-row-modal')">×</button></div>
     <div class="modal-body" id="db-row-modal-body"></div>
     <div class="modal-footer">
@@ -772,18 +774,50 @@
 
 <!-- Commande detail modal -->
 <div class="modal-overlay" id="commande-detail-modal">
-  <div class="modal" style="max-width:640px">
+  <div class="modal" style="width:80vw;max-width:80vw">
     <div class="modal-header"><h3>Détail commande</h3><button class="modal-close" onclick="closeModal('commande-detail-modal')">×</button></div>
     <div class="modal-body">
       <p><strong>#</strong> <span id="commande-detail-id"></span> — <strong>Nom</strong> <span id="commande-detail-name"></span> — <strong>Date</strong> <span id="commande-detail-date"></span></p>
+      <div id="commande-detail-edit-fields" style="display:none;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+        <div class="form-group"><label>Nom</label><input id="commande-edit-name" type="text"></div>
+        <div class="form-group"><label>Date</label><input id="commande-edit-date" type="datetime-local"></div>
+      </div>
       <p class="text-muted" style="font-size:12px"><strong>PDF</strong> <span id="commande-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">—</span></p>
       <div class="table-wrap" style="margin-top:12px">
-        <table class="log-table"><thead><tr><th>Produit</th><th>Quantité</th><th>Prix unit.</th></tr></thead>
+        <table class="log-table"><thead><tr><th>Produit</th><th>Quantité</th><th>Prix unit.</th><th>Frais port</th><th>Lien</th></tr></thead>
         <tbody id="commande-detail-lignes-tbody"></tbody></table>
       </div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('commande-detail-modal')">Fermer</button>
+      <button class="btn btn-warning btn-sm" id="commande-detail-regen-btn" onclick="regenerateCommandePdf()">Régénérer le PDF</button>
+      <button class="btn btn-danger btn-sm" id="commande-detail-delete-btn" onclick="deleteCommandeFromModal()">Supprimer</button>
+      <button class="btn btn-primary" id="commande-detail-save-btn" style="display:none" onclick="saveCommandeDetail()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Don detail modal -->
+<div class="modal-overlay" id="don-detail-modal">
+  <div class="modal" style="width:80vw;max-width:80vw">
+    <div class="modal-header"><h3>Détail don</h3><button class="modal-close" onclick="closeModal('don-detail-modal')">×</button></div>
+    <div class="modal-body">
+      <p><strong>#</strong> <span id="don-detail-id"></span> — <strong>Lot</strong> <span id="don-detail-lot"></span></p>
+      <div id="don-detail-edit-fields" style="display:none;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+        <div class="form-group"><label>Nom lot</label><input id="don-edit-lot-name" type="text"></div>
+        <div class="form-group"><label>Date</label><input id="don-edit-date" type="datetime-local"></div>
+      </div>
+      <p class="text-muted" style="font-size:12px"><strong>PDF</strong> <span id="don-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">—</span></p>
+      <div class="table-wrap" style="margin-top:12px">
+        <table class="log-table"><thead><tr><th>Matériel</th><th>Modèle</th><th>Type</th><th>S/N</th><th>Date</th><th>Nom prénom</th></tr></thead>
+        <tbody id="don-detail-lines-tbody"></tbody></table>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('don-detail-modal')">Fermer</button>
+      <button class="btn btn-warning btn-sm" id="don-detail-regen-btn" onclick="regenerateDonPdf()">Régénérer le PDF</button>
+      <button class="btn btn-danger btn-sm" id="don-detail-delete-btn" onclick="deleteDonFromModal()">Supprimer</button>
+      <button class="btn btn-primary" id="don-detail-save-btn" style="display:none" onclick="saveDonDetail()">Enregistrer</button>
     </div>
   </div>
 </div>
@@ -813,6 +847,12 @@ let allUsers = [];
 let allCategories = [];
 let currentMarqueId = null;
 let rawLogsCache = '';
+let currentCommandeDetail = null;
+let commandeDetailEditable = false;
+let currentDonDetail = null;
+let donDetailEditable = false;
+let lotModalEditable = true;
+let disqueModalEditable = true;
 
 const BASE = window.location.origin;
 
@@ -1240,7 +1280,7 @@ async function loadLots() {
     const pathEsc = l.pdf_path ? escHtml(l.pdf_path) : '';
     const pathTitle = l.pdf_path ? ` title="${escHtml(l.pdf_path)}"` : '';
     const pdfCell = l.pdf_path
-      ? `<span class="pdf-path-cell"><span class="pdf-path"${pathTitle}>${pathEsc}</span> <button type="button" class="btn btn-secondary btn-sm" onclick="openPdfPreview(this)" data-lot-id="${l.id}" data-pdf-path="${(l.pdf_path||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;')}">Voir</button> <a href="${base}/api/lots/${l.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="Ouvrir dans un nouvel onglet">↗</a></span>`
+      ? `<span class="pdf-path-cell"><span class="pdf-path"${pathTitle}>${pathEsc}</span> <a href="${base}/api/lots/${l.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="Ouvrir dans un nouvel onglet">PDF</a></span>`
       : '<span class="pdf-path">—</span>';
     return `<tr>
       <td>${l.id}</td>
@@ -1250,19 +1290,35 @@ async function loadLots() {
       <td>${fmtDate(l.received_at)}</td>
       <td>${pdfCell}</td>
       <td><div class="actions-cell">
-        <button class="btn btn-secondary btn-sm btn-icon" title="Ouvrir emplacement PDF" onclick="openLotPdfLocation(${l.id}, '${(l.pdf_path||'').replace(/\\/g,'\\\\').replace(/'/g, "\\'")}')"><i class="fa-solid fa-folder-open"></i></button>
-        <button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="openLotModal(${l.id})"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-secondary btn-sm" title="Détail" onclick="openLotDetail(${l.id})">Détail</button>
+        <button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="openLotEdit(${l.id})"><i class="fa-solid fa-pen"></i></button>
         <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteLot(${l.id})"><i class="fa-solid fa-trash"></i></button>
       </div></td>
     </tr>`;
   }).join('');
 }
 
-function openLotModal(id) {
+function applyLotModalMode() {
+  const disabled = !lotModalEditable;
+  document.getElementById('lot-form-name').disabled = disabled;
+  document.getElementById('lot-form-status').disabled = disabled;
+  document.querySelectorAll('#lot-items-tbody input, #lot-items-tbody select').forEach(el => { el.disabled = disabled; });
+  const saveBtn = document.querySelector('#lot-modal .modal-footer .btn-primary');
+  const regenBtn = document.querySelector('#lot-modal .modal-footer .btn-warning');
+  const delBtn = document.querySelector('#lot-modal .modal-footer .btn-danger');
+  if (saveBtn) saveBtn.style.display = lotModalEditable ? '' : 'none';
+  if (regenBtn) regenBtn.style.display = lotModalEditable ? '' : 'none';
+  if (delBtn) delBtn.style.display = lotModalEditable ? '' : 'none';
+  const titleEl = document.querySelector('#lot-modal .modal-header h3');
+  if (titleEl) titleEl.textContent = lotModalEditable ? 'Modifier le lot' : 'Détail lot';
+}
+
+function openLotModal(id, editable = true) {
+  lotModalEditable = editable;
   document.getElementById('lot-edit-id').value = id;
   const pathEl = document.getElementById('lot-form-pdf-path-display');
   if (pathEl) { pathEl.textContent = '—'; pathEl.title = ''; }
-  document.getElementById('lot-items-tbody').innerHTML = '<tr><td colspan="6" class="text-muted">Chargement…</td></tr>';
+  document.getElementById('lot-items-tbody').innerHTML = '<tr><td colspan="8" class="text-muted">Chargement…</td></tr>';
   openModal('lot-modal');
   api('GET', '/api/admin/lots/' + id).then(data => {
     if (data.error) { toast(data.error, 'error'); return; }
@@ -1273,33 +1329,34 @@ function openLotModal(id) {
     const items = lot.items || [];
     const tbody = document.getElementById('lot-items-tbody');
     if (!items.length) {
-      tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun article</td></tr>';
+      tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Aucun article</td></tr>';
     } else {
       const states = ['', 'Reconditionnés', 'HS', 'Pour pièces'];
       tbody.innerHTML = items.map(it => {
         const stateOpts = states.map(s => `<option value="${escHtml(s)}" ${(it.state || '') === s ? 'selected' : ''}>${s || '—'}</option>`).join('');
+        const itemType = it.type || it.category || '';
+        const itemBrand = it.marque_name || it.marque || it.brand || '';
+        const itemModel = it.modele_name || it.modele || it.model || '';
+        const itemSerial = it.serial_number || it.serial || '';
+        const itemDate = toDateTimeLocal(it.date || it.received_at || it.created_at);
         return `<tr data-item-id="${it.id}">
           <td>${it.id}</td>
-          <td>${escHtml(it.serial_number || it.type || '—')}</td>
-          <td>${escHtml([it.marque_name, it.modele_name].filter(Boolean).join(' / ') || '—')}</td>
+          <td><input type="text" class="lot-item-type form-input" data-id="${it.id}" value="${escHtml(itemType)}" placeholder="Type"></td>
+          <td><input type="text" class="lot-item-brand form-input" data-id="${it.id}" value="${escHtml(itemBrand)}" placeholder="Marque"></td>
+          <td><input type="text" class="lot-item-model form-input" data-id="${it.id}" value="${escHtml(itemModel)}" placeholder="Modèle"></td>
+          <td><input type="text" class="lot-item-serial form-input" data-id="${it.id}" value="${escHtml(itemSerial)}" placeholder="S/N"></td>
           <td><select class="lot-item-state form-input" data-id="${it.id}">${stateOpts}</select></td>
+          <td><input type="datetime-local" class="lot-item-date form-input" data-id="${it.id}" value="${itemDate}"></td>
           <td><input type="text" class="lot-item-technician form-input" data-id="${it.id}" value="${escHtml(it.technician || '')}" placeholder="Technicien"></td>
-          <td><button class="btn btn-secondary btn-sm" onclick="saveLotItemRow(${it.id})">Sauvegarder</button></td>
         </tr>`;
       }).join('');
     }
+    applyLotModalMode();
   });
 }
-function saveLotItemRow(id) {
-  const row = document.querySelector(`#lot-items-tbody tr[data-item-id="${id}"]`);
-  if (!row) return;
-  const state = row.querySelector('.lot-item-state').value || null;
-  const technician = (row.querySelector('.lot-item-technician').value || '').trim() || null;
-  api('PUT', '/api/admin/lots/items/' + id, { state, technician }).then(data => {
-    if (data.error) toast(data.error, 'error');
-    else toast('Article mis à jour');
-  });
-}
+
+function openLotDetail(id) { openLotModal(id, false); }
+function openLotEdit(id) { openLotModal(id, true); }
 
 async function saveLot() {
   const id = document.getElementById('lot-edit-id').value;
@@ -1309,6 +1366,27 @@ async function saveLot() {
   };
   const data = await api('PUT', `/api/admin/lots/${id}`, body);
   if (data.error) { toast(data.error, 'error'); return; }
+  const rows = [...document.querySelectorAll('#lot-items-tbody tr[data-item-id]')];
+  for (const row of rows) {
+    const itemId = row.getAttribute('data-item-id');
+    const state = row.querySelector('.lot-item-state')?.value || null;
+    const technician = (row.querySelector('.lot-item-technician')?.value || '').trim() || null;
+    const type = (row.querySelector('.lot-item-type')?.value || '').trim() || null;
+    const marque = (row.querySelector('.lot-item-brand')?.value || '').trim() || null;
+    const modele = (row.querySelector('.lot-item-model')?.value || '').trim() || null;
+    const serialOrType = (row.querySelector('.lot-item-serial')?.value || '').trim() || null;
+    const itemDate = (row.querySelector('.lot-item-date')?.value || '').trim() || null;
+    const itemRes = await api('PUT', '/api/admin/lots/items/' + itemId, {
+      type,
+      marque,
+      modele,
+      state,
+      technician,
+      serial_number: serialOrType,
+      date: itemDate
+    });
+    if (itemRes.error) { toast(itemRes.error, 'error'); return; }
+  }
   toast('Lot mis à jour');
   closeModal('lot-modal');
   loadLots();
@@ -1322,6 +1400,23 @@ async function deleteLot(id) {
   loadLots();
 }
 
+async function regenerateLotPdf() {
+  const id = document.getElementById('lot-edit-id').value;
+  if (!id) return;
+  const data = await api('POST', `/api/lots/${id}/pdf`);
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('PDF lot régénéré');
+  openLotModal(id);
+  loadLots();
+}
+
+async function deleteLotFromModal() {
+  const id = document.getElementById('lot-edit-id').value;
+  if (!id) return;
+  await deleteLot(id);
+  closeModal('lot-modal');
+}
+
 // ── Commandes (admin) ──────────────────────────────────────────────────────
 async function loadCommandes() {
   const tbody = document.getElementById('commandes-table');
@@ -1329,20 +1424,26 @@ async function loadCommandes() {
   try {
     const data = await api('GET', '/api/admin/commandes?limit=200');
     const list = (data.data || []).slice();
-    if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucune commande</td></tr>'; return; }
+    if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Aucune commande</td></tr>'; return; }
+    const base = window.location.origin;
     tbody.innerHTML = list.map(c => {
-      const pdfCell = c.pdf_path ? `<span class="pdf-path" title="${escHtml(c.pdf_path)}">${escHtml((c.pdf_path||'').slice(-40))}</span>` : '—';
+      const pdfCell = c.pdf_path
+        ? `<a href="${base}/api/commandes/${c.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="${escHtml(c.pdf_path)}">PDF</a>`
+        : '—';
       return `<tr>
         <td>${c.id}</td>
         <td>${escHtml(c.name || '—')}</td>
         <td>${fmtDate(c.date)}</td>
-        <td>—</td>
         <td>${pdfCell}</td>
-        <td><button class="btn btn-secondary btn-sm" onclick="openCommandeDetail(${c.id})">Détail</button></td>
+        <td><div class="actions-cell">
+          <button class="btn btn-secondary btn-sm" onclick="openCommandeDetail(${c.id})">Détail</button>
+          <button class="btn btn-secondary btn-sm" onclick="editCommande(${c.id})">Éditer</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteCommande(${c.id})">Supprimer</button>
+        </div></td>
       </tr>`;
     }).join('');
   } catch (e) {
-    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Erreur de chargement</td></tr>';
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Erreur de chargement</td></tr>';
   }
 }
 
@@ -1356,14 +1457,21 @@ async function loadDons() {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Aucun don</td></tr>';
       return;
     }
+    const base = window.location.origin;
     tbody.innerHTML = list.map(d => {
-      const pdfCell = d.pdf_path ? `<span class="pdf-path" title="${escHtml(d.pdf_path)}">${escHtml((d.pdf_path || '').slice(-40))}</span>` : '—';
+      const pdfCell = d.pdf_path
+        ? `<a href="${base}/api/dons/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="${escHtml(d.pdf_path)}">PDF</a>`
+        : '—';
       return `<tr>
         <td>${d.id}</td>
         <td>${escHtml(d.lot_name || '—')}</td>
         <td>${fmtDate(d.date)}</td>
         <td>${pdfCell}</td>
-        <td><button class="btn btn-secondary btn-sm" onclick="openDonDetail(${d.id})">Détail</button></td>
+        <td><div class="actions-cell">
+          <button class="btn btn-secondary btn-sm" onclick="openDonDetail(${d.id})">Détail</button>
+          <button class="btn btn-secondary btn-sm" onclick="editDon(${d.id})">Éditer</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteDon(${d.id})">Supprimer</button>
+        </div></td>
       </tr>`;
     }).join('');
   } catch (e) {
@@ -1374,25 +1482,199 @@ async function loadDons() {
 async function openDonDetail(id) {
   const data = await api('GET', '/api/admin/dons/' + id);
   if (data.error) { toast(data.error, 'error'); return; }
-  const d = data.don || {};
-  const lines = Array.isArray(d.lines) ? d.lines : [];
-  toast(`Don #${d.id || id} • lot: ${d.lot_name || '—'} • ${lines.length} ligne(s)`, 'success');
+  currentDonDetail = data.don || {};
+  donDetailEditable = false;
+  renderDonDetailModal();
+  openModal('don-detail-modal');
 }
 
 async function openCommandeDetail(id) {
   const data = await api('GET', '/api/admin/commandes/' + id);
   if (data.error) { toast(data.error, 'error'); return; }
-  const c = data.commande || {};
-  const lignes = c.lignes || [];
+  currentCommandeDetail = data.commande || {};
+  commandeDetailEditable = false;
+  renderCommandeDetailModal();
+  openModal('commande-detail-modal');
+}
+
+async function editCommande(id) {
+  await openCommandeDetail(id);
+  commandeDetailEditable = true;
+  renderCommandeDetailModal();
+}
+
+async function deleteCommande(id) {
+  if (!confirm('Supprimer cette commande ?')) return;
+  const data = await api('DELETE', '/api/admin/commandes/' + id);
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Commande supprimée');
+  loadCommandes();
+}
+
+async function editDon(id) {
+  await openDonDetail(id);
+  donDetailEditable = true;
+  renderDonDetailModal();
+}
+
+async function deleteDon(id) {
+  if (!confirm('Supprimer ce don ?')) return;
+  const data = await api('DELETE', '/api/admin/dons/' + id);
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Don supprimé');
+  loadDons();
+}
+
+function toDateTimeLocal(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function renderCommandeDetailModal() {
+  const c = currentCommandeDetail || {};
+  const lignes = Array.isArray(c.lignes) ? c.lignes : [];
+  const editable = !!commandeDetailEditable;
   const lignesHtml = lignes.length
-    ? lignes.map(l => `<tr><td>${escHtml((l.product_name_ref || l.product_name || '—'))}</td><td>${l.quantity || 0}</td><td>${l.unit_price != null ? l.unit_price : '—'}</td></tr>`).join('')
-    : '<tr class="empty-row"><td colspan="3">Aucune ligne</td></tr>';
+    ? lignes.map((l, i) => {
+      const link = l.link || l.link_url || '';
+      if (!editable) {
+        const ship = l.shipping_cost != null ? `${Number(l.shipping_cost).toFixed(2)} €` : '—';
+        return `<tr><td>${escHtml((l.product_name_ref || l.product_name || '—'))}</td><td>${l.quantity || 0}</td><td>${l.unit_price != null ? l.unit_price : '—'}</td><td>${ship}</td><td>${link ? `<a href="${escHtml(link)}" target="_blank" rel="noopener">Ouvrir</a>` : '—'}</td></tr>`;
+      }
+      return `<tr>
+        <td><input class="form-input cmd-line-product" data-idx="${i}" value="${escHtml(l.product_name_ref || l.product_name || '')}"></td>
+        <td><input class="form-input cmd-line-qty" data-idx="${i}" type="number" min="0" step="1" value="${l.quantity != null ? l.quantity : 0}"></td>
+        <td><input class="form-input cmd-line-price" data-idx="${i}" type="number" min="0" step="0.01" value="${l.unit_price != null ? l.unit_price : ''}"></td>
+        <td><input class="form-input cmd-line-ship" data-idx="${i}" type="number" min="0" step="0.01" value="${l.shipping_cost != null ? l.shipping_cost : ''}"></td>
+        <td><input class="form-input cmd-line-link" data-idx="${i}" value="${escHtml(link)}"></td>
+      </tr>`;
+    }).join('')
+    : '<tr class="empty-row"><td colspan="5">Aucune ligne</td></tr>';
   document.getElementById('commande-detail-id').textContent = c.id || '—';
   document.getElementById('commande-detail-name').textContent = c.name || '—';
   document.getElementById('commande-detail-date').textContent = fmtDate(c.date) || '—';
   document.getElementById('commande-detail-pdf').textContent = c.pdf_path || '—';
   document.getElementById('commande-detail-lignes-tbody').innerHTML = lignesHtml;
-  openModal('commande-detail-modal');
+  document.getElementById('commande-detail-edit-fields').style.display = editable ? 'grid' : 'none';
+  document.getElementById('commande-detail-save-btn').style.display = editable ? '' : 'none';
+  document.getElementById('commande-detail-regen-btn').style.display = editable ? '' : 'none';
+  document.getElementById('commande-detail-delete-btn').style.display = editable ? '' : 'none';
+  document.getElementById('commande-edit-name').value = c.name || '';
+  document.getElementById('commande-edit-date').value = toDateTimeLocal(c.date);
+}
+
+async function saveCommandeDetail() {
+  if (!currentCommandeDetail || !currentCommandeDetail.id) return;
+  const body = {
+    name: (document.getElementById('commande-edit-name').value || '').trim(),
+    date: document.getElementById('commande-edit-date').value || null,
+    lignes: (currentCommandeDetail.lignes || []).map((line, i) => ({
+      ...line,
+      product_name_ref: (document.querySelector(`.cmd-line-product[data-idx="${i}"]`)?.value || '').trim(),
+      quantity: Number(document.querySelector(`.cmd-line-qty[data-idx="${i}"]`)?.value || 0),
+      unit_price: Number(document.querySelector(`.cmd-line-price[data-idx="${i}"]`)?.value || 0),
+      shipping_cost: Number(document.querySelector(`.cmd-line-ship[data-idx="${i}"]`)?.value || 0),
+      link: (document.querySelector(`.cmd-line-link[data-idx="${i}"]`)?.value || '').trim() || null
+    }))
+  };
+  const data = await api('PUT', '/api/admin/commandes/' + currentCommandeDetail.id, body);
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Commande mise à jour');
+  commandeDetailEditable = false;
+  await openCommandeDetail(currentCommandeDetail.id);
+  loadCommandes();
+}
+
+async function regenerateCommandePdf() {
+  if (!currentCommandeDetail || !currentCommandeDetail.id) return;
+  const data = await api('POST', '/api/commandes/' + currentCommandeDetail.id + '/regenerate-pdf');
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('PDF commande régénéré');
+  await openCommandeDetail(currentCommandeDetail.id);
+  loadCommandes();
+}
+
+async function deleteCommandeFromModal() {
+  if (!currentCommandeDetail || !currentCommandeDetail.id) return;
+  await deleteCommande(currentCommandeDetail.id);
+  closeModal('commande-detail-modal');
+}
+
+function renderDonDetailModal() {
+  const d = currentDonDetail || {};
+  const lines = Array.isArray(d.lines) ? d.lines : [];
+  const editable = !!donDetailEditable;
+  const linesHtml = lines.length
+    ? lines.map((l, i) => {
+      const fullName = [l.nom || l.last_name || '', l.prenom || l.first_name || ''].filter(Boolean).join(' ').trim();
+      if (!editable) {
+        return `<tr><td>${escHtml(l.materiel || l.material || '—')}</td><td>${escHtml(l.modele || l.model || '—')}</td><td>${escHtml(l.type || '—')}</td><td>${escHtml(l.serial_number || l.serial || '—')}</td><td>${fmtDate(l.date)}</td><td>${escHtml(fullName || '—')}</td></tr>`;
+      }
+      return `<tr>
+        <td><input class="form-input don-line-materiel" data-idx="${i}" value="${escHtml(l.materiel || l.material || '')}"></td>
+        <td><input class="form-input don-line-modele" data-idx="${i}" value="${escHtml(l.modele || l.model || '')}"></td>
+        <td><input class="form-input don-line-type" data-idx="${i}" value="${escHtml(l.type || '')}"></td>
+        <td><input class="form-input don-line-serial" data-idx="${i}" value="${escHtml(l.serial_number || l.serial || '')}"></td>
+        <td><input class="form-input don-line-date" data-idx="${i}" type="datetime-local" value="${toDateTimeLocal(l.date)}"></td>
+        <td><input class="form-input don-line-fullname" data-idx="${i}" value="${escHtml(fullName)}"></td>
+      </tr>`;
+    }).join('')
+    : '<tr class="empty-row"><td colspan="6">Aucune ligne</td></tr>';
+  document.getElementById('don-detail-id').textContent = d.id || '—';
+  document.getElementById('don-detail-lot').textContent = d.lot_name || '—';
+  document.getElementById('don-detail-pdf').textContent = d.pdf_path || '—';
+  document.getElementById('don-detail-lines-tbody').innerHTML = linesHtml;
+  document.getElementById('don-detail-edit-fields').style.display = editable ? 'grid' : 'none';
+  document.getElementById('don-detail-save-btn').style.display = editable ? '' : 'none';
+  document.getElementById('don-detail-regen-btn').style.display = editable ? '' : 'none';
+  document.getElementById('don-detail-delete-btn').style.display = editable ? '' : 'none';
+  document.getElementById('don-edit-lot-name').value = d.lot_name || '';
+  document.getElementById('don-edit-date').value = toDateTimeLocal(d.date);
+}
+
+async function saveDonDetail() {
+  if (!currentDonDetail || !currentDonDetail.id) return;
+  const body = {
+    lot_name: (document.getElementById('don-edit-lot-name').value || '').trim(),
+    date: document.getElementById('don-edit-date').value || null,
+    lines: (currentDonDetail.lines || []).map((line, i) => {
+      const fullname = (document.querySelector(`.don-line-fullname[data-idx="${i}"]`)?.value || '').trim();
+      const parts = fullname.split(/\s+/).filter(Boolean);
+      return {
+        ...line,
+        materiel: (document.querySelector(`.don-line-materiel[data-idx="${i}"]`)?.value || '').trim(),
+        modele: (document.querySelector(`.don-line-modele[data-idx="${i}"]`)?.value || '').trim(),
+        type: (document.querySelector(`.don-line-type[data-idx="${i}"]`)?.value || '').trim(),
+        serial_number: (document.querySelector(`.don-line-serial[data-idx="${i}"]`)?.value || '').trim(),
+        date: (document.querySelector(`.don-line-date[data-idx="${i}"]`)?.value || '').trim() || null,
+        nom: parts.slice(0, -1).join(' ') || (parts[0] || ''),
+        prenom: parts.length > 1 ? parts[parts.length - 1] : ''
+      };
+    })
+  };
+  const data = await api('PUT', '/api/admin/dons/' + currentDonDetail.id, body);
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Don mis à jour');
+  donDetailEditable = false;
+  await openDonDetail(currentDonDetail.id);
+  loadDons();
+}
+
+async function regenerateDonPdf() {
+  if (!currentDonDetail || !currentDonDetail.id) return;
+  const data = await api('POST', '/api/dons/' + currentDonDetail.id + '/regenerate-pdf');
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('PDF don régénéré');
+  await openDonDetail(currentDonDetail.id);
+  loadDons();
+}
+
+async function deleteDonFromModal() {
+  if (!currentDonDetail || !currentDonDetail.id) return;
+  await deleteDon(currentDonDetail.id);
+  closeModal('don-detail-modal');
 }
 
 async function loadCommandeProducts() {
@@ -1479,7 +1761,7 @@ async function loadDisquesSessions() {
     const pathEsc = s.pdf_path ? escHtml(s.pdf_path) : '';
     const pathTitle = s.pdf_path ? ` title="${escHtml(s.pdf_path)}"` : '';
     const pdfCell = s.pdf_path
-      ? `<span class="pdf-path-cell"><span class="pdf-path"${pathTitle}>${pathEsc}</span> <a href="${base}/api/disques/sessions/${s.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="Ouvrir le PDF">Voir</a></span>`
+      ? `<span class="pdf-path-cell"><span class="pdf-path"${pathTitle}>${pathEsc}</span> <a href="${base}/api/disques/sessions/${s.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="Ouvrir le PDF">PDF</a></span>`
       : '<span class="pdf-path">—</span>';
     return `<tr>
       <td>${s.id}</td>
@@ -1488,14 +1770,30 @@ async function loadDisquesSessions() {
       <td>${s.disk_count != null ? s.disk_count : '—'}</td>
       <td>${pdfCell}</td>
       <td><div class="actions-cell">
-        <button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="openDisqueSessionModal(${s.id})"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-secondary btn-sm" title="Détail" onclick="openDisqueSessionDetail(${s.id})">Détail</button>
+        <button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="openDisqueSessionEdit(${s.id})"><i class="fa-solid fa-pen"></i></button>
         <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteDisqueSessionConfirm(${s.id})"><i class="fa-solid fa-trash"></i></button>
       </div></td>
     </tr>`;
   }).join('');
 }
 
-function openDisqueSessionModal(id) {
+function applyDisqueSessionModalMode() {
+  const disabled = !disqueModalEditable;
+  document.getElementById('disque-session-form-name').disabled = disabled;
+  document.querySelectorAll('#disque-session-disks-tbody input').forEach(el => { el.disabled = disabled; });
+  const saveBtn = document.querySelector('#disque-session-modal .modal-footer .btn-primary');
+  const regenBtn = document.getElementById('disque-session-regen-btn');
+  const delBtn = document.getElementById('disque-session-delete-btn');
+  if (saveBtn) saveBtn.style.display = disqueModalEditable ? '' : 'none';
+  if (regenBtn) regenBtn.style.display = disqueModalEditable ? '' : 'none';
+  if (delBtn) delBtn.style.display = disqueModalEditable ? '' : 'none';
+  const titleEl = document.querySelector('#disque-session-modal .modal-header h3');
+  if (titleEl) titleEl.textContent = disqueModalEditable ? 'Lot disques' : 'Détail lot disques';
+}
+
+function openDisqueSessionModal(id, editable = true) {
+  disqueModalEditable = editable;
   document.getElementById('disque-session-edit-id').value = id;
   document.getElementById('disque-session-form-name').value = '';
   document.getElementById('disque-session-date-display').textContent = '—';
@@ -1515,24 +1813,43 @@ function openDisqueSessionModal(id) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="6">Aucun disque</td></tr>';
     } else {
       tbody.innerHTML = disks.map(d => `
-        <tr>
-          <td>${escHtml(d.serial || '—')}</td>
-          <td>${escHtml(d.marque || '—')}</td>
-          <td>${escHtml(d.modele || '—')}</td>
-          <td>${escHtml(d.size || '—')}</td>
-          <td>${escHtml(d.interface || '—')}</td>
-          <td>${escHtml(d.shred || '—')}</td>
+        <tr data-disk-id="${d.id != null ? d.id : ''}">
+          <td><input type="text" class="form-input disque-item-serial" value="${escHtml(d.serial || d.serial_number || '')}" placeholder="N° série"></td>
+          <td><input type="text" class="form-input disque-item-marque" value="${escHtml(d.marque || d.brand || '')}" placeholder="Marque"></td>
+          <td><input type="text" class="form-input disque-item-modele" value="${escHtml(d.modele || d.model || '')}" placeholder="Modèle"></td>
+          <td><input type="text" class="form-input disque-item-size" value="${escHtml(d.size || d.capacity || '')}" placeholder="Taille"></td>
+          <td><input type="text" class="form-input disque-item-interface" value="${escHtml(d.interface || '')}" placeholder="Interface"></td>
+          <td><input type="text" class="form-input disque-item-shred" value="${escHtml(d.shred || d.health || '')}" placeholder="Shred"></td>
         </tr>`).join('');
     }
+    applyDisqueSessionModalMode();
   });
 }
+
+function openDisqueSessionDetail(id) { openDisqueSessionModal(id, false); }
+function openDisqueSessionEdit(id) { openDisqueSessionModal(id, true); }
 
 async function saveDisqueSession() {
   const id = document.getElementById('disque-session-edit-id').value;
   const name = document.getElementById('disque-session-form-name').value.trim() || null;
   const data = await api('PUT', '/api/admin/disques/sessions/' + id, { name });
   if (data.error) { toast(data.error, 'error'); return; }
-  toast('Nom enregistré');
+  const rows = [...document.querySelectorAll('#disque-session-disks-tbody tr[data-disk-id]')];
+  for (const row of rows) {
+    const diskId = row.getAttribute('data-disk-id');
+    if (!diskId) continue;
+    const body = {
+      serial: (row.querySelector('.disque-item-serial')?.value || '').trim() || null,
+      marque: (row.querySelector('.disque-item-marque')?.value || '').trim() || null,
+      modele: (row.querySelector('.disque-item-modele')?.value || '').trim() || null,
+      size: (row.querySelector('.disque-item-size')?.value || '').trim() || null,
+      interface: (row.querySelector('.disque-item-interface')?.value || '').trim() || null,
+      shred: (row.querySelector('.disque-item-shred')?.value || '').trim() || null
+    };
+    const rowData = await api('PUT', '/api/admin/db/tables/disques/rows/' + diskId, body);
+    if (rowData.error) { toast(rowData.error, 'error'); return; }
+  }
+  toast('Lot disques enregistré');
   closeModal('disque-session-modal');
   loadDisquesSessions();
 }
