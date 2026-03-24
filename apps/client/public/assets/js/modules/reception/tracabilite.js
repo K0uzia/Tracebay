@@ -82,6 +82,10 @@ export default class TracabiliteManager {
                 try {
                     const data = await commandesRes.json();
                     this.commandes = this.extractListFromApiPayload(data, ['commandes', 'items', 'data', 'results', 'rows']);
+                    this.commandes = this.commandes.map((c) => ({
+                        ...c,
+                        lines: this.extractCommandeLinesFromRecord(c)
+                    }));
                     this.commandes.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
                 } catch (_) { this.commandes = []; }
             } else {
@@ -96,6 +100,10 @@ export default class TracabiliteManager {
                 try {
                     const data = await donsRes.json();
                     this.dons = this.extractListFromApiPayload(data, ['dons', 'items', 'data', 'results', 'rows']);
+                    this.dons = this.dons.map((d) => ({
+                        ...d,
+                        lines: this.extractDonLinesFromRecord(d)
+                    }));
                     this.dons.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
                 } catch (_) { this.dons = []; }
             } else {
@@ -392,6 +400,86 @@ export default class TracabiliteManager {
             if (Array.isArray(payload.data)) return payload.data;
         }
         return [];
+    }
+
+    parseLinesArray(rawLines) {
+        if (Array.isArray(rawLines)) return rawLines;
+        if (rawLines == null) return [];
+        if (typeof rawLines === 'object') {
+            if (Array.isArray(rawLines.lines)) return rawLines.lines;
+            if (Array.isArray(rawLines.lignes)) return rawLines.lignes;
+            if (Array.isArray(rawLines.items)) return rawLines.items;
+            if (Array.isArray(rawLines.commande_lignes)) return rawLines.commande_lignes;
+            if (Array.isArray(rawLines.commandeLignes)) return rawLines.commandeLignes;
+            if (Array.isArray(rawLines.data)) return rawLines.data;
+            if (Array.isArray(rawLines.results)) return rawLines.results;
+            return [];
+        }
+        if (typeof rawLines === 'string') {
+            try {
+                const parsed = JSON.parse(rawLines);
+                if (Array.isArray(parsed)) return parsed;
+                if (parsed && typeof parsed === 'object') {
+                    if (Array.isArray(parsed.lines)) return parsed.lines;
+                    if (Array.isArray(parsed.lignes)) return parsed.lignes;
+                    if (Array.isArray(parsed.items)) return parsed.items;
+                    if (Array.isArray(parsed.commande_lignes)) return parsed.commande_lignes;
+                    if (Array.isArray(parsed.commandeLignes)) return parsed.commandeLignes;
+                    if (Array.isArray(parsed.data)) return parsed.data;
+                    if (Array.isArray(parsed.results)) return parsed.results;
+                }
+                return [];
+            } catch (_) {
+                return [];
+            }
+        }
+        return [];
+    }
+
+    unwrapDetailRecord(data) {
+        if (!data || typeof data !== 'object') return data;
+        const nestedKeys = ['commande', 'don', 'item', 'record', 'result', 'body'];
+        for (const k of nestedKeys) {
+            const v = data[k];
+            if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+        }
+        if (data.data && typeof data.data === 'object' && !Array.isArray(data.data)) return data.data;
+        return data;
+    }
+
+    extractCommandeLinesFromRecord(obj) {
+        if (!obj || typeof obj !== 'object') return [];
+        const keys = ['lines', 'lignes', 'items', 'commande_lignes', 'commandeLignes', 'commande_lines', 'lignes_commande', 'products'];
+        for (const k of keys) {
+            const arr = this.parseLinesArray(obj[k]);
+            if (arr.length > 0) return arr;
+        }
+        return [];
+    }
+
+    extractDonLinesFromRecord(obj) {
+        if (!obj || typeof obj !== 'object') return [];
+        const keys = ['lines', 'lignes', 'items', 'don_lignes', 'donLignes', 'don_lines'];
+        for (const k of keys) {
+            const arr = this.parseLinesArray(obj[k]);
+            if (arr.length > 0) return arr;
+        }
+        return [];
+    }
+
+    /**
+     * Lignes au format attendu par generate-commande-pdf (main process) : produit, quantity, price, shipping, link.
+     */
+    normalizeCommandeLinesForPdf(lines) {
+        const arr = Array.isArray(lines) ? lines : [];
+        return arr.map((line, idx) => ({
+            num: line?.num != null ? line.num : idx + 1,
+            produit: (line?.produit || line?.product_name || line?.product_name_ref || line?.name || '').toString().trim() || '-',
+            quantity: line?.quantity ?? line?.qty ?? line?.quantite ?? '-',
+            price: line?.price ?? line?.unit_price ?? line?.prix ?? '',
+            shipping: line?.shipping ?? line?.shipping_cost ?? line?.frais_port ?? line?.fraisPort ?? '',
+            link: (line?.link ?? line?.lien ?? line?.url ?? '-').toString().trim() || '-'
+        }));
     }
 
     /**
@@ -892,19 +980,38 @@ export default class TracabiliteManager {
 
     async regenerateCommandePdf(commandeId) {
         try {
-            const commande = this.commandes.find(c => String(c.id) === String(commandeId));
+            let commande = this.commandes.find(c => String(c.id) === String(commandeId));
             if (!commande) throw new Error('Commande introuvable');
             if (!window.electron?.invoke) throw new Error('Régénération disponible uniquement dans l’application desktop');
+            let rawLines = this.extractCommandeLinesFromRecord(commande);
+            if (rawLines.length === 0) {
+                try {
+                    const res = await api.get(`/api/commandes/${commandeId}`, { useCache: false });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const full = this.unwrapDetailRecord(data);
+                        if (full && typeof full === 'object' && !Array.isArray(full)) {
+                            commande = { ...commande, ...full };
+                            rawLines = this.extractCommandeLinesFromRecord(commande);
+                            const idx = this.commandes.findIndex(c => String(c.id) === String(commandeId));
+                            if (idx >= 0) {
+                                this.commandes[idx] = { ...this.commandes[idx], ...commande, lines: rawLines };
+                            }
+                        }
+                    }
+                } catch (_) { /* noop */ }
+            }
             const payload = {
                 commandeName: String(commande.commande_name || commande.name || 'commande').trim(),
                 category: String(commande.category || 'Divers').trim() || 'Divers',
                 date: String(commande.date || '').trim() || new Date().toISOString().slice(0, 10),
-                lines: Array.isArray(commande.lines) ? commande.lines : [],
+                lines: this.normalizeCommandeLinesForPdf(rawLines),
                 basePath: COMMANDES_PDF_BASE
             };
             const result = await window.electron.invoke('generate-commande-pdf', payload);
             if (!result?.success || !result?.pdf_path) throw new Error(result?.error || 'Échec génération');
-            commande.pdf_path = result.pdf_path;
+            const idxPdf = this.commandes.findIndex(c => String(c.id) === String(commandeId));
+            if (idxPdf >= 0) this.commandes[idxPdf].pdf_path = result.pdf_path;
             try {
                 await api.put(`/api/commandes/${commandeId}`, { pdf_path: result.pdf_path });
             } catch (_) { /* backend optionnel */ }

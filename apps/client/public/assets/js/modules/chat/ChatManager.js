@@ -43,14 +43,17 @@ class ChatManager {
 
     _registerWsHandlers() {
         this.webSocket.onMessage((data) => {
+            if (data.type === 'auth:ack') {
+                if (this.isChatAuthenticated()) this.fetchHistory();
+                return;
+            }
+            if (!this.isChatAuthenticated()) {
+                return;
+            }
             if (data.type === 'userCount') {
                 this.connectedUsers = data.users || [];
                 this.userCount = typeof data.count === 'number' ? data.count : 0;
                 this.displayPseudo();
-                return;
-            }
-            if (data.type === 'auth:ack') {
-                this.fetchHistory();
                 return;
             }
             if (data.type === 'history') {
@@ -145,7 +148,7 @@ class ChatManager {
             // et par _trySendAuth/_startAuthRetry (ChatWebSocket) — pas besoin de la relancer ici
         });
 
-        if (!this.getStoredToken()) {
+        if (!this.isChatAuthenticated()) {
             this.pseudo = null;
             this.messages = [];
         }
@@ -164,6 +167,15 @@ class ChatManager {
 
     getStoredToken() {
         return localStorage.getItem('workspace_jwt');
+    }
+
+    /**
+     * Le chat (messages, compteur, historique) ne doit être alimenté que pour un utilisateur réellement connecté.
+     */
+    isChatAuthenticated() {
+        const token = this.getStoredToken();
+        const username = this.loadPseudo();
+        return !!(token && String(token).trim() && username && String(username).trim());
     }
 
     async fetchHistory() {

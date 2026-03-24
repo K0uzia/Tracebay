@@ -69,7 +69,7 @@ export default class HistoriqueManager {
                     this.commandes = this.extractListFromApiPayload(data, ['commandes', 'items', 'data', 'results', 'rows']);
                     this.commandes = this.commandes.map((c) => ({
                         ...c,
-                        lines: this.parseLinesArray(c?.lines ?? c?.lignes)
+                        lines: this.extractCommandeLinesFromRecord(c)
                     }));
                     this.commandes.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
                 } catch (_) { this.commandes = []; }
@@ -83,7 +83,7 @@ export default class HistoriqueManager {
                     this.dons = this.extractListFromApiPayload(data, ['dons', 'items', 'data', 'results', 'rows']);
                     this.dons = this.dons.map((d) => ({
                         ...d,
-                        lines: this.parseLinesArray(d?.lines)
+                        lines: this.extractDonLinesFromRecord(d)
                     }));
                     this.dons.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
                 } catch (_) { this.dons = []; }
@@ -404,7 +404,10 @@ export default class HistoriqueManager {
         if (rawLines == null) return [];
         if (typeof rawLines === 'object') {
             if (Array.isArray(rawLines.lines)) return rawLines.lines;
+            if (Array.isArray(rawLines.lignes)) return rawLines.lignes;
             if (Array.isArray(rawLines.items)) return rawLines.items;
+            if (Array.isArray(rawLines.commande_lignes)) return rawLines.commande_lignes;
+            if (Array.isArray(rawLines.commandeLignes)) return rawLines.commandeLignes;
             if (Array.isArray(rawLines.data)) return rawLines.data;
             if (Array.isArray(rawLines.results)) return rawLines.results;
             return [];
@@ -415,7 +418,10 @@ export default class HistoriqueManager {
                 if (Array.isArray(parsed)) return parsed;
                 if (parsed && typeof parsed === 'object') {
                     if (Array.isArray(parsed.lines)) return parsed.lines;
+                    if (Array.isArray(parsed.lignes)) return parsed.lignes;
                     if (Array.isArray(parsed.items)) return parsed.items;
+                    if (Array.isArray(parsed.commande_lignes)) return parsed.commande_lignes;
+                    if (Array.isArray(parsed.commandeLignes)) return parsed.commandeLignes;
                     if (Array.isArray(parsed.data)) return parsed.data;
                     if (Array.isArray(parsed.results)) return parsed.results;
                 }
@@ -423,6 +429,40 @@ export default class HistoriqueManager {
             } catch (_) {
                 return [];
             }
+        }
+        return [];
+    }
+
+    /**
+     * Réponse GET détail souvent enveloppée ({ data: { lignes: [...] } }) : évite full.lines vide.
+     */
+    unwrapDetailRecord(data) {
+        if (!data || typeof data !== 'object') return data;
+        const nestedKeys = ['commande', 'don', 'item', 'record', 'result', 'body'];
+        for (const k of nestedKeys) {
+            const v = data[k];
+            if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+        }
+        if (data.data && typeof data.data === 'object' && !Array.isArray(data.data)) return data.data;
+        return data;
+    }
+
+    extractCommandeLinesFromRecord(obj) {
+        if (!obj || typeof obj !== 'object') return [];
+        const keys = ['lines', 'lignes', 'items', 'commande_lignes', 'commandeLignes', 'commande_lines', 'lignes_commande', 'products'];
+        for (const k of keys) {
+            const arr = this.parseLinesArray(obj[k]);
+            if (arr.length > 0) return arr;
+        }
+        return [];
+    }
+
+    extractDonLinesFromRecord(obj) {
+        if (!obj || typeof obj !== 'object') return [];
+        const keys = ['lines', 'lignes', 'items', 'don_lignes', 'donLignes', 'don_lines'];
+        for (const k of keys) {
+            const arr = this.parseLinesArray(obj[k]);
+            if (arr.length > 0) return arr;
         }
         return [];
     }
@@ -447,6 +487,7 @@ export default class HistoriqueManager {
             return dynamic.replace(':id', String(id));
         }
         if (kind === 'commande') return `/api/commandes/${id}`;
+        if (kind === 'don') return `/api/dons/${id}`;
         return null;
     }
 
@@ -514,6 +555,38 @@ export default class HistoriqueManager {
 
     escapeAttr(s) {
         return String(s).replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+
+    /**
+     * Lien modal commande : libellé = domaine (sans www), href = URL complète, title = texte brut (comme le PDF).
+     */
+    linkCellHtmlForCommandeModal(raw) {
+        const s = String(raw ?? '').trim();
+        if (!s || s === '-') return '—';
+        if (/^mailto:/i.test(s)) {
+            try {
+                const u = new URL(s);
+                const path = decodeURIComponent((u.pathname || '').replace(/^\//, ''));
+                const at = path.indexOf('@');
+                const label = at > 0 ? path.slice(at + 1).split('?')[0] : path;
+                return `<a href="${this.escapeAttr(s)}" class="hist-cmd-link-modal" title="${this.escapeAttr(s)}">${this.escapeHtml(label || '—')}</a>`;
+            } catch {
+                /* fallthrough */
+            }
+        }
+        let href = s;
+        if (!/^https?:\/\//i.test(href) && !/^mailto:/i.test(href) && !/^tel:/i.test(href)) {
+            if (/^\/\//.test(href)) href = `https:${href}`;
+            else if (/[a-z0-9.-]+\.[a-z]{2,}/i.test(href)) href = `https://${href}`;
+        }
+        try {
+            const u = new URL(href);
+            const label = (u.hostname || '').replace(/^www\./i, '') || u.hostname || '—';
+            return `<a href="${this.escapeAttr(u.href)}" target="_blank" rel="noopener noreferrer" class="hist-cmd-link-modal" title="${this.escapeAttr(s)}">${this.escapeHtml(label)}</a>`;
+        } catch {
+            const short = s.length > 48 ? `${s.slice(0, 45)}…` : s;
+            return `<span class="hist-cmd-link-muted" title="${this.escapeAttr(s)}">${this.escapeHtml(short)}</span>`;
+        }
     }
 
     /**
@@ -659,17 +732,17 @@ export default class HistoriqueManager {
     async editCommandeItemsFromHistorique(commandeId) {
         let commande = this.commandes.find(c => String(c.id) === String(commandeId));
         if (!commande) return;
-        let lines = this.parseLinesArray(commande.lines || commande.lignes);
+        let lines = this.extractCommandeLinesFromRecord(commande);
         const endpoint = this.resolveDetailEndpoint('commande', commandeId);
-        if (lines.length === 0 && endpoint && this.hasAuthToken()) {
+        if (endpoint) {
             try {
                 const res = await api.get(endpoint, { useCache: false });
                 if (res.ok) {
                     const data = await res.json();
-                    const full = data?.commande || data?.item || data;
-                    if (full && typeof full === 'object') {
+                    const full = this.unwrapDetailRecord(data);
+                    if (full && typeof full === 'object' && !Array.isArray(full)) {
                         commande = { ...commande, ...full };
-                        lines = this.parseLinesArray(full.lines || full.lignes);
+                        lines = this.extractCommandeLinesFromRecord(commande);
                     }
                 }
             } catch (_) { /* noop */ }
@@ -687,7 +760,7 @@ export default class HistoriqueManager {
                     <td>
                         <select class="hist-cmd-product-select">
                             ${(() => {
-                                const val = String(line?.product_name || line?.produit || '').trim();
+                        const val = String(line?.product_name || line?.product_name_ref || line?.produit || '').trim();
                                 const names = (this.commandeProductsRef || []).map(p => String(p?.name || '').trim()).filter(Boolean);
                                 const isKnown = val && names.includes(val);
                                 return '<option value="">-- Produit --</option>'
@@ -695,8 +768,8 @@ export default class HistoriqueManager {
                                     + `<option value="${VALUE_AUTRE_GENERIC}" ${val && !isKnown ? 'selected' : ''}>Autre</option>`;
                             })()}
                         </select>
-                        <input type="text" class="hist-cmd-product-other" value="${this.escapeAttr(String(line?.product_name || line?.produit || ''))}" placeholder="Produit libre" style="margin-top:6px;display:${(() => {
-                            const val = String(line?.product_name || line?.produit || '').trim();
+                        <input type="text" class="hist-cmd-product-other" value="${this.escapeAttr(String(line?.product_name || line?.product_name_ref || line?.produit || ''))}" placeholder="Produit libre" style="margin-top:6px;display:${(() => {
+                            const val = String(line?.product_name || line?.product_name_ref || line?.produit || '').trim();
                             const names = (this.commandeProductsRef || []).map(p => String(p?.name || '').trim()).filter(Boolean);
                             return val && !names.includes(val) ? 'block' : 'none';
                         })()};">
@@ -704,7 +777,7 @@ export default class HistoriqueManager {
                     <td><input type="number" class="hist-cmd-quantity" min="0" step="1" value="${this.escapeAttr(String(line?.quantity ?? ''))}" placeholder="Qté"></td>
                     <td><input type="number" class="hist-cmd-price" min="0" step="0.01" value="${this.escapeAttr(String(line?.unit_price ?? line?.price ?? ''))}" placeholder="Prix"></td>
                     <td><input type="number" class="hist-cmd-shipping" min="0" step="0.01" value="${this.escapeAttr(String(line?.shipping_cost ?? line?.shipping ?? ''))}" placeholder="Port"></td>
-                    <td><input type="text" class="hist-cmd-link" value="${this.escapeAttr(String(line?.link || ''))}" placeholder="Lien"></td>
+                    <td><input type="text" class="hist-cmd-link" value="${this.escapeAttr(String(line?.link || line?.lien || line?.url || ''))}" placeholder="Lien"></td>
                 </tr>
             `).join('');
             tbody.querySelectorAll('.hist-cmd-product-select').forEach((sel) => {
@@ -752,21 +825,23 @@ export default class HistoriqueManager {
     async viewCommandeDetails(commandeId) {
         let commande = this.commandes.find(c => String(c.id) === String(commandeId));
         if (!commande) return;
-        let lines = this.parseLinesArray(commande.lines || commande.lignes);
+        let lines = this.extractCommandeLinesFromRecord(commande);
         const endpoint = this.resolveDetailEndpoint('commande', commandeId);
-        if (lines.length === 0 && endpoint && this.hasAuthToken()) {
+        if (endpoint) {
             try {
                 const res = await api.get(endpoint, { useCache: false });
                 if (res.ok) {
                     const data = await res.json();
-                    const full = data?.commande || data?.item || data;
-                    if (full && typeof full === 'object') {
+                    const full = this.unwrapDetailRecord(data);
+                    if (full && typeof full === 'object' && !Array.isArray(full)) {
                         commande = { ...commande, ...full };
-                        lines = this.parseLinesArray(full.lines || full.lignes);
+                        lines = this.extractCommandeLinesFromRecord(commande);
                     }
                 }
             } catch (_) { /* on garde la version de base */ }
         }
+        const idxCmd = this.commandes.findIndex(c => String(c.id) === String(commandeId));
+        if (idxCmd >= 0) this.commandes[idxCmd] = { ...this.commandes[idxCmd], ...commande, lines };
         const linesCount = lines.length > 0 ? lines.length : (commande.line_count ?? 0);
         const setText = (id, value) => {
             const el = document.getElementById(id);
@@ -784,11 +859,11 @@ export default class HistoriqueManager {
                 tbody.innerHTML = lines.map((line, idx) => `
                     <tr>
                         <td>${idx + 1}</td>
-                        <td>${this.escapeHtml(String(line?.product_name || line?.produit || '-'))}</td>
+                        <td class="hist-cmd-product-td"><span class="hist-cmd-produit-line">${this.escapeHtml(String(line?.product_name || line?.product_name_ref || line?.produit || '-'))}</span></td>
                         <td>${this.escapeHtml(String(line?.quantity ?? '-'))}</td>
                         <td>${this.escapeHtml(String(line?.unit_price ?? line?.price ?? '-'))}</td>
                         <td>${this.escapeHtml(String(line?.shipping_cost ?? line?.shipping ?? '-'))}</td>
-                        <td>${this.escapeHtml(String(line?.link || '-'))}</td>
+                        <td class="hist-cmd-link-td">${this.linkCellHtmlForCommandeModal(line?.link || line?.lien || line?.url || '')}</td>
                     </tr>
                 `).join('');
             }
@@ -799,17 +874,17 @@ export default class HistoriqueManager {
     async viewDonDetails(donId) {
         let don = this.dons.find(d => String(d.id) === String(donId));
         if (!don) return;
-        let lines = this.parseLinesArray(don.lines);
+        let lines = this.extractDonLinesFromRecord(don);
         const endpoint = this.resolveDetailEndpoint('don', donId);
-        if (lines.length === 0 && endpoint && this.hasAuthToken()) {
+        if (endpoint) {
             try {
                 const res = await api.get(endpoint, { useCache: false });
                 if (res.ok) {
                     const data = await res.json();
-                    const full = data?.don || data?.item || data;
-                    if (full && typeof full === 'object') {
+                    const full = this.unwrapDetailRecord(data);
+                    if (full && typeof full === 'object' && !Array.isArray(full)) {
                         don = { ...don, ...full };
-                        lines = this.parseLinesArray(full.lines);
+                        lines = this.extractDonLinesFromRecord(don);
                     }
                 }
             } catch (_) { /* on garde la version de base */ }
@@ -880,9 +955,9 @@ export default class HistoriqueManager {
     async editDonItemsFromHistorique(donId) {
         let don = this.dons.find(d => String(d.id) === String(donId));
         if (!don) return;
-        let lines = this.parseLinesArray(don.lines);
+        let lines = this.parseLinesArray(don.lines || don.lignes || don.items);
         const endpoint = this.resolveDetailEndpoint('don', donId);
-        if (lines.length === 0 && endpoint && this.hasAuthToken()) {
+        if (lines.length === 0 && endpoint) {
             try {
                 const res = await api.get(endpoint, { useCache: false });
                 if (res.ok) {
@@ -890,7 +965,7 @@ export default class HistoriqueManager {
                     const full = data?.don || data?.item || data;
                     if (full && typeof full === 'object') {
                         don = { ...don, ...full };
-                        lines = this.parseLinesArray(full.lines);
+                        lines = this.parseLinesArray(full.lines || full.lignes || full.items);
                     }
                 }
             } catch (_) { /* noop */ }

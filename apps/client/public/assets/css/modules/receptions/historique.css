@@ -549,3 +549,76 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Modal détail commande (historique) : produit sur une ligne, lien = domaine cliquable */
+#modal-commande-details .hist-commande-modal-table-wrap {
+    min-width: 0;
+}
+
+#modal-commande-details .hist-commande-modal-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+#modal-commande-details .hist-cmd-col-num {
+    width: 2.5rem;
+}
+
+#modal-commande-details .hist-cmd-col-qte {
+    width: 3rem;
+}
+
+#modal-commande-details .hist-cmd-col-prix {
+    width: 5.5rem;
+}
+
+#modal-commande-details .hist-cmd-col-port {
+    width: 5.5rem;
+}
+
+#modal-commande-details .hist-cmd-col-lien {
+    width: 11rem;
+}
+
+#modal-commande-details .hist-cmd-col-produit {
+    min-width: 0;
+    width: auto;
+}
+
+#modal-commande-details .hist-cmd-product-td {
+    min-width: 0;
+}
+
+#modal-commande-details .hist-cmd-produit-line {
+    display: block;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#modal-commande-details .hist-cmd-link-td {
+    min-width: 0;
+    max-width: 100%;
+}
+
+#modal-commande-details .hist-cmd-link-modal {
+    display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    color: var(--accent-primary, #2563eb);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+#modal-commande-details .hist-cmd-link-modal:hover {
+    text-decoration-thickness: 2px;
+}
+
+#modal-commande-details .hist-cmd-link-muted {
+    color: var(--text-muted, #666);
+    font-size: 0.9em;
+}
