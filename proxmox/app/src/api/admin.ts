@@ -1299,7 +1299,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   fastify.get('/api/admin/logs/db', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     try {
-      const [users, messages, events, lots, shortcuts, lot_items, marques, modeles] = await Promise.all([
+      const [users, messages, events, lots, shortcuts, lot_items, marques, modeles, commandes, dons] = await Promise.all([
         query('SELECT COUNT(*) FROM users'),
         query('SELECT COUNT(*) FROM messages'),
         query('SELECT COUNT(*) FROM events WHERE deleted_at IS NULL'),
@@ -1308,6 +1308,8 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
         query('SELECT COUNT(*) FROM lot_items WHERE deleted_at IS NULL'),
         query('SELECT COUNT(*) FROM marques'),
         query('SELECT COUNT(*) FROM modeles'),
+        query('SELECT COUNT(*) FROM commandes'),
+        query('SELECT COUNT(*) FROM dons'),
       ]);
       return {
         success: true,
@@ -1320,6 +1322,8 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
           shortcuts: parseInt(shortcuts.rows[0].count),
           marques: parseInt(marques.rows[0].count),
           modeles: parseInt(modeles.rows[0].count),
+          commandes: parseInt(commandes.rows[0].count),
+          dons: parseInt(dons.rows[0].count),
         }
       };
     } catch (err: any) {
@@ -1336,7 +1340,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   const DB_TABLES_WHITELIST = [
     'users', 'marques', 'modeles', 'messages', 'events', 'activity_logs',
     'shortcut_categories', 'shortcuts', 'lots', 'lot_items', 'client_errors', 'app_settings',
-    'commandes', 'commande_lignes', 'commande_products', 'entrees',
+    'commandes', 'commande_lignes', 'commande_products', 'dons', 'entrees',
   ];
 
   fastify.get('/api/admin/db/tables', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -1431,6 +1435,31 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
         return { success: true, row: result.rows[0] };
       } catch (err: any) {
         fastify.log.error({ err, table, id }, 'admin PUT /db/tables/:table/rows/:id');
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    }
+  );
+
+  fastify.delete<{ Params: { table: string; id: string } }>(
+    '/api/admin/db/tables/:table/rows/:id',
+    async (request, reply) => {
+      if (!checkAdminAuth(request, reply)) return;
+      const { table, id } = request.params;
+      if (!DB_TABLES_WHITELIST.includes(table)) {
+        reply.statusCode = 400;
+        return { error: 'Table non autorisée' };
+      }
+      const safeTable = table.replace(/[^a-z0-9_]/gi, '');
+      try {
+        const result = await query(`DELETE FROM ${safeTable} WHERE id = $1`, [id]);
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Ligne introuvable' };
+        }
+        return { success: true };
+      } catch (err: any) {
+        fastify.log.error({ err, table, id }, 'admin DELETE /db/tables/:table/rows/:id');
         reply.statusCode = 500;
         return { error: 'Database error' };
       }

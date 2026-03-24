@@ -818,12 +818,13 @@ const BASE = window.location.origin;
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 function api(method, path, body) {
+  const headers = {
+    'Authorization': 'Bearer ' + TOKEN,
+  };
+  if (body !== undefined) headers['Content-Type'] = 'application/json';
   return fetch(BASE + path, {
     method,
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer ' + TOKEN,
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   }).then(r => r.json());
 }
@@ -2066,6 +2067,8 @@ async function loadLogDb() {
     { label: 'Utilisateurs', value: s.users, cls: 'blue' },
     { label: 'Messages', value: s.messages, cls: 'info' },
     { label: 'Événements agenda', value: s.events, cls: 'green' },
+    { label: 'Commandes', value: s.commandes, cls: 'info' },
+    { label: 'Dons', value: s.dons, cls: 'green' },
     { label: 'Lots', value: s.lots, cls: 'orange' },
     { label: 'Articles lots', value: s.lot_items, cls: 'orange' },
     { label: 'Raccourcis', value: s.shortcuts, cls: 'blue' },
@@ -2114,8 +2117,10 @@ async function loadDbTable() {
         if (v.length > 80) v = v.slice(0, 77) + '…';
         return '<td>' + escHtml(v) + '</td>';
       }).join('');
-      const editBtn = hasId && dbCurrentColumns.some(c => c !== 'id' && c !== 'password_hash') ? '<button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="openDbRowModalByIndex(' + idx + ')"><i class="fa-solid fa-pen"></i></button>' : '';
-      return '<tr>' + cells + '<td><div class="actions-cell">' + editBtn + '</div></td></tr>';
+      const canEdit = hasId && dbCurrentColumns.some(c => c !== 'id' && c !== 'password_hash');
+      const editBtn = canEdit ? '<button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="openDbRowModalByIndex(' + idx + ')"><i class="fa-solid fa-pen"></i></button>' : '';
+      const deleteBtn = hasId ? '<button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteDbRowByIndex(' + idx + ')"><i class="fa-solid fa-trash"></i></button>' : '';
+      return '<tr>' + cells + '<td><div class="actions-cell">' + editBtn + deleteBtn + '</div></td></tr>';
     }).join('');
   }
   document.getElementById('db-table-pagination').innerHTML = data.total != null ? `<span class="text-muted">${rows.length} / ${data.total} lignes</span>` : '';
@@ -2156,6 +2161,16 @@ async function saveDbRow() {
   if (data.error) { toast(data.error, 'error'); return; }
   toast('Ligne mise à jour');
   closeModal('db-row-modal');
+  loadDbTable();
+}
+
+async function deleteDbRowByIndex(idx) {
+  const rowData = dbTableRowsCache[idx];
+  if (!rowData || rowData.id == null || !dbCurrentTable) return;
+  if (!confirm('Supprimer cette ligne de la table "' + dbCurrentTable + '" ?')) return;
+  const data = await api('DELETE', '/api/admin/db/tables/' + encodeURIComponent(dbCurrentTable) + '/rows/' + rowData.id);
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Ligne supprimée');
   loadDbTable();
 }
 
