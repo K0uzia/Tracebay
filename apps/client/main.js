@@ -1098,6 +1098,7 @@ ipcMain.handle('get-app-icon', async (_event, payload) => {
 
 // IPC: lancer une application (sécurisé : whitelist + execFile, pas de shell)
 const LAUNCH_APP_SAFE_PATTERN = /^[a-zA-Z0-9_.-]+$/;
+const LAUNCH_PATH_SAFE_PATTERN = /^[a-zA-Z0-9_./#+\- ]+$/;
 const LAUNCH_APP_MAX_LEN = 128;
 
 ipcMain.handle('launch-app', async (_event, payload) => {
@@ -1105,7 +1106,9 @@ ipcMain.handle('launch-app', async (_event, payload) => {
     if (!command || typeof command !== 'string') throw new Error('command is required');
 
     const cmd = command.trim();
-    if (cmd.length > LAUNCH_APP_MAX_LEN || !LAUNCH_APP_SAFE_PATTERN.test(cmd)) {
+    const isSimpleCommand = LAUNCH_APP_SAFE_PATTERN.test(cmd);
+    const isPathLikeCommand = (cmd.includes('/') || cmd.startsWith('.')) && LAUNCH_PATH_SAFE_PATTERN.test(cmd);
+    if (cmd.length > LAUNCH_APP_MAX_LEN || (!isSimpleCommand && !isPathLikeCommand)) {
         console.error('❌ launch-app: commande refusée (caractères ou longueur non autorisés)');
         return { success: false, error: 'Commande non autorisée' };
     }

@@ -9,6 +9,7 @@ class PageManager {
     constructor() {
         this.contentContainer = 'content';
         this.storageKey = 'workspace_current_page';
+        this.themeStorageKey = 'workspace_theme_dark';
         this.authManager = null;
         this.serverUrl = null;
         this.serverConnected = false;
@@ -72,6 +73,7 @@ class PageManager {
 
         // Capture automatique des erreurs JS non gérées → monitoring admin
         this.setupClientErrorReporting();
+        this.initializeThemePreference();
 
         // Toast "Mise à jour installée" après redémarrage post-update
         if (typeof window.electron !== 'undefined' && window.electron.on) {
@@ -111,6 +113,68 @@ class PageManager {
             this.updateFooterVersion();
             this.attachFooterExternalLinks();
         });
+    }
+
+    initializeThemePreference() {
+        try {
+            const isDark = localStorage.getItem(this.themeStorageKey) === '1';
+            this.applyThemePreference(isDark);
+        } catch (_) {
+            this.applyThemePreference(false);
+        }
+    }
+
+    applyThemePreference(isDark) {
+        const enabled = !!isDark;
+        const root = document.documentElement;
+        const themeVars = enabled
+            ? {
+                '--text': '#e8e8ef',
+                '--text2': '#e8e8ef',
+                '--h1': '#f6f6ff',
+                '--h2': '#ececff',
+                '--link': '#f2bc1b',
+                '--btn': '#5a56c8',
+                '--btn-hover': '#6e6ae0',
+                '--btn-text': '#f7f7ff',
+                '--scrollbar-color': '#7a7a98',
+                '--blanc': '#151722',
+                '--noir': '#f2f2f2'
+            }
+            : {
+                '--text': '',
+                '--text2': '',
+                '--h1': '',
+                '--h2': '',
+                '--link': '',
+                '--btn': '',
+                '--btn-hover': '',
+                '--btn-text': '',
+                '--scrollbar-color': '',
+                '--blanc': '',
+                '--noir': ''
+            };
+
+        Object.entries(themeVars).forEach(([key, value]) => {
+            if (value) root.style.setProperty(key, value);
+            else root.style.removeProperty(key);
+        });
+
+        // Ajustement global minimal sans toucher aux fichiers CSS.
+        document.body.style.backgroundColor = enabled ? '#0f1119' : '';
+        document.body.style.color = enabled ? '#e8e8ef' : '';
+        document.documentElement.setAttribute('data-theme-dark', enabled ? '1' : '0');
+    }
+
+    syncThemeToggleUI() {
+        const toggleBtn = document.getElementById('settingsThemeDarkToggle');
+        const hiddenInput = document.getElementById('settingsThemeDark');
+        const textEl = document.getElementById('settingsThemeDarkToggleText');
+        if (!toggleBtn || !hiddenInput || !textEl) return;
+        const isDark = hiddenInput.value === '1';
+        toggleBtn.setAttribute('aria-checked', isDark ? 'true' : 'false');
+        toggleBtn.dataset.state = isDark ? 'on' : 'off';
+        textEl.textContent = isDark ? 'ON' : 'OFF';
     }
 
     /**
@@ -471,7 +535,12 @@ class PageManager {
         if (deleteError) { deleteError.classList.add('hidden'); deleteError.textContent = ''; }
         if (deleteConfirmError) { deleteConfirmError.classList.add('hidden'); deleteConfirmError.textContent = ''; }
         if (deleteConfirm) deleteConfirm.classList.add('hidden');
-        document.querySelectorAll('.settings-section').forEach(el => { el.style.display = isAuth ? '' : 'none'; });
+        document.querySelectorAll('.settings-auth-only').forEach(el => { el.style.display = isAuth ? '' : 'none'; });
+        const themeInput = document.getElementById('settingsThemeDark');
+        if (themeInput) {
+            themeInput.value = localStorage.getItem(this.themeStorageKey) === '1' ? '1' : '0';
+            this.syncThemeToggleUI();
+        }
         modal.classList.remove('hidden');
     }
 
@@ -486,6 +555,8 @@ class PageManager {
         const deletePassword = document.getElementById('settingsDeletePassword');
         const deleteConfirmBtn = document.getElementById('settingsDeleteConfirmBtn');
         const deleteCancelBtn = document.getElementById('settingsDeleteCancelBtn');
+        const themeToggleBtn = document.getElementById('settingsThemeDarkToggle');
+        const themeInput = document.getElementById('settingsThemeDark');
 
         if (!modal) return;
 
@@ -493,6 +564,19 @@ class PageManager {
 
         if (closeBtn) closeBtn.addEventListener('click', hideModal);
         if (overlay) overlay.addEventListener('click', hideModal);
+        if (themeToggleBtn && themeInput) {
+            themeInput.value = localStorage.getItem(this.themeStorageKey) === '1' ? '1' : '0';
+            this.syncThemeToggleUI();
+            themeToggleBtn.addEventListener('click', () => {
+                const nextDark = themeInput.value !== '1';
+                themeInput.value = nextDark ? '1' : '0';
+                try {
+                    localStorage.setItem(this.themeStorageKey, themeInput.value);
+                } catch (_) {}
+                this.applyThemePreference(nextDark);
+                this.syncThemeToggleUI();
+            });
+        }
 
         if (formUsername) {
             formUsername.addEventListener('submit', async (e) => {

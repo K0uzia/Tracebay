@@ -8,7 +8,7 @@
             <h2 class="settings-modal-title"><i class="fas fa-user-cog"></i> Paramètres du compte</h2>
         </div>
         <div class="settings-modal-body">
-        <div class="settings-section">
+        <div class="settings-section settings-auth-only">
             <h3>Changer le pseudo</h3>
             <form id="settingsFormUsername" class="settings-form">
                 <div class="form-group">
@@ -20,7 +20,7 @@
             </form>
         </div>
 
-        <div class="settings-section">
+        <div class="settings-section settings-auth-only">
             <h3>Changer le mot de passe</h3>
             <form id="settingsFormPassword" class="settings-form">
                 <div class="form-group">
@@ -40,7 +40,24 @@
             </form>
         </div>
 
-        <div class="settings-section settings-section-danger">
+<!--         <div class="settings-section">
+            <h3>Thème</h3>
+            <div class="form-group">
+                <label for="settingsThemeDarkToggle">Thème sombre</label>
+                <button
+                    type="button"
+                    id="settingsThemeDarkToggle"
+                    name="themeDarkToggle"
+                    class="btn btn-secondary"
+                    role="switch"
+                    aria-checked="false">
+                    <span id="settingsThemeDarkToggleText">OFF</span>
+                </button>
+                <input type="hidden" id="settingsThemeDark" name="themeDark" value="0">
+            </div>
+        </div> -->
+
+        <div class="settings-section settings-section-danger settings-auth-only">
             <h3>Supprimer le compte</h3>
             <p class="settings-warning">Cette action est irréversible. Toutes vos données seront supprimées.</p>
             <button type="button" id="settingsBtnDeleteAccount" class="btn btn-danger">Supprimer mon compte</button>
