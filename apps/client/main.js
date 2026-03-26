@@ -273,6 +273,27 @@ let quittingForUpdate = false;
 let startupBegin = 0;
 
 /**
+ * Instance unique: empêcher le double lancement et remettre la fenêtre existante au premier plan.
+ */
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
+if (!gotSingleInstanceLock) {
+    app.quit();
+} else {
+    app.on('second-instance', () => {
+        const targetWindow = (mainWindow && !mainWindow.isDestroyed())
+            ? mainWindow
+            : ((splashWindow && !splashWindow.isDestroyed()) ? splashWindow : null);
+
+        if (!targetWindow) return;
+        if (targetWindow.isMinimized && targetWindow.isMinimized()) {
+            targetWindow.restore();
+        }
+        targetWindow.show();
+        targetWindow.focus();
+    });
+}
+
+/**
  * Sous Linux AppImage : crée une copie .bak de l'AppImage actuelle (à appeler dès qu'une MAJ est disponible).
  */
 function linuxAppImageBackup(currentAppPath) {
@@ -597,7 +618,7 @@ function createWindow() {
     // Désactiver complètement le menu (Alt n'affiche plus File / Edit / View…)
     Menu.setApplicationMenu(null);
 
-    // Raccourcis DevTools (F12 ou Ctrl+Shift+I) et rechargement (Ctrl+R) car le menu est désactivé
+    // Raccourcis clavier (dev uniquement pour DevTools)
     const toggleDevTools = () => {
         if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents) {
             mainWindow.webContents.toggleDevTools();
@@ -614,8 +635,10 @@ function createWindow() {
         }
     };
     try {
-        globalShortcut.register('F12', toggleDevTools);
-        globalShortcut.register('CommandOrControl+Shift+I', toggleDevTools);
+        if (!isProduction) {
+            globalShortcut.register('F12', toggleDevTools);
+            globalShortcut.register('CommandOrControl+Shift+I', toggleDevTools);
+        }
         globalShortcut.register('CommandOrControl+R', reloadApp);
         globalShortcut.register('F11', toggleFullscreen);
     } catch (e) {
