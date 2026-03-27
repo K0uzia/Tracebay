@@ -1493,6 +1493,80 @@ function broadcastUserCount() {
       }
     });
 
+    fastify.get('/api/commandes/:id/pdf', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      if (!id || id === 'null' || id === 'undefined') {
+        reply.statusCode = 400;
+        return { error: 'Invalid commande id' };
+      }
+      try {
+        const result = await query('SELECT pdf_path FROM commandes WHERE id = $1', [id]);
+        const raw = (result.rows[0] as any)?.pdf_path;
+        if (result.rowCount === 0 || !raw) {
+          reply.statusCode = 404;
+          return { error: 'PDF not found for this commande' };
+        }
+        let filePath = String(raw);
+        if (filePath.startsWith('/api/') || filePath.startsWith('http')) {
+          reply.statusCode = 404;
+          return { error: 'PDF path invalid' };
+        }
+        filePath = path.resolve(filePath);
+        // #region agent log
+        if (typeof fetch === 'function') fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run4',hypothesisId:'H8',location:'main.ts:/api/commandes/:id/pdf',message:'Serve commande PDF path',data:{id,filePath,exists:fs.existsSync(filePath)},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        if (!fs.existsSync(filePath)) {
+          reply.statusCode = 404;
+          return { error: 'PDF file not found' };
+        }
+        reply.header('Content-Type', 'application/pdf');
+        reply.header('Content-Disposition', 'inline; filename="commande-' + id + '.pdf"');
+        reply.header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        return reply.send(fs.createReadStream(filePath));
+      } catch (err: any) {
+        fastify.log.error({ err }, 'GET /api/commandes/:id/pdf error');
+        reply.statusCode = 500;
+        return { error: 'Failed to serve PDF' };
+      }
+    });
+
+    fastify.get('/api/dons/:id/pdf', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      if (!id || id === 'null' || id === 'undefined') {
+        reply.statusCode = 400;
+        return { error: 'Invalid don id' };
+      }
+      try {
+        const result = await query('SELECT pdf_path FROM dons WHERE id = $1', [id]);
+        const raw = (result.rows[0] as any)?.pdf_path;
+        if (result.rowCount === 0 || !raw) {
+          reply.statusCode = 404;
+          return { error: 'PDF not found for this don' };
+        }
+        let filePath = String(raw);
+        if (filePath.startsWith('/api/') || filePath.startsWith('http')) {
+          reply.statusCode = 404;
+          return { error: 'PDF path invalid' };
+        }
+        filePath = path.resolve(filePath);
+        // #region agent log
+        if (typeof fetch === 'function') fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run4',hypothesisId:'H8',location:'main.ts:/api/dons/:id/pdf',message:'Serve don PDF path',data:{id,filePath,exists:fs.existsSync(filePath)},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        if (!fs.existsSync(filePath)) {
+          reply.statusCode = 404;
+          return { error: 'PDF file not found' };
+        }
+        reply.header('Content-Type', 'application/pdf');
+        reply.header('Content-Disposition', 'inline; filename="don-' + id + '.pdf"');
+        reply.header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        return reply.send(fs.createReadStream(filePath));
+      } catch (err: any) {
+        fastify.log.error({ err }, 'GET /api/dons/:id/pdf error');
+        reply.statusCode = 500;
+        return { error: 'Failed to serve PDF' };
+      }
+    });
+
     // ——— Disques (sessions shred) ———
     fastify.get('/api/disques/sessions', async (request: FastifyRequest, reply: FastifyReply) => {
       try {

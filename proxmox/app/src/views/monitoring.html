@@ -911,7 +911,7 @@ function fmtDate(s) {
   if (!s) return '—';
   const d = parseDateFlexible(s);
   if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
 }
 
 function fmtDateOnly(s) {
@@ -1650,7 +1650,7 @@ async function loadCommandes() {
     const base = window.location.origin;
     tbody.innerHTML = list.map(c => {
       const pdfCell = c.pdf_path
-        ? `<button class="btn btn-secondary btn-sm" title="${escHtml(c.pdf_path)}" onclick="openPdfPath('${(c.pdf_path || '').replace(/\\/g,'\\\\').replace(/'/g, "\\'")}')">PDF</button>`
+        ? `<a href="${base}/api/commandes/${c.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="${escHtml(c.pdf_path)}">PDF</a>`
         : '—';
       return `<tr>
         <td>${c.id}</td>
@@ -1682,7 +1682,7 @@ async function loadDons() {
     const base = window.location.origin;
     tbody.innerHTML = list.map(d => {
       const pdfCell = d.pdf_path
-        ? `<button class="btn btn-secondary btn-sm" title="${escHtml(d.pdf_path)}" onclick="openPdfPath('${(d.pdf_path || '').replace(/\\/g,'\\\\').replace(/'/g, "\\'")}')">PDF</button>`
+        ? `<a href="${base}/api/dons/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="${escHtml(d.pdf_path)}">PDF</a>`
         : '—';
       return `<tr>
         <td>${d.id}</td>
