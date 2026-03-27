@@ -762,7 +762,16 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       reply.statusCode = 403;
       return { error: 'Chemin non autorisé' };
     }
-    const statPath = resolveExistingParentPath(resolved);
+    let statPath: string | null = null;
+    try {
+      statPath = resolveExistingParentPath(resolved);
+    } catch (err: any) {
+      // #region agent log
+      if (typeof fetch === 'function') fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run3',hypothesisId:'H5',location:'admin.ts:/api/admin/open-path',message:'resolveExistingParentPath threw',data:{rawPath,resolved,error:err?.message || String(err)},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      reply.statusCode = 500;
+      return { error: 'Résolution du chemin impossible' };
+    }
     if (!statPath) {
       reply.statusCode = 404;
       return { error: 'Fichier ou dossier introuvable' };
@@ -788,7 +797,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       if (lotResult.rowCount === 0) { reply.statusCode = 404; return { error: 'Lot introuvable' }; }
       const lot = lotResult.rows[0];
       const itemsResult = await query(
-        `SELECT li.id, li.serial_number, li.type, li.state, li.technician, li.state_changed_at,
+        `SELECT li.id, li.serial_number, li.type, li.state, li.technician, li.state_changed_at, li.created_at,
                 m.name as marque_name, mo.name as modele_name
          FROM lot_items li
          LEFT JOIN marques m ON li.marque_id = m.id
@@ -797,6 +806,9 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
          ORDER BY li.id ASC`,
         [id]
       );
+      // #region agent log
+      if (typeof fetch === 'function') fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run3',hypothesisId:'H6',location:'admin.ts:/api/admin/lots/:id',message:'Lot items payload keys',data:{lotId:id,count:itemsResult.rowCount || 0,firstKeys:itemsResult.rows?.[0] ? Object.keys(itemsResult.rows[0]) : [],firstDate:itemsResult.rows?.[0]?.created_at || null,firstState:itemsResult.rows?.[0]?.state || null},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       return { success: true, lot: { ...lot, items: itemsResult.rows } };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin GET /lots/:id');

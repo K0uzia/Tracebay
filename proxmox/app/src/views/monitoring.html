@@ -914,6 +914,13 @@ function fmtDate(s) {
   return d.toLocaleString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
+function fmtDateOnly(s) {
+  if (!s) return '—';
+  const d = parseDateFlexible(s);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
 function parseDateFlexible(value) {
   if (!value) return new Date('');
   if (value instanceof Date) return value;
@@ -1043,9 +1050,11 @@ function closeDynamicModal() {
 }
 
 function statusBadge(s) {
-  const map = { received:'info', in_progress:'warning', finished:'success', recovered:'success' };
-  const label = { received:'Reçu', in_progress:'En cours', finished:'Terminé', recovered:'Récupéré' };
-  return `<span class="badge badge-${map[s]||'info'}">${label[s]||s}</span>`;
+  const key = String(s || '').trim();
+  const map = { received:'info', in_progress:'warning', finished:'success', recovered:'success', autres:'info', autres_custom:'info', other:'info' };
+  const label = { received:'Reçu', in_progress:'En cours', finished:'Terminé', recovered:'Récupéré', autres:'Autres', autres_custom:'Autres', other:'Autres' };
+  const shown = key || '—';
+  return `<span class="badge badge-${map[key]||'info'}">${label[key]||shown}</span>`;
 }
 
 function escHtml(s) {
@@ -1539,14 +1548,19 @@ function openLotModal(id, editable = true) {
     if (!items.length) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="8">Aucun article</td></tr>';
     } else {
-      const states = ['', 'Reconditionnés', 'HS', 'Pour pièces'];
       tbody.innerHTML = items.map(it => {
-        const stateOpts = states.map(s => `<option value="${escHtml(s)}" ${(it.state || '') === s ? 'selected' : ''}>${s || '—'}</option>`).join('');
+        const currentState = String(it.state || '').trim();
+        const baseStates = ['', 'Reconditionnés', 'HS', 'Pour pièces', 'Autres'];
+        const states = baseStates.includes(currentState) ? baseStates : [...baseStates, currentState];
+        const stateOpts = states.map(s => `<option value="${escHtml(s)}" ${currentState === s ? 'selected' : ''}>${s || '—'}</option>`).join('');
         const itemType = it.type || it.category || '';
         const itemBrand = it.marque_name || it.marque || it.brand || '';
         const itemModel = it.modele_name || it.modele || it.model || '';
         const itemSerial = it.serial_number || it.serial || '';
-        const itemDate = toDateTimeLocal(it.date || it.received_at || it.created_at);
+        const itemDate = toDateInputLocal(it.date || it.received_at || it.created_at || it.state_changed_at);
+        // #region agent log
+        fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run3',hypothesisId:'H6',location:'monitoring.html:openLotModal:item',message:'Lot item mapped for modal',data:{itemId:it.id,state:currentState,rawDate:it.date || null,rawCreatedAt:it.created_at || null,rawStateChangedAt:it.state_changed_at || null,itemDate},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         return `<tr data-item-id="${it.id}">
           <td>${it.id}</td>
           <td><input type="text" class="lot-item-type form-input" data-id="${it.id}" value="${escHtml(itemType)}" placeholder="Type"></td>
@@ -1554,7 +1568,7 @@ function openLotModal(id, editable = true) {
           <td><input type="text" class="lot-item-model form-input" data-id="${it.id}" value="${escHtml(itemModel)}" placeholder="Modèle"></td>
           <td><input type="text" class="lot-item-serial form-input" data-id="${it.id}" value="${escHtml(itemSerial)}" placeholder="S/N"></td>
           <td><select class="lot-item-state form-input" data-id="${it.id}">${stateOpts}</select></td>
-          <td><input type="datetime-local" class="lot-item-date form-input" data-id="${it.id}" value="${itemDate}"></td>
+          <td><input type="date" class="lot-item-date form-input" data-id="${it.id}" value="${itemDate}"></td>
           <td><input type="text" class="lot-item-technician form-input" data-id="${it.id}" value="${escHtml(it.technician || '')}" placeholder="Technicien"></td>
         </tr>`;
       }).join('');
@@ -1748,6 +1762,13 @@ function toDateTimeLocal(value) {
   const d = parseDateFlexible(value);
   if (Number.isNaN(d.getTime())) return '';
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+function toDateInputLocal(value) {
+  if (!value) return '';
+  const d = parseDateFlexible(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function renderCommandeDetailModal() {
