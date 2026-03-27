@@ -880,11 +880,24 @@ function api(method, path, body) {
     'Authorization': 'Bearer ' + TOKEN,
   };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
+  // #region agent log
+  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H1',location:'monitoring.html:api:beforeFetch',message:'API request start',data:{base:BASE,path,method,hasToken:!!TOKEN,protocol:window.location.protocol},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   return fetch(BASE + path, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
-  }).then(r => r.json());
+  }).then(async (r) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H1',location:'monitoring.html:api:afterFetch',message:'API response received',data:{path,method,status:r.status,ok:r.ok,contentType:r.headers.get('content-type') || ''},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    return r.json();
+  }).catch((err) => {
+    // #region agent log
+    fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H1',location:'monitoring.html:api:fetchError',message:'API fetch error',data:{path,method,error:String(err?.message || err)},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+    throw err;
+  });
 }
 
 function toast(msg, type = 'success') {
@@ -1657,6 +1670,9 @@ async function loadDons() {
 async function openDonDetail(id) {
   const data = await api('GET', '/api/admin/dons/' + id);
   if (data.error) { toast(data.error, 'error'); return; }
+  // #region agent log
+  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H2',location:'monitoring.html:openDonDetail',message:'Don detail payload received',data:{id,hasDon:!!data?.don,keys:data?.don?Object.keys(data.don):[],linesType:typeof data?.don?.lines,isLinesArray:Array.isArray(data?.don?.lines),lineCount:Array.isArray(data?.don?.lines)?data.don.lines.length:-1},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   currentDonDetail = data.don || {};
   currentDonLines = getDonLines(currentDonDetail);
   donDetailEditable = false;
@@ -1762,6 +1778,9 @@ async function saveCommandeDetail() {
       link: (document.querySelector(`.cmd-line-link[data-idx="${i}"]`)?.value || '').trim() || null
     }))
   };
+  // #region agent log
+  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H3',location:'monitoring.html:saveCommandeDetail',message:'Commande payload before PUT',data:{id:currentCommandeDetail.id,lineCount:body.lignes.length,first:body.lignes[0]?{product_name_ref:body.lignes[0].product_name_ref,quantity:body.lignes[0].quantity,date:body.lignes[0].date}:null},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   const data = await api('PUT', '/api/admin/commandes/' + currentCommandeDetail.id, body);
   if (data.error) { toast(data.error, 'error'); return; }
   toast('Commande mise à jour');
@@ -1789,6 +1808,9 @@ function renderDonDetailModal() {
   const d = currentDonDetail || {};
   const lines = currentDonLines.length ? currentDonLines : getDonLines(d);
   currentDonLines = lines;
+  // #region agent log
+  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H2',location:'monitoring.html:renderDonDetailModal',message:'Don lines normalized for render',data:{donId:d.id || null,count:lines.length,first:lines[0]?{materiel:lines[0].materiel,modele:lines[0].modele,type:lines[0].type,serial_number:lines[0].serial_number,date:lines[0].date,nom:lines[0].nom,prenom:lines[0].prenom}:null},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   const editable = !!donDetailEditable;
   const linesHtml = lines.length
     ? lines.map((l, i) => {
@@ -1839,6 +1861,9 @@ async function saveDonDetail() {
       };
     })
   };
+  // #region agent log
+  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H3',location:'monitoring.html:saveDonDetail',message:'Don payload before PUT',data:{id:currentDonDetail.id,lineCount:body.lines.length,first:body.lines[0]?{materiel:body.lines[0].materiel,modele:body.lines[0].modele,type:body.lines[0].type,serial_number:body.lines[0].serial_number,date:body.lines[0].date,nom:body.lines[0].nom,prenom:body.lines[0].prenom}:null},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   const data = await api('PUT', '/api/admin/dons/' + currentDonDetail.id, body);
   if (data.error) { toast(data.error, 'error'); return; }
   toast('Don mis à jour');
@@ -1858,7 +1883,13 @@ async function regenerateDonPdf() {
 
 async function openPdfPath(path) {
   if (!path) { toast('Aucun PDF disponible', 'error'); return; }
+  // #region agent log
+  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H4',location:'monitoring.html:openPdfPath:before',message:'Open PDF requested',data:{path},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   const data = await api('POST', '/api/admin/open-path', { path });
+  // #region agent log
+  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H4',location:'monitoring.html:openPdfPath:after',message:'Open PDF response',data:{path,error:data?.error || null,success:!!data?.success,openedPath:data?.openedPath || null},timestamp:Date.now()})}).catch(()=>{});
+  // #endregion
   if (data.error) { toast(data.error, 'error'); return; }
   toast('PDF ouvert');
 }

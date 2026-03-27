@@ -751,6 +751,9 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       return { error: 'Chemin requis' };
     }
     const resolved = normalizeOpenPath(rawPath);
+    // #region agent log
+    fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H4',location:'admin.ts:/api/admin/open-path',message:'open-path normalize',data:{rawPath,resolved,teamBase:TEAM_BASE_PATH},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     fastify.log.debug({ rawPath, resolved }, 'open-path requested');
     if (!isAllowedLocalPath(resolved)) {
       reply.statusCode = 403;
@@ -1508,6 +1511,9 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     async (request, reply) => {
       if (!checkAdminAuth(request, reply)) return;
       const { table, id } = request.params;
+      // #region agent log
+      fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H5',location:'admin.ts:/api/admin/db/tables/:table/rows/:id',message:'db table update requested',data:{table,id},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       const body = request.body as Record<string, unknown>;
       if (!DB_TABLES_WHITELIST.includes(table)) {
         reply.statusCode = 400;
@@ -2005,7 +2011,11 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
         reply.statusCode = 404;
         return { error: 'Don introuvable' };
       }
-      return { success: true, don: result.rows[0] };
+      const don = result.rows[0] as any;
+      // #region agent log
+      fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H2',location:'admin.ts:/api/admin/dons/:id',message:'don row from DB',data:{id,linesType:typeof don?.lines,isLinesArray:Array.isArray(don?.lines),lineCount:Array.isArray(don?.lines)?don.lines.length:-1,sampleKeys:Array.isArray(don?.lines)&&don.lines[0]?Object.keys(don.lines[0]):[]},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
+      return { success: true, don };
     } catch (err: any) {
       fastify.log.error({ err }, 'GET /api/dons/:id');
       reply.statusCode = 500;
