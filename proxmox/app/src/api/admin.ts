@@ -224,8 +224,11 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   function resolveExistingParentPath(initialPath: string): string | null {
     let current = path.resolve(initialPath);
     const allowedBase = path.resolve(TEAM_BASE_PATH);
+    const allowedBaseParent = path.dirname(allowedBase);
     while (true) {
-      if (!(current === allowedBase || current.startsWith(allowedBase + path.sep))) return null;
+      const insideAllowedBase = current === allowedBase || current.startsWith(allowedBase + path.sep);
+      const insideAllowedParent = current === allowedBaseParent || current.startsWith(allowedBaseParent + path.sep);
+      if (!insideAllowedBase && !insideAllowedParent) return null;
       if (fs.existsSync(current)) {
         return fs.statSync(current).isDirectory() ? current : path.dirname(current);
       }
@@ -1457,7 +1460,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   const DB_TABLES_WHITELIST = [
     'users', 'marques', 'modeles', 'messages', 'events', 'activity_logs',
     'shortcut_categories', 'shortcuts', 'lots', 'lot_items', 'client_errors', 'app_settings',
-    'commandes', 'commande_lignes', 'commande_products', 'dons', 'entrees',
+    'commandes', 'commande_lignes', 'commande_products', 'dons', 'entrees', 'disques', 'disques_sessions',
   ];
 
   fastify.get('/api/admin/db/tables', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -1482,14 +1485,15 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     async (request, reply) => {
       if (!checkAdminAuth(request, reply)) return;
       const { table } = request.params;
+      const tableName = table === 'disques' ? 'disques_sessions' : table;
       const limit = Math.min(Number(request.query.limit) || 50, 200);
       const offset = Math.max(0, Number(request.query.offset) || 0);
-      if (!DB_TABLES_WHITELIST.includes(table)) {
+      if (!DB_TABLES_WHITELIST.includes(tableName)) {
         reply.statusCode = 400;
         return { error: 'Table non autorisée' };
       }
       try {
-        const safeTable = table.replace(/[^a-z0-9_]/gi, '');
+        const safeTable = tableName.replace(/[^a-z0-9_]/gi, '');
         const countResult = await query(`SELECT COUNT(*) FROM ${safeTable}`);
         const total = parseInt((countResult.rows[0] as any).count, 10);
         const result = await query(
@@ -1511,15 +1515,16 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     async (request, reply) => {
       if (!checkAdminAuth(request, reply)) return;
       const { table, id } = request.params;
+      const tableName = table === 'disques' ? 'disques_sessions' : table;
       // #region agent log
       fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H5',location:'admin.ts:/api/admin/db/tables/:table/rows/:id',message:'db table update requested',data:{table,id},timestamp:Date.now()})}).catch(()=>{});
       // #endregion
       const body = request.body as Record<string, unknown>;
-      if (!DB_TABLES_WHITELIST.includes(table)) {
+      if (!DB_TABLES_WHITELIST.includes(tableName)) {
         reply.statusCode = 400;
         return { error: 'Table non autorisée' };
       }
-      const safeTable = table.replace(/[^a-z0-9_]/gi, '');
+      const safeTable = tableName.replace(/[^a-z0-9_]/gi, '');
       if (!body || typeof body !== 'object') {
         reply.statusCode = 400;
         return { error: 'Body attendu' };
@@ -1566,11 +1571,12 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     async (request, reply) => {
       if (!checkAdminAuth(request, reply)) return;
       const { table, id } = request.params;
-      if (!DB_TABLES_WHITELIST.includes(table)) {
+      const tableName = table === 'disques' ? 'disques_sessions' : table;
+      if (!DB_TABLES_WHITELIST.includes(tableName)) {
         reply.statusCode = 400;
         return { error: 'Table non autorisée' };
       }
-      const safeTable = table.replace(/[^a-z0-9_]/gi, '');
+      const safeTable = tableName.replace(/[^a-z0-9_]/gi, '');
       try {
         const result = await query(`DELETE FROM ${safeTable} WHERE id = $1`, [id]);
         if (result.rowCount === 0) {
