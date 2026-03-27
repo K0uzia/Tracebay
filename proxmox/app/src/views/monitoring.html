@@ -1760,14 +1760,14 @@ function renderCommandeDetailModal() {
       const link = l.link || l.link_url || l.url || l.product_link || '';
       if (!editable) {
         const ship = l.shipping_cost != null ? `${Number(l.shipping_cost).toFixed(2)} €` : '—';
-        return `<tr><td>${escHtml((l.product_name_ref || l.product_name || '—'))}</td><td>${l.quantity || 0}</td><td>${l.unit_price != null ? l.unit_price : '—'}</td><td>${ship}</td><td>${fmtDate(l.date)}</td><td>${link ? `<a href="${escHtml(link)}" target="_blank" rel="noopener">Ouvrir</a>` : '—'}</td></tr>`;
+        return `<tr><td>${escHtml((l.product_name_ref || l.product_name || '—'))}</td><td>${l.quantity || 0}</td><td>${l.unit_price != null ? l.unit_price : '—'}</td><td>${ship}</td><td>${fmtDate(l.date || c.date || c.created_at)}</td><td>${link ? `<a href="${escHtml(link)}" target="_blank" rel="noopener">Ouvrir</a>` : '—'}</td></tr>`;
       }
       return `<tr>
         <td><input class="form-input cmd-line-product" data-idx="${i}" value="${escHtml(l.product_name_ref || l.product_name || '')}"></td>
         <td><input class="form-input cmd-line-qty" data-idx="${i}" type="number" min="0" step="1" value="${l.quantity != null ? l.quantity : 0}"></td>
         <td><input class="form-input cmd-line-price" data-idx="${i}" type="number" min="0" step="0.01" value="${l.unit_price != null ? l.unit_price : ''}"></td>
         <td><input class="form-input cmd-line-ship" data-idx="${i}" type="number" min="0" step="0.01" value="${l.shipping_cost != null ? l.shipping_cost : ''}"></td>
-        <td><input class="form-input cmd-line-date" data-idx="${i}" type="datetime-local" value="${toDateTimeLocal(l.date)}"></td>
+        <td><input class="form-input cmd-line-date" data-idx="${i}" type="datetime-local" value="${toDateTimeLocal(l.date || c.date || c.created_at)}"></td>
         <td><input class="form-input cmd-line-link" data-idx="${i}" value="${escHtml(link)}"></td>
       </tr>`;
     }).join('')
@@ -1845,14 +1845,14 @@ function renderDonDetailModal() {
     ? lines.map((l, i) => {
       const fullName = [l.nom || '', l.prenom || ''].filter(Boolean).join(' ').trim();
       if (!editable) {
-        return `<tr><td>${escHtml(l.materiel || '—')}</td><td>${escHtml(l.modele || '—')}</td><td>${escHtml(l.type || '—')}</td><td>${escHtml(l.serial_number || '—')}</td><td>${fmtDate(l.date)}</td><td>${escHtml(fullName || '—')}</td></tr>`;
+        return `<tr><td>${escHtml(l.materiel || '—')}</td><td>${escHtml(l.modele || '—')}</td><td>${escHtml(l.type || '—')}</td><td>${escHtml(l.serial_number || '—')}</td><td>${fmtDate(l.date || d.date || d.created_at)}</td><td>${escHtml(fullName || '—')}</td></tr>`;
       }
       return `<tr>
         <td><input class="form-input don-line-materiel" data-idx="${i}" value="${escHtml(l.materiel || '')}"></td>
         <td><input class="form-input don-line-modele" data-idx="${i}" value="${escHtml(l.modele || '')}"></td>
         <td><input class="form-input don-line-type" data-idx="${i}" value="${escHtml(l.type || '')}"></td>
         <td><input class="form-input don-line-serial" data-idx="${i}" value="${escHtml(l.serial_number || '')}"></td>
-        <td><input class="form-input don-line-date" data-idx="${i}" type="datetime-local" value="${toDateTimeLocal(l.date)}"></td>
+        <td><input class="form-input don-line-date" data-idx="${i}" type="datetime-local" value="${toDateTimeLocal(l.date || d.date || d.created_at)}"></td>
         <td><input class="form-input don-line-fullname" data-idx="${i}" value="${escHtml(fullName)}"></td>
       </tr>`;
     }).join('')
