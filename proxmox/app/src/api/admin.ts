@@ -7,6 +7,7 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as child_process from 'child_process';
+import * as https from 'https';
 import bcrypt from 'bcryptjs';
 import nodemailer from 'nodemailer';
 
@@ -14,6 +15,13 @@ const SERVICE_NAME = process.env.SERVICE_NAME || 'proxmox-backend';
 const PROXMOX_CLI = process.env.PROXMOX_CLI || '/usr/local/bin/proxmox';
 const CONTAINER_API_NAME = process.env.CONTAINER_API_NAME || '';
 const CONTAINER_DB_NAME = process.env.CONTAINER_DB_NAME || '';
+const PVE_API_URL = (process.env.PVE_API_URL || '').trim();
+const PVE_NODE = (process.env.PVE_NODE || '').trim();
+const PVE_VMID = (process.env.PVE_VMID || '').trim();
+const PVE_VM_TYPE = ((process.env.PVE_VM_TYPE || 'lxc').trim().toLowerCase() === 'qemu' ? 'qemu' : 'lxc');
+const PVE_TOKEN_ID = (process.env.PVE_TOKEN_ID || '').trim();
+const PVE_TOKEN_SECRET = (process.env.PVE_TOKEN_SECRET || '').trim();
+const PVE_VERIFY_TLS = (process.env.PVE_VERIFY_TLS || 'true').trim().toLowerCase() !== 'false';
 
 const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'SECRET_RETIRE';
 const JWT_SECRET = process.env.JWT_SECRET || 'SECRET_RETIRE';
@@ -198,14 +206,71 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     return ['restart', SERVICE_NAME];
   }
 
-  function executeServerAction(action: ServerActionName): { ok: boolean; error?: string } {
+  function normalizeOpenPath(rawPath: string): string {
+    const trimmed = rawPath.trim();
+    if (!trimmed) return '';
+    if (/^file:\/\//i.test(trimmed)) {
+      try {
+        const url = new URL(trimmed);
+        return decodeURIComponent(url.pathname || '');
+      } catch {
+        return decodeURIComponent(trimmed.replace(/^file:\/\//i, ''));
+      }
+    }
+    if (path.isAbsolute(trimmed)) return path.resolve(trimmed);
+    return path.resolve(TEAM_BASE_PATH, trimmed);
+  }
+
+  function resolveExistingParentPath(initialPath: string): string | null {
+    let current = path.resolve(initialPath);
+    const allowedBase = path.resolve(TEAM_BASE_PATH);
+    while (true) {
+      if (!(current === allowedBase || current.startsWith(allowedBase + path.sep))) return null;
+      if (fs.existsSync(current)) {
+        return fs.statSync(current).isDirectory() ? current : path.dirname(current);
+      }
+      const parent = path.dirname(current);
+      if (parent === current) return null;
+      current = parent;
+    }
+  }
+
+  async function tryPveAction(action: ServerActionName): Promise<{ ok: boolean; error?: string }> {
+    if (!PVE_API_URL || !PVE_NODE || !PVE_VMID || !PVE_TOKEN_ID || !PVE_TOKEN_SECRET) {
+      return { ok: false, error: 'PVE fallback non configuré' };
+    }
+    const baseUrl = PVE_API_URL.replace(/\/$/, '');
+    const endpoint = `${baseUrl}/api2/json/nodes/${encodeURIComponent(PVE_NODE)}/${PVE_VM_TYPE}/${encodeURIComponent(PVE_VMID)}/status/${action}`;
+    const auth = `PVEAPIToken=${PVE_TOKEN_ID}=${PVE_TOKEN_SECRET}`;
+    try {
+      const agent = endpoint.startsWith('https://') ? new https.Agent({ rejectUnauthorized: PVE_VERIFY_TLS }) : undefined;
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: { Authorization: auth },
+        body: '',
+        // @ts-ignore - agent is supported in node runtime
+        agent,
+      } as any);
+      const payload = await resp.json().catch(() => ({}));
+      if (!resp.ok || payload?.errors) {
+        return { ok: false, error: `PVE ${resp.status}: ${payload?.error || payload?.message || 'erreur API'}` };
+      }
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'échec appel API PVE' };
+    }
+  }
+
+  async function executeServerAction(action: ServerActionName): Promise<{ ok: boolean; error?: string }> {
     const primary = runControlCommand(PROXMOX_CLI, [action], 20000);
     if (primary.ok) return { ok: true };
     const fallback = runControlCommand('systemctl', systemctlArgsFor(action), 20000);
     if (fallback.ok) return { ok: true };
+    const remote = await tryPveAction(action);
+    if (remote.ok) return { ok: true };
     return {
       ok: false,
-      error: `proxmox: ${primary.error || 'failed'} | systemctl: ${fallback.error || 'failed'}`,
+      error: `proxmox: ${primary.error || 'failed'} | systemctl: ${fallback.error || 'failed'} | pve: ${remote.error || 'failed'}`,
     };
   }
 
@@ -685,17 +750,16 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       reply.statusCode = 400;
       return { error: 'Chemin requis' };
     }
-    const resolved = path.resolve(rawPath);
+    const resolved = normalizeOpenPath(rawPath);
+    fastify.log.debug({ rawPath, resolved }, 'open-path requested');
     if (!isAllowedLocalPath(resolved)) {
       reply.statusCode = 403;
       return { error: 'Chemin non autorisé' };
     }
-    const statPath = fs.existsSync(resolved) && fs.statSync(resolved).isDirectory()
-      ? resolved
-      : path.dirname(resolved);
-    if (!fs.existsSync(statPath)) {
+    const statPath = resolveExistingParentPath(resolved);
+    if (!statPath) {
       reply.statusCode = 404;
-      return { error: 'Chemin introuvable' };
+      return { error: 'Fichier ou dossier introuvable' };
     }
     try {
       child_process.spawn('xdg-open', [statPath], { detached: true, stdio: 'ignore' }).unref();
@@ -1683,8 +1747,8 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     try {
       setServerControlState('starting', 'Démarrage demandé');
       reply.send({ success: true, message: 'Démarrage en cours.' });
-      setImmediate(() => {
-        const result = executeServerAction('start');
+      setImmediate(async () => {
+        const result = await executeServerAction('start');
         if (!result.ok) {
           fastify.log.error({ error: result.error }, 'admin POST /server/start command failed');
           setServerControlState('failed', `Échec démarrage: ${result.error || 'commande non exécutée'}`);
@@ -1705,8 +1769,8 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       setServerControlState('stopping', 'Arrêt demandé');
       // Répondre avant d'arrêter (sinon la réponse ne part pas)
       reply.send({ success: true, message: 'Arrêt en cours.' });
-      setImmediate(() => {
-        const result = executeServerAction('stop');
+      setImmediate(async () => {
+        const result = await executeServerAction('stop');
         if (!result.ok) {
           fastify.log.error({ error: result.error }, 'admin POST /server/stop command failed');
           setServerControlState('failed', `Échec arrêt: ${result.error || 'commande non exécutée'}`);
@@ -1726,8 +1790,8 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     try {
       setServerControlState('restarting', 'Redémarrage demandé');
       reply.send({ success: true, message: 'Redémarrage en cours…' });
-      setImmediate(() => {
-        const result = executeServerAction('restart');
+      setImmediate(async () => {
+        const result = await executeServerAction('restart');
         if (!result.ok) {
           fastify.log.error({ error: result.error }, 'admin POST /server/restart command failed');
           setServerControlState('failed', `Échec redémarrage: ${result.error || 'commande non exécutée'}`);
@@ -1775,7 +1839,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       if (cmdResult.rowCount === 0) { reply.statusCode = 404; return { error: 'Commande introuvable' }; }
       const cmd = cmdResult.rows[0] as any;
       const lignesResult = await query(
-        `SELECT l.id, l.commande_id, l.commande_product_id, l.product_name, l.quantity, l.unit_price, p.name AS product_name_ref
+        `SELECT l.id, l.commande_id, l.commande_product_id, l.product_name, l.quantity, l.unit_price, l.shipping_cost, l.link, l.created_at, p.name AS product_name_ref
          FROM commande_lignes l LEFT JOIN commande_products p ON l.commande_product_id = p.id WHERE l.commande_id = $1 ORDER BY l.id`,
         [id]
       );
@@ -1873,7 +1937,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
         [id]
       );
       const lignesResult = await query(
-        `SELECT l.id, l.commande_id, l.commande_product_id, l.product_name, l.quantity, l.unit_price, l.shipping_cost, l.link, p.name AS product_name_ref
+        `SELECT l.id, l.commande_id, l.commande_product_id, l.product_name, l.quantity, l.unit_price, l.shipping_cost, l.link, l.created_at, p.name AS product_name_ref
          FROM commande_lignes l LEFT JOIN commande_products p ON l.commande_product_id = p.id WHERE l.commande_id = $1 ORDER BY l.id`,
         [id]
       );

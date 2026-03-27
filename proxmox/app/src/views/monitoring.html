@@ -793,7 +793,7 @@
       </div>
       <div class="form-group" style="margin-bottom:8px"><label>PDF</label><div id="commande-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">—</div></div>
       <div class="table-wrap" style="margin-top:12px">
-        <table class="log-table"><thead><tr><th>Produit</th><th>Quantité</th><th>Prix unit.</th><th>Frais port</th><th>Lien</th></tr></thead>
+        <table class="log-table"><thead><tr><th>Produit</th><th>Quantité</th><th>Prix unit.</th><th>Frais port</th><th>Date</th><th>Lien</th></tr></thead>
         <tbody id="commande-detail-lignes-tbody"></tbody></table>
       </div>
     </div>
@@ -867,6 +867,8 @@ let currentCommandeDetail = null;
 let commandeDetailEditable = false;
 let currentDonDetail = null;
 let donDetailEditable = false;
+let currentCommandeLines = [];
+let currentDonLines = [];
 let lotModalEditable = true;
 let disqueModalEditable = true;
 
@@ -902,14 +904,80 @@ function fmtDate(s) {
 function parseMaybeJsonArray(value) {
   if (Array.isArray(value)) return value;
   if (typeof value === 'string') {
-    try {
-      const parsed = JSON.parse(value);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    let parsed = trimmed;
+    for (let i = 0; i < 2; i++) {
+      try {
+        parsed = JSON.parse(parsed);
+      } catch {
+        break;
+      }
+      if (Array.isArray(parsed)) return parsed;
+      if (typeof parsed !== 'string') break;
     }
+    return Array.isArray(parsed) ? parsed : [];
   }
   return [];
+}
+
+function pickFirst(...values) {
+  for (const val of values) {
+    if (val !== undefined && val !== null && String(val).trim() !== '') return val;
+  }
+  return '';
+}
+
+function normalizeCommandeLines(raw) {
+  const input = Array.isArray(raw) ? raw : [];
+  return input.map((line) => ({
+    ...line,
+    product_name_ref: pickFirst(line.product_name_ref, line.product_name, line.produit),
+    quantity: Number(line.quantity ?? 0) || 0,
+    unit_price: line.unit_price ?? line.price ?? null,
+    shipping_cost: line.shipping_cost ?? line.shipping ?? null,
+    link: pickFirst(line.link, line.link_url, line.url, line.product_link) || null,
+    date: line.date || line.created_at || null
+  }));
+}
+
+function parseFullname(line) {
+  const full = pickFirst(line.full_name, line.fullname, line.name, [line.nom, line.prenom].filter(Boolean).join(' ')).trim();
+  if (!full) return { nom: '', prenom: '' };
+  const parts = full.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return { nom: parts[0], prenom: '' };
+  return { nom: parts.slice(0, -1).join(' '), prenom: parts[parts.length - 1] };
+}
+
+function normalizeDonLines(raw) {
+  const input = Array.isArray(raw) ? raw : [];
+  return input.map((line) => {
+    const nameParts = parseFullname(line);
+    return {
+      ...line,
+      materiel: pickFirst(line.materiel, line.material, line.product_name),
+      modele: pickFirst(line.modele, line.model),
+      type: pickFirst(line.type, line.category),
+      serial_number: pickFirst(line.serial_number, line.serial, line.sn),
+      date: line.date || line.created_at || line.received_at || null,
+      nom: pickFirst(line.nom, line.last_name, nameParts.nom),
+      prenom: pickFirst(line.prenom, line.first_name, line.firstname, nameParts.prenom)
+    };
+  });
+}
+
+function getCommandeLines(detail) {
+  const d = detail || {};
+  const raw = Array.isArray(d.lignes) ? d.lignes
+    : (Array.isArray(d.lines) ? d.lines : (Array.isArray(d.items) ? d.items : parseMaybeJsonArray(d.lignes || d.lines || d.items)));
+  return normalizeCommandeLines(raw);
+}
+
+function getDonLines(detail) {
+  const d = detail || {};
+  const raw = Array.isArray(d.lines) ? d.lines
+    : (Array.isArray(d.lignes) ? d.lignes : (Array.isArray(d.items) ? d.items : parseMaybeJsonArray(d.lines || d.lignes || d.items)));
+  return normalizeDonLines(raw);
 }
 
 function openModal(id) { document.getElementById(id).classList.add('open'); }
@@ -1590,6 +1658,7 @@ async function openDonDetail(id) {
   const data = await api('GET', '/api/admin/dons/' + id);
   if (data.error) { toast(data.error, 'error'); return; }
   currentDonDetail = data.don || {};
+  currentDonLines = getDonLines(currentDonDetail);
   donDetailEditable = false;
   renderDonDetailModal();
   openModal('don-detail-modal');
@@ -1601,6 +1670,7 @@ async function openCommandeDetail(id) {
   if (data.error) data = await api('GET', '/api/admin/commandes/' + id);
   if (data.error) { toast(data.error, 'error'); return; }
   currentCommandeDetail = data.commande || data.data || {};
+  currentCommandeLines = getCommandeLines(currentCommandeDetail);
   commandeDetailEditable = false;
   renderCommandeDetailModal();
   openModal('commande-detail-modal');
@@ -1643,26 +1713,26 @@ function toDateTimeLocal(value) {
 
 function renderCommandeDetailModal() {
   const c = currentCommandeDetail || {};
-  const lignes = Array.isArray(c.lignes)
-    ? c.lignes
-    : (Array.isArray(c.lines) ? c.lines : parseMaybeJsonArray(c.lignes || c.lines || c.items));
+  const lignes = currentCommandeLines.length ? currentCommandeLines : getCommandeLines(c);
+  currentCommandeLines = lignes;
   const editable = !!commandeDetailEditable;
   const lignesHtml = lignes.length
     ? lignes.map((l, i) => {
       const link = l.link || l.link_url || l.url || l.product_link || '';
       if (!editable) {
         const ship = l.shipping_cost != null ? `${Number(l.shipping_cost).toFixed(2)} €` : '—';
-        return `<tr><td>${escHtml((l.product_name_ref || l.product_name || '—'))}</td><td>${l.quantity || 0}</td><td>${l.unit_price != null ? l.unit_price : '—'}</td><td>${ship}</td><td>${link ? `<a href="${escHtml(link)}" target="_blank" rel="noopener">Ouvrir</a>` : '—'}</td></tr>`;
+        return `<tr><td>${escHtml((l.product_name_ref || l.product_name || '—'))}</td><td>${l.quantity || 0}</td><td>${l.unit_price != null ? l.unit_price : '—'}</td><td>${ship}</td><td>${fmtDate(l.date)}</td><td>${link ? `<a href="${escHtml(link)}" target="_blank" rel="noopener">Ouvrir</a>` : '—'}</td></tr>`;
       }
       return `<tr>
         <td><input class="form-input cmd-line-product" data-idx="${i}" value="${escHtml(l.product_name_ref || l.product_name || '')}"></td>
         <td><input class="form-input cmd-line-qty" data-idx="${i}" type="number" min="0" step="1" value="${l.quantity != null ? l.quantity : 0}"></td>
         <td><input class="form-input cmd-line-price" data-idx="${i}" type="number" min="0" step="0.01" value="${l.unit_price != null ? l.unit_price : ''}"></td>
         <td><input class="form-input cmd-line-ship" data-idx="${i}" type="number" min="0" step="0.01" value="${l.shipping_cost != null ? l.shipping_cost : ''}"></td>
+        <td><input class="form-input cmd-line-date" data-idx="${i}" type="datetime-local" value="${toDateTimeLocal(l.date)}"></td>
         <td><input class="form-input cmd-line-link" data-idx="${i}" value="${escHtml(link)}"></td>
       </tr>`;
     }).join('')
-    : '<tr class="empty-row"><td colspan="5">Aucune ligne</td></tr>';
+    : '<tr class="empty-row"><td colspan="6">Aucune ligne</td></tr>';
   document.getElementById('commande-detail-id').textContent = c.id || '—';
   document.getElementById('commande-detail-name').textContent = c.name || '—';
   document.getElementById('commande-detail-date').textContent = fmtDate(c.date) || '—';
@@ -1678,15 +1748,17 @@ function renderCommandeDetailModal() {
 
 async function saveCommandeDetail() {
   if (!currentCommandeDetail || !currentCommandeDetail.id) return;
+  const sourceLines = currentCommandeLines.length ? currentCommandeLines : getCommandeLines(currentCommandeDetail);
   const body = {
     name: (document.getElementById('commande-edit-name').value || '').trim(),
     date: document.getElementById('commande-edit-date').value || null,
-    lignes: (currentCommandeDetail.lignes || []).map((line, i) => ({
+    lignes: sourceLines.map((line, i) => ({
       ...line,
       product_name_ref: (document.querySelector(`.cmd-line-product[data-idx="${i}"]`)?.value || '').trim(),
       quantity: Number(document.querySelector(`.cmd-line-qty[data-idx="${i}"]`)?.value || 0),
       unit_price: Number(document.querySelector(`.cmd-line-price[data-idx="${i}"]`)?.value || 0),
       shipping_cost: Number(document.querySelector(`.cmd-line-ship[data-idx="${i}"]`)?.value || 0),
+      date: (document.querySelector(`.cmd-line-date[data-idx="${i}"]`)?.value || '').trim() || null,
       link: (document.querySelector(`.cmd-line-link[data-idx="${i}"]`)?.value || '').trim() || null
     }))
   };
@@ -1715,22 +1787,21 @@ async function deleteCommandeFromModal() {
 
 function renderDonDetailModal() {
   const d = currentDonDetail || {};
-  const lines = Array.isArray(d.lines)
-    ? d.lines
-    : (Array.isArray(d.lignes) ? d.lignes : (Array.isArray(d.items) ? d.items : parseMaybeJsonArray(d.lines || d.lignes || d.items)));
+  const lines = currentDonLines.length ? currentDonLines : getDonLines(d);
+  currentDonLines = lines;
   const editable = !!donDetailEditable;
   const linesHtml = lines.length
     ? lines.map((l, i) => {
-      const fullName = [l.nom || l.last_name || l.name || '', l.prenom || l.first_name || l.firstname || ''].filter(Boolean).join(' ').trim();
+      const fullName = [l.nom || '', l.prenom || ''].filter(Boolean).join(' ').trim();
       if (!editable) {
-        return `<tr><td>${escHtml(l.materiel || l.material || l.product_name || '—')}</td><td>${escHtml(l.modele || l.model || '—')}</td><td>${escHtml(l.type || l.category || '—')}</td><td>${escHtml(l.serial_number || l.serial || l.sn || '—')}</td><td>${fmtDate(l.date || l.created_at)}</td><td>${escHtml(fullName || '—')}</td></tr>`;
+        return `<tr><td>${escHtml(l.materiel || '—')}</td><td>${escHtml(l.modele || '—')}</td><td>${escHtml(l.type || '—')}</td><td>${escHtml(l.serial_number || '—')}</td><td>${fmtDate(l.date)}</td><td>${escHtml(fullName || '—')}</td></tr>`;
       }
       return `<tr>
-        <td><input class="form-input don-line-materiel" data-idx="${i}" value="${escHtml(l.materiel || l.material || l.product_name || '')}"></td>
-        <td><input class="form-input don-line-modele" data-idx="${i}" value="${escHtml(l.modele || l.model || '')}"></td>
-        <td><input class="form-input don-line-type" data-idx="${i}" value="${escHtml(l.type || l.category || '')}"></td>
-        <td><input class="form-input don-line-serial" data-idx="${i}" value="${escHtml(l.serial_number || l.serial || l.sn || '')}"></td>
-        <td><input class="form-input don-line-date" data-idx="${i}" type="datetime-local" value="${toDateTimeLocal(l.date || l.created_at)}"></td>
+        <td><input class="form-input don-line-materiel" data-idx="${i}" value="${escHtml(l.materiel || '')}"></td>
+        <td><input class="form-input don-line-modele" data-idx="${i}" value="${escHtml(l.modele || '')}"></td>
+        <td><input class="form-input don-line-type" data-idx="${i}" value="${escHtml(l.type || '')}"></td>
+        <td><input class="form-input don-line-serial" data-idx="${i}" value="${escHtml(l.serial_number || '')}"></td>
+        <td><input class="form-input don-line-date" data-idx="${i}" type="datetime-local" value="${toDateTimeLocal(l.date)}"></td>
         <td><input class="form-input don-line-fullname" data-idx="${i}" value="${escHtml(fullName)}"></td>
       </tr>`;
     }).join('')
@@ -1749,10 +1820,11 @@ function renderDonDetailModal() {
 
 async function saveDonDetail() {
   if (!currentDonDetail || !currentDonDetail.id) return;
+  const sourceLines = currentDonLines.length ? currentDonLines : getDonLines(currentDonDetail);
   const body = {
     lot_name: (document.getElementById('don-edit-lot-name').value || '').trim(),
     date: document.getElementById('don-edit-date').value || null,
-    lines: (currentDonDetail.lines || []).map((line, i) => {
+    lines: sourceLines.map((line, i) => {
       const fullname = (document.querySelector(`.don-line-fullname[data-idx="${i}"]`)?.value || '').trim();
       const parts = fullname.split(/\s+/).filter(Boolean);
       return {
