@@ -251,7 +251,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
         // @ts-ignore - agent is supported in node runtime
         agent,
       } as any);
-      const payload = await resp.json().catch(() => ({}));
+      const payload: any = await resp.json().catch(() => ({}));
       if (!resp.ok || payload?.errors) {
         return { ok: false, error: `PVE ${resp.status}: ${payload?.error || payload?.message || 'erreur API'}` };
       }
