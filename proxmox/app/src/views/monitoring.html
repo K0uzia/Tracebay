@@ -82,10 +82,11 @@
         <div class="card-header">
           <h2><i class="fa-solid fa-server"></i> Serveur (proxmox)</h2>
           <div class="server-control-actions">
+            <span id="server-control-state" class="badge badge-info">État inconnu</span>
             <button class="btn btn-secondary btn-sm" onclick="loadServerStatus()" title="Rafraîchir"><i class="fa-solid fa-rotate-right"></i></button>
-            <button class="btn btn-success btn-sm" onclick="serverAction('start')" title="Démarrer"><i class="fa-solid fa-play"></i> Démarrer</button>
-            <button class="btn btn-danger btn-sm" onclick="serverAction('stop')" title="Arrêter"><i class="fa-solid fa-stop"></i> Arrêter</button>
-            <button class="btn btn-warning btn-sm" onclick="serverAction('restart')" title="Redémarrer"><i class="fa-solid fa-arrows-rotate"></i> Redémarrer</button>
+            <button id="server-action-start" class="btn btn-success btn-sm" onclick="serverAction('start')" title="Démarrer"><i class="fa-solid fa-play"></i> Démarrer</button>
+            <button id="server-action-stop" class="btn btn-danger btn-sm" onclick="serverAction('stop')" title="Arrêter"><i class="fa-solid fa-stop"></i> Arrêter</button>
+            <button id="server-action-restart" class="btn btn-warning btn-sm" onclick="serverAction('restart')" title="Redémarrer"><i class="fa-solid fa-arrows-rotate"></i> Redémarrer</button>
           </div>
         </div>
         <div class="card-body">
@@ -1070,6 +1071,37 @@ document.querySelectorAll('.log-tab').forEach(el => {
 });
 
 // ── Serveur (proxmox status / start / stop / restart) ───────────────────────
+function updateServerControlState(controlState, fallbackMessage) {
+  const el = document.getElementById('server-control-state');
+  const btnStart = document.getElementById('server-action-start');
+  const btnStop = document.getElementById('server-action-stop');
+  const btnRestart = document.getElementById('server-action-restart');
+  if (!el) return;
+  const state = (controlState?.state || '').toLowerCase();
+  const message = controlState?.message || fallbackMessage || 'État inconnu';
+  el.className = 'badge server-control-badge';
+  if (state === 'starting') {
+    el.classList.add('badge-warning');
+    el.textContent = 'Démarrage en cours';
+  } else if (state === 'stopping') {
+    el.classList.add('badge-danger');
+    el.textContent = 'Arrêt en cours';
+  } else if (state === 'restarting') {
+    el.classList.add('badge-warning');
+    el.textContent = 'Redémarrage en cours';
+  } else if (state === 'failed') {
+    el.classList.add('badge-danger');
+    el.textContent = message;
+  } else {
+    el.classList.add('badge-success');
+    el.textContent = message || 'Disponible';
+  }
+  const busy = state === 'starting' || state === 'stopping' || state === 'restarting';
+  if (btnStart) btnStart.disabled = busy;
+  if (btnStop) btnStop.disabled = busy;
+  if (btnRestart) btnRestart.disabled = busy;
+}
+
 async function loadServerStatus() {
   const grid = document.getElementById('server-status-grid');
   const urlEl = document.getElementById('server-status-url');
@@ -1078,6 +1110,7 @@ async function loadServerStatus() {
     if (data.error || !data.status) {
       grid.innerHTML = '<span class="text-muted">' + (data.error || 'Indisponible') + '</span>';
       if (urlEl) urlEl.textContent = '';
+      updateServerControlState(null, data.error || 'Serveur indisponible');
       return;
     }
     const s = data.status;
@@ -1088,9 +1121,14 @@ async function loadServerStatus() {
     };
     grid.innerHTML = label('Systemd', s.systemd) + label('Container API', s.containerApi) + label('Container DB', s.containerDb) + label('API HTTP', s.apiHttp) + label('WebSocket', s.websocket);
     if (urlEl) urlEl.textContent = 'Accès : ' + (s.accessUrl || '');
+    const fallbackState = (String(s.systemd || '').toLowerCase() === 'active')
+      ? 'Serveur actif'
+      : (String(s.systemd || '').toLowerCase() === 'inactive' ? 'Serveur arrêté' : 'État serveur inconnu');
+    updateServerControlState(data.controlState, fallbackState);
   } catch (e) {
     grid.innerHTML = '<span class="text-muted">Erreur de chargement</span>';
     if (urlEl) urlEl.textContent = '';
+    updateServerControlState(null, 'Serveur injoignable');
   }
 }
 
@@ -1098,13 +1136,19 @@ async function serverAction(action) {
   const msg = { start: 'Démarrer le serveur ?', stop: 'Arrêter le serveur ? La connexion sera coupée.', restart: 'Redémarrer le serveur ? La connexion sera coupée quelques secondes.' };
   if (!confirm(msg[action])) return;
   try {
+    const localState = action === 'start' ? { state: 'starting', message: 'Démarrage demandé' }
+      : action === 'stop' ? { state: 'stopping', message: 'Arrêt demandé' }
+      : { state: 'restarting', message: 'Redémarrage demandé' };
+    updateServerControlState(localState);
     const data = await api('POST', '/api/admin/server/' + action);
     if (data.error) { toast(data.error, 'error'); return; }
     toast(data.message || 'Commande envoyée.');
     if (action === 'start') setTimeout(loadServerStatus, 3000);
     if (action === 'restart') setTimeout(() => { loadServerStatus(); loadDashboard(); }, 6000);
+    if (action === 'stop') setTimeout(loadServerStatus, 3000);
   } catch (e) {
     toast('Erreur réseau ou serveur arrêté.', 'error');
+    updateServerControlState({ state: 'failed', message: 'Commande non exécutée' });
   }
 }
 

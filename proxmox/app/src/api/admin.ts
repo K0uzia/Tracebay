@@ -158,6 +158,56 @@ function resolveClientConfigPath(filename: string): string {
 }
 
 export async function registerAdminRoutes(fastify: FastifyInstance): Promise<void> {
+  type ServerActionName = 'start' | 'stop' | 'restart';
+  type ServerControlState = 'idle' | 'starting' | 'stopping' | 'restarting' | 'failed';
+  let serverControlState: { state: ServerControlState; message: string; updatedAt: string } = {
+    state: 'idle',
+    message: 'Aucune action en cours',
+    updatedAt: new Date().toISOString(),
+  };
+
+  function setServerControlState(state: ServerControlState, message: string): void {
+    serverControlState = {
+      state,
+      message,
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  function runControlCommand(command: string, args: string[], timeoutMs = 15000): { ok: boolean; error?: string } {
+    try {
+      const result = child_process.spawnSync(command, args, {
+        stdio: 'ignore',
+        timeout: timeoutMs,
+        env: process.env,
+      });
+      if (result.error) return { ok: false, error: result.error.message };
+      if (typeof result.status === 'number' && result.status !== 0) {
+        return { ok: false, error: `${command} ${args.join(' ')} exited with status ${result.status}` };
+      }
+      if (result.signal) return { ok: false, error: `${command} ${args.join(' ')} killed by signal ${result.signal}` };
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message || 'unknown error' };
+    }
+  }
+
+  function systemctlArgsFor(action: ServerActionName): string[] {
+    if (action === 'start') return ['start', SERVICE_NAME];
+    if (action === 'stop') return ['stop', SERVICE_NAME];
+    return ['restart', SERVICE_NAME];
+  }
+
+  function executeServerAction(action: ServerActionName): { ok: boolean; error?: string } {
+    const primary = runControlCommand(PROXMOX_CLI, [action], 20000);
+    if (primary.ok) return { ok: true };
+    const fallback = runControlCommand('systemctl', systemctlArgsFor(action), 20000);
+    if (fallback.ok) return { ok: true };
+    return {
+      ok: false,
+      error: `proxmox: ${primary.error || 'failed'} | systemctl: ${fallback.error || 'failed'}`,
+    };
+  }
 
   // ─────────────────────────────────────────────
   // AUTH ADMIN
@@ -1620,7 +1670,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
         const proto = (request.headers['x-forwarded-proto'] as string) || 'http';
         status.accessUrl = `${proto}://${hostHeader}`;
       }
-      return { success: true, status };
+      return { success: true, status, controlState: serverControlState };
     } catch (err: any) {
       fastify.log.error({ err }, 'admin GET /server/status');
       reply.statusCode = 500;
@@ -1631,21 +1681,16 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   fastify.post('/api/admin/server/start', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     try {
+      setServerControlState('starting', 'Démarrage demandé');
       reply.send({ success: true, message: 'Démarrage en cours.' });
       setImmediate(() => {
-        try {
-          child_process.spawn(PROXMOX_CLI, ['start'], {
-            stdio: 'ignore',
-            detached: true,
-            env: process.env,
-          }).unref();
-        } catch {
-          try {
-            child_process.spawn('systemctl', ['start', SERVICE_NAME], { stdio: 'ignore', detached: true }).unref();
-          } catch {
-            // ignore
-          }
+        const result = executeServerAction('start');
+        if (!result.ok) {
+          fastify.log.error({ error: result.error }, 'admin POST /server/start command failed');
+          setServerControlState('failed', `Échec démarrage: ${result.error || 'commande non exécutée'}`);
+          return;
         }
+        setServerControlState('idle', 'Serveur démarré');
       });
     } catch (err: any) {
       fastify.log.error({ err }, 'admin POST /server/start');
@@ -1657,21 +1702,17 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   fastify.post('/api/admin/server/stop', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     try {
+      setServerControlState('stopping', 'Arrêt demandé');
       // Répondre avant d'arrêter (sinon la réponse ne part pas)
       reply.send({ success: true, message: 'Arrêt en cours.' });
       setImmediate(() => {
-        try {
-          child_process.spawnSync('systemctl', ['stop', SERVICE_NAME], {
-            stdio: 'ignore',
-            timeout: 10000,
-          });
-        } catch {
-          try {
-            child_process.spawnSync(PROXMOX_CLI, ['stop'], { stdio: 'ignore', timeout: 10000 });
-          } catch {
-            // ignore
-          }
+        const result = executeServerAction('stop');
+        if (!result.ok) {
+          fastify.log.error({ error: result.error }, 'admin POST /server/stop command failed');
+          setServerControlState('failed', `Échec arrêt: ${result.error || 'commande non exécutée'}`);
+          return;
         }
+        setServerControlState('idle', 'Serveur arrêté');
       });
     } catch (err: any) {
       fastify.log.error({ err }, 'admin POST /server/stop');
@@ -1683,21 +1724,17 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   fastify.post('/api/admin/server/restart', async (request: FastifyRequest, reply: FastifyReply) => {
     if (!checkAdminAuth(request, reply)) return;
     try {
+      setServerControlState('restarting', 'Redémarrage demandé');
       reply.send({ success: true, message: 'Redémarrage en cours…' });
-      setTimeout(() => {
-        try {
-          child_process.spawnSync('systemctl', ['restart', SERVICE_NAME], {
-            stdio: 'ignore',
-            timeout: 15000,
-          });
-        } catch {
-          try {
-            child_process.spawnSync(PROXMOX_CLI, ['restart'], { stdio: 'ignore', timeout: 15000 });
-          } catch {
-            // ignore
-          }
+      setImmediate(() => {
+        const result = executeServerAction('restart');
+        if (!result.ok) {
+          fastify.log.error({ error: result.error }, 'admin POST /server/restart command failed');
+          setServerControlState('failed', `Échec redémarrage: ${result.error || 'commande non exécutée'}`);
+          return;
         }
-      }, 1500);
+        setServerControlState('idle', 'Serveur redémarré');
+      });
     } catch (err: any) {
       fastify.log.error({ err }, 'admin POST /server/restart');
       reply.statusCode = 500;
@@ -1785,6 +1822,89 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
+  fastify.put('/api/admin/commandes/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    const name = body?.name != null ? String(body.name).trim() : undefined;
+    const date = body?.date != null ? String(body.date).trim() : undefined;
+    const pdfPath = body?.pdf_path != null ? String(body.pdf_path).trim() : undefined;
+    const lignes = Array.isArray(body?.lignes) ? body.lignes : (Array.isArray(body?.lines) ? body.lines : undefined);
+
+    try {
+      const existing = await query('SELECT id FROM commandes WHERE id = $1', [id]);
+      if (existing.rowCount === 0) {
+        reply.statusCode = 404;
+        return { error: 'Commande introuvable' };
+      }
+
+      const updates: string[] = [];
+      const values: any[] = [];
+      let idx = 1;
+      if (name !== undefined) { updates.push(`name = $${idx++}`); values.push(name || null); }
+      if (date !== undefined) { updates.push(`date = $${idx++}`); values.push(date || null); }
+      if (pdfPath !== undefined) { updates.push(`pdf_path = $${idx++}`); values.push(pdfPath || null); }
+      if (updates.length > 0) {
+        values.push(id);
+        await query(`UPDATE commandes SET ${updates.join(', ')} WHERE id = $${values.length}`, values);
+      }
+
+      if (lignes !== undefined) {
+        await query('DELETE FROM commande_lignes WHERE commande_id = $1', [id]);
+        for (const line of lignes) {
+          const quantity = Number(line?.quantity || 0) || 0;
+          const unitPriceRaw = line?.unit_price != null ? line.unit_price : line?.price;
+          const shippingRaw = line?.shipping_cost != null ? line.shipping_cost : line?.shipping;
+          const unitPrice = unitPriceRaw != null && String(unitPriceRaw).trim() !== '' ? Number(unitPriceRaw) : null;
+          const shippingCost = shippingRaw != null && String(shippingRaw).trim() !== '' ? Number(shippingRaw) : null;
+          const link = line?.link != null ? String(line.link).trim() || null : null;
+          const productName = String(line?.product_name_ref || line?.product_name || line?.produit || '').trim() || null;
+          const productIdRaw = line?.commande_product_id != null ? String(line.commande_product_id).trim() : (line?.productId != null ? String(line.productId).trim() : '');
+          const productId = productIdRaw !== '' && /^\d+$/.test(productIdRaw) ? Number(productIdRaw) : null;
+          await query(
+            `INSERT INTO commande_lignes (commande_id, commande_product_id, product_name, quantity, unit_price, shipping_cost, link)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [id, productId, productName, quantity, unitPrice, shippingCost, link]
+          );
+        }
+      }
+
+      const cmdResult = await query(
+        'SELECT id, name, date, pdf_path, created_at FROM commandes WHERE id = $1',
+        [id]
+      );
+      const lignesResult = await query(
+        `SELECT l.id, l.commande_id, l.commande_product_id, l.product_name, l.quantity, l.unit_price, l.shipping_cost, l.link, p.name AS product_name_ref
+         FROM commande_lignes l LEFT JOIN commande_products p ON l.commande_product_id = p.id WHERE l.commande_id = $1 ORDER BY l.id`,
+        [id]
+      );
+      return { success: true, commande: { ...(cmdResult.rows[0] as any), lignes: lignesResult.rows } };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'PUT /api/admin/commandes/:id');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.delete('/api/admin/commandes/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const deleted = await transaction(async (client: PoolClient) => {
+        await client.query('DELETE FROM commande_lignes WHERE commande_id = $1', [id]);
+        const res = await client.query('DELETE FROM commandes WHERE id = $1', [id]);
+        return res.rowCount || 0;
+      });
+      if (deleted === 0) {
+        reply.statusCode = 404;
+        return { error: 'Commande introuvable' };
+      }
+      return { success: true };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'DELETE /api/admin/commandes/:id');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
   // ─────────────────────────────────────────────
   // DONS — admin
   // ─────────────────────────────────────────────
@@ -1824,6 +1944,63 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       return { success: true, don: result.rows[0] };
     } catch (err: any) {
       fastify.log.error({ err }, 'GET /api/dons/:id');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.put('/api/admin/dons/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    const body = request.body as any;
+    const lotName = body?.lot_name != null ? String(body.lot_name).trim() : (body?.name != null ? String(body.name).trim() : undefined);
+    const date = body?.date != null ? String(body.date).trim() : undefined;
+    const pdfPath = body?.pdf_path != null ? String(body.pdf_path).trim() : undefined;
+    const lines = Array.isArray(body?.lines) ? body.lines : undefined;
+
+    try {
+      const existing = await query('SELECT id FROM dons WHERE id = $1', [id]);
+      if (existing.rowCount === 0) {
+        reply.statusCode = 404;
+        return { error: 'Don introuvable' };
+      }
+      const updates: string[] = [];
+      const values: any[] = [];
+      let idx = 1;
+      if (lotName !== undefined) { updates.push(`lot_name = $${idx++}`); values.push(lotName || null); }
+      if (date !== undefined) { updates.push(`date = $${idx++}`); values.push(date || null); }
+      if (pdfPath !== undefined) { updates.push(`pdf_path = $${idx++}`); values.push(pdfPath || null); }
+      if (lines !== undefined) { updates.push(`lines = $${idx++}::jsonb`); values.push(JSON.stringify(lines)); }
+      if (updates.length === 0) {
+        reply.statusCode = 400;
+        return { error: 'No fields to update' };
+      }
+      values.push(id);
+      const result = await query(
+        `UPDATE dons
+         SET ${updates.join(', ')}
+         WHERE id = $${values.length}
+         RETURNING id, lot_name, date, pdf_path, lines, created_at`,
+        values
+      );
+      return { success: true, don: result.rows[0] };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'PUT /api/admin/dons/:id');
+      reply.statusCode = 500;
+      return { error: 'Database error' };
+    }
+  });
+
+  fastify.delete('/api/admin/dons/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const result = await query('DELETE FROM dons WHERE id = $1', [id]);
+      if (result.rowCount === 0) {
+        reply.statusCode = 404;
+        return { error: 'Don introuvable' };
+      }
+      return { success: true };
+    } catch (err: any) {
+      fastify.log.error({ err }, 'DELETE /api/admin/dons/:id');
       reply.statusCode = 500;
       return { error: 'Database error' };
     }
