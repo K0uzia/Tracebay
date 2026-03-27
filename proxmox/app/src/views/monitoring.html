@@ -789,7 +789,7 @@
       </div>
       <div id="commande-detail-edit-fields" style="display:none;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
         <div class="form-group"><label>Nom</label><input id="commande-edit-name" type="text"></div>
-        <div class="form-group"><label>Date</label><input id="commande-edit-date" type="datetime-local"></div>
+        <div class="form-group"><label>Date</label><input id="commande-edit-date" type="date"></div>
       </div>
       <div class="form-group" style="margin-bottom:8px"><label>PDF</label><div id="commande-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">—</div></div>
       <div class="table-wrap" style="margin-top:12px">
@@ -821,7 +821,7 @@
       </div>
       <div id="don-detail-edit-fields" style="display:none;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
         <div class="form-group"><label>Nom lot</label><input id="don-edit-lot-name" type="text"></div>
-        <div class="form-group"><label>Date</label><input id="don-edit-date" type="datetime-local"></div>
+        <div class="form-group"><label>Date</label><input id="don-edit-date" type="date"></div>
       </div>
       <div class="form-group" style="margin-bottom:8px"><label>PDF</label><div id="don-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">—</div></div>
       <div class="table-wrap" style="margin-top:12px">
@@ -1646,6 +1646,9 @@ async function loadCommandes() {
   try {
     const data = await api('GET', '/api/admin/commandes?limit=200');
     const list = (data.data || []).slice();
+    // #region agent log
+    fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run5',hypothesisId:'H9',location:'monitoring.html:loadCommandes',message:'Commandes list pdf paths',data:{count:list.length,first:list[0]?{id:list[0].id,pdf_path:list[0].pdf_path||null}:null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Aucune commande</td></tr>'; return; }
     const base = window.location.origin;
     tbody.innerHTML = list.map(c => {
@@ -1675,6 +1678,9 @@ async function loadDons() {
   try {
     const data = await api('GET', '/api/admin/dons?limit=200');
     const list = (data.data || []).slice();
+    // #region agent log
+    fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run5',hypothesisId:'H9',location:'monitoring.html:loadDons',message:'Dons list pdf paths',data:{count:list.length,first:list[0]?{id:list[0].id,pdf_path:list[0].pdf_path||null}:null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     if (!list.length) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Aucun don</td></tr>';
       return;
@@ -1788,7 +1794,7 @@ function renderCommandeDetailModal() {
         <td><input class="form-input cmd-line-qty" data-idx="${i}" type="number" min="0" step="1" value="${l.quantity != null ? l.quantity : 0}"></td>
         <td><input class="form-input cmd-line-price" data-idx="${i}" type="number" min="0" step="0.01" value="${l.unit_price != null ? l.unit_price : ''}"></td>
         <td><input class="form-input cmd-line-ship" data-idx="${i}" type="number" min="0" step="0.01" value="${l.shipping_cost != null ? l.shipping_cost : ''}"></td>
-        <td><input class="form-input cmd-line-date" data-idx="${i}" type="datetime-local" value="${toDateTimeLocal(l.date || c.date || c.created_at)}"></td>
+        <td><input class="form-input cmd-line-date" data-idx="${i}" type="date" value="${toDateInputLocal(l.date || c.date || c.created_at)}"></td>
         <td><input class="form-input cmd-line-link" data-idx="${i}" value="${escHtml(link)}"></td>
       </tr>`;
     }).join('')
@@ -1803,7 +1809,7 @@ function renderCommandeDetailModal() {
   document.getElementById('commande-detail-regen-btn').style.display = editable ? '' : 'none';
   document.getElementById('commande-detail-delete-btn').style.display = editable ? '' : 'none';
   document.getElementById('commande-edit-name').value = c.name || '';
-  document.getElementById('commande-edit-date').value = toDateTimeLocal(c.date);
+  document.getElementById('commande-edit-date').value = toDateInputLocal(c.date);
 }
 
 async function saveCommandeDetail() {
@@ -1873,7 +1879,7 @@ function renderDonDetailModal() {
         <td><input class="form-input don-line-modele" data-idx="${i}" value="${escHtml(l.modele || '')}"></td>
         <td><input class="form-input don-line-type" data-idx="${i}" value="${escHtml(l.type || '')}"></td>
         <td><input class="form-input don-line-serial" data-idx="${i}" value="${escHtml(l.serial_number || '')}"></td>
-        <td><input class="form-input don-line-date" data-idx="${i}" type="datetime-local" value="${toDateTimeLocal(l.date || d.date || d.created_at)}"></td>
+        <td><input class="form-input don-line-date" data-idx="${i}" type="date" value="${toDateInputLocal(l.date || d.date || d.created_at)}"></td>
         <td><input class="form-input don-line-fullname" data-idx="${i}" value="${escHtml(fullName)}"></td>
       </tr>`;
     }).join('')
@@ -1887,7 +1893,7 @@ function renderDonDetailModal() {
   document.getElementById('don-detail-regen-btn').style.display = editable ? '' : 'none';
   document.getElementById('don-detail-delete-btn').style.display = editable ? '' : 'none';
   document.getElementById('don-edit-lot-name').value = d.lot_name || '';
-  document.getElementById('don-edit-date').value = toDateTimeLocal(d.date);
+  document.getElementById('don-edit-date').value = toDateInputLocal(d.date);
 }
 
 async function saveDonDetail() {

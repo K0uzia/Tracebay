@@ -33,6 +33,41 @@ const proxmoxConfig = {
   host: process.env.SERVER_HOST || '0.0.0.0',
   wsPort: parseInt(process.env.WS_PORT || '4000', 10)
 };
+const TEAM_BASE_PATH = process.env.TEAM_BASE_PATH || '/mnt/team/#TEAM';
+
+function normalizeStoredPdfPath(rawPath: string): string {
+  const trimmed = String(rawPath || '').trim();
+  if (!trimmed) return '';
+  if (/^file:\/\//i.test(trimmed)) {
+    try {
+      const url = new URL(trimmed);
+      return decodeURIComponent(url.pathname || '');
+    } catch {
+      return decodeURIComponent(trimmed.replace(/^file:\/\//i, ''));
+    }
+  }
+  const normalizedSlashes = trimmed.replace(/\\/g, '/');
+  return path.isAbsolute(normalizedSlashes) ? path.resolve(normalizedSlashes) : path.resolve(TEAM_BASE_PATH, normalizedSlashes);
+}
+
+function resolvePdfFilePath(rawPath: string): string | null {
+  const first = normalizeStoredPdfPath(rawPath);
+  if (!first) return null;
+  const candidates = new Set<string>([first]);
+  const teamBase = path.resolve(TEAM_BASE_PATH);
+  const teamParent = path.dirname(teamBase);
+  if (first.startsWith('/mnt/team/#TEAM/')) candidates.add(path.resolve(teamBase, first.slice('/mnt/team/#TEAM/'.length)));
+  if (first.startsWith('/mnt/team/')) candidates.add(path.resolve(teamParent, first.slice('/mnt/team/'.length)));
+  const basename = path.basename(first);
+  if (basename) {
+    candidates.add(path.resolve(teamBase, basename));
+    candidates.add(path.resolve(teamParent, basename));
+  }
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+  }
+  return null;
+}
 
 // Logger Pino : multistream = même process (pas de worker) → tous les logs vont à stdout ET au buffer monitoring
 function createLoggerStreams() {
@@ -1511,18 +1546,18 @@ function broadcastUserCount() {
           reply.statusCode = 404;
           return { error: 'PDF path invalid' };
         }
-        filePath = path.resolve(filePath);
+        const resolvedFile = resolvePdfFilePath(filePath);
         // #region agent log
-        if (typeof fetch === 'function') fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run4',hypothesisId:'H8',location:'main.ts:/api/commandes/:id/pdf',message:'Serve commande PDF path',data:{id,filePath,exists:fs.existsSync(filePath)},timestamp:Date.now()})}).catch(()=>{});
+        if (typeof fetch === 'function') fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run5',hypothesisId:'H10',location:'main.ts:/api/commandes/:id/pdf',message:'Commande PDF resolved path',data:{id,raw:filePath,resolvedFile},timestamp:Date.now()})}).catch(()=>{});
         // #endregion
-        if (!fs.existsSync(filePath)) {
+        if (!resolvedFile || !fs.existsSync(resolvedFile)) {
           reply.statusCode = 404;
           return { error: 'PDF file not found' };
         }
         reply.header('Content-Type', 'application/pdf');
         reply.header('Content-Disposition', 'inline; filename="commande-' + id + '.pdf"');
         reply.header('Cache-Control', 'no-store, no-cache, must-revalidate');
-        return reply.send(fs.createReadStream(filePath));
+        return reply.send(fs.createReadStream(resolvedFile));
       } catch (err: any) {
         fastify.log.error({ err }, 'GET /api/commandes/:id/pdf error');
         reply.statusCode = 500;
@@ -1548,18 +1583,18 @@ function broadcastUserCount() {
           reply.statusCode = 404;
           return { error: 'PDF path invalid' };
         }
-        filePath = path.resolve(filePath);
+        const resolvedFile = resolvePdfFilePath(filePath);
         // #region agent log
-        if (typeof fetch === 'function') fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run4',hypothesisId:'H8',location:'main.ts:/api/dons/:id/pdf',message:'Serve don PDF path',data:{id,filePath,exists:fs.existsSync(filePath)},timestamp:Date.now()})}).catch(()=>{});
+        if (typeof fetch === 'function') fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run5',hypothesisId:'H10',location:'main.ts:/api/dons/:id/pdf',message:'Don PDF resolved path',data:{id,raw:filePath,resolvedFile},timestamp:Date.now()})}).catch(()=>{});
         // #endregion
-        if (!fs.existsSync(filePath)) {
+        if (!resolvedFile || !fs.existsSync(resolvedFile)) {
           reply.statusCode = 404;
           return { error: 'PDF file not found' };
         }
         reply.header('Content-Type', 'application/pdf');
         reply.header('Content-Disposition', 'inline; filename="don-' + id + '.pdf"');
         reply.header('Cache-Control', 'no-store, no-cache, must-revalidate');
-        return reply.send(fs.createReadStream(filePath));
+        return reply.send(fs.createReadStream(resolvedFile));
       } catch (err: any) {
         fastify.log.error({ err }, 'GET /api/dons/:id/pdf error');
         reply.statusCode = 500;
