@@ -78,7 +78,8 @@
       "modeles": "/api/marques/:id/modeles"
     },
     "agenda": {
-      "events": "/api/agenda/events"
+      "events": "/api/agenda/events",
+      "holidays": "/api/agenda/holidays"
     },
     "disques": {
       "sessions": "/api/disques/sessions",

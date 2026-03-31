@@ -258,18 +258,23 @@ export default class CalendarRenderer {
             dateTimeLabel = `${startDateLabel} à ${endDateLabel}`;
         }
 
+        const isLocked = ev?.locked === true || ev?.source === 'holiday' || (typeof ev?.id === 'string' && ev.id.startsWith('holiday:'));
+
         this.detailsPanel.innerHTML = `
         <div class="detail-content">
             <h3>${ev.title}</h3>
             <p><strong>Période: </strong>${dateTimeLabel}</p>
             ${ev.description ? `<p><strong>Lieux:</strong> ${ev.description}</p>` : ''}
+            ${isLocked ? `<p class="text-mute small"><strong>Info :</strong> jour férié / fête (verrouillé)</p>` : ''}
         </div>
-            <button type="button" class="btn btn-primary" id="detail-edit-btn">Éditer</button>
+            ${isLocked ? '' : `<button type="button" class="btn btn-primary" id="detail-edit-btn">Éditer</button>`}
         `;
 
-        document.getElementById('detail-edit-btn')?.addEventListener('click', () => {
-            onEditClick?.(ev);
-        });
+        if (!isLocked) {
+            document.getElementById('detail-edit-btn')?.addEventListener('click', () => {
+                onEditClick?.(ev);
+            });
+        }
     }
 
     filterEventsByDate(events, dateStr) {

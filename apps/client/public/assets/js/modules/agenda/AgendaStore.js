@@ -15,6 +15,18 @@ class AgendaStore {
         this.initializeStore();
     }
 
+    _isLockedEventId(id) {
+        return typeof id === 'string' && id.startsWith('holiday:');
+    }
+
+    _isLockedEvent(eventLike) {
+        if (!eventLike || typeof eventLike !== 'object') return false;
+        if (eventLike.locked === true) return true;
+        if (eventLike.source === 'holiday') return true;
+        if (this._isLockedEventId(eventLike.id)) return true;
+        return false;
+    }
+
     _getAuthHeaders() {
         const token = localStorage.getItem('workspace_jwt');
         const headers = { 'Content-Type': 'application/json' };
@@ -126,6 +138,58 @@ class AgendaStore {
     }
 
     /**
+     * Récupérer les jours fériés (événements verrouillés) dans une plage
+     * Backend attendu: GET /api/agenda/holidays?year=YYYY&zone=metropole
+     */
+    async getHolidaysByRange(startDate, endDate, options = {}) {
+        const zone = options.zone || 'metropole';
+        const start = parseLocalDate(startDate);
+        const end = parseLocalDate(endDate);
+        if (!start || !end) return [];
+
+        const startYear = start.getFullYear();
+        const endYear = end.getFullYear();
+        const years = [];
+        for (let y = startYear; y <= endYear; y++) years.push(y);
+
+        if (!this.useApi) {
+            // En mode localStorage (démo), on n’injecte rien automatiquement
+            return [];
+        }
+
+        try {
+            await api.init();
+            const baseUrl = api.getUrl('agenda.holidays');
+
+            const results = await Promise.all(years.map(async (year) => {
+                const url = `${baseUrl}?year=${encodeURIComponent(year)}&zone=${encodeURIComponent(zone)}&_t=${Date.now()}`;
+                const response = await fetch(url, { headers: this._getAuthHeaders(), cache: 'no-store' });
+                if (!response.ok) return [];
+                const data = await response.json().catch(() => ({}));
+                return (data?.success && Array.isArray(data.data)) ? data.data : [];
+            }));
+
+            const all = results.flat();
+            const filtered = all.filter((ev) => {
+                const d = (ev?.start || '').substring(0, 10);
+                return d && d >= startDate && d <= endDate;
+            });
+
+            // Normaliser/verrouiller côté client (défense en profondeur)
+            return filtered.map((ev) => ({
+                ...ev,
+                locked: true,
+                source: 'holiday',
+                all_day: true,
+                color: ev.color || '#e74c3c'
+            }));
+        } catch (e) {
+            console.warn('⚠️ Impossible de charger les jours fériés:', e);
+            return [];
+        }
+    }
+
+    /**
      * Ajouter un événement
      */
     async addEvent(event) {
@@ -160,6 +224,9 @@ class AgendaStore {
      * Mettre à jour un événement
      */
     async updateEvent(id, updates) {
+        if (this._isLockedEventId(id) || this._isLockedEvent(updates)) {
+            throw new Error('Cet événement est verrouillé et ne peut pas être modifié.');
+        }
         if (this.useApi) {
             try {
                 await api.init();
@@ -199,6 +266,9 @@ class AgendaStore {
      * Supprimer un événement
      */
     async deleteEvent(id) {
+        if (this._isLockedEventId(id)) {
+            throw new Error('Cet événement est verrouillé et ne peut pas être supprimé.');
+        }
         if (this.useApi) {
             try {
                 await api.init();

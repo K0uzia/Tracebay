@@ -117,14 +117,18 @@ export default class AgendaController {
 
         try {
             const { startDate, endDate } = getDateRange(this.currentDate, this.currentView);
-            const events = await AgendaStore.getEventsByRange(startDate, endDate);
+            const [events, holidays] = await Promise.all([
+                AgendaStore.getEventsByRange(startDate, endDate),
+                AgendaStore.getHolidaysByRange(startDate, endDate)
+            ]);
+            const mergedEvents = [...events, ...holidays];
 
             if (this.currentView === 'week') {
-                this.renderer.renderWeek(this.currentDate, events);
+                this.renderer.renderWeek(this.currentDate, mergedEvents);
             } else if (this.currentView === 'month') {
-                this.renderer.renderMonth(this.currentDate, events);
+                this.renderer.renderMonth(this.currentDate, mergedEvents);
             } else if (this.currentView === 'year') {
-                this.renderer.renderYear(this.currentDate, events);
+                this.renderer.renderYear(this.currentDate, mergedEvents);
             }
 
             this.renderer.hideLoading();
@@ -136,7 +140,8 @@ export default class AgendaController {
 
     handleEventClick(ev) {
         this.selectedEvent = ev;
-        this.renderer.displayEventDetails(ev, (event) => {
+        const isLocked = ev?.locked === true || ev?.source === 'holiday' || (typeof ev?.id === 'string' && ev.id.startsWith('holiday:'));
+        this.renderer.displayEventDetails(ev, isLocked ? null : (event) => {
             this.modalManager.openEditModal(event);
         });
     }

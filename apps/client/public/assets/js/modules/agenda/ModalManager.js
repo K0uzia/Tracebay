@@ -292,6 +292,51 @@ export default class ModalManager {
 
         syncDateInputs('edit_date', 'edit_end_date', { forceUpdate: true });
         this.updateColorPalette('edit');
+
+        const isLocked = ev?.locked === true || ev?.source === 'holiday' || (typeof ev?.id === 'string' && ev.id.startsWith('holiday:'));
+        const lockInputs = (locked) => {
+            const modal = document.getElementById('agenda-edit-modal');
+            if (!modal) return;
+
+            // Inputs en read-only/disabled
+            const inputIds = [
+                'edit_title', 'edit_all_day', 'edit_date', 'edit_end_date',
+                'edit_start_time', 'edit_end_time', 'edit_description', 'edit_color'
+            ];
+            inputIds.forEach((id) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                if (el.tagName === 'INPUT' && el.type === 'checkbox') {
+                    el.disabled = !!locked;
+                } else if ('disabled' in el) {
+                    el.disabled = !!locked;
+                }
+            });
+
+            // Boutons footer
+            const deleteBtn = document.getElementById('triggerDeleteBtn');
+            const submitBtn = modal.querySelector('button[type="submit"][form="editEventForm"]');
+            if (deleteBtn) deleteBtn.style.display = locked ? 'none' : '';
+            if (submitBtn) submitBtn.style.display = locked ? 'none' : '';
+
+            // Petit message dans la modale
+            let note = modal.querySelector('[data-agenda-locked-note]');
+            if (locked) {
+                if (!note) {
+                    note = document.createElement('p');
+                    note.setAttribute('data-agenda-locked-note', '1');
+                    note.className = 'text-mute small';
+                    note.style.margin = '0 0 10px 0';
+                    note.innerHTML = '<strong>Info :</strong> cet événement est verrouillé (jour férié / fête).';
+                    const body = modal.querySelector('.modal-body');
+                    body?.prepend(note);
+                }
+            } else {
+                note?.remove();
+            }
+        };
+
+        lockInputs(isLocked);
         this.showModal(document.getElementById('agenda-edit-modal'));
     }
 
@@ -344,6 +389,11 @@ export default class ModalManager {
         const endTime = isAllDay ? '23:59' : (document.getElementById('edit_end_time')?.value || '10:00');
         const color = document.getElementById('edit_color')?.value || '#3788d8';
         const description = document.getElementById('edit_description')?.value || '';
+
+        if (typeof id === 'string' && id.startsWith('holiday:')) {
+            this.showConfirmation('Info', 'Cet événement est verrouillé et ne peut pas être modifié.', 'error');
+            return;
+        }
 
         if (!title || !startDate || !endDate) {
             alert('Veuillez remplir les champs obligatoires');
