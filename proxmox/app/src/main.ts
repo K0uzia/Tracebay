@@ -855,6 +855,95 @@ function broadcastUserCount() {
       }
     });
 
+    // Agenda holidays (jours fériés / fêtes) - source Etalab
+    // Source JSON par zone : https://etalab.github.io/jours-feries-france-data/json/<zone>.json
+    fastify.get('/api/agenda/holidays', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { year: yearParam, zone: zoneParam } = request.query as { year?: string; zone?: string };
+      const yearNum = parseInt(String(yearParam || '').trim(), 10);
+      const zone = String(zoneParam || 'metropole').trim().toLowerCase();
+
+      if (!yearParam || !Number.isFinite(yearNum) || yearNum < 1900 || yearNum > 2200) {
+        reply.statusCode = 400;
+        return { success: false, error: 'Invalid year' };
+      }
+
+      const ALLOWED_ZONES = new Set([
+        'metropole',
+        'alsace-moselle',
+        'guadeloupe',
+        'guyane',
+        'la-reunion',
+        'martinique',
+        'mayotte',
+        'nouvelle-caledonie',
+        'polynesie-francaise',
+        'saint-barthelemy',
+        'saint-martin',
+        'saint-pierre-et-miquelon',
+        'wallis-et-futuna'
+      ]);
+
+      if (!ALLOWED_ZONES.has(zone)) {
+        reply.statusCode = 400;
+        return { success: false, error: 'Invalid zone' };
+      }
+
+      const cacheKey = `agenda:holidays:${zone}`;
+      const cached = globalCache.get(cacheKey) as Record<string, string> | null;
+
+      const loadZoneJson = async (): Promise<Record<string, string>> => {
+        if (cached) return cached;
+        const url = `https://etalab.github.io/jours-feries-france-data/json/${encodeURIComponent(zone)}.json`;
+        const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+        if (!res.ok) {
+          throw new Error(`Etalab holidays fetch failed: HTTP ${res.status}`);
+        }
+        const data = (await res.json()) as any;
+        if (!data || typeof data !== 'object') {
+          throw new Error('Etalab holidays payload invalid');
+        }
+        // Cache 24h (les jours fériés changent rarement)
+        globalCache.set(cacheKey, data as Record<string, string>, 60 * 60 * 24);
+        return data as Record<string, string>;
+      };
+
+      const slugify = (s: string) => {
+        return String(s || '')
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/(^-|-$)/g, '')
+          .slice(0, 80) || 'holiday';
+      };
+
+      try {
+        const zoneJson = await loadZoneJson();
+        const prefix = `${yearNum}-`;
+        const events = Object.entries(zoneJson)
+          .filter(([date]) => typeof date === 'string' && date.startsWith(prefix))
+          .map(([date, title]) => {
+            const safeTitle = String(title || '').trim() || 'Jour férié';
+            return {
+              id: `holiday:${date}:${slugify(safeTitle)}`,
+              title: safeTitle,
+              start: `${date}T00:00:00`,
+              end: `${date}T23:59:00`,
+              all_day: true,
+              color: '#e74c3c',
+              locked: true,
+              source: 'holiday'
+            };
+          })
+          .sort((a, b) => a.start.localeCompare(b.start));
+
+        return { success: true, data: events };
+      } catch (err: any) {
+        fastify.log.error({ err, year: yearNum, zone }, 'GET /api/agenda/holidays error');
+        reply.statusCode = 502;
+        return { success: false, error: 'Holidays provider error', message: err?.message };
+      }
+    });
+
     // Agenda routes (stockage en BDD, même table events que /api/events)
     fastify.get('/api/agenda/events', async (request: FastifyRequest, reply: FastifyReply) => {
       const { start: startParam, end: endParam } = request.query as { start?: string; end?: string };
@@ -974,6 +1063,10 @@ function broadcastUserCount() {
         reply.statusCode = 400;
         return { success: false, error: 'Invalid event id' };
       }
+      if (String(id).startsWith('holiday:') || body.locked === true || body.source === 'holiday') {
+        reply.statusCode = 403;
+        return { success: false, error: 'Locked event', message: 'Cet événement est verrouillé et ne peut pas être modifié.' };
+      }
       const updates: string[] = [];
       const params: any[] = [];
       let paramIndex = 1;
@@ -1023,6 +1116,10 @@ function broadcastUserCount() {
       if (!id) {
         reply.statusCode = 400;
         return { success: false, error: 'Invalid event id' };
+      }
+      if (String(id).startsWith('holiday:')) {
+        reply.statusCode = 403;
+        return { success: false, error: 'Locked event', message: 'Cet événement est verrouillé et ne peut pas être supprimé.' };
       }
       try {
         const result = await query('DELETE FROM events WHERE id = $1', [id]);
