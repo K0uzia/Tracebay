@@ -1,5 +1,5 @@
 import ColorManager from './ColorManager.js';
-import { syncDateInputs } from './DateUtils.js';
+import { parseLocalDateTime, syncDateInputs } from './DateUtils.js';
 
 export default class ModalManager {
     constructor(config) {
@@ -259,8 +259,8 @@ export default class ModalManager {
         document.getElementById('edit_eventId').value = ev.id;
         document.getElementById('edit_title').value = ev.title;
 
-        const startDate = new Date(ev.start.replace(' ', 'T'));
-        const endDate = new Date(ev.end.replace(' ', 'T'));
+        const startDate = parseLocalDateTime(ev.start) ?? new Date(ev.start.replace(' ', 'T'));
+        const endDate = parseLocalDateTime(ev.end) ?? new Date(ev.end.replace(' ', 'T'));
 
         const startDateStr = this.formatLocalISODate(startDate);
         const endDateStr = this.formatLocalISODate(endDate);

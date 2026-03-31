@@ -5,6 +5,7 @@
  */
 
 import api from '../../config/api.js';
+import { parseLocalDate } from './DateUtils.js';
 
 class AgendaStore {
     constructor() {
@@ -115,9 +116,11 @@ class AgendaStore {
 
         const all = await this.getAllEvents();
         return all.filter(event => {
-            const eventStart = new Date(event.start);
-            const start = new Date(startDate);
-            const end = new Date(endDate);
+            // `new Date("YYYY-MM-DD")` est UTC => peut décaler la fenêtre selon le fuseau.
+            // On compare donc en dates locales.
+            const eventStart = new Date((event.start ?? '').replace(' ', 'T'));
+            const start = parseLocalDate(startDate) ?? new Date(startDate);
+            const end = parseLocalDate(endDate) ?? new Date(endDate);
             return eventStart >= start && eventStart <= end;
         });
     }

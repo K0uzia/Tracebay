@@ -219,8 +219,9 @@ export default class CalendarRenderer {
     displayEventDetails(ev, onEditClick) {
         if (!this.detailsPanel) return;
 
-        const startDate = new Date(ev.start.replace(' ', 'T'));
-        const endDate = new Date(ev.end.replace(' ', 'T'));
+        // On parse en "local clock time" pour éviter les décalages UTC/local si la source inclut un suffixe timezone.
+        const startDate = this.parseLocalDateTime(ev.start) ?? new Date(ev.start.replace(' ', 'T'));
+        const endDate = this.parseLocalDateTime(ev.end) ?? new Date(ev.end.replace(' ', 'T'));
 
         const startDateStr = ev.start.substring(0, 10);
         const endDateStr = ev.end.substring(0, 10);
@@ -307,6 +308,22 @@ export default class CalendarRenderer {
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const year = String(date.getFullYear()).slice(-2);
         return `${day}/${month}/${year}`;
+    }
+
+    parseLocalDateTime(dateTime) {
+        if (typeof dateTime !== 'string') return null;
+        const normalized = dateTime.trim().replace(' ', 'T');
+        const core = normalized.slice(0, 19); // YYYY-MM-DDTHH:mm:ss
+        const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(core);
+        if (!m) return null;
+        const year = Number(m[1]);
+        const month = Number(m[2]);
+        const day = Number(m[3]);
+        const hour = Number(m[4]);
+        const minute = Number(m[5]);
+        const second = Number(m[6] ?? '0');
+        if (![year, month, day, hour, minute, second].every(Number.isFinite)) return null;
+        return new Date(year, month - 1, day, hour, minute, second, 0);
     }
 
     clear() {
