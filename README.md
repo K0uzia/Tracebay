@@ -1,104 +1,157 @@
-# Workspace v3
-
-Application de bureau (Electron) conçue pour centraliser et gérer les activités quotidiennes d'une structure. Elle s'appuie sur un serveur backend déployé séparément (sur Proxmox) auquel elle se connecte via HTTP REST et WebSocket.
+# Workspace
 
 ---
 
-## Ce que fait l'application
+## 1. Besoins du client
 
-Workspace est une interface unifiée qui regroupe plusieurs modules fonctionnels accessibles depuis un seul client :
+Dans un contexte de **structure** (ESN, atelier numérique ou équivalent), les outils métiers, les liens intranet, les partages fichiers et les processus de **réception matériel** sont souvent **éclatés** entre plusieurs applications et raccourcis. Cela entraîne perte de temps, oublis et multiplication des fenêtres ou favoris à maintenir.
 
-### Accueil
-Page principale affichant un tableau de bord avec l'heure et la date en temps réel, ainsi qu'un aperçu des informations importantes de la structure (La Capsule).
+**Objectifs du projet :**
 
-### Agenda
-Calendrier interactif permettant de consulter et gérer les événements. Les vues semaine, mois et année sont disponibles. Les événements sont créés, modifiés et supprimés directement depuis l'interface.
-
-### Réception
-Module dédié à la gestion du matériel reconditionné, composé de quatre sous-sections :
-- **Entrée** : saisie des nouveaux lots de machines (numéros de série, marques, modèles)
-- **Inventaire** : état des stocks en cours, filtrage par état, assignation des techniciens
-- **Historique** : suivi de l'ensemble des mouvements de matériel
-- **Traçabilité** : lien entre les machines et leur historique de reconditionnement
-
-### Dossier interne
-Gestionnaire de fichiers donnant accès aux documents internes de la structure, organisés par entité.
-
-### Applications
-Raccourcis vers les applications internes regroupées par catégorie (Développement, Streaming, Bureautique, etc.), gérées dynamiquement depuis le serveur.
-
-### Raccourcis
-Accès rapide aux liens et outils fréquemment utilisés.
-
-### Options
-Paramètres de l'application : configuration de la connexion au serveur, préférences d'affichage et gestion du compte utilisateur.
+- **Centraliser** l’accès aux applications internes, aux raccourcis et aux informations utiles dans une **interface unique**.
+- **Structurer la réception** du matériel professionnel (saisie, stocks, historique, traçabilité) avec une **piste d’audit** exploitable.
+- **Faciliter l’accès** aux documents et dossiers du serveur interne via une navigation **cohérente** (par entité), alignée sur la configuration serveur.
 
 ---
 
-## Architecture
+## 2. Architecture du projet
 
-L'application suit une architecture client/serveur distincte :
+### 2.1 Vue d’ensemble
 
-- Le **client Electron** tourne localement sur la machine de l'utilisateur. Il gère l'interface, les interactions utilisateur et toutes les communications avec le serveur via un module API centralisé (`api.js`).
-- Le **serveur backend** est déployé sur une machine Proxmox (192.168.1.62:4000). Il expose une API REST et un canal WebSocket pour les mises à jour en temps réel.
 
-La configuration de connexion (URL du serveur, endpoints) est centralisée dans un unique fichier `connection.json`, ce qui permet de basculer facilement entre les environnements local, Proxmox et production.
+| Composant           | Rôle                                                                                                                                                                                                                                    |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Client Electron** | UI, navigation, appels HTTP/WebSocket via le module centralisé `public/assets/js/config/api.js`, mises à jour (`electron-updater`). Processus principal : `main.js` ; pont sécurisé : `preload.js`.                                     |
+| **Serveur backend** | Persistance (PostgreSQL sur la branche `proxmox`), JWT, routes métier, WebSocket (ex. chat), génération PDF côté serveur selon les modules. Stack : **Fastify** + **TypeScript** (voir [proxmox/app/README.md](proxmox/app/README.md)). |
 
-L'authentification est gérée par JWT : chaque client s'authentifie et toutes les requêtes sont automatiquement signées par le module API.
 
-```
-┌─────────────────────────┐        HTTP / WebSocket        ┌──────────────────────────┐
-│   Client Electron       │  ◄────────────────────────►    │   Serveur Backend        │
-│   (machine locale)      │                                 │   (Proxmox :4000)        │
-│                         │                                 │                          │
-│   Interface utilisateur │                                 │   API REST + WebSocket   │
-│   Module API centralisé │                                 │   Authentification JWT   │
-└─────────────────────────┘                                 └──────────────────────────┘
+Les URL et endpoints sont définis dans `connection.json` (`apps/client/config/` et miroir `apps/client/public/config/`) pour basculer entre environnements (développement, Proxmox, production) sans recompiler le client.
+
+**Authentification :** le **JWT** est ajouté aux requêtes par le module API ; le renderer gère les sessions expirées (ex. HTTP 401).
+
+### 2.2 Schéma logique (Mermaid)
+
+```mermaid
+flowchart LR
+    subgraph CLIENT["Client Electron (poste local)"]
+        direction TB
+        R["Renderer (HTML / JS)"]
+        A["api.js"]
+        M["main.js · preload.js"]
+        R --> A
+    end
+
+    subgraph SERVER["Serveur backend (ex. Proxmox :4000)"]
+        direction TB
+        REST["API REST + JWT"]
+        WS["WebSocket"]
+        DB[("Persistance (PostgreSQL)")]
+        REST --> DB
+    end
+
+    A <-->|"HTTP (JSON)"| REST
+    A <-->|"WebSocket"| WS
 ```
 
----
 
-## Structure du projet
+
+
+| Lien          | Contenu typique                                                    |
+| ------------- | ------------------------------------------------------------------ |
+| **HTTP**      | CRUD métier, auth, fichiers, PDF, raccourcis utilisateur, etc.     |
+| **WebSocket** | Temps réel (ex. chat), notifications selon implémentation serveur. |
+
+
+### 2.3 Arborescence indicative (client + racine)
 
 ```
 workspace/
-├── apps/
-│   └── client/                   Application Electron
-│       ├── public/
-│       │   ├── pages/            Pages HTML de chaque section
-│       │   ├── components/       Composants réutilisables (header, footer, modales)
-│       │   ├── assets/
-│       │   │   └── js/
-│       │   │       ├── config/
-│       │   │       │   └── api.js        Module API centralisé
-│       │   │       └── modules/          Modules fonctionnels (agenda, chat, reception…)
-│       │   └── index.html        Point d'entrée de l'interface
-│       ├── config/
-│       │   └── connection.json   Configuration serveur et endpoints
-│       ├── main.js               Point d'entrée Electron
-│       └── preload.js            Bridge sécurisé Electron/renderer
-│
-├── data/                         Données locales
-├── docs/                         Documentation complémentaire
-├── Jarvis/                       Standards et patterns du projet
-└── package.json                  Monorepo npm workspaces
+├── apps/client/                    # Application Electron
+│   ├── main.js, preload.js, package.json
+│   ├── config/connection.json      # URL serveur et endpoints (miroir : public/config/)
+│   ├── lib/                        # electron-updater, découverte client
+│   ├── build/, assets/             # Icônes et ressources pour les installeurs
+│   └── public/                     # Interface (renderer)
+│       ├── index.html, app.js
+│       ├── pages/, reception-pages/
+│       ├── components/             # header, footer, modales, chat…
+│       ├── assets/css/, assets/js/
+│       │   ├── config/             # api.js, AppConfig, logs, erreurs…
+│       │   └── modules/            # agenda, auth, chat, dossier, réception…
+│       ├── pdf-templates/, lib/    # Font Awesome local
+│       └── src/                    # Icônes, PDF statiques embarqués
+├── docs/                           # JWT, Electron, API raccourcis…
+├── proxmox/app/                    # Backend (branche proxmox) + README dédié
+├── scripts/                        # env, auto-update, install npm
+├── .github/workflows/              # CI → build client, Releases
+└── package.json                    # Monorepo npm workspaces
 ```
 
----
-
-## Déploiement et mises à jour
-
-Le client est distribué sous forme d'exécutable (AppImage sur Linux, installeur sur Windows/Mac). Les mises à jour sont gérées automatiquement par `electron-updater` : l'application détecte si une version plus récente est disponible sur les Releases GitHub et propose la mise à jour à l'utilisateur sans intervention manuelle.
-
-**Build en local** (depuis `apps/client`) : `npm run build:linux` (ou `build:prod:linux:local` pour un build prod sans publication). Aucun token nécessaire.  
-**Publication (Release GitHub)** : effectuée uniquement par la CI (`.github/workflows/build-client.yml`) au push sur `main` ; le token est fourni par le secret du dépôt (`GH_TOKEN` ou `GITHUB_TOKEN`), jamais en clair dans les fichiers.
+Les répertoires `node_modules/`, `apps/client/dist/`, `apps/client/out/`, `coverage/`, `data/` sont en général **hors Git** (voir `.gitignore`). **Stack client :** Node.js ≥ 18, Electron, JavaScript renderer, `electron-builder`.
 
 ---
 
-## Sécurité
+## 3. Cybersécurité
 
-- **Content Security Policy (CSP)** configurée dans Electron pour limiter les ressources autorisées
-- **Authentification JWT** : chaque session est authentifiée, les tokens sont gérés automatiquement par le module API
-- **Preload Electron** : isolation stricte entre le processus principal et le renderer via contextBridge
+### 3.1 Mesures en place (client)
+
+- **CSP** (Content Security Policy) dans `public/index.html` : limitation des origines scripts, styles et connexions (y compris `ws:` / `wss:` pour le temps réel).
+- **JWT** : requêtes signées par le module API ; gestion de session côté renderer.
+- **Electron** : `nodeIntegration: false`, `contextIsolation: true`, exposition contrôlée via `preload.js` / `contextBridge`.
+- **Chat** : modules de sécurité dédiés (configuration + gestionnaire) en complément du WebSocket authentifié.
+- **CI** : publication des binaires avec secrets (`GH_TOKEN` / `GITHUB_TOKEN`), jamais de token en clair dans le dépôt.
 
 ---
+
+## 4. Méthode de déploiement
+
+### 4.1 Client (postes utilisateurs)
+
+
+| Étape            | Détail                                                                                                                                                                                                                                 |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Artefacts**    | AppImage / deb (Linux), NSIS ou portable (Windows), DMG (macOS), produits par **electron-builder** dans `apps/client/dist/`.                                                                                                           |
+| **Build local**  | À la racine : `npm run build:linux` ou `npm run build:prod:linux:local` (build production **sans** pousser une Release). Aucun token requis.                                                                                           |
+| **Mises à jour** | **electron-updater** interroge les **GitHub Releases** ; notification utilisateur si une version plus récente existe.                                                                                                                  |
+| **CI/CD**        | Workflow [.github/workflows/build-client.yml](.github/workflows/build-client.yml) sur push `main` (fichiers sous `apps/client/`**, `package.json`, etc.) ou déclenchement manuel ; upload d’artefacts ; publication avec secret dépôt. |
+
+
+### 4.2 Backend et environnement
+
+Déploiement documenté sur la branche `**proxmox`** : `proxmox/docker/` (Docker Compose), `proxmox/docs/DEPLOYMENT.md`, [proxmox/app/README.md](proxmox/app/README.md). L’URL et le port (ex. `http://192.168.1.62:4000`) sont paramétrés dans `connection.json` côté client.
+
+**Développement :** `npm ci` à la racine (Node ≥ 18) ; variables via `.env` / `scripts/run-with-env.js` et `.env.example` pour les builds publiant vers GitHub.
+
+---
+
+## 5. Ce que fait l’application
+
+**Workspace** est le **point d’entrée unique** sur le poste : une application Electron regroupe les fonctions ci-dessous. La plupart des données métier transitent par le **backend** (agenda, réception, catalogue d’applications, raccourcis personnels, etc.). L’exploration de fichiers et certains exports peuvent s’appuyer sur des **chemins réseau** ou des fichiers locaux selon la configuration serveur.
+
+
+| Module              | Rôle                                                                                                                                                                                                      |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Accueil**         | Tableau de bord : heure et date en direct, informations de la structure (ex. La Capsule).                                                                                                                 |
+| **Agenda**          | Calendrier (vues semaine, mois, année) : création, modification et suppression d’événements **synchronisés avec le serveur**.                                                                             |
+| **Réception**       | Espace **matériel reconditionné** : lots PC, disques shreddés, commandes, dons, puis inventaire, historique et traçabilité (détail ci-dessous).                                                           |
+| **Dossier interne** | Accès aux **documents internes** par **entité**, via l’API et les chemins exposés par le serveur.                                                                                                         |
+| **Applications**    | Liens ou lanceurs vers les **logiciels internes**, par **catégorie** (développement, streaming, bureautique, etc.) ; catalogue **fourni par le backend**.                                                 |
+| **Raccourcis**      | **Liens personnels** de l’utilisateur connecté : catégories et entrées **stockées côté serveur** et filtrées par **compte** (JWT). Création, édition, réordonnancement et suppression depuis l’interface. |
+| **Options**         | **Paramètres du compte** uniquement : modification du **pseudo**, du **mot de passe**, **suppression du compte** (zone sensible avec confirmation).                                                       |
+
+
+### Réception (sections de l’interface)
+
+**Lots et documents**
+
+- **Lots** : saisie et gestion des **nouveaux lots** de machines (PC), numéros de série, marques, modèles.
+- **Disques** : flux **disques shreddés** (sessions, liste des disques, PDF de certificat / traçabilité selon l’API).
+- **Commande** : suivi des **commandes** matériel associées au flux réception.
+- **Dons** : enregistrement et suivi des **dons** de matériel.
+
+**Suivi et traçabilité**
+
+- **Inventaire** : **lots en cours**, filtres par état, **assignation** aux techniciens.
+- **Historique** : **lots terminés** et archives des mouvements.
+- **Traçabilité** : **vue consolidée** reliant lots, disques, commandes et dons (selon données serveur), accès aux **PDF**, actions type envoi ou régénération selon configuration.
+
