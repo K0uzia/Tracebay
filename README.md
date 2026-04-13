@@ -1,5 +1,5 @@
 <h1 align="center">
-  <img src="apps/client/build/icon.png" alt="" width="72" height="72" align="middle">
+  <img src="apps/client/build/icon.png" alt="" width="15%" align="middle">
   &nbsp;Workspace
 </h1>
 <p align="center">
