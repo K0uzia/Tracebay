@@ -1,9 +1,9 @@
 <div align="center">
-<table border="0" cellspacing="0" cellpadding="8">
+<table border="0" cellspacing="0" cellpadding="8" frame="void" rules="none" style="border-collapse: collapse; border-style: hidden;">
   <tbody>
     <tr>
-      <td valign="middle" align="right"><img src="apps/client/build/icon.png" alt="Logo Workspace" width="64" height="64"></td>
-      <td valign="middle" align="left"><h1>Workspace</h1></td>
+      <td valign="middle" align="right" style="border: 0; border-style: none;"><img src="apps/client/build/icon.png" alt="Logo Workspace" width="64" height="64"></td>
+      <td valign="middle" align="left" style="border: 0; border-style: none;"><div style="font-size: 2em; font-weight: 600; margin: 0; padding: 0; border: 0;">Workspace</div></td>
     </tr>
   </tbody>
 </table>
