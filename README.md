@@ -1,7 +1,14 @@
-<h1 align="center">
-  <img src="apps/client/build/icon.png" alt="" width="15%" align="middle">
-  &nbsp;Workspace
-</h1>
+<div align="center">
+<table border="0" cellspacing="0" cellpadding="8">
+  <tbody>
+    <tr>
+      <td valign="middle" align="right"><img src="apps/client/build/icon.png" alt="Logo Workspace" width="64" height="64"></td>
+      <td valign="middle" align="left"><h1>Workspace</h1></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
 <p align="center">
   <a href="https://github.com/SandersonnDev/workspace/tree/main/docs"><img src="https://img.shields.io/badge/docs-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Documentation"></a>
   <a href="https://github.com/SandersonnDev/workspace/actions/workflows/build-client.yml"><img src="https://img.shields.io/github/actions/workflow/status/SandersonnDev/workspace/build-client.yml?branch=main&amp;style=for-the-badge&amp;label=CI" alt="CI"></a>
