@@ -161,7 +161,18 @@ Déploiement documenté sur la branche `**proxmox`** : `proxmox/docker/` (Docker
 - **Traçabilité** : **vue consolidée** reliant lots, disques, commandes et dons (selon données serveur), accès aux **PDF**, actions type envoi ou régénération selon configuration.
 
 ---
+<details>
+<summary><strong>Captures d’écran de l’interface</strong></summary>
 
-<p align="center">
-  <img src="docs/Screenshot_apps/Acceuil.png" alt="Home_screenshot" width="100%">
-</p>
+| | |
+| :---: | :---: |
+| ![Accueil](docs/Screenshot_apps/Acceuil.png)<br>*Accueil* | ![Agenda](docs/Screenshot_apps/Agenda.png)<br>*Agenda* |
+| ![Applications](docs/Screenshot_apps/application.png)<br>*Applications* | ![Dossier interne](docs/Screenshot_apps/Dossier.png)<br>*Dossier interne* |
+| ![Chat](docs/Screenshot_apps/Chat.png)<br>*Chat* | ![Raccourcis (connexion)](docs/Screenshot_apps/Raccourcis_login.png)<br>*Raccourcis connexion* |
+| ![Raccourcis (déconnexion)](docs/Screenshot_apps/Raccourci_logout.png)<br>*Raccourcis déconnexion* | ![Réception lots](docs/Screenshot_apps/Reception-lot.png)<br>*Réception lots* |
+| ![Réception inventaire](docs/Screenshot_apps/Reception-inventaire.png)<br>*Réception inventaire* | ![Réception disques](docs/Screenshot_apps/Reception-disque.png)<br>*Réception disques* |
+| ![Réception commande](docs/Screenshot_apps/Reception-commande.png)<br>*Réception commande* | ![Réception dons](docs/Screenshot_apps/Reception-don.png)<br>*Réception dons* |
+| ![Réception historique](docs/Screenshot_apps/Reception-Historique.png)<br>*Réception historique* | ![Réception traçabilité](docs/Screenshot_apps/Reception-Tracabiliter.png)<br>*Réception traçabilité* |
+| ![Historique détail d’un lot](docs/Screenshot_apps/Historique-detail-lot.png)<br>*Historique détail d’un lot* | ![PDF traçabilité (exemple)](docs/Screenshot_apps/pdf-tracabiliter.png)<br>*PDF traçabilité (exemple)* |
+
+</details>
