@@ -1,10 +1,9 @@
 # Workspace
 
-[![CI client Electron](https://github.com/SandersonnDev/workspace/actions/workflows/build-client.yml/badge.svg?branch=main)](https://github.com/SandersonnDev/workspace/actions/workflows/build-client.yml)
-[![Version npm](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FSandersonnDev%2Fworkspace%2Fmain%2Fpackage.json&query=%24.version&label=version&logo=npm&logoColor=white)](https://github.com/SandersonnDev/workspace/blob/main/package.json)
-[![Node.js](https://img.shields.io/badge/node.js-%3E%3D18-339933?logo=node.js&logoColor=white)](https://github.com/SandersonnDev/workspace/blob/main/package.json)
-[![Electron](https://img.shields.io/badge/Electron-39.x-47848F?logo=electron&logoColor=white)](https://github.com/SandersonnDev/workspace/blob/main/apps/client/package.json)
-[![Licence MIT](https://img.shields.io/badge/licence-MIT-green)](https://opensource.org/licenses/MIT)
+[Version npm](https://github.com/SandersonnDev/workspace/blob/main/package.json)
+[Node.js](https://github.com/SandersonnDev/workspace/blob/main/package.json)
+[Electron](https://github.com/SandersonnDev/workspace/blob/main/apps/client/package.json)
+[Licence MIT](https://opensource.org/licenses/MIT)
 
 ---
 
@@ -161,3 +160,8 @@ Déploiement documenté sur la branche `**proxmox`** : `proxmox/docker/` (Docker
 - **Historique** : **lots terminés** et archives des mouvements.
 - **Traçabilité** : **vue consolidée** reliant lots, disques, commandes et dons (selon données serveur), accès aux **PDF**, actions type envoi ou régénération selon configuration.
 
+---
+
+<p align="center">
+  <img src="docs/Screenshot_apps/Acceuil.png" alt="Home_screenshot" width="100%">
+</p>
