@@ -1,5 +1,11 @@
 # Workspace
 
+[![CI client Electron](https://github.com/SandersonnDev/workspace/actions/workflows/build-client.yml/badge.svg?branch=main)](https://github.com/SandersonnDev/workspace/actions/workflows/build-client.yml)
+[![Version npm](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FSandersonnDev%2Fworkspace%2Fmain%2Fpackage.json&query=%24.version&label=version&logo=npm&logoColor=white)](https://github.com/SandersonnDev/workspace/blob/main/package.json)
+[![Node.js](https://img.shields.io/badge/node.js-%3E%3D18-339933?logo=node.js&logoColor=white)](https://github.com/SandersonnDev/workspace/blob/main/package.json)
+[![Electron](https://img.shields.io/badge/Electron-39.x-47848F?logo=electron&logoColor=white)](https://github.com/SandersonnDev/workspace/blob/main/apps/client/package.json)
+[![Licence MIT](https://img.shields.io/badge/licence-MIT-green)](https://opensource.org/licenses/MIT)
+
 ---
 
 ## 1. Besoins du client
