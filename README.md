@@ -1,9 +1,17 @@
-# Workspace
-
-[Version npm](https://github.com/SandersonnDev/workspace/blob/main/package.json)
-[Node.js](https://github.com/SandersonnDev/workspace/blob/main/package.json)
-[Electron](https://github.com/SandersonnDev/workspace/blob/main/apps/client/package.json)
-[Licence MIT](https://opensource.org/licenses/MIT)
+<p align="center">
+  <img src="apps/client/build/icon.png" alt="Workspace_logo" width="100%">
+</p>
+<p align="center">
+  <a href="https://github.com/SandersonnDev/workspace/tree/main/docs"><img src="https://img.shields.io/badge/docs-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Documentation"></a>
+  <a href="https://github.com/SandersonnDev/workspace/actions/workflows/build-client.yml"><img src="https://img.shields.io/github/actions/workflow/status/SandersonnDev/workspace/build-client.yml?branch=main&amp;style=for-the-badge&amp;label=CI" alt="CI"></a>
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://github.com/SandersonnDev"><img src="https://img.shields.io/badge/Built%20by-SandersonnDev-blueviolet?style=for-the-badge" alt="Built by SandersonnDev"></a>
+</p>
+<p align="center">
+  <a href="https://github.com/SandersonnDev/workspace/blob/main/package.json"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FSandersonnDev%2Fworkspace%2Fmain%2Fpackage.json&amp;query=%24.version&amp;label=version&amp;logo=npm&amp;logoColor=white&amp;style=for-the-badge" alt="Version npm"></a>
+  <a href="https://github.com/SandersonnDev/workspace/blob/main/package.json"><img src="https://img.shields.io/badge/node.js-%3E%3D18-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js"></a>
+  <a href="https://github.com/SandersonnDev/workspace/blob/main/apps/client/package.json"><img src="https://img.shields.io/badge/Electron-39.x-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron"></a>
+</p>
 
 ---
 
