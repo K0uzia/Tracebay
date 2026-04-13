@@ -1,7 +1,7 @@
-<p align="center" display="flex">
-  <img src="apps/client/build/icon.png" alt="Workspace_logo" width="10%">
-  Workspace
-</p>
+<h1 align="center">
+  <img src="apps/client/build/icon.png" alt="" width="72" height="72" align="middle">
+  &nbsp;Workspace
+</h1>
 <p align="center">
   <a href="https://github.com/SandersonnDev/workspace/tree/main/docs"><img src="https://img.shields.io/badge/docs-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Documentation"></a>
   <a href="https://github.com/SandersonnDev/workspace/actions/workflows/build-client.yml"><img src="https://img.shields.io/github/actions/workflow/status/SandersonnDev/workspace/build-client.yml?branch=main&amp;style=for-the-badge&amp;label=CI" alt="CI"></a>
