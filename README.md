@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="apps/client/build/icon.png" alt="Workspace_logo" width="100%">
+  <img src="apps/client/build/icon.png" alt="Workspace_logo" width="30%">
 </p>
 <p align="center">
   <a href="https://github.com/SandersonnDev/workspace/tree/main/docs"><img src="https://img.shields.io/badge/docs-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Documentation"></a>
