@@ -1,6 +1,4 @@
-<p align="center" display="flex">
-  <img src="apps/client/assets/workspace banner.svg" alt="Workspace_logo" width="60%">
-</p>
+![Workspace_banner](https://raw.githubusercontent.com/SandersonnDev/workspace/apps/client/assets/workspacebanner.svg)
 <p align="center">
   <a href="https://github.com/SandersonnDev/workspace/tree/main/docs"><img src="https://img.shields.io/badge/docs-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Documentation"></a>
   <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
