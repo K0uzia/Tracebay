@@ -1472,7 +1472,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   const DB_TABLES_WHITELIST = [
     'users', 'marques', 'modeles', 'messages', 'events', 'activity_logs',
     'shortcut_categories', 'shortcuts', 'lots', 'lot_items', 'client_errors', 'app_settings',
-    'commandes', 'commande_lignes', 'commande_products', 'dons', 'entrees', 'disques', 'disques_sessions',
+    'commandes', 'commande_lignes', 'commande_products', 'dons', 'prets_materiel', 'entrees', 'disques', 'disques_sessions',
   ];
 
   fastify.get('/api/admin/db/tables', async (request: FastifyRequest, reply: FastifyReply) => {

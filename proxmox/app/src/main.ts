@@ -3021,6 +3021,236 @@ function broadcastUserCount() {
       }
     });
 
+    // ——— Prêts matériel (réception) ———
+    fastify.get('/api/prets-materiel/tracabilite', async (_request: FastifyRequest, reply: FastifyReply) => {
+      try {
+        const result = await query(
+          `SELECT id, user_id, reference, borrower_type, borrower_name, borrower_contact,
+                  date, date_debut, date_fin, remuneration_gratuit, remuneration_montant,
+                  pdf_path, lines, created_at, updated_at
+           FROM prets_materiel
+           ORDER BY date_debut DESC, created_at DESC`
+        );
+        return { success: true, data: result.rows };
+      } catch (error: any) {
+        if (error?.code === '42P01') return { success: true, data: [] };
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.post('/api/prets-materiel', async (request: FastifyRequest, reply: FastifyReply) => {
+      const body = request.body as any;
+      const borrowerName = String(body?.borrower_name || '').trim();
+      if (!borrowerName) {
+        reply.statusCode = 400;
+        return { error: 'borrower_name requis' };
+      }
+      const dateDebut = String(body?.date_debut || body?.date || '').trim().slice(0, 10) || new Date().toISOString().slice(0, 10);
+      const dateFin = String(body?.date_fin || '').trim().slice(0, 10) || dateDebut;
+      const docDate = String(body?.date || body?.date_debut || '').trim().slice(0, 10) || dateDebut;
+      const borrowerType =
+        String(body?.borrower_type || 'personne').toLowerCase() === 'societe' ? 'societe' : 'personne';
+      const borrowerContact =
+        body?.borrower_contact != null && String(body.borrower_contact).trim()
+          ? String(body.borrower_contact).trim()
+          : null;
+      const reference =
+        body?.reference != null && String(body.reference).trim() ? String(body.reference).trim() : null;
+      const pdfPath = body?.pdf_path != null && String(body.pdf_path).trim() ? String(body.pdf_path).trim() : null;
+      const lines = Array.isArray(body?.lines) ? body.lines : [];
+      const rgRaw = body?.remuneration_gratuit;
+      const remuneration_gratuit =
+        rgRaw !== false && rgRaw !== 0 && String(rgRaw ?? 'true').toLowerCase() !== 'false';
+      let remuneration_montant: number | null = null;
+      if (!remuneration_gratuit) {
+        const rm = body?.remuneration_montant;
+        const n = rm != null && rm !== '' ? Number(rm) : NaN;
+        remuneration_montant = Number.isFinite(n) ? n : null;
+      }
+      try {
+        const result = await query(
+          `INSERT INTO prets_materiel (
+            user_id, reference, borrower_type, borrower_name, borrower_contact,
+            date, date_debut, date_fin, remuneration_gratuit, remuneration_montant, pdf_path, lines
+          ) VALUES (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
+          RETURNING id, user_id, reference, borrower_type, borrower_name, borrower_contact,
+                    date, date_debut, date_fin, remuneration_gratuit, remuneration_montant, pdf_path, lines, created_at, updated_at`,
+          [
+            reference,
+            borrowerType,
+            borrowerName,
+            borrowerContact,
+            docDate,
+            dateDebut,
+            dateFin,
+            remuneration_gratuit,
+            remuneration_montant,
+            pdfPath,
+            JSON.stringify(lines),
+          ]
+        );
+        reply.statusCode = 201;
+        const row = result.rows[0];
+        return { success: true, id: row.id, pret: row };
+      } catch (error: any) {
+        console.error('Error creating pret materiel:', error);
+        if (error?.code === '42P01') {
+          reply.statusCode = 500;
+          return { error: 'Table prets_materiel manquante (migration requise)' };
+        }
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.get('/api/prets-materiel/:id/pdf', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      if (!id || id === 'null' || id === 'undefined') {
+        reply.statusCode = 400;
+        return { error: 'Invalid pret id' };
+      }
+      try {
+        const result = await query('SELECT pdf_path FROM prets_materiel WHERE id = $1', [id]);
+        const raw = (result.rows[0] as any)?.pdf_path;
+        if (result.rowCount === 0 || !raw) {
+          reply.statusCode = 404;
+          return { error: 'PDF not found for this pret' };
+        }
+        let filePath = String(raw);
+        if (filePath.startsWith('/api/') || filePath.startsWith('http')) {
+          reply.statusCode = 404;
+          return { error: 'PDF path invalid' };
+        }
+        const resolvedFile = resolvePdfFilePath(filePath);
+        if (!resolvedFile || !fs.existsSync(resolvedFile)) {
+          reply.statusCode = 404;
+          return { error: 'PDF file not found' };
+        }
+        reply.header('Content-Type', 'application/pdf');
+        reply.header('Content-Disposition', 'inline; filename="pret-materiel-' + id + '.pdf"');
+        reply.header('Cache-Control', 'no-store, no-cache, must-revalidate');
+        return reply.send(fs.createReadStream(resolvedFile));
+      } catch (err: any) {
+        fastify.log.error({ err }, 'GET /api/prets-materiel/:id/pdf error');
+        reply.statusCode = 500;
+        return { error: 'Failed to serve PDF' };
+      }
+    });
+
+    fastify.get('/api/prets-materiel/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      try {
+        const result = await query(
+          `SELECT id, user_id, reference, borrower_type, borrower_name, borrower_contact,
+                  date, date_debut, date_fin, remuneration_gratuit, remuneration_montant,
+                  pdf_path, lines, created_at, updated_at
+           FROM prets_materiel WHERE id = $1`,
+          [id]
+        );
+        if (result.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Prêt matériel introuvable' };
+        }
+        return { success: true, pret: result.rows[0] };
+      } catch (error: any) {
+        if (error?.code === '42P01') {
+          reply.statusCode = 500;
+          return { error: 'Table prets_materiel manquante (migration requise)' };
+        }
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
+    fastify.put('/api/prets-materiel/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      const body = request.body as any;
+      try {
+        const existing = await query('SELECT id FROM prets_materiel WHERE id = $1', [id]);
+        if (existing.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: 'Prêt matériel introuvable' };
+        }
+        const updates: string[] = [];
+        const values: any[] = [];
+        let idx = 1;
+        if (body?.reference !== undefined) {
+          updates.push(`reference = $${idx++}`);
+          values.push(body.reference != null && String(body.reference).trim() ? String(body.reference).trim() : null);
+        }
+        if (body?.borrower_type !== undefined) {
+          updates.push(`borrower_type = $${idx++}`);
+          values.push(
+            String(body.borrower_type || 'personne').toLowerCase() === 'societe' ? 'societe' : 'personne'
+          );
+        }
+        if (body?.borrower_name !== undefined) {
+          updates.push(`borrower_name = $${idx++}`);
+          values.push(String(body.borrower_name || '').trim() || null);
+        }
+        if (body?.borrower_contact !== undefined) {
+          updates.push(`borrower_contact = $${idx++}`);
+          values.push(
+            body.borrower_contact != null && String(body.borrower_contact).trim()
+              ? String(body.borrower_contact).trim()
+              : null
+          );
+        }
+        if (body?.date !== undefined) {
+          updates.push(`date = $${idx++}`);
+          values.push(String(body.date || '').trim().slice(0, 10) || null);
+        }
+        if (body?.date_debut !== undefined) {
+          updates.push(`date_debut = $${idx++}`);
+          values.push(String(body.date_debut || '').trim().slice(0, 10) || null);
+        }
+        if (body?.date_fin !== undefined) {
+          updates.push(`date_fin = $${idx++}`);
+          values.push(String(body.date_fin || '').trim().slice(0, 10) || null);
+        }
+        if (body?.remuneration_gratuit !== undefined) {
+          updates.push(`remuneration_gratuit = $${idx++}`);
+          const rg = body.remuneration_gratuit;
+          values.push(rg !== false && rg !== 0 && String(rg ?? 'true').toLowerCase() !== 'false');
+        }
+        if (body?.remuneration_montant !== undefined) {
+          updates.push(`remuneration_montant = $${idx++}`);
+          const rm = body.remuneration_montant;
+          const n = rm != null && rm !== '' ? Number(rm) : NaN;
+          values.push(Number.isFinite(n) ? n : null);
+        }
+        if (body?.pdf_path !== undefined) {
+          updates.push(`pdf_path = $${idx++}`);
+          values.push(body.pdf_path != null && String(body.pdf_path).trim() ? String(body.pdf_path).trim() : null);
+        }
+        if (body?.lines !== undefined) {
+          updates.push(`lines = $${idx++}::jsonb`);
+          values.push(JSON.stringify(Array.isArray(body.lines) ? body.lines : []));
+        }
+        if (updates.length === 0) {
+          reply.statusCode = 400;
+          return { error: 'No fields to update' };
+        }
+        updates.push(`updated_at = NOW()`);
+        values.push(id);
+        const result = await query(
+          `UPDATE prets_materiel SET ${updates.join(', ')} WHERE id = $${values.length}
+           RETURNING id, user_id, reference, borrower_type, borrower_name, borrower_contact,
+                     date, date_debut, date_fin, remuneration_gratuit, remuneration_montant, pdf_path, lines, created_at, updated_at`,
+          values
+        );
+        return { success: true, pret: result.rows[0] };
+      } catch (error: any) {
+        if (error?.code === '42P01') {
+          reply.statusCode = 500;
+          return { error: 'Table prets_materiel manquante (migration requise)' };
+        }
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    });
+
     fastify.post('/api/commandes/products', async (request: FastifyRequest, reply: FastifyReply) => {
       const { name } = request.body as any;
       if (!name || !String(name).trim()) {

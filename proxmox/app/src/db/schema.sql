@@ -350,6 +350,28 @@ CREATE INDEX IF NOT EXISTS idx_dons_date ON dons(date DESC);
 CREATE INDEX IF NOT EXISTS idx_dons_created_at ON dons(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_dons_user_id ON dons(user_id);
 
+-- Prêts matériel (réception — fiche PDF + lignes JSON)
+CREATE TABLE IF NOT EXISTS prets_materiel (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  reference VARCHAR(255),
+  borrower_type VARCHAR(20) NOT NULL DEFAULT 'personne',
+  borrower_name VARCHAR(255) NOT NULL,
+  borrower_contact VARCHAR(255),
+  date DATE NOT NULL,
+  date_debut DATE NOT NULL,
+  date_fin DATE NOT NULL,
+  remuneration_gratuit BOOLEAN NOT NULL DEFAULT true,
+  remuneration_montant NUMERIC(12,2),
+  pdf_path VARCHAR(1024),
+  lines JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_prets_materiel_date_debut ON prets_materiel(date_debut DESC);
+CREATE INDEX IF NOT EXISTS idx_prets_materiel_created_at ON prets_materiel(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_prets_materiel_user_id ON prets_materiel(user_id);
+
 -- Entrées réception (traçabilité entrées manuelles / lots / disques)
 CREATE TABLE IF NOT EXISTS entrees (
   id SERIAL PRIMARY KEY,
