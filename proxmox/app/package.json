@@ -1,0 +1,44 @@
+{
+  "name": "workspace-proxmox",
+  "version": "1.0.0",
+  "description": "Workspace Proxmox Backend API - Fastify + TypeScript",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc && npm run build:copy-views",
+    "build:copy-views": "mkdir -p dist/views && cp -f src/views/monitoring.html src/views/monitoring.css src/views/favicon.png dist/views/ 2>/dev/null || true",
+    "start": "node dist/main.js",
+    "test": "echo \"No tests for proxmox\"",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts"
+  },
+  "dependencies": {
+    "@fastify/compress": "^7.0.0",
+    "@fastify/cors": "8.4.0",
+    "@fastify/helmet": "10.1.1",
+    "@fastify/rate-limit": "^9.0.0",
+    "@fastify/websocket": "8.3.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.3.1",
+    "fastify": "^4.29.1",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.0",
+    "pg": "^8.11.0",
+    "pdfkit": "^0.15.0",
+    "pino-pretty": "^10.3.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.0",
+    "@types/node": "^20.10.0",
+    "@types/pdfkit": "^0.13.0",
+    "@types/pg": "^8.11.0",
+    "@types/nodemailer": "^6.4.0",
+    "ts-node": "^10.9.2",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}
