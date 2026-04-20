@@ -99,6 +99,11 @@
     "dons": {
       "create": "/api/dons",
       "tracabilite": "/api/dons/tracabilite"
+    },
+    "pretsMateriel": {
+      "create": "/api/prets-materiel",
+      "tracabilite": "/api/prets-materiel/tracabilite",
+      "get": "/api/prets-materiel/:id"
     }
   }
 }

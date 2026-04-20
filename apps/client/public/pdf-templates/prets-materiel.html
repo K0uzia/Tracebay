@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<!--
+  Template PDF prêts matériel — placeholders :
+  {{date}} {{reference_block}} {{borrower_block}} {{period_block}} {{remuneration_block}} {{rows}}
+-->
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fiche prêt matériel — {{date}}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="prets-materiel.css">
+</head>
+<body>
+    <header class="pdf-header">
+        <div class="pdf-header-text">
+            <h1><i class="fa-solid fa-handshake"></i> LA CAPSULE</h1>
+            <p class="pdf-header-org">Fiche de prêt / location de matériel</p>
+        </div>
+        <div class="pdf-header-logo">
+            <img src="../src/icons/capsule.png" alt="Logo"/>
+            <h2 class="pdf-header-subtitle">LA CAPSULE</h2>
+        </div>
+    </header>
+
+    <section class="pdf-certificate-title">
+        <h2><i class="fa-solid fa-boxes-stacked"></i> Matériel prêté</h2>
+        <p class="certificate-intro">Le présent document récapitule le matériel prêté ou mis à disposition, la période concernée et les conditions financières le cas échéant.</p>
+    </section>
+
+    <section class="pdf-info">
+        <h2><i class="fa-solid fa-circle-info"></i> Informations</h2>
+        <p class="pdf-summary-total-line"><span class="label"><i class="fa-regular fa-calendar"></i> Date du document :</span> <span class="value">{{date}}</span></p>
+        {{reference_block}}
+        {{borrower_block}}
+        {{period_block}}
+        {{remuneration_block}}
+    </section>
+
+    <section class="pdf-detail">
+        <h2><i class="fa-solid fa-table-list"></i> Détail du matériel</h2>
+        <table class="pdf-table">
+            <thead>
+                <tr>
+                    <th class="col-num">N°</th>
+                    <th class="col-type">Type</th>
+                    <th class="col-marque">Marque</th>
+                    <th class="col-modele">Modèle</th>
+                    <th class="col-sn">S/N</th>
+                    <th class="col-qty">Qté</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{rows}}
+            </tbody>
+        </table>
+    </section>
+</body>
+</html>

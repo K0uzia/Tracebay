@@ -30,6 +30,7 @@ class PageManager {
             'disques': receptionLayout,
             'commande': receptionLayout,
             'dons': receptionLayout,
+            'prets': receptionLayout,
             'shortcut': { showHeader: true, showFooter: true, showChat: true },
             'option': { showHeader: true, showFooter: true, showChat: false },
             'login': { showHeader: false, showFooter: false, showChat: false },
@@ -102,7 +103,7 @@ class PageManager {
 
         // Charger la page sauvegardée ou home (y compris sous-pages réception : entrer, historique, tracabilite, etc.)
         const lastPage = this.getLastPage();
-        const receptionSubPages = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques', 'commande', 'dons'];
+        const receptionSubPages = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques', 'commande', 'dons', 'prets'];
         const isValidPage = lastPage && (this.pagesConfig[lastPage] || receptionSubPages.includes(lastPage));
         const pageToLoad = isValidPage ? lastPage : 'home';
         this.loadPage(pageToLoad);
@@ -819,7 +820,7 @@ class PageManager {
 
     async loadPage(pageName) {
         try {
-            const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques', 'commande', 'dons'].includes(pageName);
+            const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'tracabilite', 'disques', 'commande', 'dons', 'prets'].includes(pageName);
             
             // Si c'est une sous-page de réception, charger d'abord reception.html
             if (isReceptionSubPage) {
@@ -1185,6 +1186,24 @@ class PageManager {
                 .catch(error => {
                     logger.error('❌ Erreur import DonsManager:', error);
                 });
+        } else if (pageName === 'prets') {
+            if (window.pretsManager) {
+                window.pretsManager.destroy();
+                window.pretsManager = null;
+            }
+            import('./assets/js/modules/reception/prets.js')
+                .then(module => {
+                    if (window.pretsManager) {
+                        window.pretsManager.destroy();
+                        window.pretsManager = null;
+                    }
+                    const PretsManager = module.default;
+                    window.pretsManager = new PretsManager(window.modalManager);
+                    logger.debug('✅ PretsManager initialisé depuis app.js');
+                })
+                .catch(error => {
+                    logger.error('❌ Erreur import PretsManager:', error);
+                });
         }
     }
 
@@ -1500,7 +1519,8 @@ class PageManager {
             tracabilite: 'Traçabilité',
             disques: 'Réception de Disques',
             commande: 'Réception de Commande',
-            dons: 'Réception de Dons'
+            dons: 'Réception de Dons',
+            prets: 'Prêts de matériel'
         };
         const titleEl = document.getElementById('reception-page-title');
         if (titleEl) titleEl.textContent = titles[pageName] || 'Réception';
@@ -1523,7 +1543,8 @@ class PageManager {
             historique: 'Consultez les lots terminés et les sessions disques archivées.',
             disques: 'Saisissez les disques puis enregistrez en traçabilité.',
             commande: 'Constituer une liste de produits et générer le PDF.',
-            dons: 'Enregistrez les dons de matériel aux stagiaires et générez le certificat.'
+            dons: 'Enregistrez les dons de matériel aux stagiaires et générez le certificat.',
+            prets: 'Enregistrez les prêts ou locations de matériel et générez la fiche PDF.'
         };
         const descEl = document.getElementById('reception-page-desc');
         const descTextEl = document.getElementById('reception-page-desc-text');

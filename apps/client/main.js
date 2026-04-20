@@ -1275,6 +1275,9 @@ const COMMANDES_PDF_BASE = '/mnt/team/#TEAM/#COMMANDES/';
 /** Dossier PDF dons stagiaires : /mnt/team/#TEAM/#TRAÇABILITÉ/don_stagiaires */
 const DONS_PDF_BASE = '/mnt/team/#TEAM/#TRAÇABILITÉ/don_stagiaires';
 
+/** Dossier PDF prêts / location matériel divers */
+const PRETS_PDF_BASE = '/mnt/team/#TEAM/#TRAÇABILITÉ/prets_materiel';
+
 /** Base partagée pour FolderManager (presets team, guest, capsule, development). */
 const TEAM_BASE = '/mnt/team/#TEAM';
 
@@ -1288,7 +1291,8 @@ function getAllowedPathPrefixes() {
         TEAM_BASE,
         TRACABILITE_PDF_BASE,
         COMMANDES_PDF_BASE,
-        DONS_PDF_BASE
+        DONS_PDF_BASE,
+        PRETS_PDF_BASE
     ].filter(Boolean);
     return bases.map(p => path.normalize(p));
 }
@@ -2251,6 +2255,208 @@ ipcMain.handle('generate-don-pdf', async (_event, payload) => {
         return { success: false, error: err.message };
     }
     return { success: false, error: 'Template dons introuvable ou échec génération' };
+});
+
+/**
+ * Générer le PDF d'une fiche de prêt / location (prets-materiel.html + prets-materiel.css).
+ * Placeholders : {{date}}, {{reference_block}}, {{borrower_block}}, {{period_block}}, {{remuneration_block}}, {{rows}}
+ */
+async function generatePretMaterielPdfFromHtmlTemplate(payload, fullPath) {
+    const templateDir = path.join(__dirname, 'public', 'pdf-templates');
+    const htmlPath = path.join(templateDir, 'prets-materiel.html');
+    const cssPath = path.join(templateDir, 'prets-materiel.css');
+    if (!fs.existsSync(htmlPath) || !fs.existsSync(cssPath)) {
+        return null;
+    }
+    const {
+        reference = '',
+        borrower_type = 'personne',
+        borrower_name = '',
+        borrower_contact = '',
+        date_debut = '',
+        date_fin = '',
+        remuneration_gratuit = true,
+        remuneration_montant = null,
+        lines = []
+    } = payload || {};
+
+    const css = fs.readFileSync(cssPath, 'utf8');
+    let html = fs.readFileSync(htmlPath, 'utf8');
+
+    const dateStr = (payload?.date && /^\d{4}-\d{2}-\d{2}/.test(String(payload.date).trim()))
+        ? String(payload.date).trim().slice(0, 10)
+        : (/^\d{4}-\d{2}-\d{2}/.test(String(date_debut).trim()) ? String(date_debut).trim().slice(0, 10) : new Date().toISOString().slice(0, 10));
+    const dateFormatted = formatDateForPdf(dateStr);
+
+    const refDisplay = (reference && String(reference).trim()) ? String(reference).trim() : '';
+    const referenceBlock = refDisplay
+        ? `<p class="pdf-summary-total-line"><span class="label"><i class="fa-solid fa-tag"></i> Référence :</span> <span class="value">${escapeHtml(refDisplay)}</span></p>`
+        : '';
+
+    const typeBorrower = String(borrower_type).toLowerCase() === 'societe' ? 'Société' : 'Personne';
+    const borrowerBlock = `
+        <p class="pdf-summary-total-line"><span class="label"><i class="fa-solid fa-user-tag"></i> Type :</span> <span class="value">${escapeHtml(typeBorrower)}</span></p>
+        <p class="pdf-summary-total-line"><span class="label"><i class="fa-solid fa-id-card"></i> Emprunteur :</span> <span class="value">${escapeHtml(String(borrower_name || '-').trim())}</span></p>
+        ${(borrower_contact && String(borrower_contact).trim()) ? `<p class="pdf-summary-total-line"><span class="label"><i class="fa-solid fa-phone"></i> Contact :</span> <span class="value">${escapeHtml(String(borrower_contact).trim())}</span></p>` : ''}
+    `;
+
+    const d0 = /^\d{4}-\d{2}-\d{2}/.test(String(date_debut).trim()) ? formatDateForPdf(String(date_debut).trim().slice(0, 10)) : escapeHtml(String(date_debut || '-'));
+    const d1 = /^\d{4}-\d{2}-\d{2}/.test(String(date_fin).trim()) ? formatDateForPdf(String(date_fin).trim().slice(0, 10)) : escapeHtml(String(date_fin || '-'));
+    const periodBlock = `<p class="pdf-summary-total-line"><span class="label"><i class="fa-solid fa-calendar-range"></i> Période :</span> <span class="value">du ${d0} au ${d1}</span></p>`;
+
+    let remunerationBlock;
+    if (remuneration_gratuit) {
+        remunerationBlock = '<p class="pdf-summary-total-line"><span class="label"><i class="fa-solid fa-gift"></i> Rémunération :</span> <span class="value">Prêt gratuit</span></p>';
+    } else {
+        const m = remuneration_montant != null && Number.isFinite(Number(remuneration_montant)) ? Number(remuneration_montant) : 0;
+        const mStr = escapeHtml(m.toFixed(2).replace('.', ',') + ' €');
+        remunerationBlock = `<p class="pdf-summary-total-line"><span class="label"><i class="fa-solid fa-euro-sign"></i> Rémunération :</span> <span class="value">${mStr}</span></p>`;
+    }
+
+    const rows = (Array.isArray(lines) ? lines : [])
+        .map((line) => {
+            const num = line.num != null ? line.num : 0;
+            const typeD = escapeHtml((line.typeDisplay || line.type || '-').toString().trim());
+            const marque = escapeHtml((line.marqueName != null ? line.marqueName : (line.marque || '—')).toString().trim() || '—');
+            const modele = escapeHtml((line.modeleName != null ? line.modeleName : (line.modele || '—')).toString().trim() || '—');
+            const sn = escapeHtml((line.serialNumber != null ? line.serialNumber : (line.serial_number || line.serial || '—')).toString().trim() || '—');
+            const qty = escapeHtml(String(line.quantite != null ? line.quantite : (line.quantity ?? '-')));
+            return `<tr><td class="col-num">${num}</td><td class="col-type">${typeD}</td><td class="col-marque">${marque}</td><td class="col-modele">${modele}</td><td class="col-sn">${sn}</td><td class="col-qty">${qty}</td></tr>`;
+        })
+        .join('\n');
+
+    html = html.replace(/\{\{\s*date\s*\}\}/g, escapeHtml(dateFormatted));
+    html = html.replace(/\{\{\s*reference_block\s*\}\}/g, referenceBlock);
+    html = html.replace(/\{\{\s*borrower_block\s*\}\}/g, borrowerBlock);
+    html = html.replace(/\{\{\s*period_block\s*\}\}/g, periodBlock);
+    html = html.replace(/\{\{\s*remuneration_block\s*\}\}/g, remunerationBlock);
+    html = html.replace(/\{\{\s*rows\s*\}\}/g, rows);
+
+    html = html.replace(
+        /<link\s+rel="stylesheet"\s+href="prets-materiel\.css"\s*\/?>/i,
+        `<style>${css}</style>`
+    );
+
+    const fontawesomeCssPath = path.join(__dirname, 'public', 'assets', 'css', 'fontawesome-local.css');
+    const fontawesomeFileUrl = fs.existsSync(fontawesomeCssPath) ? url.pathToFileURL(fontawesomeCssPath).href : null;
+    const fontawesomeLink = fontawesomeFileUrl ? `<link rel="stylesheet" href="${fontawesomeFileUrl}">` : '';
+    if (fontawesomeLink) {
+        if (/<link[^>]+font-awesome[^>]*>/i.test(html)) {
+            html = html.replace(/<link[^>]+font-awesome[^>]*>/i, fontawesomeLink);
+        } else if (!html.includes('fontawesome')) {
+            html = html.replace('</head>', `${fontawesomeLink}\n</head>`);
+        }
+    }
+
+    html = html.replace(/<img([^>]*)\ssrc="([^"]+)"/gi, (match, attrs, src) => {
+        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) return match;
+        const absolutePath = path.resolve(templateDir, src.trim());
+        if (!fs.existsSync(absolutePath)) return match;
+        const fileUrl = url.pathToFileURL(absolutePath).href;
+        return `<img${attrs} src="${fileUrl}"`;
+    });
+
+    const tempDir = app.getPath('temp');
+    const outputPath = path.join(tempDir, `workspace-prets-materiel-pdf-${Date.now()}.html`);
+    try {
+        fs.writeFileSync(outputPath, html, 'utf8');
+    } catch (e) {
+        console.error('❌ generate-pret-materiel-pdf write temp HTML:', e.message);
+        return null;
+    }
+
+    const win = new BrowserWindow({
+        show: false,
+        webPreferences: { nodeIntegration: false, contextIsolation: true, offscreen: true }
+    });
+    try {
+        await win.loadFile(outputPath);
+        const pdfBuffer = await win.webContents.printToPDF({
+            printBackground: true,
+            pageSize: 'A4',
+            preferCSSPageSize: true
+        });
+        fs.writeFileSync(fullPath, pdfBuffer);
+        return { success: true, pdf_path: path.resolve(fullPath) };
+    } finally {
+        win.close();
+        try { fs.unlinkSync(outputPath); } catch (_) { }
+    }
+}
+
+/**
+ * Générer le PDF prêt matériel et l'enregistrer sous PRETS_PDF_BASE (année / mois).
+ * Payload: { reference?, date (ISO début), borrower_type, borrower_name, borrower_contact?, date_debut, date_fin, remuneration_gratuit, remuneration_montant?, lines, basePath? }
+ */
+ipcMain.handle('generate-pret-materiel-pdf', async (_event, payload) => {
+    const {
+        reference,
+        date,
+        borrower_type,
+        borrower_name,
+        borrower_contact,
+        date_debut,
+        date_fin,
+        remuneration_gratuit,
+        remuneration_montant,
+        lines = [],
+        basePath = PRETS_PDF_BASE
+    } = payload || {};
+    const rawDate = (date && String(date).trim()) ? String(date).trim() : (date_debut && String(date_debut).trim()) ? String(date_debut).trim() : new Date().toISOString().slice(0, 10);
+    const dateStr = /^\d{4}-\d{2}-\d{2}/.test(rawDate) ? rawDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
+    const [yearPart, monthPart] = dateStr.split('-');
+    const year = /^\d{4}$/.test(yearPart || '') ? yearPart : new Date().toISOString().slice(0, 4);
+    const monthNumber = /^(0[1-9]|1[0-2])$/.test(monthPart || '') ? Number(monthPart) : Number(new Date().toISOString().slice(5, 7));
+    const monthNamesFr = [
+        'Janvier', 'Fevrier', 'Mars', 'Avril', 'Mai', 'Juin',
+        'Juillet', 'Aout', 'Septembre', 'Octobre', 'Novembre', 'Decembre'
+    ];
+    const monthName = monthNamesFr[monthNumber - 1] || 'Inconnu';
+    const targetBasePath = path.join(basePath, year, monthName);
+    try {
+        fs.mkdirSync(targetBasePath, { recursive: true });
+    } catch (e) {
+        console.error('❌ generate-pret-materiel-pdf mkdir:', e.message);
+        return { success: false, error: 'Impossible de créer le dossier: ' + e.message };
+    }
+    const sanitizePretPdfBaseName = (s) => {
+        const t = String(s ?? '').trim();
+        if (!t) return '';
+        let out = t.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '').replace(/[\u0000-\u001f]/g, '');
+        if (out.length > 80) out = out.slice(0, 80);
+        return out || '';
+    };
+    const refPart = sanitizePretPdfBaseName(reference);
+    const borrowerPart = sanitizePretPdfBaseName(borrower_name);
+    let baseName = refPart || borrowerPart || 'pret';
+    let fileName = `${baseName}_${dateStr}.pdf`;
+    let fullPath = path.join(targetBasePath, fileName);
+    let suffix = 1;
+    while (fs.existsSync(fullPath)) {
+        suffix += 1;
+        fileName = `${baseName}_${dateStr}_${suffix}.pdf`;
+        fullPath = path.join(targetBasePath, fileName);
+    }
+
+    try {
+        const result = await generatePretMaterielPdfFromHtmlTemplate({
+            date: dateStr,
+            reference: (reference && String(reference).trim()) ? String(reference).trim() : '',
+            borrower_type,
+            borrower_name,
+            borrower_contact,
+            date_debut,
+            date_fin,
+            remuneration_gratuit: !!remuneration_gratuit,
+            remuneration_montant,
+            lines
+        }, fullPath);
+        if (result) return result;
+    } catch (err) {
+        console.error('❌ generate-pret-materiel-pdf (template HTML):', err.message);
+        return { success: false, error: err.message };
+    }
+    return { success: false, error: 'Template prêts matériel introuvable ou échec génération' };
 });
 
 /**

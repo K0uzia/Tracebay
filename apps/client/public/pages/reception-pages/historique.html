@@ -14,6 +14,7 @@
                             <option value="lot">Lot</option>
                             <option value="disque">Disque</option>
                             <option value="don">Don</option>
+                            <option value="pret">Prêt matériel</option>
                             <option value="commande">Commande</option>
                         </select>
                     </div>
@@ -345,6 +346,60 @@
         </div>
         <div class="modal-footer">
             <button type="button" class="modal-cancel-btn" data-modal-close="modal-don-details" title="Fermer">Fermer</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog class="universal-modal" id="modal-pret-details" data-modal-id="modal-pret-details">
+    <div class="modal-content modal-lg">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-handshake"></i> <span id="modal-pret-title">Prêt</span></h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-pret-details" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="lot-details-info">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Date document</span>
+                        <span class="info-value" id="modal-pret-date">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Période</span>
+                        <span class="info-value" id="modal-pret-period">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Emprunteur</span>
+                        <span class="info-value" id="modal-pret-borrower">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Rémunération</span>
+                        <span class="info-value" id="modal-pret-remuneration">-</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Lignes</span>
+                        <span class="info-value" id="modal-pret-lines-count">-</span>
+                    </div>
+                </div>
+            </div>
+            <h3 class="recep-modal-subtitle">Matériel prêté</h3>
+            <div class="lot-details-table recep-table-wrap">
+                <table class="details-table recep-table">
+                    <thead>
+                        <tr>
+                            <th>N°</th>
+                            <th>Type</th>
+                            <th>Marque</th>
+                            <th>Modèle</th>
+                            <th>S/N</th>
+                            <th>Qté</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-pret-lines-body"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-pret-details" title="Fermer">Fermer</button>
         </div>
     </div>
 </dialog>

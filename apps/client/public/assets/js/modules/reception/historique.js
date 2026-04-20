@@ -23,6 +23,7 @@ export default class HistoriqueManager {
         this.sessionsDisques = [];
         this.commandes = [];
         this.dons = [];
+        this.prets = [];
         this.marques = [];
         this.modeles = [];
         this.init();
@@ -47,12 +48,14 @@ export default class HistoriqueManager {
             };
             const endpointCommandes = (window.SERVER_CONFIG?.getEndpoint?.('commandes.tracabilite')) || '/api/commandes/tracabilite';
             const endpointDons = (window.SERVER_CONFIG?.getEndpoint?.('dons.tracabilite')) || '/api/dons/tracabilite';
+            const endpointPrets = (window.SERVER_CONFIG?.getEndpoint?.('pretsMateriel.tracabilite')) || '/api/prets-materiel/tracabilite';
 
-            const [lots, sessions, commandesRes, donsRes] = await Promise.all([
+            const [lots, sessions, commandesRes, donsRes, pretsRes] = await Promise.all([
                 loadLotsWithItems({ status: 'finished' }),
                 getSessions().catch(() => []),
                 fetch(`${serverUrl}${endpointCommandes.startsWith('/') ? endpointCommandes : '/' + endpointCommandes}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
-                fetch(`${serverUrl}${endpointDons.startsWith('/') ? endpointDons : '/' + endpointDons}`, { method: 'GET', headers }).catch(() => ({ ok: false }))
+                fetch(`${serverUrl}${endpointDons.startsWith('/') ? endpointDons : '/' + endpointDons}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
+                fetch(`${serverUrl}${endpointPrets.startsWith('/') ? endpointPrets : '/' + endpointPrets}`, { method: 'GET', headers }).catch(() => ({ ok: false }))
             ]);
             this.lots = (lots || []).sort((a, b) =>
                 new Date(b.finished_at || b.created_at) - new Date(a.finished_at || a.created_at)
@@ -91,7 +94,24 @@ export default class HistoriqueManager {
                 this.dons = [];
             }
 
-            logger.info('📦 Historique : ' + this.lots.length + ' lot(s), ' + this.sessionsDisques.length + ' session(s) disques, ' + this.commandes.length + ' commande(s), ' + this.dons.length + ' don(s)');
+            if (pretsRes.ok) {
+                try {
+                    const data = await pretsRes.json();
+                    this.prets = this.extractListFromApiPayload(data, [
+                        'prets', 'prets_materiel', 'pret_materiels', 'pretMateriels',
+                        'items', 'data', 'results', 'rows'
+                    ]);
+                    this.prets = this.prets.map((p) => ({
+                        ...p,
+                        lines: this.extractPretLinesFromRecord(p)
+                    }));
+                    this.prets.sort((a, b) => this.parseFlexibleDate(this.getPretSortDateHist(b)) - this.parseFlexibleDate(this.getPretSortDateHist(a)));
+                } catch (_) { this.prets = []; }
+            } else {
+                this.prets = [];
+            }
+
+            logger.info('📦 Historique : ' + this.lots.length + ' lot(s), ' + this.sessionsDisques.length + ' session(s) disques, ' + this.commandes.length + ' commande(s), ' + this.dons.length + ' don(s), ' + this.prets.length + ' prêt(s)');
             this.renderLots();
         } catch (error) {
             logger.error('❌ Erreur chargement historique:', error);
@@ -99,8 +119,41 @@ export default class HistoriqueManager {
             this.sessionsDisques = [];
             this.commandes = [];
             this.dons = [];
+            this.prets = [];
             this.renderLotsError(error);
         }
+    }
+
+    getPretSortDateHist(p) {
+        if (!p || typeof p !== 'object') return '';
+        const d = p.date_debut || p.date || p.created_at || '';
+        return String(d).trim().slice(0, 10);
+    }
+
+    extractPretLinesFromRecord(obj) {
+        if (!obj || typeof obj !== 'object') return [];
+        const keys = ['lines', 'lignes', 'items', 'pret_lignes', 'pretLignes', 'pret_lines'];
+        for (const k of keys) {
+            const arr = this.parseLinesArray(obj[k]);
+            if (arr.length > 0) return arr;
+        }
+        return [];
+    }
+
+    pretLineTypeDisplayHist(line) {
+        if (!line || typeof line !== 'object') return '-';
+        if (line.typeDisplay) return String(line.typeDisplay).trim();
+        const labels = { pc: 'PC', ecran: 'Écran', clavier: 'Clavier', souris: 'Souris', autres: 'Autres' };
+        const t = String(line.type || '').toLowerCase();
+        const detail = String(
+            line.type_detail
+            || [line.marque, line.modele].filter((x) => String(x || '').trim()).join(' · ')
+            || line.marque
+            || line.designation
+            || ''
+        ).trim();
+        if (t === 'autres' && detail) return detail;
+        return labels[t] || String(line.type || '-').trim() || '-';
     }
 
     /**
@@ -138,6 +191,7 @@ export default class HistoriqueManager {
             ...this.lots.map(lot => ({ type: 'lot', date: lot.finished_at || lot.created_at, item: lot })),
             ...this.sessionsDisques.map(s => ({ type: 'disque', date: s.date || (s.created_at || '').slice(0, 10), item: s })),
             ...this.dons.map(d => ({ type: 'don', date: d.date || (d.created_at || '').slice(0, 10), item: d })),
+            ...this.prets.map(p => ({ type: 'pret', date: this.getPretSortDateHist(p) || (p.created_at || '').slice(0, 10), item: p })),
             ...this.commandes.map(c => ({ type: 'commande', date: c.date || (c.created_at || '').slice(0, 10), item: c }))
         ].sort((a, b) => this.parseFlexibleDate(b.date) - this.parseFlexibleDate(a.date));
 
@@ -168,6 +222,12 @@ export default class HistoriqueManager {
                     const titleText = (`commande ${name} ${category}`).toLowerCase();
                     return titleText.includes(searchText);
                 }
+                if (type === 'pret') {
+                    const ref = String(item.reference || item.title || item.lot_name || item.name || '').trim();
+                    const borrower = String(item.borrower_name || item.emprunteur || '').trim();
+                    const titleText = (`prêt ${ref} ${borrower}`).toLowerCase();
+                    return titleText.includes(searchText);
+                }
                 return false;
             });
         }
@@ -177,7 +237,7 @@ export default class HistoriqueManager {
                 <div class="empty-state">
                     <i class="fa-solid fa-inbox"></i>
                     <p>${merged.length === 0 ? 'Aucun élément' : 'Aucun résultat'}</p>
-                    <small>${merged.length === 0 ? 'Lots, disques, dons et commandes apparaîtront ici' : 'Modifiez la recherche ou le filtre type'}</small>
+                    <small>${merged.length === 0 ? 'Lots, disques, dons, prêts matériel et commandes apparaîtront ici' : 'Modifiez la recherche ou le filtre type'}</small>
                 </div>
             `;
             return;
@@ -187,6 +247,7 @@ export default class HistoriqueManager {
             if (type === 'lot') return this.createLotElement(item);
             if (type === 'disque') return this.createDisqueElement(item);
             if (type === 'don') return this.createDonElement(item);
+            if (type === 'pret') return this.createPretElement(item);
             return this.createCommandeElement(item);
         }).join('');
         this.attachLotEventListeners();
@@ -219,6 +280,31 @@ export default class HistoriqueManager {
                         </button>
                         <button type="button" class="btn-edit-don-items-hist" data-don-id="${this.escapeHtml(String(don.id || ''))}" title="Éditer le matériel du don">
                             <i class="fa-solid fa-list-check" aria-hidden="true"></i> Éditer matériel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    createPretElement(pret) {
+        const ref = (pret.reference || pret.title || pret.lot_name || pret.name || '').trim();
+        const dateFormatted = this.formatDateDDMMYYYY(this.getPretSortDateHist(pret) || (pret.created_at || '').slice(0, 10));
+        const borrower = String(pret.borrower_name || pret.emprunteur || '-').trim() || '-';
+        const title = ref ? `Prêt | ${this.escapeHtml(ref)}` : `Prêt #${this.escapeHtml(String(pret.id || ''))}`;
+        return `
+            <div class="historique-lot-card historique-pret-card" data-type="pret" data-pret-id="${this.escapeHtml(String(pret.id || ''))}">
+                <div class="historique-lot-header">
+                    <div class="historique-lot-title">
+                        <h3><i class="fa-solid fa-handshake historique-type-icon" aria-hidden="true"></i> ${title}</h3>
+                        <span class="badge-created">Créé le ${this.escapeHtml(dateFormatted)}</span>
+                    </div>
+                    <div class="historique-lot-stats">
+                        <span class="historique-stat"><i class="fa-solid fa-user" aria-hidden="true"></i> ${this.escapeHtml(borrower)}</span>
+                    </div>
+                    <div class="historique-lot-actions">
+                        <button type="button" class="btn-view-pret-details-hist" data-pret-id="${this.escapeHtml(String(pret.id || ''))}" title="Voir les détails du prêt">
+                            <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir détails
                         </button>
                     </div>
                 </div>
@@ -438,7 +524,7 @@ export default class HistoriqueManager {
      */
     unwrapDetailRecord(data) {
         if (!data || typeof data !== 'object') return data;
-        const nestedKeys = ['commande', 'don', 'item', 'record', 'result', 'body'];
+        const nestedKeys = ['commande', 'don', 'pret', 'pret_materiel', 'item', 'record', 'result', 'body'];
         for (const k of nestedKeys) {
             const v = data[k];
             if (v && typeof v === 'object' && !Array.isArray(v)) return v;
@@ -481,13 +567,21 @@ export default class HistoriqueManager {
     }
 
     resolveDetailEndpoint(kind, id) {
-        const key = kind === 'commande' ? 'commandes.get' : 'dons.get';
-        const dynamic = window.SERVER_CONFIG?.getEndpoint?.(key);
-        if (dynamic && /:id/.test(dynamic)) {
-            return dynamic.replace(':id', String(id));
+        if (kind === 'commande') {
+            const dynamic = window.SERVER_CONFIG?.getEndpoint?.('commandes.get');
+            if (dynamic && /:id/.test(dynamic)) return dynamic.replace(':id', String(id));
+            return `/api/commandes/${id}`;
         }
-        if (kind === 'commande') return `/api/commandes/${id}`;
-        if (kind === 'don') return `/api/dons/${id}`;
+        if (kind === 'don') {
+            const dynamic = window.SERVER_CONFIG?.getEndpoint?.('dons.get');
+            if (dynamic && /:id/.test(dynamic)) return dynamic.replace(':id', String(id));
+            return `/api/dons/${id}`;
+        }
+        if (kind === 'pret') {
+            const dynamic = window.SERVER_CONFIG?.getEndpoint?.('pretsMateriel.get');
+            if (dynamic && /:id/.test(dynamic)) return dynamic.replace(':id', String(id));
+            return `/api/prets-materiel/${id}`;
+        }
         return null;
     }
 
@@ -689,6 +783,12 @@ export default class HistoriqueManager {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 this.editDonItemsFromHistorique(btn.dataset.donId);
+            });
+        });
+        document.querySelectorAll('.btn-view-pret-details-hist').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.viewPretDetails(btn.dataset.pretId);
             });
         });
     }
@@ -921,6 +1021,77 @@ export default class HistoriqueManager {
             }
         }
         this.modalManager.open('modal-don-details');
+    }
+
+    async viewPretDetails(pretId) {
+        let pret = this.prets.find(p => String(p.id) === String(pretId));
+        if (!pret) return;
+        let lines = this.extractPretLinesFromRecord(pret);
+        const endpoint = this.resolveDetailEndpoint('pret', pretId);
+        if (endpoint) {
+            try {
+                const res = await api.get(endpoint, { useCache: false });
+                if (res.ok) {
+                    const data = await res.json();
+                    const full = this.unwrapDetailRecord(data);
+                    if (full && typeof full === 'object' && !Array.isArray(full)) {
+                        pret = { ...pret, ...full };
+                        lines = this.extractPretLinesFromRecord(pret);
+                    }
+                }
+            } catch (_) { /* garde liste */ }
+        }
+        const idx = this.prets.findIndex(p => String(p.id) === String(pretId));
+        if (idx >= 0) this.prets[idx] = { ...this.prets[idx], ...pret, lines };
+        const setText = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+        const ref = String(pret.reference || pret.title || pret.lot_name || pret.name || `Prêt #${pret.id || ''}`);
+        const dateDoc = this.formatDateDDMMYYYY(pret.date || this.getPretSortDateHist(pret) || pret.created_at);
+        const d0 = this.formatDateDDMMYYYY(pret.date_debut || pret.dateDebut || pret.date || pret.created_at);
+        const d1 = this.formatDateDDMMYYYY(pret.date_fin || pret.dateFin || pret.date_debut || pret.date);
+        const borrower = String(pret.borrower_name || pret.borrowerName || pret.emprunteur || '-').trim();
+        const bt = String(pret.borrower_type || pret.borrowerType || 'personne').toLowerCase() === 'societe' ? 'Société' : 'Personne';
+        const rgRaw = pret.remuneration_gratuit ?? pret.remunerationGratuit;
+        const gratuit = rgRaw !== false && rgRaw !== 0 && String(rgRaw).toLowerCase() !== 'false';
+        const montant = pret.remuneration_montant ?? pret.remunerationMontant;
+        const remTxt = gratuit
+            ? 'Prêt gratuit'
+            : (montant != null && Number.isFinite(Number(montant)) ? `${Number(montant).toFixed(2).replace('.', ',')} €` : '—');
+        setText('modal-pret-title', ref);
+        setText('modal-pret-date', dateDoc);
+        setText('modal-pret-period', `du ${d0} au ${d1}`);
+        setText('modal-pret-borrower', `${bt} — ${borrower}`);
+        setText('modal-pret-remuneration', remTxt);
+        setText('modal-pret-lines-count', String(lines.length));
+        const tbody = document.getElementById('modal-pret-lines-body');
+        if (tbody) {
+            if (lines.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6">Aucune ligne</td></tr>`;
+            } else {
+                const cell = (v) => this.escapeHtml(String(v ?? '').trim() || '—');
+                tbody.innerHTML = lines.map((line, idx) => {
+                    const t = String(line?.type || '').toLowerCase();
+                    const isAutres = t === 'autres';
+                    const typeCol = this.escapeHtml(this.pretLineTypeDisplayHist(line));
+                    const marque = cell(line?.marque ?? line?.marqueName);
+                    const modele = cell(line?.modele ?? line?.modeleName);
+                    const sn = isAutres ? '—' : cell(line?.serialNumber ?? line?.serial_number ?? line?.serial);
+                    return `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td>${typeCol}</td>
+                        <td>${marque}</td>
+                        <td>${modele}</td>
+                        <td>${sn}</td>
+                        <td>${this.escapeHtml(String(line?.quantite ?? line?.quantity ?? '-'))}</td>
+                    </tr>
+                `;
+                }).join('');
+            }
+        }
+        this.modalManager.open('modal-pret-details');
     }
 
     async editDonFromHistorique(donId) {
@@ -2126,5 +2297,6 @@ export default class HistoriqueManager {
         this.sessionsDisques = [];
         this.commandes = [];
         this.dons = [];
+        this.prets = [];
     }
 }

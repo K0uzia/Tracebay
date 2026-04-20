@@ -10,7 +10,14 @@ import { getSessions, getSession, getSessionPdfUrl, updateSession } from './disq
 const logger = getLogger();
 const COMMANDES_PDF_BASE = '/mnt/team/#TEAM/#COMMANDES/';
 const DONS_PDF_BASE = '/mnt/team/#TEAM/#TRAÇABILITÉ/don_stagiaires';
+const PRETS_PDF_BASE = '/mnt/team/#TEAM/#TRAÇABILITÉ/prets_materiel';
 
+const PRET_TYPE_LABELS = { pc: 'PC', ecran: 'Écran', clavier: 'Clavier', souris: 'Souris', autres: 'Autres' };
+const PRET_TYPES_NO_SN = ['ecran', 'clavier', 'souris'];
+
+function pretTypeSansSn(typeVal) {
+    return PRET_TYPES_NO_SN.includes(String(typeVal || '').toLowerCase());
+}
 
 export default class TracabiliteManager {
     constructor(modalManager) {
@@ -19,6 +26,7 @@ export default class TracabiliteManager {
         this.sessionsDisques = [];
         this.commandes = [];
         this.dons = [];
+        this.prets = [];
         this.apiIssues = [];
         this.currentEmailLotId = null;
         this.currentEmailSessionId = null;
@@ -61,12 +69,14 @@ export default class TracabiliteManager {
             const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` };
             const endpointCommandes = (window.SERVER_CONFIG?.getEndpoint?.('commandes.tracabilite')) || '/api/commandes/tracabilite';
             const endpointDons = (window.SERVER_CONFIG?.getEndpoint?.('dons.tracabilite')) || '/api/dons/tracabilite';
+            const endpointPrets = (window.SERVER_CONFIG?.getEndpoint?.('pretsMateriel.tracabilite')) || '/api/prets-materiel/tracabilite';
 
-            const [lots, sessions, commandesRes, donsRes] = await Promise.all([
+            const [lots, sessions, commandesRes, donsRes, pretsRes] = await Promise.all([
                 loadLotsWithItems({ status: 'all' }),
                 getSessions().catch(() => []),
                 fetch(`${serverUrl}${endpointCommandes.startsWith('/') ? endpointCommandes : '/' + endpointCommandes}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
-                fetch(`${serverUrl}${endpointDons.startsWith('/') ? endpointDons : '/' + endpointDons}`, { method: 'GET', headers }).catch(() => ({ ok: false }))
+                fetch(`${serverUrl}${endpointDons.startsWith('/') ? endpointDons : '/' + endpointDons}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
+                fetch(`${serverUrl}${endpointPrets.startsWith('/') ? endpointPrets : '/' + endpointPrets}`, { method: 'GET', headers }).catch(() => ({ ok: false }))
             ]);
 
             this.lots = (lots || []).sort((a, b) =>
@@ -114,8 +124,29 @@ export default class TracabiliteManager {
                     status: donsRes?.status || 'N/A'
                 });
             }
+            if (pretsRes.ok) {
+                try {
+                    const data = await pretsRes.json();
+                    this.prets = this.extractListFromApiPayload(data, [
+                        'prets', 'prets_materiel', 'pret_materiels', 'pretMateriels',
+                        'items', 'data', 'results', 'rows'
+                    ]);
+                    this.prets = this.prets.map((p) => ({
+                        ...p,
+                        lines: this.extractPretLinesFromRecord(p)
+                    }));
+                    this.prets.sort((a, b) => this.parseFlexibleDate(this.getPretSortDate(b)) - this.parseFlexibleDate(this.getPretSortDate(a)));
+                } catch (_) { this.prets = []; }
+            } else {
+                this.prets = [];
+                this.apiIssues.push({
+                    module: 'pretsMateriel',
+                    endpoint: endpointPrets,
+                    status: pretsRes?.status || 'N/A'
+                });
+            }
 
-            logger.info('📦 Traçabilité : ' + this.lots.length + ' lot(s), ' + this.sessionsDisques.length + ' disque(s), ' + this.commandes.length + ' commande(s), ' + this.dons.length + ' don(s)');
+            logger.info('📦 Traçabilité : ' + this.lots.length + ' lot(s), ' + this.sessionsDisques.length + ' disque(s), ' + this.commandes.length + ' commande(s), ' + this.dons.length + ' don(s), ' + this.prets.length + ' prêt(s)');
             this.renderTable();
         } catch (error) {
             logger.error('❌ Erreur chargement lots:', error);
@@ -123,9 +154,61 @@ export default class TracabiliteManager {
             this.sessionsDisques = [];
             this.commandes = [];
             this.dons = [];
+            this.prets = [];
             this.apiIssues = [];
             this.renderLotsError(error);
         }
+    }
+
+    getPretSortDate(p) {
+        if (!p || typeof p !== 'object') return '';
+        const d = p.date_debut || p.date || p.created_at || '';
+        return String(d).trim().slice(0, 10);
+    }
+
+    extractPretLinesFromRecord(obj) {
+        if (!obj || typeof obj !== 'object') return [];
+        const keys = ['lines', 'lignes', 'items', 'pret_lignes', 'pretLignes', 'pret_lines'];
+        for (const k of keys) {
+            const arr = this.parseLinesArray(obj[k]);
+            if (arr.length > 0) return arr;
+        }
+        return [];
+    }
+
+    pretLineTypeDisplay(line) {
+        if (!line || typeof line !== 'object') return '-';
+        if (line.typeDisplay) return String(line.typeDisplay).trim();
+        const t = String(line.type || '').toLowerCase();
+        const detail = String(
+            line.type_detail
+            || [line.marque, line.modele].filter((x) => String(x || '').trim()).join(' · ')
+            || line.marque
+            || line.designation
+            || ''
+        ).trim();
+        if (t === 'autres' && detail) return detail;
+        return PRET_TYPE_LABELS[t] || String(line.type || '-').trim() || '-';
+    }
+
+    normalizePretLinesForPdf(pret) {
+        const raw = Array.isArray(pret?.lines) ? pret.lines : this.extractPretLinesFromRecord(pret);
+        return raw.map((line, i) => {
+            const t = String(line.type || '').toLowerCase();
+            const isAutres = t === 'autres';
+            const sansSn = isAutres || pretTypeSansSn(t);
+            const marque = String(line.marque ?? line.marqueName ?? '').trim();
+            const modele = String(line.modele ?? line.modeleName ?? '').trim();
+            const sn = String(line.serialNumber ?? line.serial_number ?? line.serial ?? '').trim();
+            return {
+                num: line.num != null ? line.num : i + 1,
+                typeDisplay: this.pretLineTypeDisplay(line),
+                marqueName: marque || '—',
+                modeleName: modele || '—',
+                serialNumber: sansSn ? '—' : (sn || '—'),
+                quantite: line.quantite != null ? line.quantite : (line.quantity ?? 0)
+            };
+        });
     }
 
     /**
@@ -212,13 +295,19 @@ export default class TracabiliteManager {
             const y = this.parseFlexibleDate(dateStr).getFullYear().toString();
             return y === selectedYear;
         });
+        const pretsForYear = this.prets.filter(p => {
+            const dateStr = this.getPretSortDate(p) || (p.created_at || '').slice(0, 10);
+            const y = this.parseFlexibleDate(dateStr).getFullYear().toString();
+            return y === selectedYear;
+        });
 
         const typeFilter = (document.getElementById('filter-tracabilite-type')?.value) || 'tous';
         const showLots = typeFilter === 'tous' || typeFilter === 'lots';
         const showDisques = typeFilter === 'tous' || typeFilter === 'disques';
         const showCommandes = typeFilter === 'tous' || typeFilter === 'commandes';
         const showDons = typeFilter === 'tous' || typeFilter === 'dons';
-        const totalItems = (showLots ? lotsForYear.length : 0) + (showDisques ? sessionsForYear.length : 0) + (showCommandes ? commandesForYear.length : 0) + (showDons ? donsForYear.length : 0);
+        const showPrets = typeFilter === 'tous' || typeFilter === 'prets';
+        const totalItems = (showLots ? lotsForYear.length : 0) + (showDisques ? sessionsForYear.length : 0) + (showCommandes ? commandesForYear.length : 0) + (showDons ? donsForYear.length : 0) + (showPrets ? pretsForYear.length : 0);
         if (totalItems === 0) {
             container.innerHTML = `
                 ${issuesHtml}
@@ -236,6 +325,7 @@ export default class TracabiliteManager {
         const groupedSessions = this.groupByYearMonthSessions(sessionsForYear);
         const groupedCommandes = this.groupByYearMonthCommandes(commandesForYear);
         const groupedDons = this.groupByYearMonthDons(donsForYear);
+        const groupedPrets = this.groupByYearMonthPrets(pretsForYear);
         const allMonthsByYear = {};
         for (const [year, months] of Object.entries(groupedLots)) {
             if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
@@ -253,6 +343,10 @@ export default class TracabiliteManager {
             if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
             Object.keys(months).forEach(m => { allMonthsByYear[year][m] = true; });
         }
+        for (const [year, months] of Object.entries(groupedPrets)) {
+            if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
+            Object.keys(months).forEach(m => { allMonthsByYear[year][m] = true; });
+        }
 
         let html = '';
         for (const [year, monthsSet] of Object.entries(allMonthsByYear)) {
@@ -267,7 +361,8 @@ export default class TracabiliteManager {
                 const sessions = (groupedSessions[year] && groupedSessions[year][month]) || [];
                 const commandes = (groupedCommandes[year] && groupedCommandes[year][month]) || [];
                 const dons = (groupedDons[year] && groupedDons[year][month]) || [];
-                const count = (showLots ? lots.length : 0) + (showDisques ? sessions.length : 0) + (showCommandes ? commandes.length : 0) + (showDons ? dons.length : 0);
+                const prets = (groupedPrets[year] && groupedPrets[year][month]) || [];
+                const count = (showLots ? lots.length : 0) + (showDisques ? sessions.length : 0) + (showCommandes ? commandes.length : 0) + (showDons ? dons.length : 0) + (showPrets ? prets.length : 0);
                 html += `<div class="month-section" data-month="${month}">
                     <div class="month-header">
                         <h3><i class="fa-solid fa-calendar-days"></i> ${this.getMonthName(parseInt(month))} (${count} élément${count !== 1 ? 's' : ''})</h3>
@@ -278,6 +373,7 @@ export default class TracabiliteManager {
                 if (showDisques) { for (const session of sessions) { html += this.createDisqueCard(session); } }
                 if (showCommandes) { for (const cmd of commandes) { html += this.createCommandeCard(cmd); } }
                 if (showDons) { for (const don of dons) { html += this.createDonCard(don); } }
+                if (showPrets) { for (const pret of prets) { html += this.createPretCard(pret); } }
 
                 html += `</div></div>`;
             }
@@ -370,6 +466,20 @@ export default class TracabiliteManager {
         return grouped;
     }
 
+    groupByYearMonthPrets(prets) {
+        const grouped = {};
+        (prets || []).forEach(p => {
+            const dateStr = this.getPretSortDate(p) || (p.created_at || '').toString().slice(0, 10);
+            const date = this.parseFlexibleDate(dateStr);
+            const year = date.getFullYear().toString();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            if (!grouped[year]) grouped[year] = {};
+            if (!grouped[year][month]) grouped[year][month] = [];
+            grouped[year][month].push(p);
+        });
+        return grouped;
+    }
+
     parseFlexibleDate(raw) {
         const value = String(raw || '').trim();
         if (!value) return new Date(0);
@@ -438,7 +548,7 @@ export default class TracabiliteManager {
 
     unwrapDetailRecord(data) {
         if (!data || typeof data !== 'object') return data;
-        const nestedKeys = ['commande', 'don', 'item', 'record', 'result', 'body'];
+        const nestedKeys = ['commande', 'don', 'pret', 'pret_materiel', 'item', 'record', 'result', 'body'];
         for (const k of nestedKeys) {
             const v = data[k];
             if (v && typeof v === 'object' && !Array.isArray(v)) return v;
@@ -676,6 +786,76 @@ export default class TracabiliteManager {
                             <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Régénérer PDF
                         </button>
                     ` : '<span class="text-muted">Certificat non disponible</span>'}
+                </div>
+            </div>
+        `;
+    }
+
+    /**
+     * Carte prêt / location matériel (PDF local ou URL serveur)
+     */
+    createPretCard(pret) {
+        const ref = (pret.reference || pret.title || pret.lot_name || pret.name || '').trim();
+        const title = ref ? `Prêt : ${this.escapeHtml(ref)}` : 'Prêt #' + (pret.id || '');
+        const dateStr = String(pret.date || pret.date_debut || (pret.created_at || '')).trim();
+        const dateFormatted = this.formatDateDDMMYYYY(dateStr);
+        const borrower = String(pret.borrower_name || pret.emprunteur || '-').trim() || '-';
+        const rawPdfPath = String(pret.pdf_path || '').trim();
+        const isLocalPath = rawPdfPath.startsWith('/mnt/') || rawPdfPath.startsWith('/home/') || rawPdfPath.startsWith('/Users/');
+        const pdfUrl = pret.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : '/' + rawPdfPath)) : '');
+        const hasPdf = (isLocalPath && rawPdfPath) || (pdfUrl && pdfUrl.length > 0);
+        const safeUrl = pdfUrl ? (pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;') : '';
+        const safeDate = this.normalizeDateForPath(this.getPretSortDate(pret) || new Date().toISOString().slice(0, 10));
+        const sanitizePretDownloadBase = (s) => {
+            const t = String(s ?? '').trim();
+            if (!t) return '';
+            const out = t.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '').slice(0, 80);
+            return out || '';
+        };
+        const borrowerRaw = String(pret.borrower_name || pret.borrowerName || pret.emprunteur || '').trim();
+        const safeName = sanitizePretDownloadBase(ref) || sanitizePretDownloadBase(borrowerRaw) || 'pret';
+        const downloadFilename = `${safeName}_${safeDate}.pdf`;
+        return `
+            <div class="lot-card lot-card-pret" data-pret-id="${this.escapeHtml(String(pret.id || ''))}">
+                <div class="lot-card-header">
+                    <div class="lot-card-title">
+                        <h4><i class="fa-solid fa-handshake"></i> ${title}</h4>
+                    </div>
+                    <div class="lot-card-date">
+                        <span class="date-label">Date</span>
+                        <span class="date-value">${this.escapeHtml(dateFormatted)}</span>
+                    </div>
+                </div>
+                <div class="lot-card-stats">
+                    <div class="stat">
+                        <span class="stat-label">Emprunteur</span>
+                        <span class="stat-value">${this.escapeHtml(borrower)}</span>
+                    </div>
+                </div>
+                <div class="lot-card-actions">
+                    ${hasPdf ? `
+                        <button type="button" class="btn-action btn-open-pdf-location-pret" data-pret-id="${this.escapeHtml(String(pret.id || ''))}" title="Ouvrir le dossier du PDF">
+                            <i class="fa-solid fa-folder-open" aria-hidden="true"></i> Emplacement PDF
+                        </button>
+                        ${isLocalPath ? `
+                            <button type="button" class="btn-action btn-view-local-pdf-pret" data-pdf-path="${this.escapeHtml(rawPdfPath)}" title="Ouvrir le PDF local">
+                                <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le PDF
+                            </button>
+                            <button type="button" class="btn-action btn-download-local-pdf-pret" data-pdf-path="${this.escapeHtml(rawPdfPath)}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Télécharger le PDF local">
+                                <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger PDF
+                            </button>
+                        ` : `
+                            <button type="button" class="btn-action btn-view-pdf-pret" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Ouvrir le PDF">
+                                <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le PDF
+                            </button>
+                            <button type="button" class="btn-action btn-download-pdf-pret" data-pdf-url="${safeUrl}" data-download-filename="${this.escapeHtml(downloadFilename)}" title="Télécharger le PDF">
+                                <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger PDF
+                            </button>
+                        `}
+                        <button type="button" class="btn-action btn-regenerate-pdf-pret" data-pret-id="${this.escapeHtml(String(pret.id || ''))}" title="Régénérer le PDF du prêt">
+                            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Régénérer PDF
+                        </button>
+                    ` : '<span class="text-muted">PDF non disponible</span>'}
                 </div>
             </div>
         `;
@@ -976,6 +1156,50 @@ export default class TracabiliteManager {
                 this.regenerateDonPdf(btn.dataset.donId);
             });
         });
+        document.querySelectorAll('.btn-open-pdf-location-pret').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.openPretPdfLocation(btn.dataset.pretId);
+            });
+        });
+        document.querySelectorAll('.btn-view-pdf-pret').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const url = (btn.dataset.pdfUrl || '').replace(/&quot;/g, '"');
+                const filename = (btn.dataset.downloadFilename || '').replace(/&quot;/g, '"') || 'pret.pdf';
+                this.openPdfWithSystemApp(url, filename);
+            });
+        });
+        document.querySelectorAll('.btn-download-pdf-pret').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const url = (btn.dataset.pdfUrl || '').replace(/&quot;/g, '"');
+                const filename = (btn.dataset.downloadFilename || '').replace(/&quot;/g, '"') || 'pret.pdf';
+                this.downloadDisquePdf(url, filename);
+            });
+        });
+        document.querySelectorAll('.btn-view-local-pdf-pret').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const pdfPath = (btn.dataset.pdfPath || '').replace(/&quot;/g, '"');
+                if (!pdfPath) return;
+                await this.openPathOnDesktop(pdfPath);
+            });
+        });
+        document.querySelectorAll('.btn-download-local-pdf-pret').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                const pdfPath = (btn.dataset.pdfPath || '').replace(/&quot;/g, '"');
+                const filename = (btn.dataset.downloadFilename || '').replace(/&quot;/g, '"') || 'pret.pdf';
+                await this.downloadLocalPdf(pdfPath, filename);
+            });
+        });
+        document.querySelectorAll('.btn-regenerate-pdf-pret').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.regeneratePretPdf(btn.dataset.pretId);
+            });
+        });
     }
 
     async regenerateCommandePdf(commandeId) {
@@ -1040,6 +1264,60 @@ export default class TracabiliteManager {
                 await api.put(`/api/dons/${donId}`, { pdf_path: result.pdf_path });
             } catch (_) { /* backend optionnel */ }
             this.showNotification('PDF don régénéré', 'success');
+            this.renderTable();
+        } catch (err) {
+            this.showNotification(err?.message || 'Régénération impossible', 'error');
+        }
+    }
+
+    buildPretPdfPayload(pret) {
+        const ref = String(pret.reference || pret.title || pret.lot_name || pret.name || '').trim();
+        const dateDebut = String(pret.date_debut || pret.dateDebut || pret.date || '').trim().slice(0, 10) || new Date().toISOString().slice(0, 10);
+        const dateFin = String(pret.date_fin || pret.dateFin || '').trim().slice(0, 10) || dateDebut;
+        const rgRaw = pret.remuneration_gratuit ?? pret.remunerationGratuit;
+        const remuneration_gratuit = rgRaw !== false && rgRaw !== 0 && String(rgRaw).toLowerCase() !== 'false';
+        const rmRaw = pret.remuneration_montant ?? pret.remunerationMontant;
+        const remuneration_montant = remuneration_gratuit ? null : (rmRaw != null && Number.isFinite(Number(rmRaw)) ? Number(rmRaw) : null);
+        return {
+            reference: ref,
+            date: dateDebut,
+            borrower_type: String(pret.borrower_type || pret.borrowerType || 'personne').toLowerCase() === 'societe' ? 'societe' : 'personne',
+            borrower_name: String(pret.borrower_name || pret.borrowerName || '').trim(),
+            borrower_contact: String(pret.borrower_contact || pret.borrowerContact || '').trim(),
+            date_debut: dateDebut,
+            date_fin: dateFin,
+            remuneration_gratuit,
+            remuneration_montant,
+            lines: this.normalizePretLinesForPdf(pret),
+            basePath: PRETS_PDF_BASE
+        };
+    }
+
+    async regeneratePretPdf(pretId) {
+        try {
+            let pret = this.prets.find(p => String(p.id) === String(pretId));
+            if (!pret) throw new Error('Prêt introuvable');
+            if (!window.electron?.invoke) throw new Error('Régénération disponible uniquement dans l’application desktop');
+            try {
+                const res = await api.get(`/api/prets-materiel/${pretId}`, { useCache: false });
+                if (res.ok) {
+                    const data = await res.json();
+                    const full = this.unwrapDetailRecord(data);
+                    if (full && typeof full === 'object' && !Array.isArray(full)) {
+                        pret = { ...pret, ...full, lines: this.extractPretLinesFromRecord(full) };
+                        const idx = this.prets.findIndex(p => String(p.id) === String(pretId));
+                        if (idx >= 0) this.prets[idx] = pret;
+                    }
+                }
+            } catch (_) { /* garde l’objet liste */ }
+            const payload = this.buildPretPdfPayload(pret);
+            const result = await window.electron.invoke('generate-pret-materiel-pdf', payload);
+            if (!result?.success || !result.pdf_path) throw new Error(result?.error || 'Échec génération');
+            pret.pdf_path = result.pdf_path;
+            try {
+                await api.put(`/api/prets-materiel/${pretId}`, { pdf_path: result.pdf_path });
+            } catch (_) { /* backend optionnel */ }
+            this.showNotification('PDF prêt régénéré', 'success');
             this.renderTable();
         } catch (err) {
             this.showNotification(err?.message || 'Régénération impossible', 'error');
@@ -1197,6 +1475,14 @@ export default class TracabiliteManager {
         const candidate = this.getCandidatePdfPathFromItem(don);
         const explicit = this.isAllowedLocalPath(candidate) ? this.toDirectoryPath(candidate) : null;
         await this.openPathOnDesktop(explicit || '/mnt/team/#TEAM/#TRAÇABILITÉ/don_stagiaires');
+    }
+
+    async openPretPdfLocation(pretId) {
+        const pret = this.prets.find(p => String(p.id) === String(pretId));
+        if (!pret) return;
+        const candidate = this.getCandidatePdfPathFromItem(pret);
+        const explicit = this.isAllowedLocalPath(candidate) ? this.toDirectoryPath(candidate) : null;
+        await this.openPathOnDesktop(explicit || PRETS_PDF_BASE);
     }
 
     openEmailModalDisque(sessionId) {
@@ -1650,6 +1936,7 @@ export default class TracabiliteManager {
         this.sessionsDisques = [];
         this.commandes = [];
         this.dons = [];
+        this.prets = [];
         this.currentEmailLotId = null;
         this.currentEmailSessionId = null;
     }

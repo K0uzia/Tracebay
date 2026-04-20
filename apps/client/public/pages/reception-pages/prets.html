@@ -1,0 +1,63 @@
+<section class="recep-page lot-page prets-container">
+    <div class="lot-page__body">
+        <div class="lot-card lot-card--config">
+            <div class="lot-card__inner">
+                <div class="prets-config-grid" style=" margin-bottom:var(--unit-1);">
+                    <div class="lot-config__field" style=" margin:0;">
+                        <label class="lot-config__label" for="prets-date-debut"><i class="fa-solid fa-calendar-day"></i> Début de location</label>
+                        <input class="lot-config__input" type="date" id="prets-date-debut" required>
+                    </div>
+                    <div class="lot-config__field" style=" margin:0;">
+                        <label class="lot-config__label" for="prets-date-fin"><i class="fa-solid fa-calendar-check"></i> Fin de location</label>
+                        <input class="lot-config__input" type="date" id="prets-date-fin" required>
+                    </div>
+                    <div class="lot-config__field">
+                        <label class="lot-config__label" for="prets-borrower-name"><i class="fa-solid fa-building-user"></i> Nom ou Nom Structure</label>
+                        <input class="lot-config__input" type="text" id="prets-borrower-name" placeholder="Nom complet ou société" maxlength="255" required autocomplete="organization">
+                    </div>
+                    <div class="lot-config__field" style="max-width: none; margin:0;">
+                        <label class="lot-config__label" for="prets-borrower-type"><i class="fa-solid fa-user-tag"></i> Type d'emprunteur</label>
+                        <select class="lot-config__input" id="prets-borrower-type" name="prets-borrower-type" aria-label="Type d'emprunteur">
+                            <option value="personne">Personne</option>
+                            <option value="societe">Structure</option>
+                        </select>
+                    </div>
+                    <div class="prets-remuneration-row" style="display: flex; flex-direction: column;gap: var(--unit-1); align-items: start;">
+                        <label class="lot-config__label" style="margin:0;display:flex;align-items:center;gap:var(--unit-2);">
+                            <input type="checkbox" id="prets-payant">
+                            Prêt payant
+                        </label>
+                        <div class="lot-config__field prets-montant-field" id="prets-montant-wrap" hidden>
+                            <input class="lot-config__input" type="number" id="prets-montant" min="0" step="0.01" placeholder="Montant (€)" disabled>
+                        </div>
+                    </div>
+                </div>
+                <div class="lot-config__actions" style="margin-top: var(--unit-3);">
+                    <button type="button" class="lot-btn lot-btn--secondary" id="prets-btn-add-line" title="Ajouter une ligne">Ajouter une ligne</button>
+                    <button type="button" class="lot-btn lot-btn--primary" id="prets-btn-save-pdf" title="Enregistrer la fiche PDF">Enregistrer</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="lot-card lot-card--table">
+            <div class="lot-card__inner lot-card__inner--scroll">
+                <div class="lot-table-wrap">
+                    <table class="lot-table" id="prets-table">
+                        <thead>
+                            <tr>
+                                <th class="lot-table__th--num"><i class="fa-solid fa-hashtag" aria-hidden="true"></i></th>
+                                <th class="lot-table__th--type"><i class="fa-solid fa-laptop" aria-hidden="true"></i> Type</th>
+                                <th class="lot-table__th--marque"><i class="fa-solid fa-building" aria-hidden="true"></i> Marque</th>
+                                <th class="lot-table__th--modele"><i class="fa-solid fa-cube" aria-hidden="true"></i> Modèle</th>
+                                <th class="lot-table__th--sn"><i class="fa-solid fa-barcode" aria-hidden="true"></i> S/N</th>
+                                <th class="lot-table__th--quantite"><i class="fa-solid fa-layer-group" aria-hidden="true"></i> Qté</th>
+                                <th class="lot-table__th--action"><i class="fa-solid fa-screwdriver-wrench" aria-hidden="true"></i></th>
+                            </tr>
+                        </thead>
+                        <tbody id="prets-tbody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
