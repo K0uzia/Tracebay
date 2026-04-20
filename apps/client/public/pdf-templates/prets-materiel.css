@@ -44,6 +44,13 @@ body {
     color: #2D3073;
 }
 
+.pdf-header-borrower {
+    margin: 0 0 6px 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #2D3073;
+}
+
 .pdf-header-org {
     margin: 0;
     font-size: 12px;

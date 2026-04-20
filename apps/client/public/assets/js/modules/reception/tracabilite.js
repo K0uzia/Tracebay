@@ -1278,7 +1278,9 @@ export default class TracabiliteManager {
         const remuneration_gratuit = rgRaw !== false && rgRaw !== 0 && String(rgRaw).toLowerCase() !== 'false';
         const rmRaw = pret.remuneration_montant ?? pret.remunerationMontant;
         const remuneration_montant = remuneration_gratuit ? null : (rmRaw != null && Number.isFinite(Number(rmRaw)) ? Number(rmRaw) : null);
+        const lotTitle = String(pret.lot_name || pret.lotName || pret.name || '').trim();
         return {
+            lot_name: lotTitle,
             reference: ref,
             date: dateDebut,
             borrower_type: String(pret.borrower_type || pret.borrowerType || 'personne').toLowerCase() === 'societe' ? 'societe' : 'personne',

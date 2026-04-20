@@ -3,6 +3,10 @@
         <div class="lot-card lot-card--config">
             <div class="lot-card__inner">
                 <div class="prets-config-grid" style=" margin-bottom:var(--unit-1);">
+                    <div class="lot-config__field" style="max-width: none; margin:0;">
+                        <label class="lot-config__label" for="prets-lot-name"><i class="fa-solid fa-tag"></i> Nom du lot (en-tête PDF)</label>
+                        <input class="lot-config__input" type="text" id="prets-lot-name" placeholder="Ex. Lot AFPA mars 2026" maxlength="255" autocomplete="off">
+                    </div>
                     <div class="lot-config__field" style=" margin:0;">
                         <label class="lot-config__label" for="prets-date-debut"><i class="fa-solid fa-calendar-day"></i> Début de location</label>
                         <input class="lot-config__input" type="date" id="prets-date-debut" required>

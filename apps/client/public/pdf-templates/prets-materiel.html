@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   Template PDF prêts matériel — placeholders :
-  {{date}} {{reference_block}} {{borrower_block}} {{period_block}} {{remuneration_block}} {{rows}}
+  {{lotName}} {{borrower_header}} {{date}} {{reference_block}} {{borrower_block}} {{period_block}} {{remuneration_block}} {{rows}}
 -->
 <html lang="fr">
 <head>
@@ -14,7 +14,8 @@
 <body>
     <header class="pdf-header">
         <div class="pdf-header-text">
-            <h1><i class="fa-solid fa-handshake"></i> LA CAPSULE</h1>
+            <h1><i class="fa-solid fa-handshake"></i> {{lotName}}</h1>
+            <p class="pdf-header-borrower">{{borrower_header}}</p>
             <p class="pdf-header-org">Fiche de prêt / location de matériel</p>
         </div>
         <div class="pdf-header-logo">

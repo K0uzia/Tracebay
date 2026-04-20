@@ -25,6 +25,8 @@
  *   "pdf_path": string
  * }
  *
+ * PDF local (IPC generate-pret-materiel-pdf) : champ optionnel "lot_name" (en-tête {{lotName}} du template).
+ *
  * GET /api/prets-materiel/tracabilite …
  * GET|PUT /api/prets-materiel/:id
  */
@@ -107,6 +109,7 @@ export default class PretsManager {
 
     getMetaFromForm() {
         const borrowerType = document.getElementById('prets-borrower-type')?.value || 'personne';
+        const lotName = document.getElementById('prets-lot-name')?.value?.trim() || null;
         const reference = document.getElementById('prets-reference')?.value?.trim() || null;
         const borrowerName = document.getElementById('prets-borrower-name')?.value?.trim() || '';
         const borrowerContact = document.getElementById('prets-borrower-contact')?.value?.trim() || null;
@@ -121,6 +124,7 @@ export default class PretsManager {
             remunerationMontant = Number.isFinite(n) ? n : null;
         }
         return {
+            lot_name: lotName,
             reference,
             borrower_type: borrowerType,
             borrower_name: borrowerName,
@@ -421,6 +425,7 @@ export default class PretsManager {
         const ipcLines = lines.map((l) => this.lineForPdf(l));
 
         const payload = {
+            lot_name: meta.lot_name || '',
             reference: meta.reference || '',
             date: dateStr,
             borrower_type: meta.borrower_type,

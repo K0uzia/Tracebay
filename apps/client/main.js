@@ -2259,7 +2259,7 @@ ipcMain.handle('generate-don-pdf', async (_event, payload) => {
 
 /**
  * Générer le PDF d'une fiche de prêt / location (prets-materiel.html + prets-materiel.css).
- * Placeholders : {{date}}, {{reference_block}}, {{borrower_block}}, {{period_block}}, {{remuneration_block}}, {{rows}}
+ * Placeholders : {{lotName}}, {{borrower_header}}, {{date}}, {{reference_block}}, {{borrower_block}}, {{period_block}}, {{remuneration_block}}, {{rows}}
  */
 async function generatePretMaterielPdfFromHtmlTemplate(payload, fullPath) {
     const templateDir = path.join(__dirname, 'public', 'pdf-templates');
@@ -2270,6 +2270,8 @@ async function generatePretMaterielPdfFromHtmlTemplate(payload, fullPath) {
     }
     const {
         reference = '',
+        lot_name,
+        lotName,
         borrower_type = 'personne',
         borrower_name = '',
         borrower_contact = '',
@@ -2288,7 +2290,10 @@ async function generatePretMaterielPdfFromHtmlTemplate(payload, fullPath) {
         : (/^\d{4}-\d{2}-\d{2}/.test(String(date_debut).trim()) ? String(date_debut).trim().slice(0, 10) : new Date().toISOString().slice(0, 10));
     const dateFormatted = formatDateForPdf(dateStr);
 
+    const lotTitleRaw = String(lot_name ?? lotName ?? '').trim();
     const refDisplay = (reference && String(reference).trim()) ? String(reference).trim() : '';
+    const lotTitleDisplay = lotTitleRaw || refDisplay || 'Prêt / location de matériel';
+
     const referenceBlock = refDisplay
         ? `<p class="pdf-summary-total-line"><span class="label"><i class="fa-solid fa-tag"></i> Référence :</span> <span class="value">${escapeHtml(refDisplay)}</span></p>`
         : '';
@@ -2302,7 +2307,7 @@ async function generatePretMaterielPdfFromHtmlTemplate(payload, fullPath) {
 
     const d0 = /^\d{4}-\d{2}-\d{2}/.test(String(date_debut).trim()) ? formatDateForPdf(String(date_debut).trim().slice(0, 10)) : escapeHtml(String(date_debut || '-'));
     const d1 = /^\d{4}-\d{2}-\d{2}/.test(String(date_fin).trim()) ? formatDateForPdf(String(date_fin).trim().slice(0, 10)) : escapeHtml(String(date_fin || '-'));
-    const periodBlock = `<p class="pdf-summary-total-line"><span class="label"><i class="fa-solid fa-calendar-range"></i> Période :</span> <span class="value">du ${d0} au ${d1}</span></p>`;
+    const periodBlock = `<p class="pdf-summary-total-line"><span class="label"><i class="fa-regular fa-calendar"></i> Période :</span> <span class="value">du ${d0} au ${d1}</span></p>`;
 
     let remunerationBlock;
     if (remuneration_gratuit) {
@@ -2325,6 +2330,12 @@ async function generatePretMaterielPdfFromHtmlTemplate(payload, fullPath) {
         })
         .join('\n');
 
+    const lotTitleEscaped = escapeHtml(lotTitleDisplay);
+    const borrowerHeaderEscaped = escapeHtml(String(borrower_name || '').trim() || '—');
+    html = html.replace(/\{\{\s*lotName\s*\}\}/g, lotTitleEscaped);
+    html = html.replace(/\{\{\s*lotname\s*\}\}/g, lotTitleEscaped);
+    html = html.replace(/\{\{\s*lot_name\s*\}\}/g, lotTitleEscaped);
+    html = html.replace(/\{\{\s*borrower_header\s*\}\}/g, borrowerHeaderEscaped);
     html = html.replace(/\{\{\s*date\s*\}\}/g, escapeHtml(dateFormatted));
     html = html.replace(/\{\{\s*reference_block\s*\}\}/g, referenceBlock);
     html = html.replace(/\{\{\s*borrower_block\s*\}\}/g, borrowerBlock);
@@ -2386,10 +2397,12 @@ async function generatePretMaterielPdfFromHtmlTemplate(payload, fullPath) {
 
 /**
  * Générer le PDF prêt matériel et l'enregistrer sous PRETS_PDF_BASE (année / mois).
- * Payload: { reference?, date (ISO début), borrower_type, borrower_name, borrower_contact?, date_debut, date_fin, remuneration_gratuit, remuneration_montant?, lines, basePath? }
+ * Payload: { lot_name?, lotName?, reference?, date (ISO début), borrower_type, borrower_name, borrower_contact?, date_debut, date_fin, remuneration_gratuit, remuneration_montant?, lines, basePath? }
  */
 ipcMain.handle('generate-pret-materiel-pdf', async (_event, payload) => {
     const {
+        lot_name,
+        lotName,
         reference,
         date,
         borrower_type,
@@ -2441,6 +2454,7 @@ ipcMain.handle('generate-pret-materiel-pdf', async (_event, payload) => {
     try {
         const result = await generatePretMaterielPdfFromHtmlTemplate({
             date: dateStr,
+            lot_name: (lot_name != null && String(lot_name).trim()) ? String(lot_name).trim() : ((lotName != null && String(lotName).trim()) ? String(lotName).trim() : ''),
             reference: (reference && String(reference).trim()) ? String(reference).trim() : '',
             borrower_type,
             borrower_name,
