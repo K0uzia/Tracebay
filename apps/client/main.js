@@ -2441,15 +2441,9 @@ ipcMain.handle('generate-pret-materiel-pdf', async (_event, payload) => {
     };
     const refPart = sanitizePretPdfBaseName(reference);
     const borrowerPart = sanitizePretPdfBaseName(borrower_name);
-    let baseName = refPart || borrowerPart || 'pret';
-    let fileName = `${baseName}_${dateStr}.pdf`;
-    let fullPath = path.join(targetBasePath, fileName);
-    let suffix = 1;
-    while (fs.existsSync(fullPath)) {
-        suffix += 1;
-        fileName = `${baseName}_${dateStr}_${suffix}.pdf`;
-        fullPath = path.join(targetBasePath, fileName);
-    }
+    const baseName = refPart || borrowerPart || 'pret';
+    const fileName = `${baseName}_${dateStr}.pdf`;
+    const fullPath = path.join(targetBasePath, fileName);
 
     try {
         const result = await generatePretMaterielPdfFromHtmlTemplate({
