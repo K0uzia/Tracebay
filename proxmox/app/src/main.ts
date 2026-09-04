@@ -1678,11 +1678,14 @@ function broadcastUserCount() {
           : 'linux';
         const stateVal = state != null && String(state).trim() !== '' ? String(state).trim() : null;
         const techVal = technician != null && String(technician).trim() !== '' ? String(technician).trim() : null;
+        // state_changed_at calculé côté JS : réutiliser $10 dans un CASE fait échouer
+        // PostgreSQL ("inconsistent types deduced for parameter $10") quand state est null.
+        const stateChangedAt = stateVal != null ? new Date() : null;
 
         const insertResult = await query(
           `INSERT INTO lot_items
            (lot_id, serial_number, type, marque_id, modele_id, entry_type, entry_date, entry_time, os, state, technician, state_changed_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, CASE WHEN $10::text IS NOT NULL THEN NOW() ELSE NULL END)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
            RETURNING *`,
           [
             id,
@@ -1695,7 +1698,8 @@ function broadcastUserCount() {
             entryTimeVal,
             osVal,
             stateVal,
-            techVal
+            techVal,
+            stateChangedAt
           ]
         );
 
