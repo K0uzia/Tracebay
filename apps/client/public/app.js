@@ -1033,6 +1033,22 @@ class PageManager {
 
     async loadPage(pageName) {
         try {
+            // Avant de remplacer le DOM : sauvegarder le lot en cours puis détacher le manager
+            if (window.gestionLotsManager) {
+                try {
+                    window.gestionLotsManager.saveDraft();
+                } catch (e) {
+                    logger.warn('⚠️ Flush brouillon lot:', e);
+                }
+                try {
+                    window.gestionLotsManager.destroy();
+                } catch (e) {
+                    logger.warn('⚠️ Destroy GestionLotsManager:', e);
+                }
+                window.gestionLotsManager = null;
+                window.gestionLotsManagerInitializing = false;
+            }
+
             const isReceptionSubPage = ['entrer', 'sortie', 'inventaire', 'historique', 'disques', 'commande', 'dons', 'prets'].includes(pageName);
 
             // Ancienne page traçabilité fusionnée dans historique

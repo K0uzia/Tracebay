@@ -9,6 +9,7 @@ import getLogger from '../../config/Logger.js';
 import { showAppNotification } from '../../config/notifications.js';
 const logger = getLogger();
 
+const LOT_DRAFT_STORAGE_PREFIX = 'workspace_lot_draft';
 
 export default class GestionLotsManager {
     constructor(modalManager) {
@@ -20,8 +21,19 @@ export default class GestionLotsManager {
         this.listeners = [];
         this._barcodeBuffer = '';
         this._barcodeTimer = null;
+        this._draftSaveTimer = null;
+        this._restoringDraft = false;
         
         this.init();
+    }
+
+    getDraftStorageKey() {
+        try {
+            const userId = localStorage.getItem('workspace_user_id');
+            return userId ? `${LOT_DRAFT_STORAGE_PREFIX}_${userId}` : `${LOT_DRAFT_STORAGE_PREFIX}_anon`;
+        } catch (_) {
+            return `${LOT_DRAFT_STORAGE_PREFIX}_anon`;
+        }
     }
 
     /**
@@ -33,10 +45,24 @@ export default class GestionLotsManager {
         await this.loadReferenceData();
         this.setupEventListeners();
         
-        // Ajouter une première ligne par défaut SCAN pour le scan
+        // Restaurer le brouillon local, sinon ligne SCAN vide
         setTimeout(() => {
             const tbody = document.getElementById('lot-table-body');
-            if (tbody) {
+            if (!tbody) return;
+
+            const draft = this.loadDraft();
+            const hasDraft = draft && (
+                (draft.lotName && String(draft.lotName).trim()) ||
+                (Array.isArray(draft.rows) && draft.rows.some((r) =>
+                    (r.serialNumber && String(r.serialNumber).trim()) ||
+                    r.type || r.marqueId || r.modeleId
+                ))
+            );
+
+            if (hasDraft) {
+                this.restoreDraft(draft);
+                logger.debug('📦 Brouillon lot restauré', { rows: draft.rows?.length || 0 });
+            } else {
                 const row = this.createRow('', 'scan');
                 tbody.appendChild(row);
                 logger.debug('➕ Ligne SCAN initiale ajoutée');
@@ -225,6 +251,14 @@ export default class GestionLotsManager {
                     this.updateSelectionBar();
                 };
                 this.addListener(tbody, 'change', this._onRowCheckboxChange);
+                this._onDraftDirty = () => this.scheduleSaveDraft();
+                this.addListener(tbody, 'input', this._onDraftDirty);
+                this.addListener(tbody, 'change', this._onDraftDirty);
+            }
+
+            const lotNameInput = document.getElementById('input-lot-name');
+            if (lotNameInput) {
+                this.addListener(lotNameInput, 'input', () => this.scheduleSaveDraft());
             }
 
             this.populateMassSelects();
@@ -340,6 +374,15 @@ export default class GestionLotsManager {
     }
 
     /**
+     * Ligne sans S/N (placeholder pour le prochain scan) — à ignorer à l'enregistrement / compteur.
+     */
+    isEmptySerialRow(row) {
+        if (!row) return true;
+        const sn = row.querySelector('input[name="serial_number"]')?.value?.trim();
+        return !sn;
+    }
+
+    /**
      * Focus fiable sur un champ S/N (évite le smooth scroll qui vole le focus
      * dès que le tableau déborde du viewport — typiquement après ~3 lignes).
      * Focus immédiat + double rAF pour résister aux reflows / toasts.
@@ -421,12 +464,27 @@ export default class GestionLotsManager {
 
     /**
      * Créer une ligne de tableau
+     * @param {string} serialNumber
+     * @param {'scan'|'manual'} entryType
+     * @param {object|null} data valeurs optionnelles (restauration brouillon)
      */
-    createRow(serialNumber = '', entryType = 'manual') {
+    createRow(serialNumber = '', entryType = 'manual', data = null) {
         const row = document.createElement('tr');
         const now = new Date();
         const rowNum = this.currentRowNumber++;
         const escSn = (serialNumber || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
+
+        const dateVal = data?.date || now.toISOString().split('T')[0];
+        const timeVal = data?.time || now.toTimeString().slice(0, 5);
+        let dateDisplay;
+        try {
+            const [y, m, d] = String(dateVal).split('-');
+            dateDisplay = (y && m && d)
+                ? `${d}/${m}/${y} ${timeVal}`
+                : `${now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${timeVal}`;
+        } catch (_) {
+            dateDisplay = `${dateVal} ${timeVal}`;
+        }
 
         row.innerHTML = `
             <td data-label="Sélection">
@@ -462,7 +520,7 @@ export default class GestionLotsManager {
                 </select>
             </td>
             <td data-label="Date / Heure">
-                <span class="row-date-display">${now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })} ${now.toTimeString().slice(0, 5)}</span>
+                <span class="row-date-display">${dateDisplay}</span>
             </td>
             <td data-label="Entrée">
                 <span class="entry-badge ${entryType}">${entryType === 'scan' ? 'SCAN' : 'MANUEL'}</span>
@@ -473,8 +531,8 @@ export default class GestionLotsManager {
                 </button>
             </td>
             <td class="lot-table__meta" hidden aria-hidden="true">
-                <input type="hidden" name="date" value="${now.toISOString().split('T')[0]}">
-                <input type="hidden" name="time" value="${now.toTimeString().slice(0, 5)}">
+                <input type="hidden" name="date" value="${dateVal}">
+                <input type="hidden" name="time" value="${timeVal}">
             </td>
         `;
         
@@ -516,7 +574,52 @@ export default class GestionLotsManager {
             deleteBtn.addEventListener('click', () => this.deleteRow(row));
         }
 
+        if (data) {
+            this.applyRowDraftData(row, data);
+        }
+
         return row;
+    }
+
+    /**
+     * Applique type / marque / modèle depuis un brouillon sur une ligne déjà créée.
+     */
+    applyRowDraftData(row, data) {
+        if (!row || !data) return;
+
+        const typeSelect = row.querySelector('select[name="type"]');
+        const typeOtherInput = row.querySelector('input[name="type_other"]');
+        const marqueSelect = row.querySelector('select[name="marque"]');
+        const modeleSelect = row.querySelector('select[name="modele"]');
+
+        if (typeSelect && data.type) {
+            const known = ['portable', 'fixe', 'ecran', 'autres'];
+            if (known.includes(data.type)) {
+                typeSelect.value = data.type;
+                if (data.type === 'autres' && typeOtherInput) {
+                    typeOtherInput.value = data.typeOther || '';
+                    typeOtherInput.style.display = 'inline-block';
+                    typeOtherInput.required = true;
+                }
+            } else {
+                typeSelect.value = 'autres';
+                if (typeOtherInput) {
+                    typeOtherInput.value = data.typeOther || data.type;
+                    typeOtherInput.style.display = 'inline-block';
+                    typeOtherInput.required = true;
+                }
+            }
+        }
+
+        if (marqueSelect && data.marqueId) {
+            marqueSelect.value = String(data.marqueId);
+            if (modeleSelect && marqueSelect.value) {
+                this.updateModeleSelect(marqueSelect.value, modeleSelect);
+                if (data.modeleId) {
+                    modeleSelect.value = String(data.modeleId);
+                }
+            }
+        }
     }
 
     /**
@@ -537,7 +640,13 @@ export default class GestionLotsManager {
         const lotData = [];
         let isValid = true;
 
-        rows.forEach((row, index) => {
+        rows.forEach((row) => {
+            // Ligne SCAN vide (prochain scan) : ignorée à l'enregistrement
+            if (this.isEmptySerialRow(row)) {
+                row.style.backgroundColor = '';
+                return;
+            }
+
             const snInput = row.querySelector('[name="serial_number"]');
             const typeSelect = row.querySelector('[name="type"]');
             const typeOtherInput = row.querySelector('[name="type_other"]');
@@ -557,8 +666,9 @@ export default class GestionLotsManager {
                 return;
             }
 
+            row.style.backgroundColor = '';
             lotData.push({
-                numero: index + 1,
+                numero: lotData.length + 1,
                 serialNumber: snInput.value,
                 type: typeValue,
                 marqueId: marqueSelect.value,
@@ -571,6 +681,11 @@ export default class GestionLotsManager {
 
         if (!isValid) {
             this.showNotification('Veuillez remplir tous les champs obligatoires', 'error');
+            return;
+        }
+
+        if (lotData.length === 0) {
+            this.showNotification('Aucune ligne à enregistrer', 'error');
             return;
         }
 
@@ -588,6 +703,12 @@ export default class GestionLotsManager {
 
             const data = await response.json();
             const lotId = data?.id;
+            this.clearDraft();
+            // Vider le tableau pour que le flush navigation ne recrée pas le brouillon
+            const tbody = document.getElementById('lot-table-body');
+            if (tbody) tbody.innerHTML = '';
+            const lotNameInput = document.getElementById('input-lot-name');
+            if (lotNameInput) lotNameInput.value = '';
             this.showNotification(`Lot #${lotId || ''} enregistré (${lotData.length} articles)`, 'success');
             
             // Générer le PDF du lot (body attendu par le backend pour nommage et rangement)
@@ -660,6 +781,7 @@ export default class GestionLotsManager {
         if (lotNameInput) lotNameInput.value = '';
         
         this.currentRowNumber = 1;
+        this.clearDraft();
         
         // Ajouter une nouvelle ligne SCAN par défaut
         setTimeout(() => {
@@ -1023,12 +1145,19 @@ export default class GestionLotsManager {
         if (!tbody) return;
         
         const rows = tbody.querySelectorAll('tr');
-        rows.forEach((row, index) => {
+        let filledIndex = 0;
+        rows.forEach((row) => {
             const numCell = row.querySelector('td:nth-child(2) span');
-            if (numCell) numCell.textContent = index + 1;
+            if (!numCell) return;
+            if (this.isEmptySerialRow(row)) {
+                numCell.textContent = '';
+                return;
+            }
+            filledIndex += 1;
+            numCell.textContent = filledIndex;
         });
         
-        this.currentRowNumber = rows.length + 1;
+        this.currentRowNumber = filledIndex + 1;
     }
     
     /**
@@ -1115,18 +1244,23 @@ export default class GestionLotsManager {
         document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
         document.getElementById('select-all').checked = false;
         this.updateSelectionBar();
+        this.scheduleSaveDraft();
     }
 
     updateLotUI() {
+        this.renumberRows();
         this.updateLineCount();
         this.updateSelectionBar();
+        this.scheduleSaveDraft();
     }
 
     updateLineCount() {
         const tbody = document.getElementById('lot-table-body');
         const countEl = document.getElementById('lot-line-count-value');
         if (!tbody || !countEl) return;
-        countEl.textContent = String(tbody.querySelectorAll('tr').length);
+        // Ne compter que les lignes avec S/N (exclure le placeholder SCAN vide)
+        const filled = [...tbody.querySelectorAll('tr')].filter((row) => !this.isEmptySerialRow(row)).length;
+        countEl.textContent = String(filled);
     }
 
     updateSelectionBar() {
@@ -1156,6 +1290,125 @@ export default class GestionLotsManager {
         }
     }
 
+    collectDraft() {
+        const lotName = document.getElementById('input-lot-name')?.value?.trim() || '';
+        const tbody = document.getElementById('lot-table-body');
+        const rows = [];
+
+        if (tbody) {
+            tbody.querySelectorAll('tr').forEach((row) => {
+                const entryBadge = row.querySelector('.entry-badge');
+                rows.push({
+                    serialNumber: row.querySelector('[name="serial_number"]')?.value || '',
+                    type: row.querySelector('[name="type"]')?.value || '',
+                    typeOther: row.querySelector('[name="type_other"]')?.value || '',
+                    marqueId: row.querySelector('[name="marque"]')?.value || '',
+                    modeleId: row.querySelector('[name="modele"]')?.value || '',
+                    entryType: entryBadge?.classList.contains('scan') ? 'scan' : 'manual',
+                    date: row.querySelector('[name="date"]')?.value || '',
+                    time: row.querySelector('[name="time"]')?.value || ''
+                });
+            });
+        }
+
+        return { lotName, rows, savedAt: Date.now() };
+    }
+
+    draftHasContent(draft) {
+        if (!draft) return false;
+        if (draft.lotName && String(draft.lotName).trim()) return true;
+        return Array.isArray(draft.rows) && draft.rows.some((r) =>
+            (r.serialNumber && String(r.serialNumber).trim()) ||
+            r.type || r.marqueId || r.modeleId
+        );
+    }
+
+    scheduleSaveDraft() {
+        if (this._restoringDraft) return;
+        clearTimeout(this._draftSaveTimer);
+        this._draftSaveTimer = setTimeout(() => this.saveDraft(), 200);
+    }
+
+    /**
+     * Persiste le lot en cours (scans / saisie) dans localStorage.
+     * Ne fait rien si le tableau n'est pas monté (évite d'écraser un brouillon valide).
+     */
+    saveDraft() {
+        try {
+            const tbody = document.getElementById('lot-table-body');
+            if (!tbody) return;
+
+            const draft = this.collectDraft();
+            if (!this.draftHasContent(draft)) {
+                this.clearDraft();
+                return;
+            }
+
+            localStorage.setItem(this.getDraftStorageKey(), JSON.stringify(draft));
+            logger.debug('💾 Brouillon lot sauvegardé', { rows: draft.rows.length });
+        } catch (error) {
+            logger.warn('⚠️ Impossible de sauvegarder le brouillon lot:', error);
+        }
+    }
+
+    loadDraft() {
+        try {
+            const raw = localStorage.getItem(this.getDraftStorageKey());
+            if (!raw) return null;
+            const draft = JSON.parse(raw);
+            if (!draft || typeof draft !== 'object') return null;
+            return draft;
+        } catch (error) {
+            logger.warn('⚠️ Impossible de lire le brouillon lot:', error);
+            return null;
+        }
+    }
+
+    clearDraft() {
+        try {
+            clearTimeout(this._draftSaveTimer);
+            this._draftSaveTimer = null;
+            localStorage.removeItem(this.getDraftStorageKey());
+            logger.debug('🗑️ Brouillon lot effacé');
+        } catch (error) {
+            logger.warn('⚠️ Impossible d\'effacer le brouillon lot:', error);
+        }
+    }
+
+    restoreDraft(draft) {
+        const tbody = document.getElementById('lot-table-body');
+        if (!tbody || !draft) return;
+
+        this._restoringDraft = true;
+        try {
+            tbody.innerHTML = '';
+            this.currentRowNumber = 1;
+
+            const lotNameInput = document.getElementById('input-lot-name');
+            if (lotNameInput) {
+                lotNameInput.value = draft.lotName || '';
+            }
+
+            const rows = Array.isArray(draft.rows) ? draft.rows : [];
+            if (rows.length === 0) {
+                tbody.appendChild(this.createRow('', 'scan'));
+            } else {
+                rows.forEach((item) => {
+                    const entryType = item.entryType === 'scan' ? 'scan' : 'manual';
+                    const row = this.createRow(item.serialNumber || '', entryType, item);
+                    tbody.appendChild(row);
+                });
+            }
+
+            this.ensureEmptyScanRowAndFocus();
+            this.updateLineCount();
+            this.updateSelectionBar();
+        } finally {
+            this._restoringDraft = false;
+            this.scheduleSaveDraft();
+        }
+    }
+
     flashScanPanel() {
         const toolbar = document.getElementById('lot-toolbar');
         if (!toolbar) return;
@@ -1177,6 +1430,13 @@ export default class GestionLotsManager {
     destroy() {
         logger.debug('🧹 Destruction GestionLotsManager');
 
+        // Flush immédiat tant que le tableau est encore monté
+        this.saveDraft();
+
+        if (this._draftSaveTimer) {
+            clearTimeout(this._draftSaveTimer);
+            this._draftSaveTimer = null;
+        }
         if (this._onSerialEnter) {
             document.removeEventListener('keydown', this._onSerialEnter);
             this._onSerialEnter = null;

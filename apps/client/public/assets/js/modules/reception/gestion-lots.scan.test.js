@@ -112,6 +112,11 @@ describe('GestionLotsManager — Enter sur S/N (scan)', () => {
         }
         initSpy?.mockRestore();
         document.body.innerHTML = '';
+        try {
+            localStorage.removeItem('workspace_lot_draft_anon');
+            const uid = localStorage.getItem('workspace_user_id');
+            if (uid) localStorage.removeItem(`workspace_lot_draft_${uid}`);
+        } catch (_) { /* ignore */ }
         jest.restoreAllMocks();
     });
 
