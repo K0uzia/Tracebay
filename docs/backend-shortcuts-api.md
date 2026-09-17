@@ -14,4 +14,4 @@ Le **serveur doit** :
    - **PUT /api/shortcuts/categories/:id**, **DELETE /api/shortcuts/categories/:id** : n’autoriser que si la catégorie appartient à l’utilisateur.
    - **PUT /api/shortcuts/:id**, **DELETE /api/shortcuts/:id**, **PUT /api/shortcuts/reorder** : n’autoriser que si le raccourci / la catégorie concernée appartient à l’utilisateur.
 
-Sans ce filtrage, tous les comptes connectés verront les mêmes données (ex. les raccourcis d’un autre utilisateur comme « Sandersonn » au lieu de « Test »).
+Sans ce filtrage, tous les comptes connectés verront les mêmes données (ex. les raccourcis d’un autre utilisateur comme « K0uzia » au lieu de « Test »).

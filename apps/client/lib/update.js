@@ -57,7 +57,7 @@ async function runAutoUpdate(opts) {
         // generic + releases/latest/download évite api.github.com (403 rate-limit / User-Agent)
         const feedUrl = {
             provider: 'generic',
-            url: 'https://github.com/SandersonnDev/workspace/releases/latest/download'
+            url: 'https://github.com/K0uzia/workspace/releases/latest/download'
         };
         autoUpdater.setFeedURL(feedUrl);
         console.log('[Update] Source: GitHub releases/latest/download', feedUrl.url);

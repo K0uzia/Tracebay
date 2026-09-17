@@ -144,6 +144,7 @@ export default class InventaireManager {
 
         container.innerHTML = this.lots.map(lot => this.createLotElement(lot)).join('');
         this.attachLotEventListeners();
+        this.applyFilters();
     }
 
     /**
@@ -751,11 +752,19 @@ export default class InventaireManager {
             });
         }
 
+        // Recherche S/N ou lot
+        const searchInput = document.getElementById('filter-search-inventaire');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => this.applyFilters());
+        }
+
         // Filtre état
         const filterState = document.getElementById('filter-state');
         if (filterState) {
             filterState.addEventListener('change', () => this.applyFilters());
         }
+
+        this.setupSearchShortcut();
 
         const modalStateSelect = document.getElementById('modal-pc-state');
         const modalStateOther = document.getElementById('modal-pc-state-other');
@@ -1330,21 +1339,58 @@ export default class InventaireManager {
     }
 
     /**
-     * Appliquer les filtres
+     * Raccourci Ctrl/Cmd+F : focus la barre de recherche inventaire
+     */
+    setupSearchShortcut() {
+        if (this._searchKeyHandler) return;
+        this._searchKeyHandler = (e) => {
+            if (!(e.ctrlKey || e.metaKey) || e.key !== 'f') return;
+            const searchInput = document.getElementById('filter-search-inventaire');
+            if (!searchInput) return;
+            e.preventDefault();
+            searchInput.focus();
+            searchInput.select();
+        };
+        document.addEventListener('keydown', this._searchKeyHandler);
+    }
+
+    /**
+     * Appliquer les filtres (état + recherche S/N ou lot)
      */
     applyFilters() {
-        const filterState = document.getElementById('filter-state').value;
+        const filterState = document.getElementById('filter-state')?.value || '';
+        const searchQuery = (document.getElementById('filter-search-inventaire')?.value || '').trim().toLowerCase();
         const classSuffix = filterState === 'Non défini' ? 'non-defini' : filterState.replace(/\s+/g, '-');
-        document.querySelectorAll('.item-row').forEach(row => {
-            if (filterState === '') {
-                row.style.display = '';
-            } else {
-                const rowState = row.classList.toString();
-                if (rowState.includes(`item-${classSuffix}`)) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
+
+        document.querySelectorAll('.inventaire-lot-card').forEach(card => {
+            const lotTitle = (card.querySelector('.inventaire-lot-title h3')?.textContent || '').toLowerCase();
+            const lotId = String(card.dataset.lotId || '');
+            const lotMatchesSearch = !searchQuery
+                || lotTitle.includes(searchQuery)
+                || lotId.includes(searchQuery);
+
+            let visibleCount = 0;
+            card.querySelectorAll('.item-row').forEach(row => {
+                const stateOk = !filterState || row.classList.toString().includes(`item-${classSuffix}`);
+                const sn = (row.querySelector('.col-sn')?.textContent || '').toLowerCase();
+                const snMatches = sn.includes(searchQuery);
+                const searchOk = !searchQuery || lotMatchesSearch || snMatches;
+                const visible = stateOk && searchOk;
+                row.style.display = visible ? '' : 'none';
+                if (visible) visibleCount++;
+            });
+
+            if (searchQuery && visibleCount === 0) {
+                card.style.display = 'none';
+                return;
+            }
+
+            card.style.display = '';
+            if (searchQuery && visibleCount > 0) {
+                const content = card.querySelector('.lot-content');
+                const icon = card.querySelector('.expand-icon');
+                if (content) content.style.display = 'block';
+                if (icon) icon.style.transform = 'rotate(90deg)';
             }
         });
     }

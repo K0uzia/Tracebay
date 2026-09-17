@@ -1,6 +1,5 @@
-cat > .mailmap << EOF
-# Tous les anciens noms redirigés vers SandersonnDev
+# Canonicalise les anciens noms d'auteur git vers K0uzia
+K0uzia <kouziaeffa.pro@gmail.com>
 La Capsule <kouziaeffa.pro@gmail.com>
 Sandersonndev <kouziaeffa.pro@gmail.com>
 SandersonnDev <Kouziaeffa.pro@gmail.com>
-EOF

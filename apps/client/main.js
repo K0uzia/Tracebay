@@ -325,9 +325,9 @@ function linuxAppImageBackup(currentAppPath) {
 }
 
 /**
- * Sous Linux AppImage : la nouvelle AppImage a déjà été téléchargée dans un dossier temporaire
- * (ex. app.getPath('temp')/workspace-update/). Un script attend la fermeture de l'app,
- * supprime l'ancienne AppImage, déplace celle du temporaire vers le dossier racine et relance.
+ * Sous Linux AppImage : script détaché qui attend la mort du process, remplace le fichier
+ * (avec retries — le mount AppImage peut encore tenir le fichier), puis relance.
+ * À lancer uniquement au clic « Redémarrer », pas au téléchargement.
  */
 function tryLinuxAppImageUpdateHelper(currentAppPath, newAppPath) {
     if (process.platform !== 'linux' || !currentAppPath || !newAppPath) return false;
@@ -335,29 +335,99 @@ function tryLinuxAppImageUpdateHelper(currentAppPath, newAppPath) {
     try {
         const dir = path.dirname(currentAppPath);
         const finalPath = currentAppPath;
-        // Chemins via l’environnement : évite les ambiguïtés $0/$1 avec `sh -c` selon les shells,
-        // et les chemins avec espaces / caractères spéciaux (pas d’interpolation dans le corps du script).
+        const tempDir = path.join(app.getPath('temp'), 'workspace-manual-update');
+        try { fs.mkdirSync(tempDir, { recursive: true }); } catch (_) { /* ignore */ }
+        const logFile = path.join(tempDir, 'appimage-update.log');
+        const scriptPath = path.join(tempDir, 'appimage-update.sh');
+
+        // Script fichier (plus fiable qu’un long `sh -c`) : délais + retries + relaunch.
+        const scriptBody = `#!/bin/sh
+log() {
+  echo "$(date '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || date) $*" >> "$WS_APPIMAGE_LOG" 2>/dev/null || true
+}
+log "helper start pid=$WS_APPIMAGE_PID new=$WS_APPIMAGE_NEW dest=$WS_APPIMAGE_DEST"
+
+i=0
+while kill -0 "$WS_APPIMAGE_PID" 2>/dev/null; do
+  sleep 0.3
+  i=$((i + 1))
+  if [ "$i" -gt 200 ]; then
+    log "timeout waiting for pid $WS_APPIMAGE_PID — continue anyway"
+    break
+  fi
+done
+
+# Laisser le runtime AppImage / FUSE libérer le fichier + le single-instance lock Electron
+log "process gone, waiting for file release"
+sleep 3
+
+if [ ! -f "$WS_APPIMAGE_NEW" ]; then
+  log "FAIL missing new file: $WS_APPIMAGE_NEW"
+  exit 1
+fi
+
+ok=0
+n=0
+while [ "$n" -lt 20 ]; do
+  n=$((n + 1))
+  rm -f "\${WS_APPIMAGE_DEST}.bak" 2>/dev/null || true
+  if mv -f "$WS_APPIMAGE_DEST" "\${WS_APPIMAGE_DEST}.bak" 2>/dev/null; then
+    if mv -f "$WS_APPIMAGE_NEW" "$WS_APPIMAGE_DEST" 2>/dev/null; then
+      ok=1
+      log "replaced via mv (attempt $n)"
+      break
+    fi
+    mv -f "\${WS_APPIMAGE_DEST}.bak" "$WS_APPIMAGE_DEST" 2>/dev/null || true
+    log "mv new→dest failed (attempt $n), rolled back"
+  else
+    log "mv dest→bak failed (attempt $n), trying cp overwrite"
+    if cp -f "$WS_APPIMAGE_NEW" "$WS_APPIMAGE_DEST" 2>/dev/null; then
+      ok=1
+      log "replaced via cp (attempt $n)"
+      break
+    fi
+  fi
+  sleep 1
+done
+
+if [ "$ok" -ne 1 ]; then
+  log "FAIL could not replace AppImage after retries"
+  exit 1
+fi
+
+chmod +x "$WS_APPIMAGE_DEST" 2>/dev/null || true
+# Attendre la libération du requestSingleInstanceLock de l’ancienne instance
+sleep 2
+export APPIMAGE_SILENT_INSTALL=true
+log "launching $WS_APPIMAGE_DEST"
+
+# Ne pas vérifier le PID après coup : le runtime AppImage re-exec souvent
+# (le PID initial meurt alors que l’app est bien lancée).
+if command -v setsid >/dev/null 2>&1; then
+  setsid "$WS_APPIMAGE_DEST" >/dev/null 2>&1 &
+else
+  nohup "$WS_APPIMAGE_DEST" >/dev/null 2>&1 &
+fi
+disown 2>/dev/null || true
+log "launch issued, done"
+exit 0
+`;
+        fs.writeFileSync(scriptPath, scriptBody, { encoding: 'utf8', mode: 0o755 });
+        try { fs.chmodSync(scriptPath, 0o755); } catch (_) { /* ignore */ }
+
         const env = {
             ...process.env,
             WS_APPIMAGE_NEW: newAppPath,
             WS_APPIMAGE_DEST: finalPath,
-            WS_APPIMAGE_PID: String(process.pid)
+            WS_APPIMAGE_PID: String(process.pid),
+            WS_APPIMAGE_LOG: logFile
         };
-        const script = [
-            'while kill -0 "$WS_APPIMAGE_PID" 2>/dev/null; do sleep 0.3; done',
-            'test -f "$WS_APPIMAGE_NEW" || exit 1',
-            'rm -f "${WS_APPIMAGE_DEST}.bak"',
-            'mv -f "$WS_APPIMAGE_DEST" "${WS_APPIMAGE_DEST}.bak" || exit 1',
-            'mv -f "$WS_APPIMAGE_NEW" "$WS_APPIMAGE_DEST" || exit 1',
-            'chmod +x "$WS_APPIMAGE_DEST" 2>/dev/null || true',
-            'export APPIMAGE_SILENT_INSTALL=true',
-            'exec "$WS_APPIMAGE_DEST"'
-        ].join('; ');
+
         const shells = ['/bin/sh', '/usr/bin/sh', '/bin/bash', '/usr/bin/bash'];
         for (const shellPath of shells) {
             try {
                 if (!fs.existsSync(shellPath)) continue;
-                const child = spawn(shellPath, ['-c', script], {
+                const child = spawn(shellPath, [scriptPath], {
                     detached: true,
                     stdio: 'ignore',
                     cwd: dir,
@@ -368,6 +438,7 @@ function tryLinuxAppImageUpdateHelper(currentAppPath, newAppPath) {
                         console.warn('[Update] helper spawn error:', shellPath, err?.message || err);
                     });
                     child.unref();
+                    console.log('[Update] helper AppImage démarré, pid=', child.pid, 'log=', logFile);
                     return true;
                 }
             } catch (inner) {
@@ -404,8 +475,78 @@ function tryLinuxAppImageUpdateHelperDetailed(currentAppPath, newAppPath) {
     }
 }
 
+/**
+ * Sous Linux .deb : après installation, relance `workspace` une fois l’ancienne instance morte.
+ */
+function tryLinuxDebRelaunchHelper() {
+    if (process.platform !== 'linux') return false;
+    try {
+        const tempDir = path.join(app.getPath('temp'), 'workspace-manual-update');
+        try { fs.mkdirSync(tempDir, { recursive: true }); } catch (_) { /* ignore */ }
+        const logFile = path.join(tempDir, 'deb-relaunch.log');
+        const scriptPath = path.join(tempDir, 'deb-relaunch.sh');
+        const scriptBody = `#!/bin/sh
+log() { echo "$(date '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || date) $*" >> "$WS_DEB_LOG" 2>/dev/null || true; }
+log "deb relaunch helper start pid=$WS_DEB_PID"
+i=0
+while kill -0 "$WS_DEB_PID" 2>/dev/null; do
+  sleep 0.3
+  i=$((i + 1))
+  if [ "$i" -gt 200 ]; then break; fi
+done
+sleep 2
+bin=""
+if command -v workspace >/dev/null 2>&1; then bin=$(command -v workspace);
+elif [ -x /usr/bin/workspace ]; then bin=/usr/bin/workspace;
+elif [ -x /usr/local/bin/workspace ]; then bin=/usr/local/bin/workspace;
+fi
+if [ -z "$bin" ]; then
+  log "FAIL workspace binary not found in PATH"
+  exit 1
+fi
+log "launching $bin"
+if command -v setsid >/dev/null 2>&1; then
+  setsid "$bin" >/dev/null 2>&1 &
+else
+  nohup "$bin" >/dev/null 2>&1 &
+fi
+log "done pid=$!"
+exit 0
+`;
+        fs.writeFileSync(scriptPath, scriptBody, { encoding: 'utf8', mode: 0o755 });
+        try { fs.chmodSync(scriptPath, 0o755); } catch (_) { /* ignore */ }
+        const env = {
+            ...process.env,
+            WS_DEB_PID: String(process.pid),
+            WS_DEB_LOG: logFile
+        };
+        const shells = ['/bin/sh', '/usr/bin/sh', '/bin/bash', '/usr/bin/bash'];
+        for (const shellPath of shells) {
+            try {
+                if (!fs.existsSync(shellPath)) continue;
+                const child = spawn(shellPath, [scriptPath], {
+                    detached: true,
+                    stdio: 'ignore',
+                    env
+                });
+                if (child && typeof child.pid === 'number' && child.pid > 0) {
+                    child.unref();
+                    console.log('[Update] helper deb relaunch démarré, pid=', child.pid);
+                    return true;
+                }
+            } catch (inner) {
+                console.warn('[Update] deb relaunch spawn failed:', inner?.message || inner);
+            }
+        }
+        return false;
+    } catch (e) {
+        console.warn('[Update] deb relaunch helper failed:', e?.message);
+        return false;
+    }
+}
+
 // --- Mise à jour manuelle (AppImage, .deb, DMG, NSIS) ---
-const GITHUB_OWNER = 'SandersonnDev';
+const GITHUB_OWNER = 'K0uzia';
 const GITHUB_REPO = 'workspace';
 
 function normalizeSemver(v) {
@@ -677,8 +818,9 @@ function sendUpdateDone(payload) {
 }
 
 /**
- * Mise à jour AppImage : télécharge + prépare le helper (applique au prochain quit).
- * Ne ferme PAS l’app — l’utilisateur doit cliquer « Redémarrer ».
+ * Mise à jour AppImage : télécharge uniquement (ne lance PAS le helper).
+ * Le remplacement + relaunch se font au clic « Redémarrer » — sinon le helper
+ * peut mourir avant le redémarrage et l’app se ferme sans se relancer.
  */
 async function downloadAndApplyAppImageUpdate() {
     const currentApp = process.env.APPIMAGE;
@@ -698,29 +840,25 @@ async function downloadAndApplyAppImageUpdate() {
     const dl = await downloadToFile(meta.downloadUrl, downloadedPath, sendUpdateProgress);
     linuxAppImageBackup(currentApp);
 
-    const helper = tryLinuxAppImageUpdateHelperDetailed(currentApp, downloadedPath);
-    if (!helper.ok) {
-        const detail = helper.error || null;
+    try {
+        fs.accessSync(path.dirname(currentApp), fs.constants.W_OK);
+    } catch (_) {
         return {
             success: false,
-            error: detail
-                ? `Impossible de préparer le remplacement : ${detail}`
-                : 'Impossible de préparer le remplacement (helper non lancé)',
-            detail,
-            debug: {
-                currentApp,
-                downloadedPath,
-                downloadedExists: fs.existsSync(downloadedPath),
-                destDir: path.dirname(currentApp)
-            }
+            error: `Dossier non accessible en écriture: ${path.dirname(currentApp)}. Déplace l’AppImage dans un dossier utilisateur (ex. ~/Applications).`
         };
     }
+
+    if (!fs.existsSync(downloadedPath)) {
+        return { success: false, error: 'Téléchargement AppImage introuvable après download' };
+    }
+
     setPendingAppUpdate({
         packageType: 'AppImage',
         latestVersion: latest || null,
         downloadedPath,
         currentApp,
-        helperStarted: true
+        helperStarted: false
     });
     sendUpdateDone({ success: true, latestVersion: latest || null, needsRestart: true });
     return {
@@ -840,17 +978,38 @@ async function installPendingAppUpdate() {
     if (packageType === 'AppImage') {
         const currentApp = pendingAppUpdate.currentApp || process.env.APPIMAGE;
         const downloadedPath = pendingAppUpdate.downloadedPath;
-        if (!pendingAppUpdate.helperStarted) {
-            if (!currentApp || !downloadedPath || !fs.existsSync(downloadedPath)) {
-                return { success: false, error: 'Fichier AppImage de mise à jour introuvable' };
-            }
-            const helper = tryLinuxAppImageUpdateHelperDetailed(currentApp, downloadedPath);
-            if (!helper.ok) {
-                return { success: false, error: helper.error || 'Impossible de lancer le helper AppImage' };
-            }
+        if (!currentApp || !fs.existsSync(currentApp)) {
+            return { success: false, error: 'APPIMAGE actuelle introuvable' };
         }
+        if (!downloadedPath || !fs.existsSync(downloadedPath)) {
+            return { success: false, error: 'Fichier AppImage de mise à jour introuvable — retéléchargez la mise à jour' };
+        }
+        // Toujours (re)lancer le helper au redémarrage : un helper démarré au download
+        // peut être mort depuis longtemps → quit sans remplacement ni relaunch.
+        const helper = tryLinuxAppImageUpdateHelperDetailed(currentApp, downloadedPath);
+        if (!helper.ok) {
+            return {
+                success: false,
+                error: helper.error || 'Impossible de lancer le helper AppImage',
+                detail: helper.error || null,
+                debug: {
+                    currentApp,
+                    downloadedPath,
+                    downloadedExists: fs.existsSync(downloadedPath),
+                    destDir: path.dirname(currentApp)
+                }
+            };
+        }
+        pendingAppUpdate.helperStarted = true;
         quittingForUpdate = true;
-        setTimeout(() => app.quit(), 300);
+        // exit immédiat : libère plus vite le fichier AppImage + le single-instance lock
+        setTimeout(() => {
+            try {
+                app.exit(0);
+            } catch (_) {
+                try { app.quit(); } catch (__) { /* ignore */ }
+            }
+        }, 400);
         return { success: true, message: 'Redémarrage pour appliquer la mise à jour…' };
     }
 
@@ -859,34 +1018,33 @@ async function installPendingAppUpdate() {
         if (!downloadedPath || !fs.existsSync(downloadedPath)) {
             return { success: false, error: 'Paquet .deb introuvable' };
         }
+        // Attendre la fin de pkexec/dpkg (pas detached) pour savoir si l’install a réussi
+        // avant de quitter — sinon l’app se ferme sans installer ni se relancer.
         const installResult = await new Promise((resolve) => {
-            let settled = false;
-            const done = (value) => {
-                if (settled) return;
-                settled = true;
-                resolve(value);
-            };
             try {
                 const child = spawn('pkexec', ['dpkg', '-i', downloadedPath], {
-                    detached: true,
                     stdio: 'ignore'
                 });
-                child.once('error', () => done({ method: 'open' }));
-                if (typeof child.pid === 'number' && child.pid > 0) {
-                    child.unref();
-                    done({ method: 'pkexec', ok: true });
-                } else {
-                    child.once('spawn', () => {
-                        child.unref();
-                        done({ method: 'pkexec', ok: true });
-                    });
-                }
-            } catch (_) {
-                done({ method: 'open' });
+                child.once('error', (err) => {
+                    console.warn('[Update] pkexec error:', err?.message || err);
+                    resolve({ method: 'open', ok: false });
+                });
+                child.once('close', (code) => {
+                    resolve({ method: 'pkexec', ok: code === 0, code });
+                });
+            } catch (e) {
+                console.warn('[Update] pkexec spawn failed:', e?.message || e);
+                resolve({ method: 'open', ok: false });
             }
         });
 
-        if (installResult.method === 'open') {
+        if (installResult.method === 'open' || !installResult.ok) {
+            if (installResult.method === 'pkexec' && !installResult.ok) {
+                return {
+                    success: false,
+                    error: `Installation .deb échouée (code ${installResult.code ?? '?'}). Réessayez ou installez manuellement : ${downloadedPath}`
+                };
+            }
             try {
                 const { shell } = require('electron');
                 await shell.openPath(downloadedPath);
@@ -902,11 +1060,18 @@ async function installPendingAppUpdate() {
             };
         }
 
+        tryLinuxDebRelaunchHelper();
         quittingForUpdate = true;
-        setTimeout(() => app.quit(), 500);
+        setTimeout(() => {
+            try {
+                app.exit(0);
+            } catch (_) {
+                try { app.quit(); } catch (__) { /* ignore */ }
+            }
+        }, 400);
         return {
             success: true,
-            message: 'Installation en cours (demande admin). L’application va se fermer.'
+            message: 'Installation terminée. Redémarrage…'
         };
     }
 
@@ -1096,7 +1261,7 @@ function createSplashWindow() {
   .progress-fill { height: 100%; width: 0%; background: rgba(255,255,255,0.9); border-radius: 4px; transition: width 0.2s ease; }
 </style></head><body>
   <div class="logo">Workspace</div>
-  <div class="tagline">By Sandersonn</div>
+  <div class="tagline">By K0uzia</div>
   <div class="spinner"></div>
   <p class="message">Chargement en cours…</p>
   <div class="progress-wrap" id="splash-progress">

@@ -28,7 +28,7 @@ module.exports = {
     prod: {
         publish: {
             provider: 'github',
-            owner: 'SandersonnDev',
+            owner: 'K0uzia',
             repo: 'workspace',
             releaseType: 'release'
         },

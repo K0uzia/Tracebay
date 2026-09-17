@@ -103,6 +103,16 @@
     max-width: 260px;
 }
 
+.inventaire-container .recep-toolbar-compact .lot-config__field--search {
+    flex: 1 1 auto;
+    min-width: 180px;
+    max-width: 420px;
+}
+
+.inventaire-container .recep-toolbar-compact .lot-config__field:not(.lot-config__field--search) {
+    max-width: 220px;
+}
+
 .inventaire-container .lot-btn {
     display: inline-flex;
     align-items: center;

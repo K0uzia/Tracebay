@@ -498,7 +498,7 @@ logs/
    ```
 
 3. **Check GitHub issues:**
-   - https://github.com/SandersonnDev/workspace/issues
+   - https://github.com/K0uzia/workspace/issues
 
 4. **Ask for help:**
    - Include error message

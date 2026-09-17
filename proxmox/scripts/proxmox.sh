@@ -337,7 +337,7 @@ ALTER TABLE marques ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 ALTER TABLE modeles ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMP;
 
 -- Rôles utilisateurs
-UPDATE users SET role = 'admin' WHERE username = 'sandersonn' AND (role IS NULL OR role = 'user');
+UPDATE users SET role = 'admin' WHERE username IN ('k0uzia', 'sandersonn') AND (role IS NULL OR role = 'user');
 
 -- Migration hash : les anciens hashes SHA256 (64 chars hex) sont incompatibles avec bcrypt.
 -- On les invalide pour forcer la réinitialisation du mot de passe via le panel admin.

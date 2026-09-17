@@ -1,10 +1,10 @@
 {
   "name": "workspace",
-  "version": "3.3.3",
+  "version": "3.3.4",
   "main": "main.js",
-  "homepage": "https://github.com/SandersonnDev/workspace#readme",
+  "homepage": "https://github.com/K0uzia/workspace#readme",
   "description": "Workspace - Interface utilisateur collaborative",
-  "author": "Sandersonn",
+  "author": "K0uzia",
   "license": "MIT",
   "dependencies": {
     "electron-squirrel-startup": "^1.0.1",
@@ -52,7 +52,7 @@
   "build": {
     "appId": "com.workspace.client",
     "productName": "workspace",
-    "copyright": "Copyright © 2026 Sandersonn",
+    "copyright": "Copyright © 2026 K0uzia",
     "electronVersion": "39.2.4",
     "npmRebuild": false,
     "toolsets": {
@@ -60,7 +60,7 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "SandersonnDev",
+      "owner": "K0uzia",
       "repo": "workspace",
       "releaseType": "release"
     },
@@ -160,7 +160,7 @@
       }
     },
     "linux": {
-      "maintainer": "Sandersonn <sandersonn@users.noreply.github.com>",
+      "maintainer": "K0uzia <k0uzia@users.noreply.github.com>",
       "executableName": "workspace",
       "synopsis": "Workspace - Interface utilisateur collaborative",
       "target": [
@@ -212,9 +212,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/SandersonnDev/workspace.git"
+    "url": "git+https://github.com/K0uzia/workspace.git"
   },
   "bugs": {
-    "url": "https://github.com/SandersonnDev/workspace/issues"
+    "url": "https://github.com/K0uzia/workspace/issues"
   }
 }

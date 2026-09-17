@@ -7,13 +7,13 @@ Ce dépôt contient uniquement les fichiers nécessaires au déploiement du back
 ### Installation en une commande (recommandé)
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/SandersonnDev/workspace/proxmox/scripts/proxmox-setup.sh | sudo bash -s install
+curl -fsSL https://raw.githubusercontent.com/K0uzia/workspace/proxmox/scripts/proxmox-setup.sh | sudo bash -s install
 ```
 
 ### Installation manuelle
 
 ```bash
-git clone --branch proxmox https://github.com/SandersonnDev/workspace.git
+git clone --branch proxmox https://github.com/K0uzia/workspace.git
 cd workspace
 sudo bash scripts/proxmox-setup.sh install
 ```

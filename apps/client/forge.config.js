@@ -18,8 +18,8 @@ module.exports = {
             name: '@electron-forge/maker-deb',
             platforms: ['linux'],
             config: {    
-                maintainer: 'Sandersonn <sandersonn@users.noreply.github.com>',
-                homepage: 'https://github.com/SandersonnDev/workspace',
+                maintainer: 'K0uzia <k0uzia@users.noreply.github.com>',
+                homepage: 'https://github.com/K0uzia/workspace',
                 categories: ['Utility', 'Network'],
                 section: 'utils',
                 priority: 'optional',
@@ -37,7 +37,7 @@ module.exports = {
             name: '@electron-forge/publisher-github',
             config: {
                 repository: {
-                    owner: 'SandersonnDev',
+                    owner: 'K0uzia',
                     name: 'Workspace'
                 },
                 prerelease: false,
