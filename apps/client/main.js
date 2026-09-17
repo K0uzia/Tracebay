@@ -476,50 +476,143 @@ function tryLinuxAppImageUpdateHelperDetailed(currentAppPath, newAppPath) {
 }
 
 /**
- * Sous Linux .deb : après installation, relance `workspace` une fois l’ancienne instance morte.
+ * Sous Linux .deb : helper détaché qui, APRÈS la mort de l’app :
+ * 1) installe le .deb via pkexec (apt-get ou dpkg)
+ * 2) relance `workspace`
+ *
+ * Important : ne jamais lancer dpkg/pkexec tant que l’app tourne — les binaires
+ * sous /usr/lib/workspace sont ouverts, et pkexec détaché + quit immédiat
+ * tue souvent la session d’auth sans installer.
  */
-function tryLinuxDebRelaunchHelper() {
-    if (process.platform !== 'linux') return false;
+function tryLinuxDebUpdateHelper(debPath) {
+    if (process.platform !== 'linux') return { ok: false, error: 'Plateforme non supportée' };
+    if (!debPath || !fs.existsSync(debPath)) {
+        return { ok: false, error: `Paquet .deb introuvable: ${debPath || ''}` };
+    }
     try {
         const tempDir = path.join(app.getPath('temp'), 'workspace-manual-update');
         try { fs.mkdirSync(tempDir, { recursive: true }); } catch (_) { /* ignore */ }
-        const logFile = path.join(tempDir, 'deb-relaunch.log');
-        const scriptPath = path.join(tempDir, 'deb-relaunch.sh');
+
+        // Copie stable : le helper doit encore voir le fichier après la fermeture
+        const stableDeb = path.join(tempDir, 'workspace-install.deb');
+        try {
+            fs.copyFileSync(debPath, stableDeb);
+        } catch (e) {
+            return { ok: false, error: `Impossible de préparer le .deb: ${e?.message || e}` };
+        }
+
+        const logFile = path.join(tempDir, 'deb-update.log');
+        const scriptPath = path.join(tempDir, 'deb-update.sh');
         const scriptBody = `#!/bin/sh
 log() { echo "$(date '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || date) $*" >> "$WS_DEB_LOG" 2>/dev/null || true; }
-log "deb relaunch helper start pid=$WS_DEB_PID"
+log "deb update helper start pid=$WS_DEB_PID deb=$WS_DEB_PATH"
+log "display=$DISPLAY wayland=$WAYLAND_DISPLAY xauth=$XAUTHORITY"
+
 i=0
 while kill -0 "$WS_DEB_PID" 2>/dev/null; do
   sleep 0.3
   i=$((i + 1))
-  if [ "$i" -gt 200 ]; then break; fi
+  if [ "$i" -gt 200 ]; then
+    log "timeout waiting for pid $WS_DEB_PID — continue"
+    break
+  fi
 done
+log "app exited, waiting before install"
 sleep 2
-bin=""
-if command -v workspace >/dev/null 2>&1; then bin=$(command -v workspace);
-elif [ -x /usr/bin/workspace ]; then bin=/usr/bin/workspace;
-elif [ -x /usr/local/bin/workspace ]; then bin=/usr/local/bin/workspace;
-fi
-if [ -z "$bin" ]; then
-  log "FAIL workspace binary not found in PATH"
+
+if [ ! -f "$WS_DEB_PATH" ]; then
+  log "FAIL missing deb: $WS_DEB_PATH"
   exit 1
 fi
+
+# Conserver l’environnement graphique pour la boîte de dialogue polkit
+PKEXEC_ENV=""
+[ -n "$DISPLAY" ] && PKEXEC_ENV="$PKEXEC_ENV DISPLAY=$DISPLAY"
+[ -n "$XAUTHORITY" ] && PKEXEC_ENV="$PKEXEC_ENV XAUTHORITY=$XAUTHORITY"
+[ -n "$WAYLAND_DISPLAY" ] && PKEXEC_ENV="$PKEXEC_ENV WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
+[ -n "$DBUS_SESSION_BUS_ADDRESS" ] && PKEXEC_ENV="$PKEXEC_ENV DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS"
+[ -n "$XDG_RUNTIME_DIR" ] && PKEXEC_ENV="$PKEXEC_ENV XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR"
+
+run_pkexec() {
+  if [ -n "$PKEXEC_ENV" ]; then
+    # shellcheck disable=SC2086
+    pkexec env $PKEXEC_ENV "$@"
+  else
+    pkexec "$@"
+  fi
+}
+
+install_ok=0
+if command -v pkexec >/dev/null 2>&1; then
+  if command -v apt-get >/dev/null 2>&1; then
+    log "trying: pkexec apt-get install -y $WS_DEB_PATH"
+    if run_pkexec apt-get install -y "$WS_DEB_PATH" >> "$WS_DEB_LOG" 2>&1; then
+      install_ok=1
+      log "apt-get install ok"
+    else
+      log "apt-get failed, trying dpkg -i"
+    fi
+  fi
+  if [ "$install_ok" -ne 1 ]; then
+    log "trying: pkexec dpkg -i $WS_DEB_PATH"
+    if run_pkexec dpkg -i "$WS_DEB_PATH" >> "$WS_DEB_LOG" 2>&1; then
+      install_ok=1
+      log "dpkg -i ok"
+    else
+      log "dpkg -i failed, trying apt-get -f install"
+      run_pkexec apt-get install -f -y >> "$WS_DEB_LOG" 2>&1 || true
+      if run_pkexec dpkg -i "$WS_DEB_PATH" >> "$WS_DEB_LOG" 2>&1; then
+        install_ok=1
+        log "dpkg -i ok after apt-get -f"
+      fi
+    fi
+  fi
+else
+  log "FAIL pkexec introuvable"
+  exit 1
+fi
+
+if [ "$install_ok" -ne 1 ]; then
+  log "FAIL installation .deb échouée — ouvrir manuellement: $WS_DEB_PATH"
+  # Dernier recours : ouvrir le fichier pour install graphique
+  if command -v xdg-open >/dev/null 2>&1; then
+    xdg-open "$WS_DEB_PATH" >/dev/null 2>&1 || true
+  fi
+  exit 1
+fi
+
+sleep 1
+bin=""
+if [ -x /usr/bin/workspace ]; then bin=/usr/bin/workspace;
+elif command -v workspace >/dev/null 2>&1; then bin=$(command -v workspace);
+elif [ -x /usr/local/bin/workspace ]; then bin=/usr/local/bin/workspace;
+elif [ -x /usr/lib/workspace/workspace ]; then bin=/usr/lib/workspace/workspace;
+fi
+if [ -z "$bin" ]; then
+  log "FAIL workspace binary not found after install"
+  exit 1
+fi
+
 log "launching $bin"
 if command -v setsid >/dev/null 2>&1; then
   setsid "$bin" >/dev/null 2>&1 &
 else
   nohup "$bin" >/dev/null 2>&1 &
 fi
-log "done pid=$!"
+disown 2>/dev/null || true
+log "launch issued, done"
 exit 0
 `;
         fs.writeFileSync(scriptPath, scriptBody, { encoding: 'utf8', mode: 0o755 });
         try { fs.chmodSync(scriptPath, 0o755); } catch (_) { /* ignore */ }
+
         const env = {
             ...process.env,
             WS_DEB_PID: String(process.pid),
+            WS_DEB_PATH: stableDeb,
             WS_DEB_LOG: logFile
         };
+
         const shells = ['/bin/sh', '/usr/bin/sh', '/bin/bash', '/usr/bin/bash'];
         for (const shellPath of shells) {
             try {
@@ -531,17 +624,17 @@ exit 0
                 });
                 if (child && typeof child.pid === 'number' && child.pid > 0) {
                     child.unref();
-                    console.log('[Update] helper deb relaunch démarré, pid=', child.pid);
-                    return true;
+                    console.log('[Update] helper deb update démarré, pid=', child.pid, 'log=', logFile);
+                    return { ok: true, logFile, stableDeb };
                 }
             } catch (inner) {
-                console.warn('[Update] deb relaunch spawn failed:', inner?.message || inner);
+                console.warn('[Update] deb update spawn failed:', inner?.message || inner);
             }
         }
-        return false;
+        return { ok: false, error: 'Impossible de démarrer le helper d’installation .deb' };
     } catch (e) {
-        console.warn('[Update] deb relaunch helper failed:', e?.message);
-        return false;
+        console.warn('[Update] deb update helper failed:', e?.message);
+        return { ok: false, error: e?.message || String(e) };
     }
 }
 
@@ -973,7 +1066,6 @@ async function installPendingAppUpdate() {
     }
 
     const packageType = pendingAppUpdate.packageType || getInstallPackageType();
-    markUpdateInstalledFlag();
 
     if (packageType === 'AppImage') {
         const currentApp = pendingAppUpdate.currentApp || process.env.APPIMAGE;
@@ -1001,6 +1093,7 @@ async function installPendingAppUpdate() {
             };
         }
         pendingAppUpdate.helperStarted = true;
+        markUpdateInstalledFlag();
         quittingForUpdate = true;
         // exit immédiat : libère plus vite le fichier AppImage + le single-instance lock
         setTimeout(() => {
@@ -1016,51 +1109,26 @@ async function installPendingAppUpdate() {
     if (packageType === 'deb') {
         const downloadedPath = pendingAppUpdate.downloadedPath;
         if (!downloadedPath || !fs.existsSync(downloadedPath)) {
-            return { success: false, error: 'Paquet .deb introuvable' };
+            return { success: false, error: 'Paquet .deb introuvable — retéléchargez la mise à jour' };
         }
-        // Attendre la fin de pkexec/dpkg (pas detached) pour savoir si l’install a réussi
-        // avant de quitter — sinon l’app se ferme sans installer ni se relancer.
-        const installResult = await new Promise((resolve) => {
-            try {
-                const child = spawn('pkexec', ['dpkg', '-i', downloadedPath], {
-                    stdio: 'ignore'
-                });
-                child.once('error', (err) => {
-                    console.warn('[Update] pkexec error:', err?.message || err);
-                    resolve({ method: 'open', ok: false });
-                });
-                child.once('close', (code) => {
-                    resolve({ method: 'pkexec', ok: code === 0, code });
-                });
-            } catch (e) {
-                console.warn('[Update] pkexec spawn failed:', e?.message || e);
-                resolve({ method: 'open', ok: false });
-            }
-        });
 
-        if (installResult.method === 'open' || !installResult.ok) {
-            if (installResult.method === 'pkexec' && !installResult.ok) {
-                return {
-                    success: false,
-                    error: `Installation .deb échouée (code ${installResult.code ?? '?'}). Réessayez ou installez manuellement : ${downloadedPath}`
-                };
-            }
-            try {
-                const { shell } = require('electron');
-                await shell.openPath(downloadedPath);
-            } catch (e) {
-                return {
-                    success: false,
-                    error: `Installation impossible : ${e?.message || e}. Fichier : ${downloadedPath}`
-                };
-            }
+        // Quit d’abord, installer ensuite via helper (pkexec après mort du process).
+        // Installer pendant que l’app tourne échoue souvent / laisse l’ancienne version.
+        const helper = tryLinuxDebUpdateHelper(downloadedPath);
+        if (!helper.ok) {
             return {
-                success: true,
-                message: 'Paquet ouvert pour installation manuelle. Relancez Workspace ensuite.'
+                success: false,
+                error: helper.error || 'Impossible de préparer l’installation .deb',
+                detail: helper.error || null,
+                debug: {
+                    downloadedPath,
+                    downloadedExists: fs.existsSync(downloadedPath)
+                }
             };
         }
 
-        tryLinuxDebRelaunchHelper();
+        pendingAppUpdate.helperStarted = true;
+        markUpdateInstalledFlag();
         quittingForUpdate = true;
         setTimeout(() => {
             try {
@@ -1071,12 +1139,13 @@ async function installPendingAppUpdate() {
         }, 400);
         return {
             success: true,
-            message: 'Installation terminée. Redémarrage…'
+            message: 'Fermeture… saisissez le mot de passe admin si demandé, puis l’app redémarrera.'
         };
     }
 
     if (packageType === 'dmg' || packageType === 'nsis') {
         const { autoUpdater } = require('electron-updater');
+        markUpdateInstalledFlag();
         quittingForUpdate = true;
         try {
             // isSilent=false → l’utilisateur voit l’installeur / UAC si nécessaire
