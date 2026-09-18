@@ -475,6 +475,17 @@
       ]
     };
   }
+  function sampleCmdDraft(category) {
+    return {
+      name: "Commande atelier Vega (en cours)",
+      category: category || "Consommables",
+      rows: [
+        Object.assign(emptyCmd(), { product: "Câble HDMI 2 m", qty: 12, price: 6.9, shipping: 0, url: "https://boutique.nexa.demo/hdmi" }),
+        Object.assign(emptyCmd(), { product: "Souris USB", qty: 8, price: 9.5, shipping: 4.9, url: "https://boutique.nexa.demo/souris" }),
+        emptyCmd()
+      ]
+    };
+  }
 
   async function renderLots(el) {
     const cat = await catalog();
@@ -721,7 +732,7 @@
 
   async function renderCommande(el) {
     const cat = await catalog();
-    if (!App.cmdDraft) App.cmdDraft = { name: "", category: cat.categories[0] || "", rows: [emptyCmd()] };
+    if (!App.cmdDraft) App.cmdDraft = sampleCmdDraft(cat.categories[0] || "");
     const d = App.cmdDraft;
     el.innerHTML =
       "<section class=\"recep-page lot-page commande-container\"><div class=\"lot-page__body\">" +
