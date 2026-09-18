@@ -2,7 +2,11 @@
 
 Copie navigable de **l’application actuelle** (pas de l’ancienne doc) : uniquement HTML, CSS et JavaScript, avec un **faux backend** en `localStorage`.
 
-## Lancer
+## En ligne
+
+https://k0uzia.github.io/workspace/
+
+## Lancer en local
 
 Ouvrir `demo/index.html` dans un navigateur, ou depuis la racine du dépôt :
 
