@@ -1400,10 +1400,8 @@ html[data-theme-dark="0"] .r-root .prets-container .lot-table .prets-in-sn:disab
 /* ========== Notifications ========== */
 
 html[data-theme-dark="0"] .notification {
-    background: #ffffff !important;
     color: #0d1117 !important;
-    border-color: rgba(13, 17, 23, 0.12) !important;
-    box-shadow: 0 8px 24px rgba(13, 17, 23, 0.12) !important;
+    box-shadow: 0 8px 24px rgba(13, 17, 23, 0.1) !important;
 }
 
 html[data-theme-dark="0"] .notification-action {
