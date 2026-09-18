@@ -1,4 +1,6 @@
-![Tracebaie](https://raw.githubusercontent.com/K0uzia/tracebaie/apps/client/assets/tracebaiebanner.svg)
+<p align="center">
+  <img src="apps/client/assets/tracebaieBanner.svg" alt="Tracebaie">
+</p>
 
 <p align="center">
   <a href="https://github.com/K0uzia/tracebaie/tree/main/docs"><img src="https://img.shields.io/badge/docs-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Documentation"></a>
