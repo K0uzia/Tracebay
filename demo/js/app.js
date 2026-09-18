@@ -418,10 +418,67 @@
   function emptyRow(o) {
     return Object.assign({ id: API.uid("tmp"), sn: "", type: "portable", brand: "", model: "", enteredAt: new Date().toISOString(), mode: "MANUEL", selected: false }, o || {});
   }
+  function emptyDisk() {
+    return { id: API.uid("tmp"), sn: "", type: "SSD", brand: "", model: "", size: "", iface: "SATA", destroy: false };
+  }
+  function emptyCmd() { return { product: "", qty: 1, price: 0, shipping: 0, url: "" }; }
+  function emptyDon() { return { type: "portable", brand: "", model: "", sn: "", date: todayISO(), stagiaire: "" }; }
+  function emptyPret() { return { type: "PC", brand: "", model: "", sn: "", qty: 1 }; }
+
+  function sampleLotDraft() {
+    const t = new Date().toISOString();
+    return {
+      name: "Lot Vega (en cours)",
+      rows: [
+        emptyRow({ sn: "NX-SCAN-4410", type: "portable", brand: "Dell", model: "Latitude 5410", mode: "SCAN", enteredAt: t }),
+        emptyRow({ sn: "NX-SCAN-4411", type: "portable", brand: "Lenovo", model: "ThinkPad T14", mode: "SCAN", enteredAt: t }),
+        emptyRow({ mode: "SCAN" })
+      ]
+    };
+  }
+  function sampleDiskDraft() {
+    return {
+      name: "Session shred Vega (en cours)",
+      rows: [
+        Object.assign(emptyDisk(), { sn: "DSK-NEXA-551", type: "SSD", brand: "Samsung", model: "870 EVO", size: "500 Go", iface: "SATA" }),
+        Object.assign(emptyDisk(), { sn: "DSK-NEXA-552", type: "HDD", brand: "Seagate", model: "Barracuda 2TB", size: "2 To", iface: "SATA", destroy: true }),
+        emptyDisk()
+      ]
+    };
+  }
+  function sampleDonDraft() {
+    return {
+      name: "Don promo Helios (en cours)",
+      rows: [
+        Object.assign(emptyDon(), { type: "portable", brand: "HP", model: "EliteBook 840 G7", sn: "NX-DON-WIP-02", stagiaire: "Iris Vale" }),
+        Object.assign(emptyDon(), { type: "portable", brand: "Asus", model: "VivoBook 15", sn: "NX-DON-WIP-03", stagiaire: "Remy Calder" }),
+        emptyDon()
+      ]
+    };
+  }
+  function samplePretDraft() {
+    const endD = new Date(); endD.setMonth(endD.getMonth() + 1);
+    return {
+      name: "Prêt Helios (en cours)",
+      reference: "PRET-NEXA-WIP",
+      borrowerType: "societe",
+      borrowerName: "Helios Atelier",
+      contact: "pret.helios@nexa.demo",
+      startDate: todayISO(),
+      endDate: API.dateStr(endD),
+      paid: false,
+      amount: "",
+      rows: [
+        Object.assign(emptyPret(), { type: "PC", brand: "Lenovo", model: "ThinkPad T14", sn: "NX-PRET-WIP-01", qty: 1 }),
+        Object.assign(emptyPret(), { type: "souris", brand: "HP", model: "", sn: "", qty: 2 }),
+        emptyPret()
+      ]
+    };
+  }
 
   async function renderLots(el) {
     const cat = await catalog();
-    if (!App.lotDraft) App.lotDraft = { name: "", rows: [emptyRow({ mode: "SCAN" })] };
+    if (!App.lotDraft) App.lotDraft = sampleLotDraft();
     const d = App.lotDraft;
     const selected = d.rows.filter(function (r) { return r.selected; }).length;
     el.innerHTML =
@@ -568,13 +625,9 @@
     });
   }
 
-  function emptyDisk() {
-    return { id: API.uid("tmp"), sn: "", type: "SSD", brand: "", model: "", size: "", iface: "SATA", destroy: false };
-  }
-
   async function renderDisques(el) {
     const cat = await catalog();
-    if (!App.diskDraft) App.diskDraft = { name: "", rows: [emptyDisk()] };
+    if (!App.diskDraft) App.diskDraft = sampleDiskDraft();
     const d = App.diskDraft;
     el.innerHTML =
       "<section class=\"recep-page lot-page entrer-page lots-saisie-page\"><div class=\"lot-page__body\">" +
@@ -666,8 +719,6 @@
     });
   }
 
-  function emptyCmd() { return { product: "", qty: 1, price: 0, shipping: 0, url: "" }; }
-
   async function renderCommande(el) {
     const cat = await catalog();
     if (!App.cmdDraft) App.cmdDraft = { name: "", category: cat.categories[0] || "", rows: [emptyCmd()] };
@@ -747,11 +798,9 @@
     });
   }
 
-  function emptyDon() { return { type: "portable", brand: "", model: "", sn: "", date: todayISO(), stagiaire: "" }; }
-
   async function renderDons(el) {
     const cat = await catalog();
-    if (!App.donDraft) App.donDraft = { name: "", rows: [emptyDon()] };
+    if (!App.donDraft) App.donDraft = sampleDonDraft();
     const d = App.donDraft;
     el.innerHTML =
       "<section class=\"recep-page lot-page dons-container\"><div class=\"lot-page__body\">" +
@@ -809,14 +858,9 @@
     });
   }
 
-  function emptyPret() { return { type: "PC", brand: "", model: "", sn: "", qty: 1 }; }
-
   async function renderPrets(el) {
     const cat = await catalog();
-    const endD = new Date(); endD.setMonth(endD.getMonth() + 1);
-    if (!App.pretDraft) {
-      App.pretDraft = { name: "", reference: "", borrowerType: "personne", borrowerName: "", contact: "", startDate: todayISO(), endDate: API.dateStr(endD), paid: false, amount: "", rows: [emptyPret()] };
-    }
+    if (!App.pretDraft) App.pretDraft = samplePretDraft();
     const d = App.pretDraft;
     el.innerHTML =
       "<section class=\"recep-page lot-page prets-container\"><div class=\"lot-page__body\">" +
