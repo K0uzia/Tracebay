@@ -96,38 +96,38 @@
 }
 
 .notification.success {
-    background: rgba(76, 175, 80, 0.14);
-    border-color: rgba(76, 175, 80, 0.42);
+    background: linear-gradient(rgba(76, 175, 80, 0.22), rgba(76, 175, 80, 0.22)), var(--bg-elevated);
+    border-color: rgba(76, 175, 80, 0.55);
 }
 .notification.success .notification-icon {
-    background: rgba(76, 175, 80, 0.22);
+    background: rgba(76, 175, 80, 0.28);
     color: var(--valid);
 }
 
 .notification.error {
-    background: rgba(239, 83, 80, 0.14);
-    border-color: rgba(239, 83, 80, 0.42);
+    background: linear-gradient(rgba(239, 83, 80, 0.22), rgba(239, 83, 80, 0.22)), var(--bg-elevated);
+    border-color: rgba(239, 83, 80, 0.55);
 }
 .notification.error .notification-icon {
-    background: rgba(239, 83, 80, 0.22);
+    background: rgba(239, 83, 80, 0.28);
     color: var(--error);
 }
 
 .notification.info {
-    background: rgba(124, 156, 255, 0.14);
-    border-color: rgba(124, 156, 255, 0.42);
+    background: linear-gradient(rgba(124, 156, 255, 0.22), rgba(124, 156, 255, 0.22)), var(--bg-elevated);
+    border-color: rgba(124, 156, 255, 0.55);
 }
 .notification.info .notification-icon {
-    background: rgba(124, 156, 255, 0.22);
+    background: rgba(124, 156, 255, 0.28);
     color: var(--accent);
 }
 
 .notification.warning {
-    background: rgba(242, 188, 27, 0.14);
-    border-color: rgba(242, 188, 27, 0.45);
+    background: linear-gradient(rgba(242, 188, 27, 0.22), rgba(242, 188, 27, 0.22)), var(--bg-elevated);
+    border-color: rgba(242, 188, 27, 0.55);
 }
 .notification.warning .notification-icon {
-    background: rgba(242, 188, 27, 0.24);
+    background: rgba(242, 188, 27, 0.3);
     color: var(--jaune);
 }
 
