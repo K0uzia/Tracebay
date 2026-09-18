@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         Merci de fournir un cas **reproductible**, sans données métier réelles.
-        Les vulnérabilités se signalent en [privé](https://github.com/K0uzia/workspace/security/advisories/new).
+        Les vulnérabilités se signalent en [privé](https://github.com/K0uzia/tracebaie/security/advisories/new).
   - type: dropdown
     id: area
     attributes:

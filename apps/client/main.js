@@ -644,7 +644,7 @@ exit 0
 
 // --- Mise à jour manuelle (AppImage, .deb, DMG, NSIS) ---
 const GITHUB_OWNER = 'K0uzia';
-const GITHUB_REPO = 'workspace';
+const GITHUB_REPO = 'tracebaie';
 
 function normalizeSemver(v) {
     const s = String(v || '').trim().replace(/^v/i, '');

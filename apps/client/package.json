@@ -2,7 +2,7 @@
   "name": "tracebaie",
   "version": "3.3.5",
   "main": "main.js",
-  "homepage": "https://github.com/K0uzia/workspace#readme",
+  "homepage": "https://github.com/K0uzia/tracebaie#readme",
   "description": "Tracebaie — traçabilité de matériel (lots, disques, archives) et agenda",
   "author": "K0uzia",
   "license": "SEE LICENSE IN LICENSE",
@@ -61,7 +61,7 @@
     "publish": {
       "provider": "github",
       "owner": "K0uzia",
-      "repo": "workspace",
+      "repo": "tracebaie",
       "releaseType": "release"
     },
     "files": [
@@ -212,9 +212,9 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/K0uzia/workspace.git"
+    "url": "git+https://github.com/K0uzia/tracebaie.git"
   },
   "bugs": {
-    "url": "https://github.com/K0uzia/workspace/issues"
+    "url": "https://github.com/K0uzia/tracebaie/issues"
   }
 }

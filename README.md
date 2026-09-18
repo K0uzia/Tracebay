@@ -1,14 +1,14 @@
-![Tracebaie](https://raw.githubusercontent.com/K0uzia/workspace/apps/client/assets/tracebaiebanner.svg)
+![Tracebaie](https://raw.githubusercontent.com/K0uzia/tracebaie/apps/client/assets/tracebaiebanner.svg)
 
 <p align="center">
-  <a href="https://github.com/K0uzia/workspace/tree/main/docs"><img src="https://img.shields.io/badge/docs-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Documentation"></a>
-  <a href="https://github.com/K0uzia/workspace/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Source--Available-0F172A?style=for-the-badge" alt="Licence source-available"></a>
+  <a href="https://github.com/K0uzia/tracebaie/tree/main/docs"><img src="https://img.shields.io/badge/docs-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Documentation"></a>
+  <a href="https://github.com/K0uzia/tracebaie/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Source--Available-0F172A?style=for-the-badge" alt="Licence source-available"></a>
   <a href="https://github.com/K0uzia"><img src="https://img.shields.io/badge/Author-K0uzia-blueviolet?style=for-the-badge" alt="K0uzia"></a>
 </p>
 <p align="center">
-  <a href="https://github.com/K0uzia/workspace/blob/main/package.json"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FK0uzia%2Fworkspace%2Fmain%2Fpackage.json&amp;query=%24.version&amp;label=version&amp;logo=npm&amp;logoColor=white&amp;style=for-the-badge" alt="Version"></a>
-  <a href="https://github.com/K0uzia/workspace/blob/main/package.json"><img src="https://img.shields.io/badge/node.js-%3E%3D18-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js ≥ 18"></a>
-  <a href="https://github.com/K0uzia/workspace/blob/main/apps/client/package.json"><img src="https://img.shields.io/badge/Electron-39.x-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron 39"></a>
+  <a href="https://github.com/K0uzia/tracebaie/blob/main/package.json"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FK0uzia%2Ftracebaie%2Fmain%2Fpackage.json&amp;query=%24.version&amp;label=version&amp;logo=npm&amp;logoColor=white&amp;style=for-the-badge" alt="Version"></a>
+  <a href="https://github.com/K0uzia/tracebaie/blob/main/package.json"><img src="https://img.shields.io/badge/node.js-%3E%3D18-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js ≥ 18"></a>
+  <a href="https://github.com/K0uzia/tracebaie/blob/main/apps/client/package.json"><img src="https://img.shields.io/badge/Electron-39.x-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron 39"></a>
 </p>
 
 **Tracebaie** est une application de bureau de **traçabilité de matériel informatique** : réception de lots, disques, commandes, dons et prêts, inventaire et archives PDF. Un agenda partagé complète l’atelier.
@@ -18,7 +18,7 @@
 | **Agenda** | Calendrier partagé (semaine, mois, année) |
 | **Réception** | Lots, disques, commandes, dons, prêts, inventaire et archives PDF |
 
-Démo navigateur (données fictives, sans Electron) : [k0uzia.github.io/workspace](https://k0uzia.github.io/workspace/)
+Démo navigateur (données fictives, sans Electron) : [k0uzia.github.io/tracebaie](https://k0uzia.github.io/tracebaie/)
 
 ---
 

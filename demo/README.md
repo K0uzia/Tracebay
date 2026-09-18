@@ -4,7 +4,7 @@ Copie navigable de **l’application actuelle** (pas de l’ancienne doc) : uniq
 
 ## En ligne
 
-https://k0uzia.github.io/workspace/
+https://k0uzia.github.io/tracebaie/
 
 ## Lancer en local
 

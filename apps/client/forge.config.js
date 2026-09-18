@@ -19,7 +19,7 @@ module.exports = {
             platforms: ['linux'],
             config: {    
                 maintainer: 'K0uzia <k0uzia@users.noreply.github.com>',
-                homepage: 'https://github.com/K0uzia/workspace',
+                homepage: 'https://github.com/K0uzia/tracebaie',
                 categories: ['Utility', 'Network'],
                 section: 'utils',
                 priority: 'optional',
@@ -38,7 +38,7 @@ module.exports = {
             config: {
                 repository: {
                     owner: 'K0uzia',
-                    name: 'workspace'
+                    name: 'tracebaie'
                 },
                 prerelease: false,
                 draft: true,

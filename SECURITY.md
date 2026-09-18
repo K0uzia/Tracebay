@@ -11,7 +11,7 @@
 
 Les vulnérabilités ne doivent **pas** faire l’objet d’une issue publique.
 
-Utiliser un [rapport privé GitHub](https://github.com/K0uzia/workspace/security/advisories/new).
+Utiliser un [rapport privé GitHub](https://github.com/K0uzia/tracebaie/security/advisories/new).
 
 Fournir :
 
