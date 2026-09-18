@@ -1473,8 +1473,9 @@ class PageManager {
         else if (type === 'error') icon = '<i class="fa-solid fa-exclamation-circle"></i>';
         else if (type === 'warning') icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
 
-        notification.innerHTML = icon;
+        notification.innerHTML = '<span class="notification-icon">' + icon + '</span>';
         const messageSpan = document.createElement('span');
+        messageSpan.className = 'notification-message';
         messageSpan.textContent = String(message);
         notification.appendChild(messageSpan);
 

@@ -92,7 +92,7 @@
     const el = document.createElement("div");
     el.className = "notification " + (type || "info");
     const icon = type === "success" ? "check" : type === "error" ? "triangle-exclamation" : type === "warning" ? "bell" : "circle-info";
-    el.innerHTML = "<i class=\"fa-solid fa-" + icon + "\"></i><span>" + esc(msg) + "</span>";
+    el.innerHTML = "<span class=\"notification-icon\"><i class=\"fa-solid fa-" + icon + "\"></i></span><span class=\"notification-message\">" + esc(msg) + "</span>";
     document.body.appendChild(el);
     requestAnimationFrame(function () { el.classList.add("show"); });
     setTimeout(function () {
