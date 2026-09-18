@@ -18,7 +18,7 @@ Documentation fonctionnelle du client Electron **Workspace** : architecture, pag
 10. [Flux : Prêts matériel](#10-flux--prêts-matériel)
 11. [Inventaire](#11-inventaire)
 12. [Historique](#12-historique)
-13. [Traçabilité](#13-traçabilité)
+13. [Traçabilité (fusionnée dans Historique)](#13-traçabilité-fusionnée-dans-historique)
 14. [Comparaison des flux](#14-comparaison-des-flux)
 15. [Dépendances poste / serveur](#15-dépendances-poste--serveur)
 16. [Pages retirées ou non implémentées](#16-pages-retirées-ou-non-implémentées)
@@ -27,19 +27,19 @@ Documentation fonctionnelle du client Electron **Workspace** : architecture, pag
 
 ## 1. Vue d'ensemble
 
-**Workspace** est une application de bureau (Electron) qui sert de **portail unique** pour une structure (atelier numérique, ESN, etc.). Elle regroupe :
+**Workspace** est une application de bureau (Electron) pour un atelier / une structure. L’UI actuelle a **deux espaces** :
 
-- L'accès aux documents internes et dossiers réseau
-- Un agenda partagé
-- Un module métier complet de **réception et traçabilité matériel**
+- Un **agenda** partagé
+- Un module métier de **réception et traçabilité matériel** (lots, disques, commandes, dons, prêts)
 
-La plupart des données transitent par un **serveur backend** distant (PostgreSQL, JWT, API REST, WebSocket). Certaines actions (ouverture de dossiers, génération PDF, détection de disques) s'appuient sur le **poste local** via Electron.
+La plupart des données transitent par un **serveur backend** (PostgreSQL, JWT, API REST). Certaines actions (génération PDF, détection de disques `lsblk`, ouverture de fichiers) s’appuient sur le **poste local** via Electron.
+
+Il n’y a plus de portail Accueil / Dossier / Applications / Raccourcis / Chat dans la navigation.
 
 ### Objectifs du projet
 
-- **Centraliser** l'accès aux informations utiles dans une interface unique
-- **Structurer la réception** du matériel professionnel (saisie, stocks, historique, traçabilité)
-- **Faciliter l'accès** aux documents et dossiers du serveur interne
+- **Structurer la réception** du matériel (saisie, inventaire, historique, PDF)
+- **Partager un agenda** synchronisé avec le serveur
 
 ---
 
@@ -57,9 +57,9 @@ L'application fonctionne comme une **application web à page unique** :
 
 | Composant | Rôle |
 |-----------|------|
-| **Client Electron** | UI, navigation, appels HTTP/WebSocket, mises à jour auto |
-| **Serveur backend** | Persistance (PostgreSQL), JWT, routes métier, WebSocket (chat), génération PDF serveur |
-| **Partage réseau** | `/mnt/team/#TEAM/` — documents et PDF de traçabilité |
+| **Client Electron** | UI, navigation, appels HTTP + JWT, PDF via IPC, mises à jour auto |
+| **Serveur backend** | Persistance (PostgreSQL), JWT, routes métier, génération / stockage PDF |
+| **Partage réseau** | Dossier traçabilité configuré côté client (PDF lots, disques, commandes, dons, prêts) |
 
 ### Schéma logique
 
@@ -103,95 +103,49 @@ Barre en haut avec :
 
 | Bouton | Page |
 |--------|------|
-| Logo / Workspace | Accueil |
-| Accueil | Tableau de bord |
+| Logo / Workspace | Agenda |
 | Agenda | Calendrier |
-| Dossier | Navigation fichiers réseau |
-| Réception | Module métier (défaut : Lots) |
-| Profil | Menu déroulant (connexion, paramètres) |
+| Reception | Module métier (défaut : Lots) |
+| Thème | Clair / sombre |
+| Paramètres | Mises à jour uniquement |
 
 Sur mobile, un **menu burger** remplace la barre horizontale.
 
 ### Layout par page
 
-| Page / zone | Header | Footer | Chat |
-|-------------|--------|--------|------|
-| Accueil | Oui | Oui | Oui |
-| Agenda | Oui | Oui | Non |
-| Dossier | Oui | Oui | Oui |
-| Réception (toutes sous-pages) | Oui | **Non** | **Non** |
+| Page / zone | Header | Footer |
+|-------------|--------|--------|
+| Agenda | Oui | Oui |
+| Réception (toutes sous-pages) | Oui | **Non** |
 
-Le module Réception possède **sa propre sidebar interne** en plus du header global.
+Le module Réception possède **sa propre sidebar interne** en plus du header global. **Pas de widget chat** dans l’UI actuelle.
 
 ### Authentification
 
-Pas de page de connexion dédiée : tout passe par une **modale** accessible depuis Profil.
+Pas d’écran ni de modale de connexion dans l’UI actuelle. Un **JWT** peut encore être lu en `localStorage` et envoyé aux API (`/api/auth/verify`). Les routes réception restent authentifiées côté serveur.
 
-- **Connexion** : pseudo (3–20 car.) + mot de passe (≥ 6 car.) → JWT stocké localement
-- **Inscription** : pseudo alphanumérique + confirmation mot de passe
-- **Déconnexion** : ferme la session et le WebSocket chat
-- **Session expirée** : déconnexion automatique si le serveur renvoie HTTP 401
+### Paramètres
 
-### Paramètres (modale Profil)
-
-- Changer le pseudo
-- Changer le mot de passe
-- Supprimer le compte (confirmation par mot de passe)
-- **Mises à jour** (Electron) : vérification, téléchargement, badge « MAJ » sur Profil, redémarrage pour appliquer
-- Paramètres invité (ex. clé API Giphy) si non connecté
+Modale **uniquement dédiée aux mises à jour** Electron : vérifier, télécharger et préparer, redémarrer pour appliquer. Un point orange sur l’icône Paramètres signale une version disponible.
 
 ### Pied de page
 
-Affiché sur Accueil, Agenda et Dossier :
+Affiché sur **Agenda** :
 
 - Version de l'application + lien GitHub
-- **IP locale**, **RAM**, **état du serveur**, **état réseau** (rafraîchis ~toutes les 5 s)
+- **IP locale**, **RAM**, **état du serveur**, **état réseau**
 - Clic sur l'IP → copie dans le presse-papiers
-
-### Widget chat
-
-Bouton flottant + panneau latéral (**Accueil et Dossier uniquement**) :
-
-- Connexion **WebSocket** au serveur
-- Messages texte, réponses, emotes, GIFs
-- Historique et compteur de connectés
-- Badge si messages non lus
-- Notification système à la réception (Electron)
-- Réservé aux utilisateurs **connectés**
 
 ### Éléments transverses
 
-- **Récents** (Accueil) : 5 dernières actions (pages, dossiers, PDF), par profil utilisateur
 - **Notifications toast** : succès, erreur, info
-- **Remontée d'erreurs** : erreurs JS envoyées au panel admin serveur
-- **Thème sombre** : prévu dans le code, UI peu exposée actuellement
+- **Thème** clair / sombre : toggle dans le header (sombre par défaut)
 
 ---
 
 ## 4. Pages principales
 
-### 4.1 Accueil
-
-Tableau de bord d'entrée.
-
-**Bloc horloge** — Heure et date en temps réel.
-
-**Bloc « La Capsule »** — Documents internes embarqués :
-
-- Règlement intérieur
-- Fonte pédagogique
-- Livret d'accueil
-- Liste des adhérents
-
-Les PDF s'ouvrent dans une fenêtre dédiée (Electron).
-
-**Bloc « Agenda du jour »** — Événements du jour synchronisés avec le serveur. Lien vers l'Agenda complet.
-
-**Bloc « Récents »** — 5 derniers éléments utilisés ; clic pour rouvrir une page ou un dossier.
-
-**Sources** : serveur (agenda), fichiers locaux (PDF), stockage local (récents).
-
----
+La page d’entrée est **Agenda**. Accueil et Dossier existent encore en fichiers HTML mais sont **redirigés** et absents de la navigation.
 
 ### 4.2 Agenda
 
@@ -211,31 +165,7 @@ Les **jours fériés** (métropole) sont affichés en lecture seule.
 **Comportement** :
 
 - Clic sur un créneau ou événement → panneau de détail
-- Les événements du jour alimentent le widget Accueil
-- En environnement sans serveur : fallback stockage local avec données de démo
-
----
-
-### 4.3 Dossier
-
-Accès aux **dossiers réseau internes**, organisés par entité.
-
-| Zone | Rôle |
-|------|------|
-| **La Capsule** | Documents internes (hors web) |
-| **Team** | Racine partagée équipe (certains sous-dossiers masqués) |
-| **Invité** | Espace invités |
-| **Développement** | Zone web / dev |
-
-Chaque zone affiche la **liste des sous-dossiers** du chemin configuré.
-
-**Fonctionnement** :
-
-- Configuration locale, surchargée par le serveur si disponible (`/api/admin/config/folders`)
-- Contenu lu via le système de fichiers local (Electron)
-- Clic sur un dossier → ouverture dans l'explorateur OS
-- Ouvertures enregistrées dans **Récents**
-- Si **plus de 10 dossiers** : scroll interne dans la carte (max 10 visibles)
+- En environnement sans serveur : pas d’agenda métier (le client Electron cible le backend Proxmox)
 
 ---
 
@@ -253,13 +183,12 @@ Chaque zone affiche la **liste des sous-dossiers** du chemin configuré.
 | **Dons** | Certificats de don (stagiaires AFPA) |
 | **Prêts matériel** | Fiches de prêt ou location |
 
-**Suivi & traçabilité** (consultation et finalisation) :
+**Suivi** (consultation et finalisation) :
 
 | Page | Rôle |
 |------|------|
 | **Inventaire** | Lots PC **en cours de traitement** |
-| **Historique** | Tout ce qui est **enregistré ou terminé** |
-| **Traçabilité** | Vue **documentaire** par année/mois |
+| **Historique** | Archives **et** vue documentaire (PDF) : lots, disques, commandes, dons, prêts |
 
 ### Arborescence documentaire sur le partage réseau
 
@@ -278,11 +207,11 @@ La génération PDF locale **nécessite Electron**. En navigateur seul, la saisi
 ### Schéma des flux
 
 ```
-Lots (saisie) ──► Inventaire ──► Historique + Traçabilité
-Disques ──────────────────────► Historique + Traçabilité
-Commande ─────────────────────► Historique + Traçabilité
-Dons ─────────────────────────► Historique + Traçabilité
-Prêts ────────────────────────► Historique + Traçabilité
+Lots (saisie) ──► Inventaire ──► Historique
+Disques ──────────────────────► Historique
+Commande ─────────────────────► Historique
+Dons ─────────────────────────► Historique
+Prêts ────────────────────────► Historique
 ```
 
 Les **lots PC** sont le seul flux avec une **étape intermédiaire obligatoire** (Inventaire).
@@ -291,7 +220,7 @@ Les **lots PC** sont le seul flux avec une **étape intermédiaire obligatoire**
 
 ## 6. Flux complet : Lot PC
 
-Parcours : **Entrer → Inventaire → Historique → Traçabilité**.
+Parcours : **Entrer → Inventaire → Historique**.
 
 ### Étape 1 — Lots (saisie à la réception)
 
@@ -368,13 +297,9 @@ Un PC est **complet** si état ET technicien sont renseignés.
 
 ---
 
-### Étape 4 — Traçabilité (lots, vue documentaire)
+### Étape 4 — PDF et archives (depuis Historique)
 
-**Filtres** : année (10 ans), type (lots, disques, etc.)
-
-**Présentation** : Année → Mois → cartes par document.
-
-**Actions** :
+Les actions documentaires (emplacement, voir, télécharger, e-mail, régénérer) se font dans **Historique**, plus depuis une page Traçabilité séparée.
 
 | Action | Description |
 |--------|-------------|
@@ -390,8 +315,8 @@ Un PC est **complet** si état ET technicien sont renseignés.
 |-------|--------|--------------|-----|
 | Saisie | — | Lots | Tentative initiale (entrée) |
 | En cours | `active` | Inventaire | — |
-| Clôturé | `finished` | Historique + Traçabilité | PDF final complet |
-| Récupéré | `finished` + `recovered_at` | Historique + Traçabilité | Inchangé |
+| Clôturé | `finished` | Historique | PDF final complet |
+| Récupéré | `finished` + `recovered_at` | Historique | Inchangé |
 
 ---
 
@@ -420,14 +345,14 @@ Un PC est **complet** si état ET technicien sont renseignés.
 4. PDF envoyé au serveur
 5. Formulaire vidé
 
-**Pas d'étape Inventaire** : visible immédiatement en Historique et Traçabilité.
+**Pas d'étape Inventaire** : visible immédiatement en Historique.
 
 ### Historique
 
 - Voir détail, modifier nom de session, modifier lignes disques
 - **Récupérer** : marquage administratif (`recovered_at`), sans régénération PDF
 
-### Traçabilité
+### Historique / PDF
 
 - Filtre année + type « disques »
 - Actions : emplacement PDF, voir, télécharger, **e-mail**, régénérer
@@ -455,7 +380,7 @@ Un PC est **complet** si état ET technicien sont renseignés.
 - Voir détail, modifier nom/catégorie, modifier lignes produits
 - Pas de bouton Récupérer
 
-### Traçabilité
+### Historique / PDF
 
 - Voir / télécharger / régénérer PDF — pas d'e-mail
 
@@ -480,7 +405,7 @@ Un PC est **complet** si état ET technicien sont renseignés.
 
 - Voir détail, modifier nom du lot, modifier lignes matériel
 
-### Traçabilité
+### Historique / PDF
 
 - Voir / télécharger / régénérer — pas d'e-mail
 
@@ -510,7 +435,7 @@ Un PC est **complet** si état ET technicien sont renseignés.
 
 - **Consultation seule** (pas d'édition ni récupération)
 
-### Traçabilité
+### Historique / PDF
 
 - Voir / télécharger / régénérer — pas d'e-mail
 
@@ -528,7 +453,7 @@ L'inventaire est **exclusivement réservé aux lots PC actifs**.
 | PC incomplet | État vide OU technicien vide → « à faire » |
 | PC complet | État + technicien renseignés |
 | Lot terminé | 100 % des PC complets → clôture automatique |
-| Sortie | Disparaît de l'inventaire → Historique + Traçabilité |
+| Sortie | Disparaît de l'inventaire → Historique |
 
 ### Indicateurs par lot
 
@@ -573,9 +498,11 @@ La récupération (lots et disques) est un **marquage administratif** : ne modif
 
 ---
 
-## 13. Traçabilité
+## 13. Traçabilité (fusionnée dans Historique)
 
-**Principe** : vue **archivistique** orientée **documents PDF**, organisée par **année puis mois** (contrairement à l'Historique, chronologique et opérationnel).
+La page **Traçabilité** n’est plus dans la navigation : `tracabilite` redirige vers **Historique**. Les actions PDF (ouvrir le dossier, voir, télécharger, e-mail, régénérer) se font depuis Historique.
+
+**Principe** : en plus de la liste opérationnelle, Historique conserve une vue **documentaire** (année, type, PDF).
 
 ### Chargement
 
@@ -620,12 +547,12 @@ Utile si fichier supprimé, déplacé ou corrompu : relit les données en base, 
 
 1. **Matin** : arrivée de portables → **Lots** → scan S/N → enregistrement → **Inventaire**
 2. **Journée** : techniciens traitent PC par PC dans **Inventaire**
-3. **Fin de lot** : clôture auto → PDF final → **Historique** + **Traçabilité**
+3. **Fin de lot** : clôture auto → PDF final → **Historique**
 4. **Parallèle** : destruction disques → **Disques** → détection ou saisie → PDF immédiat
 5. **Achats** : **Commande** → lignes produits → PDF dans `#COMMANDES`
 6. **Don stagiaire** : **Dons** → certificat PDF
 7. **Prêt** : **Prêts** → fiche emprunteur → PDF
-8. **Archivage** : **Traçabilité** → filtre année → envoi PDF par e-mail
+8. **Archivage** : **Historique** → filtre année / type → PDF, e-mail
 9. **Correction** : **Historique** → modifier une ligne ou marquer « Récupéré »
 
 ---
@@ -639,7 +566,7 @@ Utile si fichier supprimé, déplacé ou corrompu : relit les données en base, 
 | Détection disques (`lsblk`) | Oui (Linux) | — |
 | Génération PDF réception | Oui (templates locaux) | Parfois complément serveur |
 | Auth, lots, inventaire, historique | — | Oui |
-| Chat WebSocket | — | Oui |
+| Chat WebSocket | — | Config encore présente, **pas d’UI** |
 | Agenda (prod) | — | Oui |
 | Mises à jour auto | Oui | GitHub Releases |
 | Référentiels marques/modèles | — | Oui |
@@ -653,12 +580,15 @@ En **navigateur web** (sans Electron), l'interface s'affiche mais les fonctions 
 
 | Élément | Statut |
 |---------|--------|
+| **Accueil** | Retiré de la nav ; redirect → Agenda |
+| **Dossier** | Retiré de la nav ; redirect → Agenda |
+| **Traçabilité** (page séparée) | Redirect → Historique |
+| **Chat** | Absent de `index.html` / du header |
 | **Mes raccourcis** | Retiré de la navigation |
 | **Application** (lanceurs logiciels) | Retiré de la navigation |
-| **Faire un retour** (feedback) | Retiré de l'Accueil |
-| **Options** | Prévu dans la config, pas de page HTML → non accessible |
-| **Sortie** | Mentionné dans le code, pas de page → non accessible |
-| **Login / Signup** | Uniquement via modale, pas de pages dédiées |
+| **Options** | Pas de page HTML → non accessible |
+| **Sortie** | Mentionné dans le routeur, pas de page → non accessible |
+| **Login / Signup** | Pages et modale non branchées ; JWT silencieux seulement |
 
 ---
 
