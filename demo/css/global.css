@@ -1,0 +1,187 @@
+@import url(./default/variables.css);
+@import url(./default/theme-dark.css);
+@import url(./default/normalize.css);
+@import url(./default/section.css);
+
+/* ----------CSS COMPONENTS----------- */
+@import url(./components/header.css);
+@import url(./components/footer.css);
+@import url(./components/auth-modal.css);
+@import url(./components/settings-modal.css);
+
+/* ----------CSS PAGES----------- */
+@import url(./modules/agenda.css);
+@import url(./modules/dossier.css);
+@import url(./modules/home.css);
+@import url(./modules/reception.css);
+
+/* ----------CSS RECEPTION (modulaire par sous-page) ----------- */
+@import url(./modules/receptions/recep-common.css);
+@import url(./modules/receptions/entrer.css);
+@import url(./modules/receptions/inventaire.css);
+@import url(./modules/receptions/historique.css);
+@import url(./modules/receptions/tracabiliter.css);
+@import url(./modules/receptions/disques.css);
+@import url(./modules/receptions/commande.css);
+@import url(./modules/receptions/dons.css);
+@import url(./modules/receptions/prets.css);
+
+/* ----------CSS MODULES----------- */
+@import url(./modules/modal.css);
+@import url(./modules/chat-widget.css);
+@import url(./modules/recent-items.css);
+
+/* Overrides dark réception (après pages + modal pour gagner la cascade) */
+@import url(./modules/receptions/recep-dark.css);
+
+/* Thème clair — après recep-dark pour écraser couleurs hardcodées */
+@import url(./default/theme-light.css);
+
+/* ---------- Notifications toast ---------- */
+.notification {
+    position: fixed;
+    top: var(--unit-4);
+    right: var(--unit-4);
+    display: flex;
+    align-items: flex-start;
+    gap: var(--unit-2);
+    min-width: min(360px, calc(100vw - var(--unit-4) * 2));
+    max-width: min(420px, calc(100vw - var(--unit-4) * 2));
+    padding: var(--unit-2) var(--unit-3);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.45;
+    z-index: 999998;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: none;
+    box-shadow: var(--shadow-medium);
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.notification.hide {
+    opacity: 0;
+    transform: translateY(-8px);
+}
+
+.notification > i {
+    flex-shrink: 0;
+    margin-top: 2px;
+    font-size: 1rem;
+    opacity: 0.95;
+}
+
+.notification > span {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification.success {
+    border-left: 3px solid var(--valid);
+}
+.notification.success > i {
+    color: var(--valid);
+}
+
+.notification.error {
+    border-left: 3px solid var(--error);
+}
+.notification.error > i {
+    color: var(--error);
+}
+
+.notification.info {
+    border-left: 3px solid var(--accent);
+}
+.notification.info > i {
+    color: var(--accent);
+}
+
+.notification.warning {
+    border-left: 3px solid var(--jaune);
+}
+.notification.warning > i {
+    color: var(--jaune);
+}
+
+.notification.has-action {
+    pointer-events: auto;
+}
+
+.notification-action {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(124, 156, 255, 0.1);
+    color: var(--accent);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition);
+}
+
+.notification-action:hover {
+    background: rgba(124, 156, 255, 0.18);
+    border-color: rgba(124, 156, 255, 0.35);
+}
+
+.notification--bottom {
+    top: auto;
+    bottom: var(--unit-4);
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    min-width: auto;
+}
+
+.notification--bottom.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+.notification--bottom.hide {
+    transform: translateX(-50%) translateY(8px);
+}
+
+/* Focus clavier (Tab) : contour discret au lieu du outline par défaut */
+:focus {
+    outline: none;
+}
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Thème clair — toasts (après règles .notification du fichier) */
+html[data-theme-dark="0"] .notification {
+    background: #ffffff !important;
+    color: #0d1117 !important;
+    border-color: rgba(13, 17, 23, 0.12) !important;
+    box-shadow: 0 8px 24px rgba(13, 17, 23, 0.12) !important;
+}
+
+html[data-theme-dark="0"] .notification-action {
+    background: rgba(62, 59, 140, 0.1) !important;
+    color: #3e3b8c !important;
+    border-color: rgba(62, 59, 140, 0.25) !important;
+}

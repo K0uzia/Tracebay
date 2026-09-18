@@ -1,0 +1,489 @@
+/**
+ * Mes raccourcis – Style aligné sur l’app (home, section, modales)
+ */
+
+/* ---------- Section titre : titre à gauche, barre de recherche + bouton à droite ---------- */
+.shortcut-section-title {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--unit-2);
+    flex-wrap: wrap;
+}
+
+.shortcut-section-title h2 {
+    margin: 0;
+}
+
+.shortcut-toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    flex-wrap: wrap;
+}
+
+.shortcut-search-wrap {
+    position: relative;
+    min-width: 200px;
+    max-width: 320px;
+}
+
+.shortcut-search-wrap i {
+    position: absolute;
+    left: var(--unit-2);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--h2);
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.shortcut-search-input {
+    width: 100%;
+    padding: var(--unit-1) var(--unit-2) var(--unit-1) calc(var(--unit-4) + var(--unit-1));
+    border: 1px solid rgba(13, 13, 13, 0.15);
+    border-radius: var(--radius-medium);
+    font: var(--font-text);
+    background-color: var(--blanc);
+    color: var(--text2);
+    box-sizing: border-box;
+}
+
+.shortcut-search-input:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 3px rgba(62, 59, 140, 0.1);
+}
+
+.shortcut-search-input::placeholder {
+    color: var(--text2);
+    opacity: 0.6;
+}
+
+/* Bouton Nouvelle catégorie : hérite du style section button */
+.shortcut-add-category-btn {
+    flex-shrink: 0;
+}
+
+/* ---------- Bloc « Authentification requise » (même style qu’un .block) ---------- */
+.shortcut-auth-required {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: var(--unit-4);
+    margin: var(--unit-3) 0;
+    box-shadow: var(--shadow-medium);
+    border-radius: var(--radius-medium);
+}
+
+.shortcut-auth-required.hidden {
+    display: none;
+}
+
+.shortcut-auth-required > i {
+    font-size: 2.5rem;
+    color: var(--bleu1);
+    margin-bottom: var(--unit-2);
+}
+
+.shortcut-auth-required h3 {
+    margin: 0 0 var(--unit-1) 0;
+    font: var(--block-title-h3);
+    color: var(--h2);
+}
+
+.shortcut-auth-required p {
+    margin: 0 0 var(--unit-2) 0;
+    font: var(--font-text);
+    color: var(--text2);
+}
+
+.shortcut-login-btn {
+    /* hérite du style .section button */
+}
+
+/* ---------- Grille : réutilise .grid (home), pas de changement ---------- */
+.shortcut-content .section-contain {
+    width: 100%;
+    min-width: 0;
+}
+
+/* ---------- Carte catégorie : .shortcut-container.block ---------- */
+.shortcut-container.block {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+}
+
+.shortcut-title.block-title {
+    justify-content: space-between;
+    gap: var(--unit-2);
+    flex-wrap: wrap;
+}
+
+.shortcut-title.block-title h3 {
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0 0 var(--unit-2) 0;
+}
+
+.shortcut-title-actions {
+    display: flex;
+    gap: calc(var(--unit-1) / 2);
+    flex-shrink: 0;
+}
+
+/* Boutons Ajouter / Gérer sur la carte : style ghost (surcharge section button) */
+.shortcut-add-shortcut-btn,
+.shortcut-manage-btn {
+    background: transparent !important;
+    color: var(--h2) !important;
+    padding: var(--unit-1) var(--unit-1) !important;
+    box-shadow: none !important;
+}
+
+.shortcut-add-shortcut-btn:hover,
+.shortcut-manage-btn:hover {
+    background: rgba(13, 13, 13, 0.06) !important;
+    color: var(--orange) !important;
+}
+
+.shortcut-btn-label {
+    margin-left: 4px;
+}
+
+@media (max-width: 520px) {
+    .shortcut-btn-label {
+        display: none;
+    }
+}
+
+/* ---------- Liste de raccourcis (.shortcut-links.block-content) ---------- */
+.shortcut-links.block-content {
+    flex: 1;
+    min-height: 0;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.shortcut-links::-webkit-scrollbar {
+    width: 6px;
+}
+
+.shortcut-links::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.shortcut-links::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-color);
+    border-radius: var(--radius-small);
+}
+
+.shortcut-links::-webkit-scrollbar-thumb:hover {
+    background: var(--orange);
+}
+
+/* Ligne : lien (bouton) + actions */
+.shortcut-item-wrapper {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
+}
+
+.shortcut-link {
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-start;
+    text-align: left;
+}
+
+.shortcut-link span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.shortcut-favicon {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    object-fit: contain;
+}
+
+.shortcut-fallback-icon {
+    display: none;
+}
+
+.shortcut-internal-icon {
+    font-size: 1rem;
+    margin-right: 2px;
+    color: var(--orange);
+}
+
+/* Boutons Modifier / Supprimer sur la grille : style ghost */
+.shortcut-item-actions-inline {
+    display: flex;
+    gap: 2px;
+    flex-shrink: 0;
+}
+
+.shortcut-edit-btn,
+.shortcut-delete-btn {
+    background: transparent !important;
+    color: var(--h2) !important;
+    padding: var(--unit-1) !important;
+    min-width: 32px;
+    min-height: 32px;
+    box-shadow: none !important;
+}
+
+.shortcut-edit-btn:hover {
+    background: rgba(62, 59, 140, 0.12) !important;
+    color: var(--bleu1) !important;
+}
+
+.shortcut-delete-btn:hover {
+    background: rgba(198, 40, 40, 0.12) !important;
+    color: var(--error) !important;
+}
+
+/* ---------- Messages vides ---------- */
+.shortcut-empty-message {
+    margin: 0;
+    padding: var(--unit-2);
+    font: var(--font-text);
+    color: var(--text2);
+    opacity: 0.8;
+}
+
+.shortcut-error-message {
+    color: var(--error, #c62828);
+    font-weight: 500;
+}
+
+.shortcuts-empty {
+    margin: 0;
+    padding: var(--unit-2);
+    font: var(--font-text);
+    color: var(--text2);
+    opacity: 0.8;
+}
+
+/* ---------- Modales (contenu généré par ShortcutManager) ---------- */
+.manage-shortcuts {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-3);
+}
+
+.manage-shortcuts-section-title {
+    margin: 0 0 var(--unit-1) 0;
+    font: var(--block-title-h3);
+    font-size: 1rem;
+    color: var(--h2);
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
+}
+
+.manage-shortcuts-section-title i {
+    color: var(--orange);
+}
+
+.manage-shortcuts-hint {
+    font-size: 0.85rem;
+    color: var(--text2);
+    opacity: 0.85;
+    margin: 0 0 var(--unit-1) 0;
+}
+
+.manage-shortcuts-hint strong {
+    font-weight: 600;
+    color: var(--h2);
+}
+
+.manage-shortcuts-rename {
+    padding-bottom: var(--unit-2);
+    border-bottom: 1px solid rgba(13, 13, 13, 0.08);
+}
+
+.form-row-rename {
+    display: flex;
+    gap: var(--unit-2);
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.manage-category-name-input {
+    flex: 1;
+    min-width: 160px;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid rgba(13, 13, 13, 0.15);
+    border-radius: var(--radius-medium);
+    font: var(--font-text);
+    background-color: var(--blanc);
+    color: var(--text2);
+}
+
+.manage-category-name-input:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 3px rgba(62, 59, 140, 0.1);
+}
+
+.shortcuts-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+    max-height: 320px;
+    overflow-y: auto;
+    padding: var(--unit-1);
+    background: rgba(13, 13, 13, 0.04);
+    border-radius: var(--radius-small);
+}
+
+.shortcut-item {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    padding: var(--unit-1) var(--unit-2);
+    background: var(--blanc);
+    border-radius: var(--radius-small);
+    border: 1px solid transparent;
+    cursor: move;
+    transition: var(--transition);
+}
+
+.shortcut-item.dragging {
+    opacity: 0.6;
+    border-color: var(--orange);
+}
+
+.shortcut-item:hover {
+    border-color: rgba(13, 13, 13, 0.1);
+}
+
+.shortcut-drag-handle {
+    color: var(--text2);
+    opacity: 0.6;
+    cursor: grab;
+    padding: 4px;
+}
+
+.shortcut-drag-handle:active {
+    cursor: grabbing;
+}
+
+.shortcut-item-actions {
+    display: flex;
+    gap: var(--unit-1);
+    flex-shrink: 0;
+}
+
+.shortcut-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.shortcut-info strong {
+    display: block;
+    font-size: 0.95rem;
+    color: var(--h2);
+}
+
+.shortcut-info small {
+    font-size: 0.8rem;
+    color: var(--text2);
+    opacity: 0.85;
+    word-break: break-all;
+}
+
+.btn-edit-inline,
+.btn-delete-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-1);
+    padding: var(--unit-1) var(--unit-2);
+    border-radius: var(--radius-small);
+    font-size: 0.85rem;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: var(--transition);
+}
+
+.btn-edit-inline {
+    background: rgba(13, 13, 13, 0.06);
+    color: var(--h2);
+}
+
+.btn-edit-inline:hover {
+    background: rgba(62, 59, 140, 0.12);
+    color: var(--bleu1);
+    border-color: var(--bleu1);
+}
+
+.btn-delete-inline {
+    background: rgba(198, 40, 40, 0.08);
+    color: var(--error);
+}
+
+.btn-delete-inline:hover {
+    background: rgba(198, 40, 40, 0.15);
+    border-color: var(--error);
+}
+
+.form-group.hidden {
+    display: none;
+}
+
+/* ---------- Tailles de boutons unifiées dans les modales raccourcis ---------- */
+.shortcut-modal .modal-footer button,
+.shortcut-modal .shortcut-modal-btn,
+.shortcut-modal .modal-body .modal-submit-btn,
+.shortcut-modal .modal-body .modal-cancel-btn,
+.shortcut-modal .modal-body .btn-danger {
+    padding: var(--unit-1) var(--unit-3);
+    font-size: 0.9rem;
+    min-height: 36px;
+}
+
+.shortcut-modal #manage-rename-category-btn {
+    padding: var(--unit-1) var(--unit-3);
+    font-size: 0.9rem;
+}
+
+.shortcut-form-type-row select {
+    min-width: 140px;
+}
+
+.form-row {
+    display: flex;
+    gap: var(--unit-2);
+    margin-top: var(--unit-1);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 980px) {
+    .shortcut-grid.grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 700px) {
+    .shortcut-section-title {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .shortcut-toolbar {
+        width: 100%;
+    }
+
+    .shortcut-search-wrap {
+        max-width: none;
+    }
+}

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme-dark="1">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Workspace Démo</title>
+  <script>
+    try {
+      var t = localStorage.getItem("workspace_theme_dark");
+      document.documentElement.setAttribute("data-theme-dark", t === "0" ? "0" : "1");
+    } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="./css/global.css">
+  <link rel="stylesheet" href="./css/demo-banner.css">
+  <link rel="stylesheet" href="./css/demo-ui.css">
+  <link rel="stylesheet" href="./css/pdf-preview.css">
+</head>
+<body>
+  <div class="demo-banner" role="status">
+    <i class="fa-solid fa-flask" aria-hidden="true"></i>
+    <span><strong>Mode démo</strong></span>
+    <button type="button" id="btn-reset-demo">Réinitialiser</button>
+  </div>
+
+  <header id="header">
+    <menu>
+      <div class="nav-logo">
+        <button class="nav-btn nav-brand-mark" data-page="agenda" aria-label="Agenda">
+          <img class="logo" src="./src/icons/logo.svg" alt="">
+        </button>
+        <button class="nav-btn nav-brand-link" data-page="agenda">
+          <span class="nav-brand-copy"><span class="nav-brand-title">Workspace</span></span>
+        </button>
+      </div>
+      <nav class="nav-links" id="navLinks">
+        <div class="nav-primary">
+          <button class="nav-btn" data-page="agenda"><i class="fas fa-calendar-alt"></i> Agenda</button>
+          <button class="nav-btn nav-reception" data-page="reception"><i class="fas fa-bell"></i> Reception</button>
+        </div>
+        <div class="nav-action">
+          <button type="button" class="nav-btn nav-theme" id="navThemeToggle" title="Basculer le thème" aria-label="Basculer le thème">
+            <i class="fa-solid fa-moon" id="navThemeIcon" aria-hidden="true"></i>
+            <span class="profile-text" id="navThemeText">Thème sombre</span>
+          </button>
+          <button class="nav-btn nav-settings" id="navSettings" title="Paramètres">
+            <i class="fa-solid fa-gear"></i><span class="profile-text">Paramètres</span>
+            <span class="profile-update-ping hidden" id="profileUpdatePing" aria-hidden="true"></span>
+          </button>
+        </div>
+      </nav>
+      <button class="nav-burger" id="navBurger" aria-label="Ouvrir menu">
+        <span></span><span></span><span></span>
+      </button>
+    </menu>
+  </header>
+
+  <main id="content"></main>
+
+  <footer id="footer">
+    <div class="footer-contain">
+      <div class="footer-copyright">
+        <a href="https://github.com/K0uzia/workspace" target="_blank" rel="noopener noreferrer"><p>© 2026 - Workspace <span id="footer-app-version">V3.3.5</span> - By K0uzia</p></a>
+      </div>
+      <div class="footer-system-info">
+        <span class="footer-info-item" id="footer-ip" title="Adresse IP locale">
+          <i class="fas fa-network-wired"></i> <span id="footer-ip-value">10.42.0.18</span>
+        </span>
+        <span class="footer-info-item" id="footer-ram" title="Mémoire RAM">
+          <i class="fas fa-memory"></i> <span id="footer-ram-value">6.1 / 16 Go</span>
+        </span>
+        <span class="footer-info-item" id="footer-server" title="État du serveur">
+          <i class="fas fa-server" id="footer-server-icon" style="color:#2ecc71"></i> <span id="footer-server-value" style="color:#2ecc71">En ligne</span>
+        </span>
+        <span class="footer-info-item" id="footer-connection" title="État de la connexion">
+          <i class="fas fa-wifi" id="footer-connection-icon" style="color:#2ecc71"></i> <span id="footer-connection-value">OK</span>
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <div id="settingsModalContainer"></div>
+  <dialog class="universal-modal" id="demo-modal"></dialog>
+
+  <script src="./js/backend.js"></script>
+  <script src="./js/app.js"></script>
+</body>
+</html>

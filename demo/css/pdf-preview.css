@@ -1,0 +1,280 @@
+/**
+ * Aperçu PDF démo — même structure que pdf-templates/*.html + lot.css,
+ * marqué NEXA Atelier (aucune identité réelle).
+ */
+.pdf-viewer {
+  background: #3d4454;
+  padding: 20px 16px 28px;
+  overflow: auto;
+  max-height: min(72vh, 820px);
+}
+
+.pdf-preview {
+  box-sizing: border-box;
+  width: 210mm;
+  min-height: 297mm;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 18mm 16mm;
+  background: #fff;
+  color: #111;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
+  font-size: 11px;
+  line-height: 1.4;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.38);
+}
+
+.pdf-preview *,
+.pdf-preview *::before,
+.pdf-preview *::after {
+  box-sizing: border-box;
+}
+
+.pdf-preview .pdf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #2d3073;
+}
+
+.pdf-preview .pdf-header h1 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #2d3073;
+  letter-spacing: -0.02em;
+}
+
+.pdf-preview .pdf-header-org,
+.pdf-preview .pdf-header-text p {
+  margin: 0;
+  font-size: 12px;
+  color: #555;
+}
+
+.pdf-preview .pdf-header-logo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.pdf-preview .pdf-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: #2d3073;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.pdf-preview .pdf-header-subtitle {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #2d3073;
+}
+
+.pdf-preview .pdf-certificate-title {
+  margin-bottom: 20px;
+  padding: 16px 20px;
+  border: 2px solid #2d3073;
+  border-radius: 8px;
+  background: linear-gradient(to bottom, #f8f9fc 0%, #fff 100%);
+}
+
+.pdf-preview .pdf-certificate-title h2 {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #2d3073;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pdf-preview .certificate-intro {
+  margin: 0;
+  font-size: 11px;
+  color: #333;
+}
+
+.pdf-preview .pdf-info,
+.pdf-preview .pdf-summary,
+.pdf-preview .pdf-method,
+.pdf-preview .pdf-detail {
+  margin-bottom: 20px;
+}
+
+.pdf-preview .pdf-info h2,
+.pdf-preview .pdf-summary h2,
+.pdf-preview .pdf-method h2,
+.pdf-preview .pdf-detail h2 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #111;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pdf-preview .pdf-info ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pdf-preview .pdf-info li {
+  padding: 4px 0;
+  display: flex;
+  gap: 12px;
+}
+
+.pdf-preview .pdf-info .label,
+.pdf-preview .pdf-summary-total-line .label {
+  color: #111;
+  min-width: 110px;
+}
+
+.pdf-preview .pdf-info .value,
+.pdf-preview .pdf-summary-total-line .value {
+  font-weight: 500;
+  color: #3e3b8c;
+}
+
+.pdf-preview .pdf-summary-total-line {
+  margin: 0 0 10px;
+  font-size: 11px;
+  color: #1a1a1a;
+  line-height: 1.5;
+}
+
+.pdf-preview .pdf-summary-total-line strong {
+  color: #2d3073;
+}
+
+.pdf-preview .pdf-summary-state-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pdf-preview .pdf-summary-state-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  font-size: 10px;
+  color: #111;
+}
+
+.pdf-preview .pdf-summary-state-name {
+  font-weight: 600;
+  color: #2d3073;
+}
+
+.pdf-preview .pdf-summary-state-count {
+  font-weight: 700;
+}
+
+.pdf-preview .pdf-method-sub {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: #2d3073;
+}
+
+.pdf-preview .pdf-method p {
+  margin: 0;
+  color: #333;
+  text-align: justify;
+}
+
+.pdf-preview .pdf-summary-by-interface {
+  margin: 0;
+  padding-left: 18px;
+  color: #333;
+}
+
+.pdf-preview .pdf-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 8px;
+  font-size: 10px;
+}
+
+.pdf-preview .pdf-table thead th {
+  text-align: left;
+  padding: 8px 6px;
+  font-weight: 700;
+  color: #333;
+  border-bottom: 2px solid #2d3073;
+  background: #f5f5f5;
+}
+
+.pdf-preview .pdf-table tbody td {
+  padding: 6px 8px;
+  border-bottom: 1px solid #e0e0e0;
+  white-space: nowrap;
+  color: #111;
+}
+
+.pdf-preview .pdf-table tbody tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.pdf-preview .pdf-sig {
+  min-width: 88px;
+  height: 28px;
+  border-bottom: 1px solid #bbb;
+}
+
+.pdf-preview .pdf-path {
+  margin: 24px 0 0;
+  padding-top: 10px;
+  border-top: 1px dashed #ccc;
+  font-size: 9px;
+  color: #777;
+  word-break: break-all;
+}
+
+.pdf-preview .pdf-totals {
+  margin-top: 10px;
+  text-align: right;
+  font-size: 11px;
+}
+
+.pdf-preview .pdf-totals strong {
+  color: #2d3073;
+}
+
+.universal-modal .modal-body:has(.pdf-viewer) {
+  padding: 0;
+  overflow: hidden;
+  background: #3d4454;
+}
+
+dialog:has(.pdf-viewer) {
+  max-width: min(980px, calc(100vw - 1.5rem)) !important;
+  width: 92%;
+}
+
+@media print {
+  body * { visibility: hidden; }
+  #pdf-print, #pdf-print * { visibility: visible; }
+  #pdf-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 210mm;
+    box-shadow: none;
+  }
+}

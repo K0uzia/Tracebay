@@ -1,0 +1,635 @@
+.historique-container.lot-page {
+    width: 100%;
+    max-width: min(1200px, 100%);
+    margin: 0 auto;
+    padding: var(--unit-2);
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-4);
+    min-width: 0;
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+.historique-container .lot-page__body {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    max-width: 100%;
+    gap: var(--unit-4);
+    min-width: 0;
+    flex: 1;
+    min-height: 0;
+    box-sizing: border-box;
+    overflow: visible;
+}
+
+.historique-container .lot-card {
+    background: var(--recep-panel-bg);
+    border-radius: var(--recep-panel-radius);
+    box-shadow: var(--shadow-small);
+    overflow: hidden;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.historique-container .lot-card--config {
+    flex: 0 0 auto !important;
+    display: block !important;
+}
+
+.historique-container .lot-card--table {
+    background: transparent;
+    box-shadow: none;
+    overflow: visible;
+}
+
+.historique-container .lot-card--table > .lot-card__inner {
+    background: transparent;
+}
+
+.historique-container .lot-card__inner { padding: var(--unit-4); }
+
+.historique-container .historique-list-wrap {
+    overflow: visible;
+    min-width: 0;
+}
+
+.historique-container .lot-config {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-end;
+    justify-content: flex-start;
+    gap: var(--unit-2);
+}
+
+.historique-container .lot-config__field {
+    min-width: 0;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+}
+
+.historique-container .lot-config__field--search { flex: 1 1 auto; }
+
+.historique-container .lot-config__field:not(.lot-config__field--search) {
+    max-width: 220px;
+}
+
+.historique-container .lot-config__field--type {
+    margin-left: auto;
+}
+
+.historique-container .lot-config__label {
+    font-weight: 600;
+    font-size: 0.8125rem;
+    color: var(--bleu2);
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-1);
+}
+
+.historique-container .lot-config__label i { color: var(--bleu1); }
+
+.historique-container .lot-config__input {
+    width: 100%;
+    min-height: 40px;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-medium);
+    font-size: 0.9375rem;
+    background: var(--bg-surface-2);
+    color: var(--text2);
+    box-sizing: border-box;
+}
+
+.historique-container .lot-config__input:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 3px rgba(62, 59, 140, 0.2);
+}
+
+.historique-container .lot-config__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-2);
+    flex-wrap: nowrap;
+}
+
+.historique-container .lot-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--unit-1);
+    min-height: 40px;
+    padding: var(--unit-1) var(--unit-2);
+    border-radius: var(--radius-medium);
+    font-weight: 500;
+    font-size: 0.875rem;
+    cursor: pointer;
+    border: 1px solid rgba(62, 59, 140, 0.25);
+    background: var(--bg-surface-2);
+    color: var(--bleu2);
+}
+
+.historique-container .lot-btn:hover {
+    background: rgba(62, 59, 140, 0.06);
+    border-color: var(--bleu1);
+    color: var(--bleu1);
+}
+
+.historique-container .lots-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-2);
+    padding: 0 var(--unit-1) var(--unit-1);
+}
+
+.historique-lot-card {
+    background: var(--recep-panel-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--recep-panel-radius, 12px);
+    box-shadow: var(--shadow-small);
+    overflow: hidden;
+}
+
+.historique-lot-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--unit-3);
+    padding: var(--unit-3) var(--unit-4);
+    background-color: rgba(13, 13, 13, 0.02);
+}
+
+.historique-lot-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--unit-2);
+    flex: 1;
+    min-width: 0;
+}
+
+.historique-lot-title h3 {
+    margin: 0;
+    font: var(--block-title-h3);
+    color: var(--h2);
+}
+
+.historique-lot-title .historique-type-icon { color: var(--bleu1); }
+.historique-lot-stats .historique-stat strong { color: var(--bleu2); }
+
+.historique-lot-title .badge-created,
+.historique-lot-title .badge-recovered,
+.historique-lot-title .badge-to-recover {
+    font-size: 0.85rem;
+    padding: calc(var(--unit-1) / 2) var(--unit-2);
+    border-radius: var(--radius-small);
+}
+
+.badge-created { background-color: rgba(13, 13, 13, 0.08); color: var(--text2); }
+.badge-recovered { background-color: rgba(0, 128, 0, 0.15); color: var(--valid); }
+.badge-to-recover { background-color: rgba(242, 130, 65, 0.2); color: var(--orange); }
+
+.historique-lot-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-3);
+}
+
+.historique-stat {
+    display: inline-flex;
+    align-items: center;
+    gap: calc(var(--unit-1) / 2);
+    font: var(--font-text2);
+    color: var(--text2);
+}
+
+.historique-stat i { color: var(--bleu1); }
+
+.historique-lot-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--unit-2);
+    width: 100%;
+    margin-top: var(--unit-1);
+}
+
+.historique-lot-actions button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-1);
+    padding: var(--unit-1) var(--unit-2);
+    border-radius: var(--radius-medium);
+    font: var(--font-btn);
+    cursor: pointer;
+    transition: var(--transition);
+    border: none;
+}
+
+.historique-lot-actions .btn-view-details,
+.historique-lot-actions .btn-edit-lot,
+.historique-lot-actions .btn-edit-disque-name,
+.historique-lot-actions .btn-edit-items,
+.historique-lot-actions .btn-view-disque,
+.historique-lot-actions .btn-edit-disque-items,
+.historique-lot-actions .btn-view-don-details-hist,
+.historique-lot-actions .btn-edit-don-name-hist,
+.historique-lot-actions .btn-edit-don-items-hist,
+.historique-lot-actions .btn-view-commande-details-hist,
+.historique-lot-actions .btn-edit-commande-name-hist,
+.historique-lot-actions .btn-edit-commande-items-hist,
+.historique-lot-actions .btn-view-pret-details-hist,
+.historique-lot-actions .btn-action {
+    background: var(--bg-surface-2);
+    color: var(--bleu2);
+    border: 1px solid rgba(62, 59, 140, 0.25);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.historique-lot-actions .btn-view-details:hover,
+.historique-lot-actions .btn-edit-lot:hover,
+.historique-lot-actions .btn-edit-disque-name:hover,
+.historique-lot-actions .btn-edit-items:hover,
+.historique-lot-actions .btn-view-disque:hover,
+.historique-lot-actions .btn-edit-disque-items:hover,
+.historique-lot-actions .btn-view-don-details-hist:hover,
+.historique-lot-actions .btn-edit-don-name-hist:hover,
+.historique-lot-actions .btn-edit-don-items-hist:hover,
+.historique-lot-actions .btn-view-commande-details-hist:hover,
+.historique-lot-actions .btn-edit-commande-name-hist:hover,
+.historique-lot-actions .btn-edit-commande-items-hist:hover,
+.historique-lot-actions .btn-view-pret-details-hist:hover,
+.historique-lot-actions .btn-action:hover {
+    background: rgba(62, 59, 140, 0.06);
+    border-color: var(--bleu1);
+    color: var(--bleu1);
+}
+
+.historique-lot-actions .btn-to-recover {
+    background: rgba(0, 128, 0, 0.14);
+    color: #86efac;
+    border: 1px solid rgba(0, 128, 0, 0.45);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.historique-lot-actions .btn-to-recover:hover:not(:disabled) {
+    background: rgba(0, 128, 0, 0.24);
+    color: #bbf7d0;
+    border-color: rgba(0, 128, 0, 0.65);
+}
+.historique-lot-actions .btn-to-recover.disabled { opacity: 0.6; cursor: not-allowed; }
+
+.historique-lot-actions .btn-recovered {
+    background-color: rgba(13, 13, 13, 0.08);
+    color: var(--text2);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    cursor: default;
+}
+
+.historique-lot-actions .text-muted {
+    color: var(--text2);
+    font: var(--font-caption);
+    opacity: 0.85;
+    align-self: center;
+}
+
+.historique-disque-card .historique-lot-stats { margin-left: 0; }
+
+.historique-container .empty-state {
+    text-align: center;
+    padding: var(--unit-8);
+    font: var(--font-text2);
+    border-radius: var(--recep-panel-radius, 12px);
+    border: 1px dashed rgba(62, 59, 140, 0.2);
+}
+
+.historique-container .empty-state i {
+    display: block;
+    font-size: 3rem;
+    color: var(--bleu1);
+    opacity: 0.8;
+    margin-bottom: var(--unit-3);
+}
+
+.historique-container .empty-state.error-state i { color: var(--error); }
+.historique-container .empty-state p { margin: 0 0 var(--unit-1); font-weight: 500; color: var(--bleu2); }
+.historique-container .empty-state small { opacity: 0.9; }
+
+.historique-container .btn-retry-lots,
+.historique-container .btn-retry-historique {
+    margin-top: var(--unit-3);
+    padding: var(--unit-2) var(--unit-3);
+    background-color: var(--btn);
+    color: var(--btn-text);
+    border: none;
+    border-radius: var(--radius-small);
+    cursor: pointer;
+    font: var(--font-btn);
+}
+
+.historique-container .btn-retry-lots:hover,
+.historique-container .btn-retry-historique:hover { background-color: var(--btn-hover); color: var(--jaune); }
+
+.details-table.recep-table th.col-os { min-width: 80px; }
+.edit-items-table-wrapper,
+.lot-details-table { margin-top: var(--unit-2); }
+
+#modal-edit-lot-items .modal-body {
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+#modal-edit-lot-items .edit-items-table-wrapper {
+    overflow: visible !important;
+    max-height: none !important;
+}
+
+#modal-edit-lot-items .edit-items-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+}
+
+#modal-edit-lot-items .edit-items-table thead,
+#modal-lot-details .details-table thead {
+    position: static !important;
+}
+
+#modal-edit-lot-items .edit-items-table th,
+#modal-lot-details .details-table th {
+    background: var(--bleu2) !important;
+    color: var(--text) !important;
+    opacity: 1 !important;
+}
+
+#modal-edit-lot-items .edit-items-table th,
+#modal-edit-lot-items .edit-items-table td {
+    padding: var(--unit-1) var(--unit-2);
+    font-size: 0.8125rem;
+    white-space: normal;
+    word-break: break-word;
+}
+
+#modal-edit-disque-items .edit-items-table,
+#modal-edit-commande-items-hist .edit-items-table,
+#modal-edit-don-items-hist .edit-items-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+}
+
+#modal-edit-disque-items .edit-items-table th,
+#modal-edit-disque-items .edit-items-table td,
+#modal-edit-commande-items-hist .edit-items-table th,
+#modal-edit-commande-items-hist .edit-items-table td,
+#modal-edit-don-items-hist .edit-items-table th,
+#modal-edit-don-items-hist .edit-items-table td {
+    padding: var(--unit-1) var(--unit-2);
+    font-size: 0.8125rem;
+    white-space: normal;
+    word-break: break-word;
+}
+
+#modal-edit-disque-items .edit-items-table input,
+#modal-edit-disque-items .edit-items-table select,
+#modal-edit-lot-items .edit-items-table input,
+#modal-edit-lot-items .edit-items-table select,
+#modal-edit-commande-items-hist .edit-items-table input,
+#modal-edit-commande-items-hist .edit-items-table select,
+#modal-edit-don-items-hist .edit-items-table input,
+#modal-edit-don-items-hist .edit-items-table select {
+    width: 100%;
+    min-height: 34px;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    font-size: 0.8125rem;
+    background: var(--bg-surface-2);
+    box-sizing: border-box;
+}
+
+#modal-edit-disque-items .edit-items-table input:focus,
+#modal-edit-disque-items .edit-items-table select:focus,
+#modal-edit-lot-items .edit-items-table input:focus,
+#modal-edit-lot-items .edit-items-table select:focus,
+#modal-edit-commande-items-hist .edit-items-table input:focus,
+#modal-edit-commande-items-hist .edit-items-table select:focus,
+#modal-edit-don-items-hist .edit-items-table input:focus,
+#modal-edit-don-items-hist .edit-items-table select:focus {
+    outline: none;
+    border-color: var(--bleu1);
+    box-shadow: 0 0 0 2px rgba(62, 59, 140, 0.18);
+}
+
+#modal-lot-details .historique-lot-detail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-3);
+    padding: var(--unit-3);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-medium);
+    background: var(--bg-surface-2);
+}
+
+#modal-lot-details .historique-lot-detail__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--unit-2);
+}
+
+#modal-lot-details .historique-lot-detail__title {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--unit-2);
+    font: var(--block-title-h3);
+    color: var(--h2);
+}
+
+#modal-lot-details .historique-lot-detail__title i {
+    color: var(--bleu1);
+}
+
+#modal-lot-details .historique-lot-detail__meta {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--unit-2);
+}
+
+#modal-lot-details .historique-lot-detail__meta-item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-small);
+    padding: var(--unit-2);
+    background: rgba(13, 13, 13, 0.02);
+}
+
+#modal-lot-details .historique-lot-detail__meta-item .k {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text2);
+    margin-bottom: 2px;
+}
+
+#modal-lot-details .historique-lot-detail__meta-item .v {
+    display: block;
+    font-size: 0.96rem;
+    font-weight: 700;
+    color: var(--h2);
+}
+
+#modal-lot-details .historique-lot-detail__health {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    padding-top: var(--unit-2);
+}
+
+#modal-lot-details .historique-lot-detail__health-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--unit-2);
+    margin-bottom: var(--unit-1);
+    color: var(--text2);
+}
+
+#modal-lot-details .historique-lot-detail__state {
+    margin-top: var(--unit-2);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--bleu2);
+}
+
+@media (max-width: 980px) {
+    .historique-container.lot-page {
+        padding: var(--unit-2) !important;
+        gap: var(--unit-3) !important;
+        min-height: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    .historique-container .lot-page__body,
+    .historique-container .lot-card,
+    .historique-container .lot-card__inner,
+    .historique-container .historique-list-wrap,
+    .historique-container #historique-list {
+        min-height: auto !important;
+        height: auto !important;
+        max-height: none !important;
+        overflow: visible !important;
+    }
+    .historique-container .lot-card__inner { padding: var(--unit-2) !important; }
+    .historique-container .lot-config {
+        flex-direction: column;
+        align-items: stretch;
+        gap: var(--unit-2) !important;
+    }
+    .historique-container .lot-config__field { max-width: none !important; }
+    .historique-container .lot-config__actions {
+        justify-content: flex-start !important;
+        width: 100% !important;
+    }
+    .historique-container .lot-btn {
+        min-height: 40px !important;
+        flex: 1 1 auto !important;
+    }
+    #modal-lot-details .historique-lot-detail__meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .historique-container .lot-card__inner { padding: var(--unit-2) !important; }
+    .historique-container .lot-config__actions { width: 100% !important; }
+    .historique-container .lot-btn { width: 100% !important; }
+    .historique-container .lots-list { padding: var(--unit-1) !important; }
+    .historique-lot-header { padding: var(--unit-3) !important; }
+    .historique-lot-actions { gap: var(--unit-1) !important; }
+    .historique-lot-actions button { width: 100% !important; justify-content: center !important; }
+    #modal-lot-details .historique-lot-detail {
+        padding: var(--unit-2);
+    }
+    #modal-lot-details .historique-lot-detail__meta {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Modal détail commande (historique) : produit sur une ligne, lien = domaine cliquable */
+#modal-commande-details .hist-commande-modal-table-wrap {
+    min-width: 0;
+}
+
+#modal-commande-details .hist-commande-modal-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+#modal-commande-details .hist-cmd-col-num {
+    width: 2.5rem;
+}
+
+#modal-commande-details .hist-cmd-col-qte {
+    width: 3rem;
+}
+
+#modal-commande-details .hist-cmd-col-prix {
+    width: 5.5rem;
+}
+
+#modal-commande-details .hist-cmd-col-port {
+    width: 5.5rem;
+}
+
+#modal-commande-details .hist-cmd-col-lien {
+    width: 11rem;
+}
+
+#modal-commande-details .hist-cmd-col-produit {
+    min-width: 0;
+    width: auto;
+}
+
+#modal-commande-details .hist-cmd-product-td {
+    min-width: 0;
+}
+
+#modal-commande-details .hist-cmd-produit-line {
+    display: block;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#modal-commande-details .hist-cmd-link-td {
+    min-width: 0;
+    max-width: 100%;
+}
+
+#modal-commande-details .hist-cmd-link-modal {
+    display: inline-block;
+    max-width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: bottom;
+    color: var(--accent-primary, #2563eb);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+#modal-commande-details .hist-cmd-link-modal:hover {
+    text-decoration-thickness: 2px;
+}
+
+#modal-commande-details .hist-cmd-link-muted {
+    color: var(--text-muted, #666);
+    font-size: 0.9em;
+}

@@ -1,0 +1,173 @@
+:root {
+    /* Couleurs marque */
+    --jaune: #F2BC1B;
+    --orange: #F28241;
+    --bleu1: #3E3B8C;
+    --bleu2: #2D3073;
+    --error: #ef5350;
+    --valid: #4caf50;
+
+    /* Thème sombre SaaS (défaut) */
+    --bg-base: #0b0d10;
+    --bg-elevated: #111317;
+    --bg-surface: #151922;
+    --bg-surface-2: #1b2130;
+    --accent: #7c9cff;
+    --text-primary: #f5f7fb;
+    --text-secondary: #b5bfd3;
+    --text-muted: #7f8aa3;
+    --border: rgba(255, 255, 255, 0.08);
+
+    /* Alias legacy */
+    --blanc: var(--bg-surface);
+    --noir: var(--text-primary);
+    --text: var(--text-secondary);
+    --text2: var(--text-primary);
+    --h1: var(--text-primary);
+    --h2: var(--text-primary);
+    --link: var(--jaune);
+    --btn: #4f63d9;
+    --btn-hover: #6378e8;
+    --btn-text: var(--text-primary);
+    --scrollbar-color: var(--accent);
+
+    /* Gris / utilitaires */
+    --gris: var(--text-muted);
+    --gris-light: var(--border);
+    --gris-clair: var(--bg-surface-2);
+
+    /* Agenda (alias SSA) */
+    --ssa-gris: var(--text-secondary);
+    --ssa-blanc: var(--bg-surface);
+    --ssa-vert: var(--accent);
+
+    /* Réception (héritées par .r-root, disponibles globalement) */
+    --recep-page-bg: var(--bg-base);
+    --recep-panel-bg: var(--bg-surface);
+    --recep-panel-bg-soft: var(--bg-surface-2);
+    --recep-panel-border: var(--border);
+    --recep-panel-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+    --recep-panel-radius: 14px;
+
+    /* Espacement 4 / 8 / 16 / 24 / 32 */
+    --unit: 8px;
+    --unit-1: calc(var(--unit) * 1);   /* 8px */
+    --unit-2: calc(var(--unit) * 2);   /* 16px */
+    --unit-3: calc(var(--unit) * 3);   /* 24px */
+    --unit-4: calc(var(--unit) * 4);   /* 32px */
+    --unit-5: calc(var(--unit) * 5);
+    --unit-6: calc(var(--unit) * 6);
+    --unit-7: calc(var(--unit) * 7);
+    --unit-8: calc(var(--unit) * 8);
+
+    /* Typographie */
+    --font-btn: 0.98rem system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --font-text: 400 1.2rem system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --font-text2: 400 1rem system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --font-subtitle: 600 1.7rem system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --font-title: 700 2rem system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+
+    --block-subtitle-h4: 600 0.95rem system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --block-title-h2: 400 1.2rem system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    --block-title-h3: 500 1.5rem system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+
+    /* Border radius */
+    --radius-small: calc(var(--unit) / 2);
+    --radius-medium: var(--unit);
+    --radius-large: calc(var(--unit) * 1.5);
+
+    /* Boutons */
+    --btn-primary-padding: var(--unit-1) var(--unit-3);
+    --btn-primary-border-radius: var(--radius-small);
+    --btn-primary-text-size: var(--font-btn);
+    --btn-secondary-padding: var(--unit-1) var(--unit-3);
+    --btn-secondary-border-radius: var(--radius-small);
+    --btn-secondary-text-size: var(--font-btn);
+
+    /* Ombres (adaptées au sombre) */
+    --shadow-small: 0 2px 8px rgba(0, 0, 0, 0.35);
+    --shadow-medium: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-strong: 0 12px 32px rgba(0, 0, 0, 0.45);
+    --shadow-large: 0 24px 48px rgba(0, 0, 0, 0.5);
+    --transition: all 0.3s ease;
+    --error-border: 3px solid var(--error);
+
+    /* Widget chat */
+    --chat-btn-size: calc(var(--unit-2) * 3.75);
+    --chat-btn-size-mobile: calc(var(--unit-2) * 3.125);
+    --chat-btn-icon-size: calc(var(--unit-2) * 0.9375);
+    --chat-btn-padding: 0;
+    --chat-btn-shadow: 0 var(--unit-1) calc(var(--unit-1) * 3) rgba(79, 99, 217, 0.35);
+    --chat-btn-shadow-hover: 0 calc(var(--unit-1) * 0.75) var(--unit-2) rgba(79, 99, 217, 0.45);
+    --chat-panel-width: calc(var(--unit-2) * 23.75);
+    --chat-panel-width-tablet: calc(var(--unit-2) * 22.5);
+    --chat-panel-height: calc(var(--unit-2) * 37.5);
+    --chat-panel-height-tablet: calc(var(--unit-2) * 34.375);
+    --chat-panel-offset-bottom: calc(var(--chat-btn-size) + var(--unit-2));
+    --chat-panel-animation: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    --chat-badge-size: calc(var(--unit-1) * 3);
+    --chat-badge-offset-top: calc(var(--unit-1) * -0.625);
+    --chat-badge-offset-right: calc(var(--unit-1) * -0.625);
+    --chat-badge-border: calc(var(--unit-1) * 0.25);
+    --chat-message-font: calc(1rem * 0.9);
+    --chat-message-max-width: 70%;
+    --chat-message-line-height: 1.4;
+    --chat-message-animation: fadeIn 0.2s ease;
+    --chat-input-font: calc(1rem * 0.9);
+    --chat-input-max-length: 500;
+    --chat-modal-animation: slideUp 0.3s ease;
+    --chat-modal-bg: rgba(0, 0, 0, 0.6);
+    --chat-modal-blur: 2px;
+}
+
+/* Mode clair (toggle thème) — contraste fort partout */
+html[data-theme-dark="0"] {
+    --bg-base: #f4f5f7;
+    --bg-elevated: #ffffff;
+    --bg-surface: #ffffff;
+    --bg-surface-2: #eef0f4;
+    --accent: #3e3b8c;
+    --text-primary: #0d1117;
+    --text-secondary: #1a1a1a;
+    --text-muted: #4b5563;
+    --border: rgba(13, 17, 23, 0.14);
+
+    /* Alias legacy — texte sombre sur surfaces claires */
+    --blanc: #ffffff;
+    --noir: #0d1117;
+    --text: #1a1a1a;
+    --text2: #0d1117;
+    --h1: #0d1117;
+    --h2: #0d1117;
+    --link: #b45309;
+    --btn: #3e3b8c;
+    --btn-hover: #2d3073;
+    --btn-text: #ffffff;
+    --scrollbar-color: #f28241;
+
+    --gris: var(--text-muted);
+    --gris-light: var(--border);
+    --gris-clair: var(--bg-surface-2);
+
+    --ssa-gris: var(--text-secondary);
+    --ssa-blanc: var(--bg-surface);
+    --ssa-vert: var(--accent);
+
+    --recep-page-bg: #f4f5f7;
+    --recep-panel-bg: #ffffff;
+    --recep-panel-bg-soft: #eef0f4;
+    --recep-panel-border: rgba(13, 17, 23, 0.12);
+    --recep-panel-shadow: 0 8px 24px rgba(13, 17, 23, 0.08);
+
+    --shadow-small: 0 2px 8px rgba(13, 17, 23, 0.08);
+    --shadow-medium: 0 8px 24px rgba(13, 17, 23, 0.1);
+    --shadow-strong: 0 12px 32px rgba(13, 17, 23, 0.12);
+    --shadow-large: 0 24px 48px rgba(13, 17, 23, 0.14);
+    --chat-modal-bg: rgba(13, 17, 23, 0.4);
+}
+
+* {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    scrollbar-color: var(--scrollbar-color) transparent;
+    scrollbar-width: thin;
+}
