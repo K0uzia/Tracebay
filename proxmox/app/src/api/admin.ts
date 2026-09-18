@@ -1395,9 +1395,9 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       await transporter.sendMail({
         from: config.MAIL_FROM || config.SMTP_USER || 'noreply@localhost',
         to,
-        subject: 'Test SMTP — Workspace Admin',
-        text: 'Ceci est un email de test envoyé depuis le panel admin Workspace.',
-        html: '<p>Ceci est un email de test envoyé depuis le <strong>panel admin Workspace</strong>.</p>',
+        subject: 'Test SMTP — Tracebaie Admin',
+        text: 'Ceci est un email de test envoyé depuis le panel admin Tracebaie.',
+        html: '<p>Ceci est un email de test envoyé depuis le <strong>panel admin Tracebaie</strong>.</p>',
       });
       return { success: true, message: `Email de test envoyé à ${to}` };
     } catch (err: any) {

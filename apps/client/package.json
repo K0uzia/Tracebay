@@ -1,9 +1,9 @@
 {
-  "name": "workspace",
+  "name": "tracebaie",
   "version": "3.3.5",
   "main": "main.js",
   "homepage": "https://github.com/K0uzia/workspace#readme",
-  "description": "Workspace — Agenda et Réception",
+  "description": "Tracebaie — traçabilité de matériel (lots, disques, archives) et agenda",
   "author": "K0uzia",
   "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
@@ -50,8 +50,8 @@
     "audit:fix": "npm audit --fix"
   },
   "build": {
-    "appId": "com.workspace.client",
-    "productName": "workspace",
+    "appId": "com.tracebaie.client",
+    "productName": "Tracebaie",
     "copyright": "Copyright © 2026 K0uzia",
     "electronVersion": "39.2.4",
     "npmRebuild": false,
@@ -109,7 +109,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Workspace",
+      "shortcutName": "Tracebaie",
       "include": "build/installer.nsh",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
@@ -161,8 +161,8 @@
     },
     "linux": {
       "maintainer": "K0uzia <k0uzia@users.noreply.github.com>",
-      "executableName": "workspace",
-      "synopsis": "Workspace - Interface utilisateur collaborative",
+      "executableName": "tracebaie",
+      "synopsis": "Tracebaie — traçabilité de matériel informatique",
       "target": [
         {
           "target": "AppImage",
@@ -179,18 +179,18 @@
       ],
       "icon": "assets/icon.png",
       "category": "Utility",
-      "artifactName": "${productName}.${ext}",
+      "artifactName": "tracebaie.${ext}",
       "desktop": {
         "entry": {
-          "Name": "Workspace",
-          "Comment": "Workspace - Interface utilisateur collaborative",
+          "Name": "Tracebaie",
+          "Comment": "Tracebaie — traçabilité de matériel informatique",
           "Categories": "Utility;",
-          "StartupWMClass": "workspace"
+          "StartupWMClass": "tracebaie"
         }
       }
     },
     "appImage": {
-      "artifactName": "workspace.${ext}"
+      "artifactName": "tracebaie.${ext}"
     },
     "deb": {
       "packageCategory": "utils",
@@ -207,7 +207,7 @@
         "libasound2 | libasound2t64"
       ],
       "priority": "optional",
-      "artifactName": "${productName}.${ext}"
+      "artifactName": "tracebaie.${ext}"
     }
   },
   "repository": {

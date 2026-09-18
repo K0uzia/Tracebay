@@ -1,8 +1,8 @@
 /**
- * Custom error classes for Workspace Proxmox Backend
+ * Custom error classes for Tracebaie Proxmox Backend
  */
 
-export class WorkspaceError extends Error {
+export class TracebaieError extends Error {
   constructor(
     public message: string,
     public statusCode: number = 500,
@@ -10,14 +10,14 @@ export class WorkspaceError extends Error {
   ) {
     super(message);
     this.name = this.constructor.name;
-    Object.setPrototypeOf(this, WorkspaceError.prototype);
+    Object.setPrototypeOf(this, TracebaieError.prototype);
   }
 }
 
 /**
  * Authentication Errors (401)
  */
-export class AuthenticationError extends WorkspaceError {
+export class AuthenticationError extends TracebaieError {
   constructor(message: string = 'Authentication failed', code?: string) {
     super(message, 401, code);
     Object.setPrototypeOf(this, AuthenticationError.prototype);
@@ -48,7 +48,7 @@ export class InvalidCredentialsError extends AuthenticationError {
 /**
  * Authorization Errors (403)
  */
-export class AuthorizationError extends WorkspaceError {
+export class AuthorizationError extends TracebaieError {
   constructor(message: string = 'Access denied', code?: string) {
     super(message, 403, code);
     Object.setPrototypeOf(this, AuthorizationError.prototype);
@@ -65,7 +65,7 @@ export class InsufficientPermissionsError extends AuthorizationError {
 /**
  * Validation Errors (400)
  */
-export class ValidationError extends WorkspaceError {
+export class ValidationError extends TracebaieError {
   constructor(
     public message: string = 'Validation failed',
     public fields?: Record<string, string>,
@@ -97,7 +97,7 @@ export class InvalidFormatError extends ValidationError {
 /**
  * Resource Errors (404)
  */
-export class ResourceNotFoundError extends WorkspaceError {
+export class ResourceNotFoundError extends TracebaieError {
   constructor(resource: string, id?: string, code?: string) {
     super(
       `${resource}${id ? ` with ID '${id}'` : ''} not found`,
@@ -111,7 +111,7 @@ export class ResourceNotFoundError extends WorkspaceError {
 /**
  * Conflict Errors (409)
  */
-export class ConflictError extends WorkspaceError {
+export class ConflictError extends TracebaieError {
   constructor(message: string = 'Conflict', code?: string) {
     super(message, 409, code);
     Object.setPrototypeOf(this, ConflictError.prototype);
@@ -131,7 +131,7 @@ export class DuplicateResourceError extends ConflictError {
 /**
  * Database Errors (500)
  */
-export class DatabaseError extends WorkspaceError {
+export class DatabaseError extends TracebaieError {
   constructor(message: string = 'Database error occurred', code?: string) {
     super(message, 500, code);
     Object.setPrototypeOf(this, DatabaseError.prototype);
@@ -148,7 +148,7 @@ export class ConnectionPoolError extends DatabaseError {
 /**
  * Business Logic Errors (400-409)
  */
-export class BusinessLogicError extends WorkspaceError {
+export class BusinessLogicError extends TracebaieError {
   constructor(message: string = 'Business logic error', statusCode: number = 400, code?: string) {
     super(message, statusCode, code);
     Object.setPrototypeOf(this, BusinessLogicError.prototype);
@@ -169,7 +169,7 @@ export class InvalidStateError extends BusinessLogicError {
 /**
  * Rate Limiting Errors (429)
  */
-export class RateLimitError extends WorkspaceError {
+export class RateLimitError extends TracebaieError {
   constructor(
     public retryAfter: number = 60,
     message: string = 'Too many requests'
@@ -182,7 +182,7 @@ export class RateLimitError extends WorkspaceError {
 /**
  * Service Errors (503)
  */
-export class ServiceUnavailableError extends WorkspaceError {
+export class ServiceUnavailableError extends TracebaieError {
   constructor(service: string = 'Service') {
     super(`${service} is currently unavailable`, 503, 'SERVICE_UNAVAILABLE');
     Object.setPrototypeOf(this, ServiceUnavailableError.prototype);
@@ -192,7 +192,7 @@ export class ServiceUnavailableError extends WorkspaceError {
 /**
  * Timeout Errors (504)
  */
-export class TimeoutError extends WorkspaceError {
+export class TimeoutError extends TracebaieError {
   constructor(operation: string = 'Operation') {
     super(`${operation} timed out`, 504, 'TIMEOUT');
     Object.setPrototypeOf(this, TimeoutError.prototype);
@@ -203,7 +203,7 @@ export class TimeoutError extends WorkspaceError {
  * Error formatter for API responses
  */
 export const formatError = (error: any) => {
-  if (error instanceof WorkspaceError) {
+  if (error instanceof TracebaieError) {
     return {
       error: error.message,
       statusCode: error.statusCode,

@@ -1,7 +1,7 @@
 {
   "name": "workspace-proxmox",
   "version": "1.0.0",
-  "description": "Workspace — API Fastify / TypeScript",
+  "description": "Tracebaie — API Fastify / TypeScript",
   "license": "SEE LICENSE IN LICENSE",
   "main": "dist/main.js",
   "scripts": {

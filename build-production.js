@@ -45,7 +45,7 @@ function exec(command, cwd, silent = false) {
 }
 
 async function main() {
-    log('info', `${colors.bright}=== Build Production Workspace ===${colors.reset}`);
+    log('info', `${colors.bright}=== Build Production Tracebaie ===${colors.reset}`);
     
     const rootDir = path.join(__dirname);
     const serverDir = path.join(rootDir, 'apps', 'server');
@@ -100,7 +100,7 @@ async function main() {
         // 5. Créer un script launcher
         log('info', 'Création du script launcher...');
         const launcherContent = `#!/bin/bash
-# Launcher de Workspace en Production
+# Launcher de Tracebaie en Production
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
@@ -115,7 +115,7 @@ sleep 3
 # Démarrer le client
 cd "$DIR/client"
 # Trouver l'exécutable Electron
-CLIENT_EXE=$(find . -name "Workspace*" -o -name "workspace*" | grep -v ".app" | head -1)
+CLIENT_EXE=$(find . -name "Tracebaie*" -o -name "tracebaie*" | grep -v ".app" | head -1)
 if [ -n "$CLIENT_EXE" ]; then
     "$CLIENT_EXE"
 else

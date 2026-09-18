@@ -1,6 +1,6 @@
 # API Reference - Proxmox Backend
 
-Complete API documentation for Workspace Proxmox Backend (Fastify).
+Complete API documentation for Tracebaie Proxmox Backend (Fastify).
 
 ## Base URL
 

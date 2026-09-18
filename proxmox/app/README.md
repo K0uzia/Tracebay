@@ -1,6 +1,6 @@
-# Backend Workspace (API)
+# Backend Tracebaie (API)
 
-Serveur **REST** et **WebSocket** pour l’application desktop Workspace : authentification, données métier (agenda, réception, chat, etc.), fichiers partagés et génération de PDF (ex. traçabilité disques). Il est développé en **TypeScript** avec **Fastify** et **PostgreSQL**.
+Serveur **REST** et **WebSocket** pour l’application desktop Tracebaie : authentification, données métier (agenda, réception, chat, etc.), fichiers partagés et génération de PDF (ex. traçabilité disques). Il est développé en **TypeScript** avec **Fastify** et **PostgreSQL**.
 
 > **Branche Git** : le code source complet de ce backend est versionné sur la branche **`proxmox`** de ce dépôt (pas sur `main`). Après clone :  
 > `git fetch origin && git checkout proxmox`  

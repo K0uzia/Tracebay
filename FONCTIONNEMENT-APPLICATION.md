@@ -1,8 +1,8 @@
-# Workspace — Fonctionnement de l'application
+# Tracebaie — Fonctionnement de l'application
 
-Documentation fonctionnelle du client Electron **Workspace** : architecture, pages, module Réception et flux métier.
+Documentation fonctionnelle du client Electron **Tracebaie** : architecture, pages, module Réception et flux métier.
 
-Le code est publié sous [Workspace Source-Available License](LICENSE) (usage interne autorisé, revente soumise à accord).
+Le code est publié sous [Tracebaie Source-Available License](LICENSE) (usage interne autorisé, revente soumise à accord).
 
 ---
 
@@ -29,10 +29,10 @@ Le code est publié sous [Workspace Source-Available License](LICENSE) (usage in
 
 ## 1. Vue d'ensemble
 
-**Workspace** est une application de bureau (Electron) pour un atelier / une structure. L’UI actuelle a **deux espaces** :
+**Tracebaie** est une application de bureau (Electron) de **traçabilité de matériel**. L’UI actuelle a **deux espaces** :
 
-- Un **agenda** partagé
-- Un module métier de **réception et traçabilité matériel** (lots, disques, commandes, dons, prêts)
+- Un module métier de **réception et traçabilité** (lots, disques, commandes, dons, prêts, inventaire, archives PDF)
+- Un **agenda** partagé (complément, pas le cœur du produit)
 
 La plupart des données transitent par un **serveur backend** (PostgreSQL, JWT, API REST). Certaines actions (génération PDF, détection de disques `lsblk`, ouverture de fichiers) s’appuient sur le **poste local** via Electron.
 
@@ -105,7 +105,7 @@ Barre en haut avec :
 
 | Bouton | Page |
 |--------|------|
-| Logo / Workspace | Agenda |
+| Logo / Tracebaie | Agenda |
 | Agenda | Calendrier |
 | Reception | Module métier (défaut : Lots) |
 | Thème | Clair / sombre |

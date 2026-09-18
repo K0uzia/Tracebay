@@ -1,7 +1,7 @@
 {
-  "name": "workspace",
+  "name": "tracebaie",
   "version": "3.3.5",
-  "description": "Workspace — client Electron (Agenda et Réception)",
+  "description": "Tracebaie — traçabilité de matériel (lots, disques, archives) et agenda",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "workspaces": [

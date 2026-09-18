@@ -1,5 +1,5 @@
 /**
- * Workspace Client - Electron Main Process
+ * Tracebaie Client - Electron Main Process
  * Gère la fenêtre d'application et la connexion au serveur distant
  */
 const { app, BrowserWindow, ipcMain, shell, Notification, nativeImage, Menu, globalShortcut, crashReporter, net } = require('electron');
@@ -478,10 +478,10 @@ function tryLinuxAppImageUpdateHelperDetailed(currentAppPath, newAppPath) {
 /**
  * Sous Linux .deb : helper détaché qui, APRÈS la mort de l’app :
  * 1) installe le .deb via pkexec (apt-get ou dpkg)
- * 2) relance `workspace`
+ * 2) relance `tracebaie` (ou l’ancien binaire `workspace`)
  *
  * Important : ne jamais lancer dpkg/pkexec tant que l’app tourne — les binaires
- * sous /usr/lib/workspace sont ouverts, et pkexec détaché + quit immédiat
+ * sous /usr/lib/tracebaie sont ouverts, et pkexec détaché + quit immédiat
  * tue souvent la session d’auth sans installer.
  */
 function tryLinuxDebUpdateHelper(debPath) {
@@ -583,13 +583,17 @@ fi
 
 sleep 1
 bin=""
-if [ -x /usr/bin/workspace ]; then bin=/usr/bin/workspace;
+if [ -x /usr/bin/tracebaie ]; then bin=/usr/bin/tracebaie;
+elif command -v tracebaie >/dev/null 2>&1; then bin=$(command -v tracebaie);
+elif [ -x /usr/local/bin/tracebaie ]; then bin=/usr/local/bin/tracebaie;
+elif [ -x /usr/lib/tracebaie/tracebaie ]; then bin=/usr/lib/tracebaie/tracebaie;
+elif [ -x /usr/bin/workspace ]; then bin=/usr/bin/workspace;
 elif command -v workspace >/dev/null 2>&1; then bin=$(command -v workspace);
 elif [ -x /usr/local/bin/workspace ]; then bin=/usr/local/bin/workspace;
 elif [ -x /usr/lib/workspace/workspace ]; then bin=/usr/lib/workspace/workspace;
 fi
 if [ -z "$bin" ]; then
-  log "FAIL workspace binary not found after install"
+  log "FAIL tracebaie binary not found after install"
   exit 1
 fi
 
@@ -678,7 +682,7 @@ function getInstallPackageType() {
 function githubRequestHeaders(extra = {}) {
     return {
         'Accept': 'application/vnd.github+json',
-        'User-Agent': `WorkspaceClient/${app.getVersion?.() || '0.0.0'}`,
+        'User-Agent': `TracebaieClient/${app.getVersion?.() || '0.0.0'}`,
         'X-GitHub-Api-Version': '2022-11-28',
         ...extra
     };
@@ -695,13 +699,13 @@ function latestYmlFileName(packageType = getInstallPackageType()) {
 }
 
 function defaultAssetFileName(packageType = getInstallPackageType()) {
-    if (packageType === 'AppImage') return 'workspace.AppImage';
-    if (packageType === 'deb') return 'workspace.deb';
+    if (packageType === 'AppImage') return 'tracebaie.AppImage';
+    if (packageType === 'deb') return 'tracebaie.deb';
     if (packageType === 'dmg') {
         const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
-        return `workspace-${app.getVersion?.() || '0.0.0'}-${arch}.dmg`;
+        return `Tracebaie-${app.getVersion?.() || '0.0.0'}-${arch}.dmg`;
     }
-    if (packageType === 'nsis') return 'workspace.exe';
+    if (packageType === 'nsis') return 'Tracebaie.exe';
     return null;
 }
 
@@ -818,13 +822,17 @@ function pickReleaseAsset(releaseJson, packageType = getInstallPackageType()) {
     const nameOf = (a) => String(a?.name || '').toLowerCase();
 
     if (packageType === 'AppImage') {
-        return assets.find(a => nameOf(a) === 'workspace.appimage')
+        return assets.find(a => nameOf(a) === 'tracebaie.appimage')
+            || assets.find(a => /tracebaie.*\.appimage$/i.test(nameOf(a)))
+            || assets.find(a => nameOf(a) === 'workspace.appimage')
             || assets.find(a => /workspace.*\.appimage$/i.test(nameOf(a)))
             || assets.find(a => /\.appimage$/i.test(nameOf(a)))
             || null;
     }
     if (packageType === 'deb') {
-        return assets.find(a => nameOf(a) === 'workspace.deb')
+        return assets.find(a => nameOf(a) === 'tracebaie.deb')
+            || assets.find(a => /tracebaie.*\.deb$/i.test(nameOf(a)))
+            || assets.find(a => nameOf(a) === 'workspace.deb')
             || assets.find(a => /workspace.*\.deb$/i.test(nameOf(a)))
             || assets.find(a => /\.deb$/i.test(nameOf(a)))
             || null;
@@ -836,7 +844,9 @@ function pickReleaseAsset(releaseJson, packageType = getInstallPackageType()) {
             || null;
     }
     if (packageType === 'nsis') {
-        return assets.find(a => nameOf(a) === 'workspace.exe')
+        return assets.find(a => nameOf(a) === 'tracebaie.exe')
+            || assets.find(a => /tracebaie.*\.(exe|msi)$/i.test(nameOf(a)))
+            || assets.find(a => nameOf(a) === 'workspace.exe')
             || assets.find(a => /workspace.*\.(exe|msi)$/i.test(nameOf(a)))
             || assets.find(a => /\.(exe|msi)$/i.test(nameOf(a)))
             || null;
@@ -1329,7 +1339,7 @@ function createSplashWindow() {
   .progress-bar { height: 8px; background: rgba(255,255,255,0.25); border-radius: 4px; overflow: hidden; }
   .progress-fill { height: 100%; width: 0%; background: rgba(255,255,255,0.9); border-radius: 4px; transition: width 0.2s ease; }
 </style></head><body>
-  <div class="logo">Workspace</div>
+  <div class="logo">Tracebaie</div>
   <div class="tagline">By K0uzia</div>
   <div class="spinner"></div>
   <p class="message">Chargement en cours…</p>
@@ -1645,7 +1655,7 @@ function setupChatNotifications() {
             const iconPath = path.join(__dirname, 'build', 'icon.png');
             const opts = { body: `${pseudo} a envoyé un message` };
             if (fs.existsSync(iconPath)) opts.icon = iconPath;
-            const n = new Notification('Workspace - Chat', opts);
+            const n = new Notification('Tracebaie - Chat', opts);
             n.on('click', () => {
                 if (win && !win.isDestroyed()) {
                     win.show();
@@ -1686,8 +1696,8 @@ function launchApp() {
  */
 app.on('ready', async () => {
     startupBegin = Date.now();
-    app.setName('Workspace Client');
-    console.log('🚀 Démarrage Workspace Client...');
+    app.setName('Tracebaie');
+    console.log('🚀 Démarrage Tracebaie Client...');
     console.log(`📍 Configuration depuis: ${MODE} (connexion-config.json)`);
     console.log(`🔗 Serveur par défaut: ${SERVER_URL}`);
     console.log(`🌍 Environnement: ${isProduction ? 'PRODUCTION' : 'DÉVELOPPEMENT'}`);
@@ -2093,7 +2103,7 @@ app.on('before-quit', () => {
     if (quittingForUpdate) {
         return;
     }
-    console.log('⏹️  Arrêt de Workspace Client');
+    console.log('⏹️  Arrêt de Tracebaie Client');
     pdfWindows.forEach((win) => {
         if (win && !win.isDestroyed()) {
             win.close();

@@ -7,7 +7,7 @@ module.exports = {
         {
             name: '@electron-forge/maker-squirrel',
             config: {
-                name: 'workspace_client'
+                name: 'tracebaie_client'
             }
         },
         {
@@ -24,8 +24,8 @@ module.exports = {
                 section: 'utils',
                 priority: 'optional',
                 icon: './assets/icon.png',
-                productName: 'Workspace',
-                productDescription: 'Workspace - Interface utilisateur collaborative',
+                productName: 'Tracebaie',
+                productDescription: 'Tracebaie — traçabilité de matériel informatique',
                 depends: ['libgtk-3-0', 'libnotify4', 'libnss3', 'xdg-utils'],
                 recommends: [],
                 suggests: []
@@ -38,7 +38,7 @@ module.exports = {
             config: {
                 repository: {
                     owner: 'K0uzia',
-                    name: 'Workspace'
+                    name: 'workspace'
                 },
                 prerelease: false,
                 draft: true,

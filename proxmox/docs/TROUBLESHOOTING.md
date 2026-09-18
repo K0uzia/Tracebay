@@ -331,7 +331,7 @@ await fastify.register(cors, {
 3. **Check logs:**
    ```bash
    # In user's home directory
-   cat ~/.config/Workspace/logs/main.log
+   cat ~/.config/Tracebaie/logs/main.log
    ```
 
 ### Chat Widget Not Loading
@@ -342,7 +342,7 @@ await fastify.register(cors, {
 
 1. **Clear cache:**
    ```bash
-   rm -rf ~/.config/Workspace/
+   rm -rf ~/.config/Tracebaie/
    npm start
    ```
 

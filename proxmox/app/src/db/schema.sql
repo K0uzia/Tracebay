@@ -1,4 +1,4 @@
--- PostgreSQL Schema for Workspace Application
+-- PostgreSQL Schema for Tracebaie Application
 -- Phase 2: Database Migration
 
 -- Users table

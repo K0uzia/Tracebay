@@ -1,4 +1,4 @@
-![Workspace](https://raw.githubusercontent.com/K0uzia/workspace/apps/client/assets/workspacebanner.svg)
+![Tracebaie](https://raw.githubusercontent.com/K0uzia/workspace/apps/client/assets/tracebaiebanner.svg)
 
 <p align="center">
   <a href="https://github.com/K0uzia/workspace/tree/main/docs"><img src="https://img.shields.io/badge/docs-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Documentation"></a>
@@ -11,7 +11,7 @@
   <a href="https://github.com/K0uzia/workspace/blob/main/apps/client/package.json"><img src="https://img.shields.io/badge/Electron-39.x-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron 39"></a>
 </p>
 
-**Workspace** est une application de bureau destinée aux ateliers et structures qui reçoivent, reconditionnent et archivent du matériel informatique.
+**Tracebaie** est une application de bureau de **traçabilité de matériel informatique** : réception de lots, disques, commandes, dons et prêts, inventaire et archives PDF. Un agenda partagé complète l’atelier.
 
 | Module | Rôle |
 | ------ | ---- |
@@ -24,7 +24,7 @@ Démo navigateur (données fictives, sans Electron) : [k0uzia.github.io/workspac
 
 ## Licence
 
-Le code est **consultable** sous [Workspace Source-Available License](LICENSE).
+Le code est **consultable** sous [Tracebaie Source-Available License](LICENSE).
 
 | Autorisé | Soumis à autorisation écrite |
 | -------- | ---------------------------- |

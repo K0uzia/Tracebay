@@ -1,5 +1,5 @@
 /**
- * Démo Workspace : miroir de l’app actuelle (Agenda + Réception).
+ * Démo Tracebaie : miroir de l’app actuelle (Agenda + Réception).
  * Faux backend : window.DemoAPI
  */
 (function () {
@@ -176,7 +176,7 @@
   /* ---------- thème / shell ---------- */
   function applyTheme() {
     document.documentElement.setAttribute("data-theme-dark", App.themeDark ? "1" : "0");
-    localStorage.setItem("workspace_theme_dark", App.themeDark ? "1" : "0");
+    localStorage.setItem("tracebaie_theme_dark", App.themeDark ? "1" : "0");
     document.getElementById("navThemeIcon").className = App.themeDark ? "fa-solid fa-moon" : "fa-solid fa-sun";
     document.getElementById("navThemeText").textContent = App.themeDark ? "Thème sombre" : "Thème clair";
   }
@@ -387,7 +387,7 @@
     content.innerHTML =
       "<div class=\"r-root\" role=\"application\" aria-label=\"Réception\">" +
         "<header class=\"r-header\">" +
-          "<div class=\"r-brand\"><span class=\"r-brand-kicker\">Workspace</span><h1 class=\"r-brand-title\">Reception</h1><span class=\"r-brand-subtitle\">Flux, suivi et archives</span></div>" +
+          "<div class=\"r-brand\"><span class=\"r-brand-kicker\">Tracebaie</span><h1 class=\"r-brand-title\">Reception</h1><span class=\"r-brand-subtitle\">Flux, suivi et archives</span></div>" +
           "<nav class=\"r-nav\">" +
             "<div class=\"r-nav-group\"><div class=\"r-nav-group-title\">Flux</div>" +
               nav("entrer", "fa-boxes-stacked", "Lots") +
@@ -1460,8 +1460,8 @@
             "<h2 class=\"settings-modal-title\"><i class=\"fas fa-gear\"></i> Paramètres</h2></div>" +
           "<div class=\"settings-modal-body\"><section class=\"settings-update-card\">" +
             "<header class=\"settings-update-card__header\"><div class=\"settings-update-card__icon\"><i class=\"fa-solid fa-cloud-arrow-down\"></i></div>" +
-            "<div class=\"settings-update-card__titles\"><h3>Mise à jour</h3><p class=\"settings-update-card__subtitle\">Vérifiez et installez la dernière version de Workspace.</p></div></header>" +
-            "<div class=\"settings-update-status-block\"><span class=\"settings-update-status-label\">État</span><div class=\"settings-update-status\" id=\"settingsUpdateStatus\">Workspace démo 3.3.5, à jour</div></div>" +
+            "<div class=\"settings-update-card__titles\"><h3>Mise à jour</h3><p class=\"settings-update-card__subtitle\">Vérifiez et installez la dernière version de Tracebaie.</p></div></header>" +
+            "<div class=\"settings-update-status-block\"><span class=\"settings-update-status-label\">État</span><div class=\"settings-update-status\" id=\"settingsUpdateStatus\">Tracebaie démo 3.3.5, à jour</div></div>" +
             "<div class=\"settings-update-actions\">" +
               "<button type=\"button\" id=\"settingsBtnCheckUpdate\" class=\"settings-btn settings-btn--ghost\"><i class=\"fa-solid fa-arrows-rotate\"></i> Vérifier</button>" +
               "<button type=\"button\" id=\"settingsBtnDownloadUpdate\" class=\"settings-btn settings-btn--primary hidden\" disabled><i class=\"fa-solid fa-download\"></i> Télécharger &amp; préparer</button>" +
@@ -1476,7 +1476,7 @@
   function openSettings() {
     const modal = document.getElementById("settingsModal");
     modal.classList.remove("hidden");
-    document.getElementById("settingsUpdateStatus").textContent = "Workspace démo 3.3.5, à jour";
+    document.getElementById("settingsUpdateStatus").textContent = "Tracebaie démo 3.3.5, à jour";
     document.getElementById("settingsBtnDownloadUpdate").classList.add("hidden");
     document.getElementById("settingsBtnRestartUpdate").classList.add("hidden");
     document.getElementById("settingsUpdateProgress").classList.add("hidden");

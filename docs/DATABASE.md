@@ -1,6 +1,6 @@
 # Database Schema - PostgreSQL
 
-Complete database schema for Workspace Proxmox Backend.
+Complete database schema for Tracebaie Proxmox Backend.
 
 ## Tables
 

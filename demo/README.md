@@ -1,4 +1,4 @@
-# Workspace Démo statique
+# Tracebaie Démo statique
 
 Copie navigable de **l’application actuelle** (pas de l’ancienne doc) : uniquement HTML, CSS et JavaScript, avec un **faux backend** en `localStorage`.
 
@@ -20,7 +20,7 @@ Puis aller sur [http://localhost:8080](http://localhost:8080).
 
 **Navigation**
 
-- Logo / Workspace → Agenda
+- Logo / Tracebaie → Agenda
 - Agenda
 - Reception
 - Thème clair / sombre

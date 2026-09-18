@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Installation Workspace sous Linux (Debian/Ubuntu et dérivés).
+# Installation Tracebaie sous Linux (Debian/Ubuntu et dérivés).
 # Usage :
-#   ./install-linux.sh workspace.AppImage
-#   ./install-linux.sh workspace.deb
+#   ./install-linux.sh tracebaie.AppImage
+#   ./install-linux.sh tracebaie.deb
 set -euo pipefail
 
 FILE="${1:-}"
 if [[ -z "$FILE" || ! -f "$FILE" ]]; then
-  echo "Usage: $0 <workspace.AppImage|workspace.deb>"
+  echo "Usage: $0 <tracebaie.AppImage|tracebaie.deb>"
   exit 1
 fi
 
@@ -19,22 +19,22 @@ if [[ "$EXT_LOWER" == "appimage" ]]; then
   chmod +x "$ABS"
   INSTALL_DIR="${HOME}/Applications"
   mkdir -p "$INSTALL_DIR"
-  DEST="${INSTALL_DIR}/workspace.AppImage"
+  DEST="${INSTALL_DIR}/tracebaie.AppImage"
   cp -f "$ABS" "$DEST"
   chmod +x "$DEST"
 
   DESKTOP_DIR="${HOME}/.local/share/applications"
   mkdir -p "$DESKTOP_DIR"
-  cat > "${DESKTOP_DIR}/workspace.desktop" <<EOF
+  cat > "${DESKTOP_DIR}/tracebaie.desktop" <<EOF
 [Desktop Entry]
-Name=Workspace
-Comment=Workspace - Interface utilisateur collaborative
+Name=Tracebaie
+Comment=Tracebaie — traçabilité de matériel informatique
 Exec=${DEST}
-Icon=workspace
+Icon=tracebaie
 Terminal=false
 Type=Application
 Categories=Utility;
-StartupWMClass=workspace
+StartupWMClass=tracebaie
 EOF
   update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
   echo "AppImage installée : ${DEST}"
@@ -50,7 +50,7 @@ if [[ "$EXT_LOWER" == "deb" ]]; then
     sudo dpkg -i "$ABS" || true
     sudo apt-get install -f -y
   fi
-  echo "Installation terminée. Lancez « Workspace » depuis le menu applications."
+  echo "Installation terminée. Lancez « Tracebaie » depuis le menu applications."
   exit 0
 fi
 

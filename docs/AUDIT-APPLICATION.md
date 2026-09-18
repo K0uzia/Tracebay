@@ -1,7 +1,7 @@
-# Audit complet de l'application Workspace (client Electron)
+# Audit complet de l'application Tracebaie (client Electron)
 
 **Date :** 2026-03-13  
-**Périmètre :** Client Electron `apps/client` (Workspace v3.1.5)  
+**Périmètre :** Client Electron `apps/client` (Tracebaie v3.1.5)  
 **Objectifs :** Sécurité, performance, maintenabilité, conformité (mix).
 
 ---
@@ -240,4 +240,4 @@
 
 ---
 
-*Rapport généré dans le cadre d’un audit de l’application Workspace (client Electron). Pour toute question ou mise à jour des recommandations, se référer à ce document et aux bonnes pratiques Electron officielles.*
+*Rapport généré dans le cadre d’un audit de l’application Tracebaie (client Electron). Pour toute question ou mise à jour des recommandations, se référer à ce document et aux bonnes pratiques Electron officielles.*

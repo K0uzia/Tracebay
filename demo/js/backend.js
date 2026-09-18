@@ -1,5 +1,5 @@
 /**
- * Faux backend Workspace (version actuelle du client).
+ * Faux backend Tracebaie (version actuelle du client).
  * Persistance localStorage, latence simulée. Aucun serveur.
  */
 (function () {

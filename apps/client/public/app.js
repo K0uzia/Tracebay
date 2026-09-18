@@ -8,8 +8,8 @@ if (typeof window !== 'undefined' && window.electron && window.electron.invoke) 
 class PageManager {
     constructor() {
         this.contentContainer = 'content';
-        this.storageKey = 'workspace_current_page';
-        this.themeStorageKey = 'workspace_theme_dark';
+        this.storageKey = 'tracebaie_current_page';
+        this.themeStorageKey = 'tracebaie_theme_dark';
         this.authManager = null;
         this.serverUrl = null;
         this.serverConnected = false;
