@@ -1,48 +1,29 @@
-# Workspace Démo statique
+# Démo Workspace
 
-Copie navigable de **l’application actuelle** (pas de l’ancienne doc) : uniquement HTML, CSS et JavaScript, avec un **faux backend** en `localStorage`.
+Interface navigateur de l’application actuelle (Agenda et Réception). HTML, CSS et JavaScript uniquement ; persistance en `localStorage`.
 
-## En ligne
+## Accès
 
-https://k0uzia.github.io/workspace/
-
-## Lancer en local
-
-Ouvrir `demo/index.html` dans un navigateur, ou depuis la racine du dépôt :
+- En ligne : [https://k0uzia.github.io/workspace/](https://k0uzia.github.io/workspace/)
+- En local :
 
 ```bash
 python3 -m http.server 8080 --directory demo
 ```
 
-Puis aller sur [http://localhost:8080](http://localhost:8080).
+[http://localhost:8080](http://localhost:8080)
 
-## Ce qui est inclus (app actuelle)
+## Couverture
 
-**Navigation**
+| Zone | Contenu |
+| ---- | ------- |
+| Navigation | Agenda, Reception, thème, paramètres simulés |
+| Agenda | Semaine, mois, année ; événements ; jours fériés |
+| Réception | Lots, disques (détection simulée), commande, dons, prêts |
+| Suivi | Inventaire, historique (détail, édition, PDF, e-mail simulé) |
 
-- Logo / Workspace → Agenda
-- Agenda
-- Reception
-- Thème clair / sombre
-- Paramètres (mises à jour simulées)
-
-**Agenda**
-
-- Vues semaine, mois, année
-- Création, modification, suppression d’événements
-- Jours fériés (métropole 2026)
-
-**Réception**
-
-- Flux : Lots, Disques (dont détection simulée), Commande, Dons, Prêts matériel
-- Suivi : Inventaire (lots en cours, édition PC, clôture auto, PDF)
-- Historique & traçabilité (fusionnés) : détails, édition, récupération, PDF, e-mail simulé
-
-**Hors périmètre volontaire**
-
-Pages retirées du client actuel : Accueil, Dossier, Traçabilité séparée, chat, écran de connexion.
+Hors démo, comme hors produit : Accueil, Dossier, Chat, écran de connexion.
 
 ## Données
 
-Les données sont **entièrement fictives** (atelier NEXA, lots ORION/Helios/Lyra, chemins `/archives/nexa/…`). Aucune organisation réelle n’apparaît.  
-Le bandeau **Réinitialiser** restaure le jeu de démo.
+Jeu entièrement fictif (atelier NEXA). Aucune organisation réelle. Le bandeau **Réinitialiser** restaure l’échantillon.

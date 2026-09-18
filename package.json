@@ -1,8 +1,9 @@
 {
   "name": "workspace",
   "version": "3.3.5",
-  "description": "Workspace management application with two Electron apps",
+  "description": "Workspace — client Electron (Agenda et Réception)",
   "private": true,
+  "license": "SEE LICENSE IN LICENSE",
   "workspaces": [
     "apps/client"
   ],

@@ -1,0 +1,48 @@
+name: Évolution
+description: Proposer une amélioration
+title: "[Feat] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Produit actuel : **Agenda** et **Réception**. Accueil, Dossier, Chat, Applications et Raccourcis sont hors périmètre.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Composant
+      options:
+        - Agenda
+        - Réception
+        - Inventaire / Historique
+        - PDF
+        - Backend
+        - Démo
+        - Documentation / outillage
+        - Autre
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Besoin
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposition
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Vérifications
+      options:
+        - label: Aucune issue équivalente identifiée
+          required: true
+        - label: Je peux participer à l’implémentation

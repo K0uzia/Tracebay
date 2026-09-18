@@ -1,7 +1,8 @@
 {
   "name": "workspace-proxmox",
   "version": "1.0.0",
-  "description": "Workspace Proxmox Backend API - Fastify + TypeScript",
+  "description": "Workspace — API Fastify / TypeScript",
+  "license": "SEE LICENSE IN LICENSE",
   "main": "dist/main.js",
   "scripts": {
     "dev": "tsx watch src/main.ts",

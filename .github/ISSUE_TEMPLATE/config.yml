@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Démo
+    url: https://k0uzia.github.io/workspace/
+    about: Interface Agenda et Réception, sans installation
+  - name: Vulnérabilité (rapport privé)
+    url: https://github.com/K0uzia/workspace/security/advisories/new
+    about: Ne pas ouvrir d’issue publique
+  - name: Documentation
+    url: https://github.com/K0uzia/workspace/blob/main/README.md
+    about: Présentation, architecture et licence

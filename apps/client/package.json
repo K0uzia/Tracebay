@@ -3,9 +3,9 @@
   "version": "3.3.5",
   "main": "main.js",
   "homepage": "https://github.com/K0uzia/workspace#readme",
-  "description": "Workspace - Interface utilisateur collaborative",
+  "description": "Workspace — Agenda et Réception",
   "author": "K0uzia",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "electron-squirrel-startup": "^1.0.1",
     "electron-updater": "^6.3.9",

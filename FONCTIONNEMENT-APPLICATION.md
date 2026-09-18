@@ -1,6 +1,8 @@
 # Workspace — Fonctionnement de l'application
 
-Documentation fonctionnelle du client Electron **Workspace** : architecture, pages, module Réception et flux métier complets.
+Documentation fonctionnelle du client Electron **Workspace** : architecture, pages, module Réception et flux métier.
+
+Le code est publié sous [Workspace Source-Available License](LICENSE) (usage interne autorisé, revente soumise à accord).
 
 ---
 

@@ -1,0 +1,66 @@
+name: Anomalie
+description: Comportement incorrect du client, du backend ou de la démo
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de fournir un cas **reproductible**, sans données métier réelles.
+        Les vulnérabilités se signalent en [privé](https://github.com/K0uzia/workspace/security/advisories/new).
+  - type: dropdown
+    id: area
+    attributes:
+      label: Composant
+      options:
+        - Client Electron
+        - Réception
+        - Inventaire / Historique
+        - Agenda
+        - Backend
+        - Démo
+        - Compilation / mises à jour
+        - Autre
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: "3.3.x ou identifiant de commit"
+    validations:
+      required: true
+  - type: input
+    id: env
+    attributes:
+      label: Environnement
+      placeholder: "AppImage, npm start, GitHub Pages…"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportement attendu
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportement observé
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Compléments
+      placeholder: Journaux, capture (sans données réelles)
