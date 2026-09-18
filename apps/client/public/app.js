@@ -1461,6 +1461,7 @@ class PageManager {
      * @param {'bottom'|'top-right'} [options.position='top-right']
      */
     showNotification(message, type = 'info', options = {}) {
+        document.querySelectorAll('.notification').forEach((el) => el.remove());
         const duration = options.duration ?? (options.onUndo ? 5000 : 3000);
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;

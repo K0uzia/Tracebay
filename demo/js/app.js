@@ -88,16 +88,21 @@
     return "<div class=\"pdf-header-logo\"><span class=\"pdf-mark\">NX</span><h2 class=\"pdf-header-subtitle\">NEXA ATELIER</h2></div>";
   }
 
+  let notifyHideTimer = 0;
+  let notifyRemoveTimer = 0;
   function notify(msg, type) {
+    document.querySelectorAll(".notification").forEach(function (n) { n.remove(); });
+    clearTimeout(notifyHideTimer);
+    clearTimeout(notifyRemoveTimer);
     const el = document.createElement("div");
     el.className = "notification " + (type || "info");
     const icon = type === "success" ? "check" : type === "error" ? "triangle-exclamation" : type === "warning" ? "bell" : "circle-info";
     el.innerHTML = "<span class=\"notification-icon\"><i class=\"fa-solid fa-" + icon + "\"></i></span><span class=\"notification-message\">" + esc(msg) + "</span>";
     document.body.appendChild(el);
     requestAnimationFrame(function () { el.classList.add("show"); });
-    setTimeout(function () {
+    notifyHideTimer = setTimeout(function () {
       el.classList.add("hide");
-      setTimeout(function () { el.remove(); }, 300);
+      notifyRemoveTimer = setTimeout(function () { el.remove(); }, 300);
     }, 3600);
   }
 
