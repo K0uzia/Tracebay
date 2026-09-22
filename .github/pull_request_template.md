@@ -6,11 +6,16 @@
 
 -
 
+## Branche de base
+
+- [ ] `main` — app client / démo / docs app
+- [ ] `proxmox` — backend / serveur
+
 ## Composants
 
-- [ ] Client (`apps/client/`)
-- [ ] Backend (`proxmox/app/`)
-- [ ] Démo (`demo/`)
+- [ ] Client (`apps/client/`, branche `main`)
+- [ ] Démo (`demo/`, branche `main`)
+- [ ] Backend / serveur (branche `proxmox`)
 - [ ] Documentation
 
 ## Contrôles

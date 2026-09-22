@@ -1,6 +1,6 @@
 {
   "name": "tracebaie",
-  "version": "3.3.8",
+  "version": "3.3.9",
   "description": "Tracebaie — traçabilité de matériel (lots, disques, archives) et agenda",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",

@@ -477,8 +477,8 @@ function tryLinuxAppImageUpdateHelperDetailed(currentAppPath, newAppPath) {
 
 /**
  * Sous Linux .deb : helper détaché qui, APRÈS la mort de l’app :
- * 1) installe le .deb via pkexec (apt-get ou dpkg)
- * 2) relance `workspace` (identité Debian historique) ou `tracebaie` (installs transitoires)
+ * 1) installe le .deb via **un seul** pkexec (évite le spam de boîtes admin)
+ * 2) relance `workspace` (identité Debian) ou `tracebaie` (installs transitoires)
  *
  * Important : le paquet Debian / binaire restent « workspace » pour que les
  * mises à jour remplacent le .deb déjà installé et que les scripts machines
@@ -506,7 +506,38 @@ function tryLinuxDebUpdateHelper(debPath) {
         }
 
         const logFile = path.join(tempDir, 'deb-update.log');
+        const installScriptPath = path.join(tempDir, 'deb-install-root.sh');
         const scriptPath = path.join(tempDir, 'deb-update.sh');
+
+        // Script root : une seule élévation pour toute la chaîne d’install
+        const installRootBody = `#!/bin/sh
+set -e
+DEB="$1"
+LOG="$2"
+log() { echo "$(date '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || date) [root] $*" >> "$LOG" 2>/dev/null || true; }
+log "install start deb=$DEB"
+if ! command -v dpkg >/dev/null 2>&1; then
+  log "FAIL dpkg introuvable"
+  exit 1
+fi
+if dpkg -i "$DEB" >> "$LOG" 2>&1; then
+  log "dpkg -i ok"
+  exit 0
+fi
+log "dpkg -i failed, apt-get -f then retry"
+if command -v apt-get >/dev/null 2>&1; then
+  apt-get install -f -y >> "$LOG" 2>&1 || true
+fi
+if dpkg -i "$DEB" >> "$LOG" 2>&1; then
+  log "dpkg -i ok after apt-get -f"
+  exit 0
+fi
+log "FAIL dpkg -i définitif"
+exit 1
+`;
+        fs.writeFileSync(installScriptPath, installRootBody, { encoding: 'utf8', mode: 0o755 });
+        try { fs.chmodSync(installScriptPath, 0o755); } catch (_) { /* ignore */ }
+
         const scriptBody = `#!/bin/sh
 log() { echo "$(date '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || date) $*" >> "$WS_DEB_LOG" 2>/dev/null || true; }
 log "deb update helper start pid=$WS_DEB_PID deb=$WS_DEB_PATH"
@@ -514,22 +545,26 @@ log "display=$DISPLAY wayland=$WAYLAND_DISPLAY xauth=$XAUTHORITY"
 
 i=0
 while kill -0 "$WS_DEB_PID" 2>/dev/null; do
-  sleep 0.3
+  sleep 0.25
   i=$((i + 1))
-  if [ "$i" -gt 200 ]; then
-    log "timeout waiting for pid $WS_DEB_PID — continue"
+  if [ "$i" -gt 240 ]; then
+    log "timeout waiting for pid $WS_DEB_PID — force continue"
     break
   fi
 done
 log "app exited, waiting before install"
-sleep 2
+sleep 1.5
 
 if [ ! -f "$WS_DEB_PATH" ]; then
   log "FAIL missing deb: $WS_DEB_PATH"
   exit 1
 fi
+if [ ! -x "$WS_DEB_INSTALL_SH" ]; then
+  log "FAIL missing install script: $WS_DEB_INSTALL_SH"
+  exit 1
+fi
 
-# Conserver l’environnement graphique pour la boîte de dialogue polkit
+# Conserver l’environnement graphique pour la boîte de dialogue polkit (UNE seule fois)
 PKEXEC_ENV=""
 [ -n "$DISPLAY" ] && PKEXEC_ENV="$PKEXEC_ENV DISPLAY=$DISPLAY"
 [ -n "$XAUTHORITY" ] && PKEXEC_ENV="$PKEXEC_ENV XAUTHORITY=$XAUTHORITY"
@@ -537,38 +572,23 @@ PKEXEC_ENV=""
 [ -n "$DBUS_SESSION_BUS_ADDRESS" ] && PKEXEC_ENV="$PKEXEC_ENV DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS"
 [ -n "$XDG_RUNTIME_DIR" ] && PKEXEC_ENV="$PKEXEC_ENV XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR"
 
-run_pkexec() {
-  if [ -n "$PKEXEC_ENV" ]; then
-    # shellcheck disable=SC2086
-    pkexec env $PKEXEC_ENV "$@"
-  else
-    pkexec "$@"
-  fi
-}
-
 install_ok=0
 if command -v pkexec >/dev/null 2>&1; then
-  if command -v apt-get >/dev/null 2>&1; then
-    log "trying: pkexec apt-get install -y $WS_DEB_PATH"
-    if run_pkexec apt-get install -y "$WS_DEB_PATH" >> "$WS_DEB_LOG" 2>&1; then
+  log "trying: single pkexec $WS_DEB_INSTALL_SH"
+  if [ -n "$PKEXEC_ENV" ]; then
+    # shellcheck disable=SC2086
+    if pkexec env $PKEXEC_ENV /bin/sh "$WS_DEB_INSTALL_SH" "$WS_DEB_PATH" "$WS_DEB_LOG"; then
       install_ok=1
-      log "apt-get install ok"
+      log "pkexec install ok"
     else
-      log "apt-get failed, trying dpkg -i"
+      log "pkexec install failed (annulé ou erreur dpkg)"
     fi
-  fi
-  if [ "$install_ok" -ne 1 ]; then
-    log "trying: pkexec dpkg -i $WS_DEB_PATH"
-    if run_pkexec dpkg -i "$WS_DEB_PATH" >> "$WS_DEB_LOG" 2>&1; then
+  else
+    if pkexec /bin/sh "$WS_DEB_INSTALL_SH" "$WS_DEB_PATH" "$WS_DEB_LOG"; then
       install_ok=1
-      log "dpkg -i ok"
+      log "pkexec install ok"
     else
-      log "dpkg -i failed, trying apt-get -f install"
-      run_pkexec apt-get install -f -y >> "$WS_DEB_LOG" 2>&1 || true
-      if run_pkexec dpkg -i "$WS_DEB_PATH" >> "$WS_DEB_LOG" 2>&1; then
-        install_ok=1
-        log "dpkg -i ok after apt-get -f"
-      fi
+      log "pkexec install failed (annulé ou erreur dpkg)"
     fi
   fi
 else
@@ -578,7 +598,6 @@ fi
 
 if [ "$install_ok" -ne 1 ]; then
   log "FAIL installation .deb échouée — ouvrir manuellement: $WS_DEB_PATH"
-  # Dernier recours : ouvrir le fichier pour install graphique
   if command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$WS_DEB_PATH" >/dev/null 2>&1 || true
   fi
@@ -603,6 +622,7 @@ if [ -z "$bin" ]; then
 fi
 
 log "launching $bin"
+# Relancer dans la session utilisateur (DISPLAY déjà dans l’env du helper)
 if command -v setsid >/dev/null 2>&1; then
   setsid "$bin" >/dev/null 2>&1 &
 else
@@ -619,7 +639,8 @@ exit 0
             ...process.env,
             WS_DEB_PID: String(process.pid),
             WS_DEB_PATH: stableDeb,
-            WS_DEB_LOG: logFile
+            WS_DEB_LOG: logFile,
+            WS_DEB_INSTALL_SH: installScriptPath
         };
 
         const shells = ['/bin/sh', '/usr/bin/sh', '/bin/bash', '/usr/bin/bash'];
@@ -997,7 +1018,8 @@ async function downloadAndApplyDebUpdate() {
     setPendingAppUpdate({
         packageType: 'deb',
         latestVersion: latest || null,
-        downloadedPath
+        downloadedPath,
+        helperStarted: false
     });
     sendUpdateDone({ success: true, latestVersion: latest || null, needsRestart: true });
     return {
@@ -1127,8 +1149,21 @@ async function installPendingAppUpdate() {
             return { success: false, error: 'Paquet .deb introuvable — retéléchargez la mise à jour' };
         }
 
-        // Quit d’abord, installer ensuite via helper (pkexec après mort du process).
-        // Installer pendant que l’app tourne échoue souvent / laisse l’ancienne version.
+        // Évite de relancer plusieurs helpers (= spam de boîtes admin) si l’utilisateur reclique
+        if (pendingAppUpdate.helperStarted) {
+            quittingForUpdate = true;
+            setTimeout(() => {
+                try { app.exit(0); } catch (_) {
+                    try { process.exit(0); } catch (__) { /* ignore */ }
+                }
+            }, 100);
+            return {
+                success: true,
+                message: 'Fermeture… validez la demande admin déjà ouverte si besoin.'
+            };
+        }
+
+        // Quit d’abord, installer ensuite via helper (1 seul pkexec après mort du process).
         const helper = tryLinuxDebUpdateHelper(downloadedPath);
         if (!helper.ok) {
             return {
@@ -1145,16 +1180,17 @@ async function installPendingAppUpdate() {
         pendingAppUpdate.helperStarted = true;
         markUpdateInstalledFlag();
         quittingForUpdate = true;
+        // Sortie rapide et forcée : libère le verrou single-instance + fichiers /usr/lib/workspace
         setTimeout(() => {
             try {
                 app.exit(0);
             } catch (_) {
-                try { app.quit(); } catch (__) { /* ignore */ }
+                try { process.exit(0); } catch (__) { /* ignore */ }
             }
-        }, 400);
+        }, 250);
         return {
             success: true,
-            message: 'Fermeture… saisissez le mot de passe admin si demandé, puis l’app redémarrera.'
+            message: 'Fermeture… une seule demande admin, puis l’app redémarre.'
         };
     }
 

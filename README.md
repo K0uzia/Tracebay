@@ -37,13 +37,22 @@ Les dépendances tierces conservent leurs licences. Pour une licence commerciale
 
 ---
 
+## Branches
+
+| Branche | Contenu |
+| ------- | ------- |
+| **`main`** | Application client (Electron), démo, docs côté app |
+| **`proxmox`** | Backend / serveur (API Fastify, PostgreSQL, Docker, scripts de déploiement) |
+
+Ne pas remettre le backend dans `main` : travailler et déployer le serveur depuis la branche `proxmox`.
+
 ## Architecture
 
 | Composant | Stack | Emplacement |
 | --------- | ----- | ----------- |
-| Client | Electron 39, HTML / JavaScript, `electron-builder` | `apps/client/` |
-| Backend | Fastify, TypeScript, PostgreSQL, JWT | `proxmox/app/` |
-| Démo | HTML / CSS / JS, `localStorage` | `demo/` |
+| Client | Electron 39, HTML / JavaScript, `electron-builder` | `apps/client/` sur **`main`** |
+| Démo | HTML / CSS / JS, `localStorage` | `demo/` sur **`main`** |
+| Backend | Fastify, TypeScript, PostgreSQL, JWT | branche **`proxmox`** (`proxmox/app/`, Docker, scripts) |
 
 Le client communique en HTTP JSON. Les URL sont définies dans `connection.json` (`local`, `proxmox`, `production`). Le processus principal (`main.js`) gère les PDF, `lsblk` (Linux) et les mises à jour.
 
@@ -66,12 +75,14 @@ flowchart LR
 ```
 
 ```
-workspace/
+# Branche main (app)
 ├── apps/client/          Client Electron (seul workspace npm)
-├── proxmox/app/          API Fastify
 ├── demo/                 Démo GitHub Pages
-├── docs/                 Documentation technique
-└── .github/              CI, modèles d’issues et de PR
+├── docs/                 Documentation technique (client / API contrat)
+└── .github/              CI client, modèles d’issues et de PR
+
+# Branche proxmox (backend / serveur) — clone séparé ou checkout de cette branche
+└── proxmox/              API, Docker, scripts d’install
 ```
 
 ---
@@ -134,9 +145,7 @@ npm ci
 npm start
 ```
 
-```bash
-cd proxmox/app && npm install && npm run dev
-```
+Backend / serveur : cloner ou basculer sur la branche **`proxmox`**, puis suivre le README de cette branche.
 
 Configurer `apps/client/public/config/connection.json`.
 
@@ -154,7 +163,7 @@ python3 -m http.server 8080 --directory demo
 | Mises à jour | `electron-updater`, GitHub Releases |
 | CI | [`.github/workflows/build-client.yml`](.github/workflows/build-client.yml) |
 
-Déploiement backend : [`proxmox/app/README.md`](proxmox/app/README.md).
+Déploiement backend : branche [`proxmox`](https://github.com/K0uzia/tracebaie/tree/proxmox).
 
 ---
 

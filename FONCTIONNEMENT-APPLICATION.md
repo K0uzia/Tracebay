@@ -82,6 +82,7 @@ L'application fonctionne comme une **application web à page unique** :
 
 ```
 workspace/
+# Branche main = application
 ├── apps/client/              # Application Electron
 │   ├── main.js, preload.js
 │   ├── config/connection.json
@@ -91,8 +92,11 @@ workspace/
 │       ├── reception-pages/  # Sous-pages Réception
 │       ├── components/       # header, footer, modales
 │       └── assets/js/modules/
-├── proxmox/app/              # Backend (branche proxmox)
+├── demo/                     # Démo navigateur
 └── docs/                     # Documentation technique
+
+# Branche proxmox = backend / serveur (pas sur main)
+# → API Fastify, PostgreSQL, Docker, scripts
 ```
 
 ---
@@ -596,7 +600,7 @@ En **navigateur web** (sans Electron), l'interface s'affiche mais les fonctions 
 
 ## Références
 
-- [README.md](./README.md) — Vue d'ensemble du projet et déploiement
+- [README.md](./README.md) — Vue d'ensemble (`main` = app, `proxmox` = backend)
 - [docs/API.md](./docs/API.md) — Contrat API backend
 - [docs/DATABASE.md](./docs/DATABASE.md) — Schéma base de données
-- [proxmox/app/README.md](./proxmox/app/README.md) — Backend Fastify + TypeScript
+- Branche [`proxmox`](https://github.com/K0uzia/tracebaie/tree/proxmox) — Backend Fastify + TypeScript / serveur
