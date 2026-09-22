@@ -174,13 +174,13 @@
 }
 
 .inventaire-container .inventaire-lot-header {
-    padding: var(--unit-3);
+    padding: 10px 14px 12px;
     background-color: rgba(255, 255, 255, 0.02);
     border-bottom: 1px solid var(--recep-panel-border, rgba(255, 255, 255, 0.08));
     transition: var(--transition);
     display: flex;
     flex-direction: column;
-    gap: var(--unit-2);
+    gap: 8px;
 }
 
 .inventaire-container .inventaire-lot-header:hover {
@@ -191,35 +191,43 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--unit-2);
+    gap: 8px;
     margin-bottom: 0;
+    min-height: 24px;
 }
 
 .inventaire-container .inventaire-lot-title .expand-icon {
     color: var(--bleu1);
     transition: transform var(--transition);
     flex-shrink: 0;
+    font-size: 0.75rem;
+    width: 12px;
+    text-align: center;
 }
 
-/* Couleurs par stat : icône + chiffre lisibles sur fond sombre */
+/* Couleurs par stat : chiffre accentué, label discret */
 .inventaire-container .inventaire-stat strong {
     font-weight: 700;
-    font-size: 0.9375rem;
+    font-size: 0.8125rem;
     font-variant-numeric: tabular-nums;
+    line-height: 1;
 }
-.inventaire-container .inventaire-stat--pending i,
+.inventaire-container .inventaire-stat__lbl {
+    font-weight: 500;
+    opacity: 0.78;
+}
 .inventaire-container .inventaire-stat--pending strong {
     color: #ffb074;
 }
-.inventaire-container .inventaire-stat--recond i,
 .inventaire-container .inventaire-stat--recond strong {
     color: #86efac;
 }
-.inventaire-container .inventaire-stat--hs i,
 .inventaire-container .inventaire-stat--hs strong {
     color: #fca5a5;
 }
-.inventaire-container .inventaire-stat--total i,
+.inventaire-container .inventaire-stat--pieces strong {
+    color: #fcd34d;
+}
 .inventaire-container .inventaire-stat--total strong {
     color: #c5d4ff;
 }
@@ -227,64 +235,88 @@
 .inventaire-container .inventaire-lot-title h3 {
     margin: 0;
     font: var(--block-title-h3);
+    font-size: 0.9375rem;
+    line-height: 1.25;
     color: #f4f7fb;
     flex: 1;
     min-width: 0;
-}
-
-.inventaire-container .inventaire-lot-title .badge-created {
-    padding: var(--unit-1) var(--unit-2);
-    font: var(--font-text2);
-    font-size: 0.8125rem;
-    background-color: rgba(124, 156, 255, 0.12);
-    color: #9db5ff;
-    border-radius: 999px;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
+.inventaire-container .inventaire-lot-title .badge-created {
+    padding: 2px 8px;
+    font: var(--font-text2);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background-color: rgba(124, 156, 255, 0.1);
+    color: #9db5ff;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.inventaire-container .inventaire-lot-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 12px;
+}
+
 .inventaire-container .inventaire-lot-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-    gap: var(--unit-2);
-    margin-bottom: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
 }
 
 .inventaire-container .inventaire-stat {
     display: inline-flex;
-    align-items: center;
-    gap: var(--unit-1);
-    padding: var(--unit-1) var(--unit-2);
+    align-items: baseline;
+    gap: 4px;
+    padding: 3px 8px;
     font: var(--font-text2);
-    font-size: 0.8125rem;
-    color: rgba(215, 223, 236, 0.82);
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: var(--radius-medium);
+    font-size: 0.6875rem;
+    line-height: 1.2;
+    color: rgba(215, 223, 236, 0.78);
+    background: rgba(255, 255, 255, 0.035);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    border-radius: 6px;
     min-width: 0;
-}
-
-.inventaire-container .inventaire-stat i {
-    opacity: 0.95;
+    flex: 0 0 auto;
+    white-space: nowrap;
 }
 
 .inventaire-container .inventaire-lot-progress {
-    display: flex;
-    flex-direction: column;
-    gap: calc(var(--unit-1) / 2);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1 1 220px;
+    min-width: 160px;
+    max-width: 320px;
 }
 
-.inventaire-container .inventaire-lot-progress__label {
+.inventaire-container .inventaire-lot-progress__pct {
+    flex-shrink: 0;
     font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
     color: #9db5ff;
-    opacity: 0.8;
+    min-width: 2.6em;
+    text-align: right;
 }
 
 .inventaire-container .inventaire-lot-header .progress-bar,
 .inventaire-container .inventaire-lot-header .recep-progress-wrap {
-    height: 10px;
+    flex: 1 1 auto;
+    height: 8px;
+    min-width: 80px;
     background-color: rgba(255, 255, 255, 0.08);
     border-radius: 999px;
     overflow: hidden;
@@ -295,35 +327,134 @@
     height: 100%;
     background: linear-gradient(90deg, var(--bleu1) 0%, var(--valid) 100%);
     border-radius: 999px;
-    transition: width 0.4s ease;
+    transition: width 0.35s ease;
     min-width: 0;
 }
 
 .inventaire-container .inventaire-stat--pending {
-    border-color: rgba(255, 176, 116, 0.4);
-    background: rgba(242, 130, 65, 0.14);
+    border-color: rgba(255, 176, 116, 0.28);
+    background: rgba(242, 130, 65, 0.1);
 }
 
 .inventaire-container .inventaire-stat--recond {
-    border-color: rgba(134, 239, 172, 0.35);
-    background: rgba(74, 222, 128, 0.12);
+    border-color: rgba(134, 239, 172, 0.25);
+    background: rgba(74, 222, 128, 0.08);
 }
 
 .inventaire-container .inventaire-stat--hs {
-    border-color: rgba(252, 165, 165, 0.4);
-    background: rgba(239, 68, 68, 0.14);
+    border-color: rgba(252, 165, 165, 0.28);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.inventaire-container .inventaire-stat--pieces {
+    border-color: rgba(252, 211, 77, 0.28);
+    background: rgba(234, 179, 8, 0.08);
 }
 
 .inventaire-container .inventaire-stat--total {
+    border-color: rgba(124, 156, 255, 0.32);
+    background: rgba(124, 156, 255, 0.12);
+}
+
+.inventaire-container .inventaire-model-panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    margin: 0;
+}
+
+.inventaire-container .btn-toggle-models.lot-btn--ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: rgba(215, 223, 236, 0.78);
+    background: transparent;
+    border: 1px dashed rgba(255, 255, 255, 0.14);
+    border-radius: 999px;
+    cursor: pointer;
+}
+
+.inventaire-container .btn-toggle-models.lot-btn--ghost:hover {
+    color: #e8eeff;
+    border-color: rgba(124, 156, 255, 0.4);
+    background: rgba(124, 156, 255, 0.08);
+}
+
+.inventaire-container .btn-toggle-models.lot-btn--ghost.is-active {
+    color: #e8eeff;
+    border-style: solid;
     border-color: rgba(124, 156, 255, 0.45);
-    background: rgba(124, 156, 255, 0.16);
+    background: rgba(124, 156, 255, 0.14);
+}
+
+.inventaire-container .inventaire-model-toggle__count {
+    min-width: 1.15em;
+    padding: 0 5px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.35;
+    text-align: center;
+    color: #e8eeff;
+    background: rgba(124, 156, 255, 0.28);
+    border-radius: 999px;
+}
+
+.inventaire-container .inventaire-model-breakdown {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 6px;
+    margin: 0;
+    flex: 1 1 100%;
+}
+
+.inventaire-container .inventaire-model-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    max-width: 220px;
+    padding: 2px 6px 2px 7px;
+    font: var(--font-text2);
+    font-size: 0.6875rem;
+    line-height: 1.25;
+    color: rgba(215, 223, 236, 0.88);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 999px;
+}
+
+.inventaire-container .inventaire-model-chip__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.inventaire-container .inventaire-model-chip__qty {
+    flex-shrink: 0;
+    min-width: 1.1em;
+    padding: 0 4px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.35;
+    text-align: center;
+    color: #e8eeff;
+    background: rgba(124, 156, 255, 0.28);
+    border-radius: 999px;
 }
 
 .inventaire-container .inventaire-lot-pdf-actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--unit-2);
+    gap: 6px;
     margin-top: 0;
 }
 
@@ -332,6 +463,8 @@
 .inventaire-container .inventaire-lot-header .btn-view-pdf-lot {
     margin-top: 0;
     align-self: flex-start;
+    padding: 5px 10px;
+    font-size: 0.75rem;
 }
 
 .inventaire-container .lot-btn--secondary {
@@ -835,10 +968,21 @@
 
 @media (max-width: 768px) {
     .inventaire-container .inventaire-lot-header {
-        padding: var(--unit-2) var(--unit-3);
+        padding: 10px 12px;
+        gap: 8px;
     }
-    .inventaire-container .inventaire-lot-stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+    .inventaire-container .inventaire-lot-meta {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+    }
+    .inventaire-container .inventaire-lot-progress {
+        flex: 1 1 auto;
+        max-width: none;
+        min-width: 0;
+    }
+    .inventaire-container .inventaire-lot-title h3 {
+        white-space: normal;
     }
     .inventaire-container .lot-content .lot-table-wrap {
         padding: var(--unit-2) var(--unit-2) var(--unit-3);
@@ -852,7 +996,7 @@
 }
 
 @media (max-width: 480px) {
-    .inventaire-container .inventaire-lot-stats {
-        grid-template-columns: 1fr;
+    .inventaire-container .inventaire-model-chip {
+        max-width: 100%;
     }
 }

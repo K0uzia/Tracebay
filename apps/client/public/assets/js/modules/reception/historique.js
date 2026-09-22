@@ -37,6 +37,7 @@ export default class HistoriqueManager {
     async init() {
         logger.debug('🚀 Initialisation HistoriqueManager (historique + traçabilité)');
         this.fillYearSelect();
+        this.fillMonthSelect();
         await this.loadData();
         this.setupEventListeners();
         logger.debug('✅ HistoriqueManager prêt');
@@ -59,6 +60,27 @@ export default class HistoriqueManager {
             if (y === currentYear) opt.selected = true;
             select.appendChild(opt);
         }
+    }
+
+    fillMonthSelect() {
+        const select = document.getElementById('filter-month-historique');
+        if (!select) return;
+        const months = [
+            'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+            'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
+        ];
+        select.innerHTML = '';
+        const optAll = document.createElement('option');
+        optAll.value = 'tous';
+        optAll.textContent = 'Tous';
+        optAll.selected = true;
+        select.appendChild(optAll);
+        months.forEach((label, idx) => {
+            const opt = document.createElement('option');
+            opt.value = String(idx + 1);
+            opt.textContent = label;
+            select.appendChild(opt);
+        });
     }
 
     syncPdfBridge() {
@@ -224,6 +246,7 @@ export default class HistoriqueManager {
         const searchText = (document.getElementById('filter-search-historique')?.value || '').trim().toLowerCase();
         const typeFilter = (document.getElementById('filter-type-historique')?.value || 'tous').trim();
         const yearFilter = (document.getElementById('filter-year-historique')?.value || 'tous').trim();
+        const monthFilter = (document.getElementById('filter-month-historique')?.value || 'tous').trim();
 
         const merged = [
             ...this.lots.map(lot => ({ type: 'lot', date: lot.finished_at || lot.created_at, item: lot })),
@@ -240,49 +263,36 @@ export default class HistoriqueManager {
                 return y === yearFilter;
             });
         }
+        if (monthFilter && monthFilter !== 'tous') {
+            const monthNum = parseInt(monthFilter, 10);
+            toRender = toRender.filter(({ date }) => {
+                // getMonth() est 0-indexé → +1 pour comparer à 1–12
+                return this.parseFlexibleDate(date).getMonth() + 1 === monthNum;
+            });
+        }
         if (searchText) {
             toRender = toRender.filter(({ type, item }) => {
-                // Recherche sur le texte affiché dans le titre (h3) de la carte
-                if (type === 'lot') {
-                    const id = String(item.id || '');
-                    const lotName = String(item.lot_name || item.name || '').trim();
-                    const titleText = ('Lot #' + id + (lotName ? ' | ' + lotName : '')).toLowerCase();
-                    return titleText.includes(searchText);
-                }
-                if (type === 'disque') {
-                    const name = (item.name || '').trim() || 'Lot disques';
-                    const titleText = name.toLowerCase();
-                    return titleText.includes(searchText);
-                }
-                if (type === 'don') {
-                    const lotName = String(item.lot_name || item.name || '').trim();
-                    const stagiaire = String(item.stagiaire_afpa || item.stagiaire || '').trim();
-                    const titleText = (`don ${lotName} ${stagiaire}`).toLowerCase();
-                    return titleText.includes(searchText);
-                }
-                if (type === 'commande') {
-                    const name = String(item.commande_name || item.name || '').trim();
-                    const category = String(item.category || '').trim();
-                    const titleText = (`commande ${name} ${category}`).toLowerCase();
-                    return titleText.includes(searchText);
-                }
-                if (type === 'pret') {
-                    const ref = String(item.reference || item.title || item.lot_name || item.name || '').trim();
-                    const borrower = String(item.borrower_name || item.emprunteur || '').trim();
-                    const titleText = (`prêt ${ref} ${borrower}`).toLowerCase();
-                    return titleText.includes(searchText);
-                }
+                if (this.matchesHistoriqueSearch(type, item, searchText)) return true;
                 return false;
             });
         }
 
         if (toRender.length === 0) {
-            const yearHint = yearFilter && yearFilter !== 'tous' ? ` pour ${yearFilter}` : '';
+            const periodBits = [];
+            if (monthFilter && monthFilter !== 'tous') {
+                const months = [
+                    'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+                    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+                ];
+                periodBits.push(months[parseInt(monthFilter, 10) - 1] || monthFilter);
+            }
+            if (yearFilter && yearFilter !== 'tous') periodBits.push(yearFilter);
+            const periodHint = periodBits.length ? ` pour ${periodBits.join(' ')}` : '';
             container.innerHTML = `
                 <div class="empty-state">
                     <i class="fa-solid fa-inbox"></i>
-                    <p>${merged.length === 0 ? 'Aucun élément' : 'Aucun résultat'}${yearHint}</p>
-                    <small>${merged.length === 0 ? 'Lots, disques, dons, prêts matériel et commandes apparaîtront ici' : 'Modifiez l’année, la recherche ou le filtre type'}</small>
+                    <p>${merged.length === 0 ? 'Aucun élément' : 'Aucun résultat'}${periodHint}</p>
+                    <small>${merged.length === 0 ? 'Lots, disques, dons, prêts matériel et commandes apparaîtront ici' : 'Modifiez l’année, le mois, la recherche ou le filtre type'}</small>
                 </div>
             `;
             return;
@@ -296,6 +306,80 @@ export default class HistoriqueManager {
             return this.createCommandeElement(item);
         }).join('');
         this.attachLotEventListeners();
+    }
+
+    /**
+     * Recherche historique : titre + S/N / marque / modèle du matériel.
+     * @param {string} type
+     * @param {object} item
+     * @param {string} searchText lowercase
+     * @returns {boolean}
+     */
+    matchesHistoriqueSearch(type, item, searchText) {
+        if (!searchText) return true;
+        const haystacks = [];
+
+        if (type === 'lot') {
+            const id = String(item.id || '');
+            const lotName = String(item.lot_name || item.name || '').trim();
+            haystacks.push(`Lot #${id}`, lotName);
+            const items = Array.isArray(item.items) ? item.items : [];
+            for (const pc of items) {
+                haystacks.push(
+                    pc.serial_number, pc.serialNumber, pc.sn,
+                    pc.marque_name, pc.marque, pc.brand,
+                    pc.modele_name, pc.modele, pc.model,
+                    pc.type
+                );
+            }
+        } else if (type === 'disque') {
+            haystacks.push(item.name || 'Lot disques');
+            const disks = Array.isArray(item.disks) ? item.disks
+                : (Array.isArray(item.items) ? item.items : []);
+            for (const d of disks) {
+                haystacks.push(
+                    d.serial, d.serial_number, d.sn,
+                    d.marque, d.brand, d.marque_name,
+                    d.modele, d.model, d.modele_name,
+                    d.disk_type, d.type, d.size
+                );
+            }
+        } else if (type === 'don') {
+            haystacks.push(item.lot_name, item.name, item.stagiaire_afpa, item.stagiaire);
+            const lines = this.extractDonLinesFromRecord(item);
+            for (const line of lines) {
+                haystacks.push(
+                    line.serialNumber, line.serial_number, line.sn,
+                    line.marqueName, line.marque, line.marque_name,
+                    line.modeleName, line.modele, line.modele_name,
+                    line.type
+                );
+            }
+        } else if (type === 'commande') {
+            haystacks.push(item.commande_name, item.name, item.category);
+            const lines = this.extractCommandeLinesFromRecord(item);
+            for (const line of lines) {
+                haystacks.push(line.product_name, line.name, line.title, line.product);
+            }
+        } else if (type === 'pret') {
+            haystacks.push(
+                item.reference, item.title, item.lot_name, item.name,
+                item.borrower_name, item.emprunteur
+            );
+            const lines = this.extractPretLinesFromRecord(item);
+            for (const line of lines) {
+                haystacks.push(
+                    line.serialNumber, line.serial_number, line.sn,
+                    line.marque, line.modele, line.type, line.type_detail, line.description
+                );
+            }
+        }
+
+        const blob = haystacks
+            .filter((v) => v != null && String(v).trim() !== '')
+            .map((v) => String(v).toLowerCase())
+            .join(' ');
+        return blob.includes(searchText);
     }
 
     createDonElement(don) {
@@ -1736,11 +1820,11 @@ export default class HistoriqueManager {
 
     async loadReferenceDataDisques() {
         try {
-            const marquesRes = await api.get('marques.list');
+            const marquesRes = await api.get('marques.list', { useCache: false });
             if (!marquesRes.ok) return;
             const marquesData = await marquesRes.json();
             this.marques = Array.isArray(marquesData) ? marquesData : (marquesData.items || marquesData.marques || []);
-            const modelesRes = await api.get('marques.all');
+            const modelesRes = await api.get('marques.all', { useCache: false });
             if (!modelesRes.ok) return;
             const modelesData = await modelesRes.json();
             const marquesAvecModeles = Array.isArray(modelesData) ? modelesData : (modelesData.items || []);
@@ -2066,6 +2150,10 @@ export default class HistoriqueManager {
         const yearSelect = document.getElementById('filter-year-historique');
         if (yearSelect) {
             yearSelect.addEventListener('change', () => this.renderLots());
+        }
+        const monthSelect = document.getElementById('filter-month-historique');
+        if (monthSelect) {
+            monthSelect.addEventListener('change', () => this.renderLots());
         }
 
         // Bouton appliquer les modifications des items

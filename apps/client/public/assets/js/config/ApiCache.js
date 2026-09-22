@@ -103,6 +103,25 @@ class ApiCache {
     }
 
     /**
+     * Supprime les entrées dont la clé contient un motif (ex: endpoint)
+     * @param {string|RegExp} pattern
+     * @returns {number} Nombre d'entrées supprimées
+     */
+    invalidateMatching(pattern) {
+        const test = typeof pattern === 'string'
+            ? (key) => key.includes(pattern)
+            : (key) => pattern.test(key);
+        let removed = 0;
+        for (const key of Array.from(this.cache.keys())) {
+            if (test(key)) {
+                this.cache.delete(key);
+                removed++;
+            }
+        }
+        return removed;
+    }
+
+    /**
      * Vide complètement le cache
      * @returns {void}
      */

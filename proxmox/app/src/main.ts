@@ -35,6 +35,14 @@ const proxmoxConfig = {
 };
 const TEAM_BASE_PATH = process.env.TEAM_BASE_PATH || '/mnt/team/#TEAM';
 
+/** OS acceptés pour lot_items (aligné avec osOptions.js côté client). */
+const LOT_ITEM_OS_VALUES = ['linux', 'windows', 'chrome', 'apple', 'android', 'bsd'] as const;
+
+function normalizeLotItemOs(os: unknown): string {
+  const value = typeof os === 'string' ? os.toLowerCase().trim() : '';
+  return (LOT_ITEM_OS_VALUES as readonly string[]).includes(value) ? value : 'linux';
+}
+
 function normalizeStoredPdfPath(rawPath: string): string {
   const trimmed = String(rawPath || '').trim();
   if (!trimmed) return '';
@@ -1211,7 +1219,7 @@ function broadcastUserCount() {
               entry_type: row.entry_type,
               entry_date: row.entry_date,
               entry_time: row.entry_time,
-              os: row.os === 'windows' ? 'windows' : 'linux'
+              os: normalizeLotItemOs(row.os)
             });
           }
 
@@ -1342,7 +1350,7 @@ function broadcastUserCount() {
           entry_type: item.entry_type,
           entry_date: item.entry_date,
           entry_time: item.entry_time,
-          os: item.os === 'windows' ? 'windows' : 'linux'
+          os: normalizeLotItemOs(item.os)
         }));
 
         // Calculate totals based on item states
@@ -1592,9 +1600,8 @@ function broadcastUserCount() {
         }
 
         if (os !== undefined) {
-          const osVal = (typeof os === 'string' && (os === 'windows' || os === 'linux')) ? os : 'linux';
           updates.push(`os = $${paramIndex++}`);
-          values.push(osVal);
+          values.push(normalizeLotItemOs(os));
         }
 
         // Always update updated_at
@@ -1721,9 +1728,7 @@ function broadcastUserCount() {
         const entryTypeVal = String(entry_type ?? entryType ?? 'manual').trim() || 'manual';
         const entryDateVal = entry_date ?? date ?? null;
         const entryTimeVal = entry_time ?? time ?? null;
-        const osVal = (typeof os === 'string' && ['windows', 'linux', 'chrome', 'apple', 'android', 'bsd'].includes(os))
-          ? os
-          : 'linux';
+        const osVal = normalizeLotItemOs(os);
         const stateVal = state != null && String(state).trim() !== '' ? String(state).trim() : null;
         const techVal = technician != null && String(technician).trim() !== '' ? String(technician).trim() : null;
 

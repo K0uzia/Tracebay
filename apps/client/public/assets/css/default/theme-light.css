@@ -1198,50 +1198,104 @@ html[data-theme-dark="0"] .inventaire-overview__hint {
 
 html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat,
 html[data-theme-dark="0"] .inventaire-container .inventaire-stat {
-    color: #1a1a1a !important;
-    background: #eef0f4 !important;
-    border-color: rgba(13, 17, 23, 0.12) !important;
+    color: #4b5563 !important;
+    background: #f3f4f7 !important;
+    border-color: rgba(13, 17, 23, 0.1) !important;
 }
 
 html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--pending,
 html[data-theme-dark="0"] .inventaire-container .inventaire-stat--pending {
-    background: rgba(234, 88, 12, 0.12) !important;
-    border-color: rgba(234, 88, 12, 0.35) !important;
+    background: rgba(234, 88, 12, 0.1) !important;
+    border-color: rgba(234, 88, 12, 0.28) !important;
 }
 
-html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--pending i,
-html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--pending strong {
+html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--pending strong,
+html[data-theme-dark="0"] .inventaire-container .inventaire-stat--pending strong {
     color: #c2410c !important;
 }
 
-html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--recond {
-    background: rgba(22, 163, 74, 0.12) !important;
-    border-color: rgba(22, 163, 74, 0.35) !important;
+html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--recond,
+html[data-theme-dark="0"] .inventaire-container .inventaire-stat--recond {
+    background: rgba(22, 163, 74, 0.1) !important;
+    border-color: rgba(22, 163, 74, 0.28) !important;
 }
 
-html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--recond i,
-html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--recond strong {
+html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--recond strong,
+html[data-theme-dark="0"] .inventaire-container .inventaire-stat--recond strong {
     color: #15803d !important;
 }
 
-html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--hs {
-    background: rgba(220, 38, 38, 0.1) !important;
-    border-color: rgba(220, 38, 38, 0.35) !important;
+html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--hs,
+html[data-theme-dark="0"] .inventaire-container .inventaire-stat--hs {
+    background: rgba(220, 38, 38, 0.08) !important;
+    border-color: rgba(220, 38, 38, 0.28) !important;
 }
 
-html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--hs i,
-html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--hs strong {
+html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--hs strong,
+html[data-theme-dark="0"] .inventaire-container .inventaire-stat--hs strong {
     color: #b91c1c !important;
 }
 
-html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--total {
-    background: rgba(62, 59, 140, 0.12) !important;
-    border-color: rgba(62, 59, 140, 0.35) !important;
+html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--pieces,
+html[data-theme-dark="0"] .inventaire-container .inventaire-stat--pieces {
+    background: rgba(202, 138, 4, 0.1) !important;
+    border-color: rgba(202, 138, 4, 0.28) !important;
 }
 
-html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--total i,
-html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--total strong {
+html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--pieces strong,
+html[data-theme-dark="0"] .inventaire-container .inventaire-stat--pieces strong {
+    color: #a16207 !important;
+}
+
+html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--total,
+html[data-theme-dark="0"] .inventaire-container .inventaire-stat--total {
+    background: rgba(62, 59, 140, 0.1) !important;
+    border-color: rgba(62, 59, 140, 0.28) !important;
+}
+
+html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-stat--total strong,
+html[data-theme-dark="0"] .inventaire-container .inventaire-stat--total strong {
     color: #1e3a8a !important;
+}
+
+html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-lot-progress__pct,
+html[data-theme-dark="0"] .inventaire-container .inventaire-lot-progress__pct {
+    color: #3b4a8c !important;
+}
+
+html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-model-chip,
+html[data-theme-dark="0"] .inventaire-container .inventaire-model-chip {
+    background: rgba(62, 59, 140, 0.05) !important;
+    border-color: rgba(62, 59, 140, 0.14) !important;
+    color: #1f2937 !important;
+}
+
+html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-model-chip__qty,
+html[data-theme-dark="0"] .inventaire-container .inventaire-model-chip__qty {
+    color: #fff !important;
+    background: #3e3b8c !important;
+}
+
+html[data-theme-dark="0"] .r-root .inventaire-container .btn-toggle-models.lot-btn--ghost,
+html[data-theme-dark="0"] .inventaire-container .btn-toggle-models.lot-btn--ghost {
+    color: #4b5563 !important;
+    background: transparent !important;
+    border-color: rgba(13, 17, 23, 0.2) !important;
+}
+
+html[data-theme-dark="0"] .r-root .inventaire-container .btn-toggle-models.lot-btn--ghost:hover,
+html[data-theme-dark="0"] .r-root .inventaire-container .btn-toggle-models.lot-btn--ghost.is-active,
+html[data-theme-dark="0"] .inventaire-container .btn-toggle-models.lot-btn--ghost:hover,
+html[data-theme-dark="0"] .inventaire-container .btn-toggle-models.lot-btn--ghost.is-active {
+    color: #1e3a8a !important;
+    border-color: rgba(62, 59, 140, 0.4) !important;
+    background: rgba(62, 59, 140, 0.1) !important;
+}
+
+html[data-theme-dark="0"] .r-root .inventaire-container .inventaire-model-toggle__count,
+html[data-theme-dark="0"] .inventaire-container .inventaire-model-toggle__count {
+    color: #fff !important;
+    background: #3e3b8c !important;
 }
 
 html[data-theme-dark="0"] .inventaire-container .lot-table th,
@@ -1265,22 +1319,22 @@ html[data-theme-dark="0"] .inventaire-container .lot-content .lot-table tbody tr
     background: rgba(62, 59, 140, 0.08) !important;
 }
 
-html[data-theme-dark="0"] .inventaire-container .inventaire-stat--pending i,
 html[data-theme-dark="0"] .inventaire-container .inventaire-stat--pending strong {
     color: #c2410c !important;
 }
 
-html[data-theme-dark="0"] .inventaire-container .inventaire-stat--recond i,
 html[data-theme-dark="0"] .inventaire-container .inventaire-stat--recond strong {
     color: #15803d !important;
 }
 
-html[data-theme-dark="0"] .inventaire-container .inventaire-stat--hs i,
 html[data-theme-dark="0"] .inventaire-container .inventaire-stat--hs strong {
     color: #b91c1c !important;
 }
 
-html[data-theme-dark="0"] .inventaire-container .inventaire-stat--total i,
+html[data-theme-dark="0"] .inventaire-container .inventaire-stat--pieces strong {
+    color: #a16207 !important;
+}
+
 html[data-theme-dark="0"] .inventaire-container .inventaire-stat--total strong {
     color: #1e3a8a !important;
 }

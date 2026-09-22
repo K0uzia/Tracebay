@@ -72,11 +72,11 @@ export default class DisquesManager {
 
     async loadReferenceData() {
         try {
-            const marquesRes = await api.get('marques.list');
+            const marquesRes = await api.get('marques.list', { useCache: false });
             if (!marquesRes.ok) throw new Error('Erreur chargement marques');
             const marquesData = await marquesRes.json();
             this.marques = Array.isArray(marquesData) ? marquesData : (marquesData.items || marquesData.marques || []);
-            const modelesRes = await api.get('marques.all');
+            const modelesRes = await api.get('marques.all', { useCache: false });
             if (!modelesRes.ok) throw new Error('Endpoint modèles non trouvé');
             const modelesData = await modelesRes.json();
             const marquesAvecModeles = Array.isArray(modelesData) ? modelesData : (modelesData.items || []);
@@ -489,12 +489,22 @@ export default class DisquesManager {
             const response = await api.post('marques.list', { name: newMarque });
             if (!response.ok) throw new Error('HTTP ' + response.status);
             const data = await response.json();
-            this.marques.push({ id: data.id || this.marques.length + 1, name: newMarque });
+            this.marques.push({ id: data.id || data.item?.id || this.marques.length + 1, name: newMarque });
+            api.invalidateMarquesCache?.();
             window.app?.showNotification?.(`Marque "${newMarque}" ajoutée`, 'success');
             this.modalManager?.close?.('disques-modal-add-marque');
             input.value = '';
             this.syncAllFromDom();
             this.renderSessionTable();
+            const sel = document.getElementById('disques-select-marque-for-modele');
+            if (sel) {
+                const cur = sel.value;
+                sel.innerHTML = '<option value="">-- Sélectionner une marque --</option>' +
+                    this.marques.map(m =>
+                        `<option value="${escapeHtml(String(m.id))}">${escapeHtml(m.name)}</option>`
+                    ).join('');
+                if (cur) sel.value = cur;
+            }
         } catch (err) {
             logger.error('submitNewMarque:', err);
             window.app?.showNotification?.(err?.message || 'Erreur lors de l\'ajout de la marque', 'error');
@@ -531,16 +541,24 @@ export default class DisquesManager {
             if (!res.ok) throw new Error(await res.text().catch(() => 'HTTP ' + res.status));
             const data = await res.json();
             this.modeles.push({
-                id: data.id || this.modeles.length + 1,
+                id: data.id || data.item?.id || this.modeles.length + 1,
                 name: newModele,
                 marque_id: parseInt(marqueId, 10)
             });
+            api.invalidateMarquesCache?.();
             window.app?.showNotification?.(`Modèle "${newModele}" ajouté`, 'success');
             this.modalManager?.close?.('disques-modal-add-modele');
             inputModele.value = '';
             selectMarque.value = '';
             this.syncAllFromDom();
             this.renderSessionTable();
+            // Rafraîchir les selects modèle des lignes déjà liées à cette marque
+            document.querySelectorAll('#disques-session-tbody tr').forEach(tr => {
+                const marqueSel = tr.querySelector('select[name="disques_marque"]');
+                if (marqueSel && String(marqueSel.value) === String(marqueId)) {
+                    this.populateModeleSelect(tr, marqueId);
+                }
+            });
         } catch (err) {
             logger.error('submitNewModele:', err);
             window.app?.showNotification?.(err?.message || 'Erreur lors de l\'ajout du modèle', 'error');

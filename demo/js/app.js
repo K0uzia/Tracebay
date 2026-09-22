@@ -40,8 +40,10 @@
     pretDraft: null,
     invQ: "",
     invSt: "",
+    modelBreakdownVisible: Object.create(null),
     histQ: "",
     histYear: "",
+    histMonth: "",
     histType: "tous"
   };
 
@@ -946,9 +948,12 @@
       let visibleCount = 0;
       card.querySelectorAll(".item-row").forEach(function (row) {
         const stateOk = !st || row.className.indexOf("item-" + classSuffix) !== -1;
-        const snEl = row.querySelector(".col-sn");
-        const sn = ((snEl && snEl.textContent) || "").toLowerCase();
-        const searchOk = !q || lotMatches || sn.indexOf(q) !== -1;
+        const sn = ((row.querySelector(".col-sn") && row.querySelector(".col-sn").textContent) || "").toLowerCase();
+        const marque = ((row.querySelector(".col-marque") && row.querySelector(".col-marque").textContent) || "").toLowerCase();
+        const modele = ((row.querySelector(".col-modele") && row.querySelector(".col-modele").textContent) || "").toLowerCase();
+        const type = ((row.querySelector(".col-type") && row.querySelector(".col-type").textContent) || "").toLowerCase();
+        const itemOk = !q || sn.indexOf(q) !== -1 || marque.indexOf(q) !== -1 || modele.indexOf(q) !== -1 || type.indexOf(q) !== -1;
+        const searchOk = !q || lotMatches || itemOk;
         const visible = stateOk && searchOk;
         row.style.display = visible ? "" : "none";
         if (visible) visibleCount++;
@@ -978,7 +983,7 @@
       "<section class=\"recep-page lot-page inventaire-container\"><div class=\"lot-page__body\">" +
         "<div class=\"recep-toolbar-compact\">" +
           "<div class=\"lot-config__field lot-config__field--search\"><label class=\"lot-config__label\" for=\"filter-search-inventaire\"><i class=\"fa-solid fa-magnifying-glass\"></i> Recherche</label>" +
-            "<input class=\"lot-config__input\" type=\"search\" id=\"filter-search-inventaire\" placeholder=\"S/N ou lot… (Ctrl+F)\" value=\"" + esc(q) + "\" autocomplete=\"off\"></div>" +
+            "<input class=\"lot-config__input\" type=\"search\" id=\"filter-search-inventaire\" placeholder=\"S/N, modèle, marque ou lot… (Ctrl+F)\" value=\"" + esc(q) + "\" autocomplete=\"off\"></div>" +
           "<div class=\"lot-config__field\"><label class=\"lot-config__label\" for=\"filter-state\"><i class=\"fa-solid fa-filter\"></i> État</label>" +
             "<select class=\"lot-config__input\" id=\"filter-state\"><option value=\"\">Tous les états</option><option value=\"Reconditionnés\">Reconditionnés</option><option value=\"Pour pièces\">Pour pièces</option><option value=\"HS\">HS</option><option value=\"Non défini\">Non défini</option></select></div>" +
           "<div class=\"lot-config__actions\"><button type=\"button\" class=\"lot-btn lot-btn--primary\" id=\"btn-refresh-lots\"><i class=\"fa-solid fa-sync\"></i> Rafraîchir</button></div>" +
@@ -992,17 +997,50 @@
         const items = lot.items || [];
         return "<div class=\"inventaire-lot-card\" data-lot-id=\"" + lot.id + "\">" +
           "<div class=\"inventaire-lot-header\" style=\"cursor:pointer\">" +
-            "<div class=\"inventaire-lot-title\"><i class=\"fa-solid fa-chevron-right expand-icon\"></i><h3>Lot #" + esc(lot.id) + (lot.name ? " | " + esc(lot.name) : "") + "</h3>" +
-              "<span class=\"badge-created\">Créé le " + fmtDate(lot.createdAt) + "</span></div>" +
-            "<div class=\"inventaire-lot-stats\">" +
-              "<span class=\"inventaire-stat inventaire-stat--pending\"><i class=\"fa-solid fa-hourglass-end\"></i> <strong>" + lot.stats.todo + "</strong> à faire</span>" +
-              "<span class=\"inventaire-stat inventaire-stat--recond\"><i class=\"fa-solid fa-check-circle\"></i> <strong>" + lot.stats.recond + "</strong> reconditionnés</span>" +
-              "<span class=\"inventaire-stat inventaire-stat--hs\"><i class=\"fa-solid fa-exclamation-circle\"></i> <strong>" + lot.stats.hs + "</strong> HS</span>" +
-              "<span class=\"inventaire-stat inventaire-stat--total\"><i class=\"fa-solid fa-layer-group\"></i> <strong>" + lot.stats.total + "</strong> total</span>" +
+            "<div class=\"inventaire-lot-title\"><i class=\"fa-solid fa-chevron-right expand-icon\"></i><h3>Lot #" + esc(lot.id) + (lot.name ? " · " + esc(lot.name) : "") + "</h3>" +
+              "<span class=\"badge-created\">" + fmtDate(lot.createdAt) + "</span></div>" +
+            "<div class=\"inventaire-lot-meta\">" +
+              "<div class=\"inventaire-lot-stats\" role=\"group\" aria-label=\"État du lot\">" +
+                "<span class=\"inventaire-stat inventaire-stat--pending\" title=\"À traiter\"><strong>" + lot.stats.todo + "</strong><span class=\"inventaire-stat__lbl\">à faire</span></span>" +
+                (lot.stats.recond > 0 ? "<span class=\"inventaire-stat inventaire-stat--recond\" title=\"Reconditionnés\"><strong>" + lot.stats.recond + "</strong><span class=\"inventaire-stat__lbl\">recond.</span></span>" : "") +
+                ((lot.stats.pieces || 0) > 0 ? "<span class=\"inventaire-stat inventaire-stat--pieces\" title=\"Pour pièces\"><strong>" + lot.stats.pieces + "</strong><span class=\"inventaire-stat__lbl\">pièces</span></span>" : "") +
+                (lot.stats.hs > 0 ? "<span class=\"inventaire-stat inventaire-stat--hs\" title=\"HS\"><strong>" + lot.stats.hs + "</strong><span class=\"inventaire-stat__lbl\">HS</span></span>" : "") +
+                "<span class=\"inventaire-stat inventaire-stat--total\" title=\"Total\"><strong>" + lot.stats.total + "</strong><span class=\"inventaire-stat__lbl\">total</span></span>" +
+              "</div>" +
+              "<div class=\"inventaire-lot-progress\" title=\"Progression " + lot.stats.progress + "%\">" +
+                "<div class=\"progress-bar recep-progress-wrap\"><div class=\"progress-fill recep-progress-bar\" style=\"width:" + lot.stats.progress + "%\"></div></div>" +
+                "<span class=\"inventaire-lot-progress__pct\">" + lot.stats.progress + "%</span>" +
+              "</div>" +
             "</div>" +
-            "<div class=\"inventaire-lot-progress\"><span class=\"inventaire-lot-progress__label\">Progression · " + lot.stats.progress + "%</span>" +
-              "<div class=\"progress-bar recep-progress-wrap\"><div class=\"progress-fill recep-progress-bar\" style=\"width:" + lot.stats.progress + "%\"></div></div></div>" +
-            "<div class=\"inventaire-lot-pdf-actions\"><button type=\"button\" class=\"lot-btn lot-btn--secondary btn-pdf\" data-kind=\"lot\" data-id=\"" + lot.id + "\"><i class=\"fa-solid fa-file-pdf\"></i> PDF provisoire</button></div>" +
+            (function () {
+              var counts = {};
+              items.forEach(function (it) {
+                var marque = String(it.brand || it.marque || it.marque_name || "").trim() || "—";
+                var modele = String(it.model || it.modele || it.modele_name || "").trim() || "—";
+                var key = marque + "\0" + modele;
+                counts[key] = counts[key] || { marque: marque, modele: modele, count: 0 };
+                counts[key].count += 1;
+              });
+              var rows = Object.keys(counts).map(function (k) { return counts[k]; })
+                .sort(function (a, b) { return b.count - a.count || (a.marque + a.modele).localeCompare(b.marque + b.modele, "fr"); });
+              if (!rows.length) {
+                return "<div class=\"inventaire-lot-pdf-actions\"><button type=\"button\" class=\"lot-btn lot-btn--secondary btn-pdf\" data-kind=\"lot\" data-id=\"" + lot.id + "\"><i class=\"fa-solid fa-file-pdf\"></i> PDF provisoire</button></div>";
+              }
+              var open = !!App.modelBreakdownVisible[lot.id];
+              var chipsHtml = open ? ("<div class=\"inventaire-model-breakdown\" aria-label=\"Quantité par modèle\">" +
+                rows.map(function (r) {
+                  var shortLabel = r.modele !== "—" ? r.modele : r.marque;
+                  var fullLabel = (r.modele !== "—" && r.marque !== "—") ? (r.marque + " " + r.modele) : shortLabel;
+                  return "<span class=\"inventaire-model-chip\" title=\"" + esc(fullLabel) + "\">" +
+                    "<span class=\"inventaire-model-chip__label\">" + esc(shortLabel) + "</span>" +
+                    "<b class=\"inventaire-model-chip__qty\">" + r.count + "</b></span>";
+                }).join("") + "</div>") : "";
+              var btn = "<button type=\"button\" class=\"btn-toggle-models lot-btn lot-btn--ghost" + (open ? " is-active" : "") + "\" data-lot-id=\"" + lot.id + "\" aria-pressed=\"" + (open ? "true" : "false") + "\" title=\"" + (open ? "Masquer" : "Afficher") + " la quantité par modèle\">" +
+                "<i class=\"fa-solid fa-cubes\"></i><span>Modèles</span><span class=\"inventaire-model-toggle__count\">" + rows.length + "</span></button>";
+              return chipsHtml +
+                "<div class=\"inventaire-lot-pdf-actions\">" + btn +
+                "<button type=\"button\" class=\"lot-btn lot-btn--secondary btn-pdf\" data-kind=\"lot\" data-id=\"" + lot.id + "\"><i class=\"fa-solid fa-file-pdf\"></i> PDF provisoire</button></div>";
+            })() +
           "</div>" +
           "<div class=\"lot-content\" style=\"display:none\">" +
             "<div class=\"inventaire-lot-toolbar\">" +
@@ -1053,6 +1091,15 @@
         body.style.display = open ? "none" : "block";
         if (icon) icon.classList.toggle("fa-chevron-down", !open);
         if (icon) icon.classList.toggle("fa-chevron-right", open);
+      });
+    });
+    el.querySelectorAll(".btn-toggle-models").forEach(function (b) {
+      b.addEventListener("click", function (e) {
+        e.stopPropagation();
+        const id = b.getAttribute("data-lot-id");
+        if (App.modelBreakdownVisible[id]) delete App.modelBreakdownVisible[id];
+        else App.modelBreakdownVisible[id] = true;
+        renderInventaire(el);
       });
     });
     el.querySelectorAll(".btn-edit-pc").forEach(function (b) {
@@ -1152,12 +1199,15 @@
   function applyHistoriqueFilters(el) {
     const searchInput = el.querySelector("#filter-search-historique");
     const yearSelect = el.querySelector("#filter-year-historique");
+    const monthSelect = el.querySelector("#filter-month-historique");
     const typeSelect = el.querySelector("#filter-type-historique");
     const q = ((searchInput && searchInput.value) || "").trim().toLowerCase();
     const year = (yearSelect && yearSelect.value) || "";
+    const month = (monthSelect && monthSelect.value) || "";
     const type = (typeSelect && typeSelect.value) || "tous";
     App.histQ = (searchInput && searchInput.value) || "";
     App.histYear = year;
+    App.histMonth = month;
     App.histType = type;
     let visible = 0;
     el.querySelectorAll(".historique-lot-card").forEach(function (card) {
@@ -1165,10 +1215,13 @@
       const titleEl = card.querySelector("h3");
       const title = ((titleEl && titleEl.textContent) || "").toLowerCase();
       const cardYear = card.getAttribute("data-year") || "";
+      const cardMonth = card.getAttribute("data-month") || "";
       const typeOk = type === "tous" || kind === type;
       const yearOk = !year || cardYear === year;
-      const searchOk = !q || title.indexOf(q) !== -1;
-      const show = typeOk && yearOk && searchOk;
+      const monthOk = !month || cardMonth === month;
+      const searchBlob = ((card.getAttribute("data-search") || "") + " " + title).toLowerCase();
+      const searchOk = !q || searchBlob.indexOf(q) !== -1;
+      const show = typeOk && yearOk && monthOk && searchOk;
       card.style.display = show ? "" : "none";
       if (show) visible++;
     });
@@ -1178,19 +1231,32 @@
 
   async function renderHistorique(el) {
     const year = App.histYear || "";
+    const month = App.histMonth || "";
     const type = App.histType || "tous";
     const q = App.histQ || "";
     const yNow = new Date().getFullYear();
     const years = [];
     for (let y = yNow; y >= yNow - 9; y--) years.push(y);
+    const monthLabels = [
+      ["", "Tous"],
+      ["1", "Janvier"], ["2", "Février"], ["3", "Mars"], ["4", "Avril"],
+      ["5", "Mai"], ["6", "Juin"], ["7", "Juillet"], ["8", "Août"],
+      ["9", "Septembre"], ["10", "Octobre"], ["11", "Novembre"], ["12", "Décembre"]
+    ];
     const rows = await API.historique({});
     el.innerHTML =
       "<section class=\"recep-page lot-page historique-container\"><div class=\"lot-page__body\">" +
         "<div class=\"recep-toolbar-compact historique-filters\">" +
           "<div class=\"lot-config__field\"><label class=\"lot-config__label\" for=\"filter-year-historique\"><i class=\"fa-solid fa-calendar\"></i> Année</label>" +
             "<select class=\"lot-config__input\" id=\"filter-year-historique\"><option value=\"\">Toutes</option>" + years.map(function (y) { return "<option value=\"" + y + "\"" + (String(year) === String(y) ? " selected" : "") + ">" + y + "</option>"; }).join("") + "</select></div>" +
+          "<div class=\"lot-config__field\"><label class=\"lot-config__label\" for=\"filter-month-historique\"><i class=\"fa-solid fa-calendar-days\"></i> Mois</label>" +
+            "<select class=\"lot-config__input\" id=\"filter-month-historique\">" +
+              monthLabels.map(function (m) {
+                return "<option value=\"" + m[0] + "\"" + (String(month) === String(m[0]) ? " selected" : "") + ">" + m[1] + "</option>";
+              }).join("") +
+            "</select></div>" +
           "<div class=\"lot-config__field lot-config__field--search\"><label class=\"lot-config__label\" for=\"filter-search-historique\"><i class=\"fa-solid fa-magnifying-glass\"></i> Recherche</label>" +
-            "<input class=\"lot-config__input\" type=\"search\" id=\"filter-search-historique\" value=\"" + esc(q) + "\" placeholder=\"Rechercher par nom…\" autocomplete=\"off\"></div>" +
+            "<input class=\"lot-config__input\" type=\"search\" id=\"filter-search-historique\" value=\"" + esc(q) + "\" placeholder=\"Nom, S/N, modèle, marque…\" autocomplete=\"off\"></div>" +
           "<div class=\"lot-config__field\"><label class=\"lot-config__label\" for=\"filter-type-historique\"><i class=\"fa-solid fa-filter\"></i> Type</label>" +
             "<select class=\"lot-config__input\" id=\"filter-type-historique\">" +
               [["tous","Tous"],["lot","Lot"],["disque","Disque"],["don","Don"],["pret","Prêt matériel"],["commande","Commande"]].map(function (t) {
@@ -1203,7 +1269,7 @@
         "<p class=\"text-mute historique-empty\" style=\"padding:16px" + (rows.length ? ";display:none" : "") + "\">Aucun enregistrement.</p>" +
         "</div></div></div></section>";
     el.querySelector("#filter-search-historique").addEventListener("input", function () { applyHistoriqueFilters(el); });
-    ["filter-year-historique", "filter-type-historique"].forEach(function (id) {
+    ["filter-year-historique", "filter-month-historique", "filter-type-historique"].forEach(function (id) {
       el.querySelector("#" + id).addEventListener("change", function () { applyHistoriqueFilters(el); });
     });
     el.querySelector("#btn-refresh-historique").addEventListener("click", function () { renderHistorique(el); });
@@ -1231,7 +1297,12 @@
         "<span class=\"historique-stat\"><strong>" + ((row.data.items || []).length) + "</strong> total</span>"
       : "<span class=\"historique-stat\"><strong>" + ((row.data.items || []).length) + "</strong> ligne(s)</span>";
     const typeClass = { disque: " historique-disque-card", don: " historique-don-card", pret: " historique-pret-card", commande: " historique-commande-card" }[row.kind] || "";
-    return "<div class=\"historique-lot-card" + typeClass + "\" data-type=\"" + row.kind + "\" data-id=\"" + row.id + "\" data-year=\"" + new Date(row.createdAt).getFullYear() + "\">" +
+    const searchBits = [row.name, row.id];
+    (row.data.items || []).forEach(function (it) {
+      searchBits.push(it.sn, it.serial, it.serial_number, it.brand, it.marque, it.model, it.modele, it.type, it.product, it.name);
+    });
+    const searchAttr = esc(searchBits.filter(Boolean).join(" ").toLowerCase());
+    return "<div class=\"historique-lot-card" + typeClass + "\" data-type=\"" + row.kind + "\" data-id=\"" + row.id + "\" data-year=\"" + new Date(row.createdAt).getFullYear() + "\" data-month=\"" + (new Date(row.createdAt).getMonth() + 1) + "\" data-search=\"" + searchAttr + "\">" +
       "<div class=\"historique-lot-header\"><div class=\"historique-lot-title\">" +
         "<h3><i class=\"fa-solid " + (icons[row.kind] || "fa-file") + " historique-type-icon\"></i> " + (row.kind === "lot" ? "Lot #" + esc(row.id) + " | " : "") + esc(row.name) + "</h3>" +
         (canRecover ? "<span class=\"" + (recovered ? "badge-recovered" : "badge-to-recover") + "\">" + (recovered ? "Récupéré le " + fmtDateTime(recovered) : "À récupérer") + "</span>" : "") +
@@ -1461,7 +1532,7 @@
           "<div class=\"settings-modal-body\"><section class=\"settings-update-card\">" +
             "<header class=\"settings-update-card__header\"><div class=\"settings-update-card__icon\"><i class=\"fa-solid fa-cloud-arrow-down\"></i></div>" +
             "<div class=\"settings-update-card__titles\"><h3>Mise à jour</h3><p class=\"settings-update-card__subtitle\">Vérifiez et installez la dernière version de Tracebaie.</p></div></header>" +
-            "<div class=\"settings-update-status-block\"><span class=\"settings-update-status-label\">État</span><div class=\"settings-update-status\" id=\"settingsUpdateStatus\">Tracebaie démo 3.3.6, à jour</div></div>" +
+            "<div class=\"settings-update-status-block\"><span class=\"settings-update-status-label\">État</span><div class=\"settings-update-status\" id=\"settingsUpdateStatus\">Tracebaie démo 3.3.7, à jour</div></div>" +
             "<div class=\"settings-update-actions\">" +
               "<button type=\"button\" id=\"settingsBtnCheckUpdate\" class=\"settings-btn settings-btn--ghost\"><i class=\"fa-solid fa-arrows-rotate\"></i> Vérifier</button>" +
               "<button type=\"button\" id=\"settingsBtnDownloadUpdate\" class=\"settings-btn settings-btn--primary hidden\" disabled><i class=\"fa-solid fa-download\"></i> Télécharger &amp; préparer</button>" +
@@ -1476,7 +1547,7 @@
   function openSettings() {
     const modal = document.getElementById("settingsModal");
     modal.classList.remove("hidden");
-    document.getElementById("settingsUpdateStatus").textContent = "Tracebaie démo 3.3.6, à jour";
+    document.getElementById("settingsUpdateStatus").textContent = "Tracebaie démo 3.3.7, à jour";
     document.getElementById("settingsBtnDownloadUpdate").classList.add("hidden");
     document.getElementById("settingsBtnRestartUpdate").classList.add("hidden");
     document.getElementById("settingsUpdateProgress").classList.add("hidden");
@@ -1493,7 +1564,7 @@
     App.catalog = null;
     App.lotDraft = App.diskDraft = App.cmdDraft = App.donDraft = App.pretDraft = null;
     App.invQ = App.invSt = "";
-    App.histQ = App.histYear = "";
+    App.histQ = App.histYear = App.histMonth = "";
     App.histType = "tous";
     closeModal(); closeSettings();
     notify("Démo réinitialisée", "success");
@@ -1568,7 +1639,7 @@
   document.getElementById("settingsModalContainer").addEventListener("click", function (e) {
     if (e.target.id === "settingsModalOverlay" || e.target.closest("#settingsModalClose")) closeSettings();
     if (e.target.closest("#settingsBtnCheckUpdate")) {
-      document.getElementById("settingsUpdateStatus").textContent = "Nouvelle version 3.3.6 disponible (simulé)";
+      document.getElementById("settingsUpdateStatus").textContent = "Nouvelle version 3.3.7 disponible (simulé)";
       const dl = document.getElementById("settingsBtnDownloadUpdate");
       dl.classList.remove("hidden"); dl.disabled = false;
       document.getElementById("profileUpdatePing").classList.remove("hidden");
@@ -1592,7 +1663,7 @@
       }, 160);
     }
     if (e.target.closest("#settingsBtnRestartUpdate")) {
-      notify("Redémarrage simulé, vous restez sur la démo 3.3.6", "success");
+      notify("Redémarrage simulé, vous restez sur la démo 3.3.7", "success");
       closeSettings();
     }
   });

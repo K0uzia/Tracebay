@@ -23,6 +23,8 @@ export default class InventaireManager {
         this.lots = [];
         this.marques = [];
         this.modeles = [];
+        /** @type {Set<string>} lots pour lesquels la composition par modèle est affichée */
+        this.modelBreakdownVisible = new Set();
         this.init();
     }
 
@@ -35,11 +37,11 @@ export default class InventaireManager {
 
     async loadReferenceData() {
         try {
-            const marquesRes = await api.get('marques.list');
+            const marquesRes = await api.get('marques.list', { useCache: false });
             if (!marquesRes.ok) return;
             const marquesData = await marquesRes.json();
             this.marques = Array.isArray(marquesData) ? marquesData : (marquesData.items || marquesData.marques || []);
-            const modelesRes = await api.get('marques.all');
+            const modelesRes = await api.get('marques.all', { useCache: false });
             if (!modelesRes.ok) return;
             const modelesData = await modelesRes.json();
             const marquesAvecModeles = Array.isArray(modelesData) ? modelesData : (modelesData.items || []);
@@ -171,12 +173,14 @@ export default class InventaireManager {
         const total = lot.total !== undefined ? lot.total : items.length;
         let recond = lot.recond !== undefined ? lot.recond : 0;
         let hs = lot.hs !== undefined ? lot.hs : 0;
+        let pieces = lot.pieces !== undefined ? lot.pieces : 0;
         let pending = lot.pending !== undefined ? lot.pending : 0;
         
         // Si les stats ne sont pas fournies, les calculer depuis les items
         if (lot.total === undefined && items.length > 0) {
             recond = items.filter(item => item.state === 'Reconditionnés').length;
             hs = items.filter(item => item.state === 'HS').length;
+            pieces = items.filter(item => item.state === 'Pour pièces').length;
             // Un item est "pending" s'il n'a pas d'état défini OU pas de technicien
             pending = items.filter(item => 
                 !item.state || item.state.trim() === '' || 
@@ -193,9 +197,15 @@ export default class InventaireManager {
                 logger.warn(`⚠️ Lot ${lot.id}: pending serveur (${pending}) != calculé (${calculatedPending}), utilisation du calculé`);
                 pending = calculatedPending;
             }
+            if (lot.pieces === undefined) {
+                pieces = items.filter(item => item.state === 'Pour pièces').length;
+            }
         }
         
         const progress = total > 0 ? ((total - pending) / total * 100).toFixed(0) : 0;
+        const modelBreakdownHtml = this.renderModelBreakdown(items);
+        const modelDistinctCount = this.countDistinctModels(items);
+        const modelsOpen = this.modelBreakdownVisible.has(String(lot.id));
         
         // Vérifier si le lot est terminé (tous les items ont un état et un technicien)
         const isFinished = total > 0 && pending === 0 && items.length > 0 && items.every(item => 
@@ -210,6 +220,7 @@ export default class InventaireManager {
             pending,
             recond,
             hs,
+            pieces,
             isFinished,
             finished_at: lot.finished_at,
             status: lot.status,
@@ -219,39 +230,52 @@ export default class InventaireManager {
             lotItemsType: Array.isArray(lot.items) ? 'array' : typeof lot.items
         }, null, 2));
 
+        const safeLotName = lot.lot_name ? this.escapeHtml(lot.lot_name) : '';
+
         return `
             <div class="inventaire-lot-card" data-lot-id="${lot.id}">
                 <div class="inventaire-lot-header" style="cursor: pointer;">
                     <div class="inventaire-lot-title">
                         <i class="fa-solid fa-chevron-right expand-icon"></i>
-                        <h3>Lot #${lot.id}${lot.lot_name ? ' | ' + lot.lot_name : ''}</h3>
-                        <span class="badge-created">Créé le ${this.formatDate(lot.created_at)}</span>
+                        <h3>Lot #${lot.id}${safeLotName ? ' · ' + safeLotName : ''}</h3>
+                        <span class="badge-created">${this.formatDate(lot.created_at)}</span>
                     </div>
-                    <div class="inventaire-lot-stats">
-                        <span class="inventaire-stat inventaire-stat--pending">
-                            <i class="fa-solid fa-hourglass-end"></i>
-                            <strong>${pending}</strong> à faire
-                        </span>
-                        <span class="inventaire-stat inventaire-stat--recond">
-                            <i class="fa-solid fa-check-circle"></i>
-                            <strong>${recond}</strong> reconditionnés
-                        </span>
-                        <span class="inventaire-stat inventaire-stat--hs">
-                            <i class="fa-solid fa-exclamation-circle"></i>
-                            <strong>${hs}</strong> HS
-                        </span>
-                        <span class="inventaire-stat inventaire-stat--total">
-                            <i class="fa-solid fa-layer-group" aria-hidden="true"></i>
-                            <strong>${total}</strong> total
-                        </span>
-                    </div>
-                    <div class="inventaire-lot-progress">
-                        <span class="inventaire-lot-progress__label">Progression · ${progress}%</span>
-                        <div class="progress-bar recep-progress-wrap" role="progressbar" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100" aria-label="Avancement du lot">
-                            <div class="progress-fill recep-progress-bar" style="width: ${progress}%"></div>
+                    <div class="inventaire-lot-meta">
+                        <div class="inventaire-lot-stats" role="group" aria-label="État du lot">
+                            <span class="inventaire-stat inventaire-stat--pending" title="À traiter">
+                                <strong>${pending}</strong><span class="inventaire-stat__lbl">à faire</span>
+                            </span>
+                            ${recond > 0 ? `
+                            <span class="inventaire-stat inventaire-stat--recond" title="Reconditionnés">
+                                <strong>${recond}</strong><span class="inventaire-stat__lbl">recond.</span>
+                            </span>` : ''}
+                            ${pieces > 0 ? `
+                            <span class="inventaire-stat inventaire-stat--pieces" title="Pour pièces">
+                                <strong>${pieces}</strong><span class="inventaire-stat__lbl">pièces</span>
+                            </span>` : ''}
+                            ${hs > 0 ? `
+                            <span class="inventaire-stat inventaire-stat--hs" title="HS">
+                                <strong>${hs}</strong><span class="inventaire-stat__lbl">HS</span>
+                            </span>` : ''}
+                            <span class="inventaire-stat inventaire-stat--total" title="Total">
+                                <strong>${total}</strong><span class="inventaire-stat__lbl">total</span>
+                            </span>
+                        </div>
+                        <div class="inventaire-lot-progress" title="Progression ${progress}%">
+                            <div class="progress-bar recep-progress-wrap" role="progressbar" aria-valuenow="${progress}" aria-valuemin="0" aria-valuemax="100" aria-label="Avancement du lot">
+                                <div class="progress-fill recep-progress-bar" style="width: ${progress}%"></div>
+                            </div>
+                            <span class="inventaire-lot-progress__pct">${progress}%</span>
                         </div>
                     </div>
+                    ${modelsOpen && modelBreakdownHtml ? modelBreakdownHtml : ''}
                     <div class="inventaire-lot-pdf-actions">
+                        ${modelDistinctCount > 0 ? `
+                        <button type="button" class="btn-toggle-models lot-btn lot-btn--ghost${modelsOpen ? ' is-active' : ''}" data-lot-id="${lot.id}" aria-pressed="${modelsOpen ? 'true' : 'false'}" title="${modelsOpen ? 'Masquer la quantité par modèle' : 'Afficher la quantité par modèle'}">
+                            <i class="fa-solid fa-cubes" aria-hidden="true"></i>
+                            <span>Modèles</span>
+                            <span class="inventaire-model-toggle__count">${modelDistinctCount}</span>
+                        </button>` : ''}
                         <button type="button" class="btn-generate-pdf-interim lot-btn lot-btn--secondary" data-lot-id="${lot.id}" title="Générer un PDF provisoire avec les données actuelles">
                             <i class="fa-solid fa-file-pdf" aria-hidden="true"></i> PDF provisoire
                         </button>
@@ -318,6 +342,77 @@ export default class InventaireManager {
             </div>
         `;
     }
+
+    /**
+     * Nombre de modèles distincts (marque + modèle) dans un lot.
+     * @param {Array} items
+     * @returns {number}
+     */
+    countDistinctModels(items) {
+        if (!Array.isArray(items) || items.length === 0) return 0;
+        const keys = new Set();
+        for (const item of items) {
+            const marque = String(item.marque_name || '').trim() || '—';
+            const modele = String(item.modele_name || '').trim() || '—';
+            keys.add(`${marque}\0${modele}`);
+        }
+        return keys.size;
+    }
+
+    /**
+     * Agrège les items d'un lot par marque + modèle pour affichage inventaire (pas PDF).
+     * @param {Array} items
+     * @returns {string} HTML
+     */
+    renderModelBreakdown(items) {
+        if (!Array.isArray(items) || items.length === 0) return '';
+
+        const counts = new Map();
+        for (const item of items) {
+            const marque = String(item.marque_name || '').trim() || '—';
+            const modele = String(item.modele_name || '').trim() || '—';
+            const key = `${marque}\0${modele}`;
+            const existing = counts.get(key);
+            if (existing) {
+                existing.count += 1;
+            } else {
+                counts.set(key, { marque, modele, count: 1 });
+            }
+        }
+
+        const rows = Array.from(counts.values()).sort((a, b) => {
+            if (b.count !== a.count) return b.count - a.count;
+            const labelA = `${a.marque} ${a.modele}`.toLowerCase();
+            const labelB = `${b.marque} ${b.modele}`.toLowerCase();
+            return labelA.localeCompare(labelB, 'fr');
+        });
+
+        if (rows.length === 0) return '';
+
+        const chips = rows.map(({ marque, modele, count }) => {
+            const shortLabel = modele !== '—' ? modele : marque;
+            const fullLabel = modele !== '—' && marque !== '—'
+                ? `${marque} ${modele}`
+                : shortLabel;
+            return `<span class="inventaire-model-chip" title="${this.escapeHtml(fullLabel)}"><span class="inventaire-model-chip__label">${this.escapeHtml(shortLabel)}</span><b class="inventaire-model-chip__qty">${count}</b></span>`;
+        }).join('');
+
+        return `<div class="inventaire-model-breakdown" aria-label="Quantité par modèle">${chips}</div>`;
+    }
+
+    /**
+     * Affiche / masque la composition par modèle pour un lot (préférence session).
+     * @param {string|number} lotId
+     */
+    toggleModelBreakdown(lotId) {
+        const key = String(lotId);
+        if (this.modelBreakdownVisible.has(key)) {
+            this.modelBreakdownVisible.delete(key);
+        } else {
+            this.modelBreakdownVisible.add(key);
+        }
+        this.renderLots();
+    }
     
     /**
      * Boutons « Ouvrir emplacement » / « Voir PDF » si un chemin PDF local est connu.
@@ -341,7 +436,7 @@ export default class InventaireManager {
      */
     attachLotEventListeners() {
         const isPdfAction = (el) => el.closest(
-            '.btn-edit-pc, .btn-remove-pc, .btn-add-pc-to-lot, .btn-delete-lot, .btn-generate-pdf-interim, .btn-open-pdf-location-lot, .btn-view-pdf-lot'
+            '.btn-edit-pc, .btn-remove-pc, .btn-add-pc-to-lot, .btn-delete-lot, .btn-generate-pdf-interim, .btn-open-pdf-location-lot, .btn-view-pdf-lot, .btn-toggle-models'
         );
 
         // Toggle lot expansion
@@ -360,6 +455,13 @@ export default class InventaireManager {
                     content.style.display = 'none';
                     icon.style.transform = 'rotate(0deg)';
                 }
+            });
+        });
+
+        document.querySelectorAll('.btn-toggle-models').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.toggleModelBreakdown(btn.dataset.lotId);
             });
         });
 
@@ -1355,7 +1457,7 @@ export default class InventaireManager {
     }
 
     /**
-     * Appliquer les filtres (état + recherche S/N ou lot)
+     * Appliquer les filtres (état + recherche S/N, modèle, marque ou lot)
      */
     applyFilters() {
         const filterState = document.getElementById('filter-state')?.value || '';
@@ -1373,8 +1475,15 @@ export default class InventaireManager {
             card.querySelectorAll('.item-row').forEach(row => {
                 const stateOk = !filterState || row.classList.toString().includes(`item-${classSuffix}`);
                 const sn = (row.querySelector('.col-sn')?.textContent || '').toLowerCase();
-                const snMatches = sn.includes(searchQuery);
-                const searchOk = !searchQuery || lotMatchesSearch || snMatches;
+                const marque = (row.querySelector('.col-marque')?.textContent || '').toLowerCase();
+                const modele = (row.querySelector('.col-modele')?.textContent || '').toLowerCase();
+                const type = (row.querySelector('.col-type')?.textContent || '').toLowerCase();
+                const itemMatches = !searchQuery
+                    || sn.includes(searchQuery)
+                    || marque.includes(searchQuery)
+                    || modele.includes(searchQuery)
+                    || type.includes(searchQuery);
+                const searchOk = !searchQuery || lotMatchesSearch || itemMatches;
                 const visible = stateOk && searchOk;
                 row.style.display = visible ? '' : 'none';
                 if (visible) visibleCount++;

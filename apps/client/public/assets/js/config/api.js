@@ -369,6 +369,14 @@ const api = {
     clearCache() {
         cache.clear();
     },
+
+    /**
+     * Invalide le cache des marques / modèles (après création ou édition).
+     * @returns {void}
+     */
+    invalidateMarquesCache() {
+        cache.invalidateMatching('marques');
+    },
     
     /**
      * Obtient les statistiques du cache

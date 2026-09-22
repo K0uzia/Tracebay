@@ -79,7 +79,7 @@ export default class GestionLotsManager {
     async loadReferenceData() {
         try {
             // Charger les marques
-            const marquesRes = await api.get('marques.list');
+            const marquesRes = await api.get('marques.list', { useCache: false });
             if (!marquesRes.ok) throw new Error('Erreur chargement marques');
             const marquesData = await marquesRes.json();
             // Gérer les deux formats : tableau direct ou avec wrapper
@@ -87,7 +87,7 @@ export default class GestionLotsManager {
             logger.debug('Marques chargées:', this.marques);
             
             // Charger tous les modèles avec leurs marques
-            const modelesRes = await api.get('marques.all');
+            const modelesRes = await api.get('marques.all', { useCache: false });
             if (!modelesRes.ok) {
                 // Endpoint alternatif si /all n'existe pas
                 throw new Error('Endpoint modèles non trouvé');
@@ -827,6 +827,7 @@ export default class GestionLotsManager {
             this.modalManager.close('modal-add-marque');
             input.value = '';
 
+            api.invalidateMarquesCache?.();
             // Mise à jour UI sans recharger l'API (évite que la liste écrasée n'ait pas encore la nouvelle marque)
             this.updateMarqueSelects();
             this.populateMassSelects();
@@ -901,6 +902,7 @@ export default class GestionLotsManager {
             inputModele.value = '';
             selectMarque.value = '';
 
+            api.invalidateMarquesCache?.();
             // Mise à jour UI sans recharger l'API (évite que la liste écrasée n'ait pas encore le nouveau modèle)
             this.populateMassSelects();
             this.updateMarqueSelects();

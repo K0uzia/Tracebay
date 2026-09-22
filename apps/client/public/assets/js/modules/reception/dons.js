@@ -62,12 +62,12 @@ export default class DonsManager {
 
     async loadReferenceData() {
         try {
-            const marquesRes = await api.get('marques.list');
+            const marquesRes = await api.get('marques.list', { useCache: false });
             if (!marquesRes.ok) throw new Error('Erreur chargement marques');
             const marquesData = await marquesRes.json();
             this.marques = Array.isArray(marquesData) ? marquesData : (marquesData.items || marquesData.marques || []);
 
-            const modelesRes = await api.get('marques.all');
+            const modelesRes = await api.get('marques.all', { useCache: false });
             if (!modelesRes.ok) throw new Error('Endpoint modèles non trouvé');
             const modelesData = await modelesRes.json();
             const marquesAvecModeles = Array.isArray(modelesData) ? modelesData : (modelesData.items || []);
@@ -346,7 +346,8 @@ export default class DonsManager {
             const response = await api.post('marques.list', { name });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
-            this.marques.push({ id: data.id || this.marques.length + 1, name });
+            this.marques.push({ id: data.id || data.item?.id || this.marques.length + 1, name });
+            api.invalidateMarquesCache?.();
             this.updateMarqueSelects();
             input.value = '';
             this.modalManager.close('modal-add-marque');
@@ -379,8 +380,17 @@ export default class DonsManager {
             });
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             const data = await response.json();
-            this.modeles.push({ id: data.id || this.modeles.length + 1, name, marque_id: marqueId });
+            this.modeles.push({ id: data.id || data.item?.id || this.modeles.length + 1, name, marque_id: marqueId });
+            api.invalidateMarquesCache?.();
             this.updateMarqueSelects();
+            // Rafraîchir les selects modèle des lignes qui ont cette marque
+            document.querySelectorAll('#dons-tbody .dons-line').forEach(row => {
+                const marqueSelect = row.querySelector('.dons-select-marque');
+                const modeleSelect = row.querySelector('.dons-select-modele');
+                if (marqueSelect && modeleSelect && String(marqueSelect.value) === String(marqueId)) {
+                    this.updateModeleSelect(marqueId, modeleSelect);
+                }
+            });
             inputModele.value = '';
             selectMarque.value = '';
             this.modalManager.close('modal-add-modele');
