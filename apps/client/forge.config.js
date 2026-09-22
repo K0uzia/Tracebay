@@ -25,6 +25,8 @@ module.exports = {
                 priority: 'optional',
                 icon: './assets/icon.png',
                 productName: 'Tracebaie',
+                name: 'workspace',
+                bin: 'workspace',
                 productDescription: 'Tracebaie — traçabilité de matériel informatique',
                 depends: ['libgtk-3-0', 'libnotify4', 'libnss3', 'xdg-utils'],
                 recommends: [],

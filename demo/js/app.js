@@ -1532,7 +1532,7 @@
           "<div class=\"settings-modal-body\"><section class=\"settings-update-card\">" +
             "<header class=\"settings-update-card__header\"><div class=\"settings-update-card__icon\"><i class=\"fa-solid fa-cloud-arrow-down\"></i></div>" +
             "<div class=\"settings-update-card__titles\"><h3>Mise à jour</h3><p class=\"settings-update-card__subtitle\">Vérifiez et installez la dernière version de Tracebaie.</p></div></header>" +
-            "<div class=\"settings-update-status-block\"><span class=\"settings-update-status-label\">État</span><div class=\"settings-update-status\" id=\"settingsUpdateStatus\">Tracebaie démo 3.3.7, à jour</div></div>" +
+            "<div class=\"settings-update-status-block\"><span class=\"settings-update-status-label\">État</span><div class=\"settings-update-status\" id=\"settingsUpdateStatus\">Tracebaie démo 3.3.8, à jour</div></div>" +
             "<div class=\"settings-update-actions\">" +
               "<button type=\"button\" id=\"settingsBtnCheckUpdate\" class=\"settings-btn settings-btn--ghost\"><i class=\"fa-solid fa-arrows-rotate\"></i> Vérifier</button>" +
               "<button type=\"button\" id=\"settingsBtnDownloadUpdate\" class=\"settings-btn settings-btn--primary hidden\" disabled><i class=\"fa-solid fa-download\"></i> Télécharger &amp; préparer</button>" +
@@ -1547,7 +1547,7 @@
   function openSettings() {
     const modal = document.getElementById("settingsModal");
     modal.classList.remove("hidden");
-    document.getElementById("settingsUpdateStatus").textContent = "Tracebaie démo 3.3.7, à jour";
+    document.getElementById("settingsUpdateStatus").textContent = "Tracebaie démo 3.3.8, à jour";
     document.getElementById("settingsBtnDownloadUpdate").classList.add("hidden");
     document.getElementById("settingsBtnRestartUpdate").classList.add("hidden");
     document.getElementById("settingsUpdateProgress").classList.add("hidden");
@@ -1639,7 +1639,7 @@
   document.getElementById("settingsModalContainer").addEventListener("click", function (e) {
     if (e.target.id === "settingsModalOverlay" || e.target.closest("#settingsModalClose")) closeSettings();
     if (e.target.closest("#settingsBtnCheckUpdate")) {
-      document.getElementById("settingsUpdateStatus").textContent = "Nouvelle version 3.3.7 disponible (simulé)";
+      document.getElementById("settingsUpdateStatus").textContent = "Nouvelle version 3.3.8 disponible (simulé)";
       const dl = document.getElementById("settingsBtnDownloadUpdate");
       dl.classList.remove("hidden"); dl.disabled = false;
       document.getElementById("profileUpdatePing").classList.remove("hidden");
@@ -1663,7 +1663,7 @@
       }, 160);
     }
     if (e.target.closest("#settingsBtnRestartUpdate")) {
-      notify("Redémarrage simulé, vous restez sur la démo 3.3.7", "success");
+      notify("Redémarrage simulé, vous restez sur la démo 3.3.8", "success");
       closeSettings();
     }
   });

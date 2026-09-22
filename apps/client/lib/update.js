@@ -122,9 +122,9 @@ async function runAutoUpdate(opts) {
                     if (typeof opts.linuxAppImageBackup === 'function') {
                         opts.linuxAppImageBackup(currentApp);
                     }
-                    const updateTempDir = pathModule.join(app.getPath('temp'), 'tracebaie-update');
+                    const updateTempDir = pathModule.join(app.getPath('temp'), 'workspace-update');
                     fsModule.mkdirSync(updateTempDir, { recursive: true });
-                    const tempAppPath = pathModule.join(updateTempDir, 'tracebaie.AppImage');
+                    const tempAppPath = pathModule.join(updateTempDir, 'workspace.AppImage');
                     fsModule.renameSync(newApp, tempAppPath);
                     preparedAppImage = tempAppPath;
                     console.log('[Update] AppImage prête (appliquée au redémarrage):', preparedAppImage);

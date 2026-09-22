@@ -478,10 +478,14 @@ function tryLinuxAppImageUpdateHelperDetailed(currentAppPath, newAppPath) {
 /**
  * Sous Linux .deb : helper détaché qui, APRÈS la mort de l’app :
  * 1) installe le .deb via pkexec (apt-get ou dpkg)
- * 2) relance `tracebaie` (ou l’ancien binaire `workspace`)
+ * 2) relance `workspace` (identité Debian historique) ou `tracebaie` (installs transitoires)
+ *
+ * Important : le paquet Debian / binaire restent « workspace » pour que les
+ * mises à jour remplacent le .deb déjà installé et que les scripts machines
+ * (autostart) continuent de fonctionner. Le nom affiché UI reste Tracebaie.
  *
  * Important : ne jamais lancer dpkg/pkexec tant que l’app tourne — les binaires
- * sous /usr/lib/tracebaie sont ouverts, et pkexec détaché + quit immédiat
+ * sous /usr/lib/workspace sont ouverts, et pkexec détaché + quit immédiat
  * tue souvent la session d’auth sans installer.
  */
 function tryLinuxDebUpdateHelper(debPath) {
@@ -583,17 +587,18 @@ fi
 
 sleep 1
 bin=""
-if [ -x /usr/bin/tracebaie ]; then bin=/usr/bin/tracebaie;
-elif command -v tracebaie >/dev/null 2>&1; then bin=$(command -v tracebaie);
-elif [ -x /usr/local/bin/tracebaie ]; then bin=/usr/local/bin/tracebaie;
-elif [ -x /usr/lib/tracebaie/tracebaie ]; then bin=/usr/lib/tracebaie/tracebaie;
-elif [ -x /usr/bin/workspace ]; then bin=/usr/bin/workspace;
+# Identité Debian historique = workspace (scripts / autostart machines)
+if [ -x /usr/bin/workspace ]; then bin=/usr/bin/workspace;
 elif command -v workspace >/dev/null 2>&1; then bin=$(command -v workspace);
 elif [ -x /usr/local/bin/workspace ]; then bin=/usr/local/bin/workspace;
 elif [ -x /usr/lib/workspace/workspace ]; then bin=/usr/lib/workspace/workspace;
+elif [ -x /usr/bin/tracebaie ]; then bin=/usr/bin/tracebaie;
+elif command -v tracebaie >/dev/null 2>&1; then bin=$(command -v tracebaie);
+elif [ -x /usr/local/bin/tracebaie ]; then bin=/usr/local/bin/tracebaie;
+elif [ -x /usr/lib/tracebaie/tracebaie ]; then bin=/usr/lib/tracebaie/tracebaie;
 fi
 if [ -z "$bin" ]; then
-  log "FAIL tracebaie binary not found after install"
+  log "FAIL workspace/tracebaie binary not found after install"
   exit 1
 fi
 
@@ -699,8 +704,8 @@ function latestYmlFileName(packageType = getInstallPackageType()) {
 }
 
 function defaultAssetFileName(packageType = getInstallPackageType()) {
-    if (packageType === 'AppImage') return 'tracebaie.AppImage';
-    if (packageType === 'deb') return 'tracebaie.deb';
+    if (packageType === 'AppImage') return 'workspace.AppImage';
+    if (packageType === 'deb') return 'workspace.deb';
     if (packageType === 'dmg') {
         const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
         return `Tracebaie-${app.getVersion?.() || '0.0.0'}-${arch}.dmg`;
@@ -822,18 +827,18 @@ function pickReleaseAsset(releaseJson, packageType = getInstallPackageType()) {
     const nameOf = (a) => String(a?.name || '').toLowerCase();
 
     if (packageType === 'AppImage') {
-        return assets.find(a => nameOf(a) === 'tracebaie.appimage')
-            || assets.find(a => /tracebaie.*\.appimage$/i.test(nameOf(a)))
-            || assets.find(a => nameOf(a) === 'workspace.appimage')
+        return assets.find(a => nameOf(a) === 'workspace.appimage')
             || assets.find(a => /workspace.*\.appimage$/i.test(nameOf(a)))
+            || assets.find(a => nameOf(a) === 'tracebaie.appimage')
+            || assets.find(a => /tracebaie.*\.appimage$/i.test(nameOf(a)))
             || assets.find(a => /\.appimage$/i.test(nameOf(a)))
             || null;
     }
     if (packageType === 'deb') {
-        return assets.find(a => nameOf(a) === 'tracebaie.deb')
-            || assets.find(a => /tracebaie.*\.deb$/i.test(nameOf(a)))
-            || assets.find(a => nameOf(a) === 'workspace.deb')
+        return assets.find(a => nameOf(a) === 'workspace.deb')
             || assets.find(a => /workspace.*\.deb$/i.test(nameOf(a)))
+            || assets.find(a => nameOf(a) === 'tracebaie.deb')
+            || assets.find(a => /tracebaie.*\.deb$/i.test(nameOf(a)))
             || assets.find(a => /\.deb$/i.test(nameOf(a)))
             || null;
     }
@@ -844,10 +849,10 @@ function pickReleaseAsset(releaseJson, packageType = getInstallPackageType()) {
             || null;
     }
     if (packageType === 'nsis') {
-        return assets.find(a => nameOf(a) === 'tracebaie.exe')
-            || assets.find(a => /tracebaie.*\.(exe|msi)$/i.test(nameOf(a)))
-            || assets.find(a => nameOf(a) === 'workspace.exe')
+        return assets.find(a => nameOf(a) === 'workspace.exe')
             || assets.find(a => /workspace.*\.(exe|msi)$/i.test(nameOf(a)))
+            || assets.find(a => nameOf(a) === 'tracebaie.exe')
+            || assets.find(a => /tracebaie.*\.(exe|msi)$/i.test(nameOf(a)))
             || assets.find(a => /\.(exe|msi)$/i.test(nameOf(a)))
             || null;
     }

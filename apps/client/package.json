@@ -1,6 +1,6 @@
 {
   "name": "tracebaie",
-  "version": "3.3.7",
+  "version": "3.3.8",
   "main": "main.js",
   "homepage": "https://github.com/K0uzia/tracebaie#readme",
   "description": "Tracebaie — traçabilité de matériel (lots, disques, archives) et agenda",
@@ -161,7 +161,7 @@
     },
     "linux": {
       "maintainer": "K0uzia <k0uzia@users.noreply.github.com>",
-      "executableName": "tracebaie",
+      "executableName": "workspace",
       "synopsis": "Tracebaie — traçabilité de matériel informatique",
       "target": [
         {
@@ -179,18 +179,18 @@
       ],
       "icon": "assets/icon.png",
       "category": "Utility",
-      "artifactName": "tracebaie.${ext}",
+      "artifactName": "workspace.${ext}",
       "desktop": {
         "entry": {
           "Name": "Tracebaie",
           "Comment": "Tracebaie — traçabilité de matériel informatique",
           "Categories": "Utility;",
-          "StartupWMClass": "tracebaie"
+          "StartupWMClass": "workspace"
         }
       }
     },
     "appImage": {
-      "artifactName": "tracebaie.${ext}"
+      "artifactName": "workspace.${ext}"
     },
     "deb": {
       "packageCategory": "utils",
@@ -207,7 +207,12 @@
         "libasound2 | libasound2t64"
       ],
       "priority": "optional",
-      "artifactName": "tracebaie.${ext}"
+      "artifactName": "workspace.${ext}",
+      "fpm": [
+        "--replaces", "tracebaie",
+        "--conflicts", "tracebaie",
+        "--provides", "tracebaie"
+      ]
     }
   },
   "repository": {
