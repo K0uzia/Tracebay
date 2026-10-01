@@ -36,7 +36,7 @@ Puis aller sur [http://localhost:8080](http://localhost:8080).
 
 - Flux : Lots, Disques (dont détection simulée), Commande, Dons, Prêts matériel
 - Suivi : Inventaire (lots en cours, édition PC, clôture auto, PDF)
-- Historique & traçabilité (fusionnés) : détails, édition, récupération, PDF, e-mail simulé
+- Historique & traçabilité (fusionnés) : détails, édition, récupération, PDF (logo Tracebay), e-mail simulé
 
 **Hors périmètre volontaire**
 

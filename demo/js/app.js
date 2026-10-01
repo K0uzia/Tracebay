@@ -87,7 +87,8 @@
   }
   function recipientOf(it) { return it.stagiaire || it.recipient || ""; }
   function pdfBrand() {
-    return "<div class=\"pdf-header-logo\"><span class=\"pdf-mark\">NX</span><h2 class=\"pdf-header-subtitle\">NEXA ATELIER</h2></div>";
+    const src = new URL("apps/client/assets/brand/logos/svg/tracebay-logo.svg", location.href).href;
+    return "<div class=\"pdf-header-logo\"><img class=\"pdf-brand-logo\" src=\"" + src + "\" alt=\"Tracebay\"></div>";
   }
 
   let notifyHideTimer = 0;
@@ -389,7 +390,7 @@
     content.innerHTML =
       "<div class=\"r-root\" role=\"application\" aria-label=\"Réception\">" +
         "<header class=\"r-header\">" +
-          "<div class=\"r-brand\"><span class=\"r-brand-kicker\"><img class=\"brand-wordmark brand-wordmark--on-light\" src=\"apps/client/assets/brand/logos/svg/tracebay-reduit-16px.svg\" alt=\"Tracebay\"><img class=\"brand-wordmark brand-wordmark--on-dark\" src=\"apps/client/assets/brand/logos/svg/tracebay-reduit-16px-fond-sombre.svg\" alt=\"Tracebay\"></span><h1 class=\"r-brand-title\">Reception</h1><span class=\"r-brand-subtitle\">Flux, suivi et archives</span></div>" +
+          "<div class=\"r-brand\"><h1 class=\"r-brand-title\">Reception</h1><span class=\"r-brand-subtitle\">Flux, suivi et archives</span></div>" +
           "<nav class=\"r-nav\">" +
             "<div class=\"r-nav-group\"><div class=\"r-nav-group-title\">Flux</div>" +
               nav("entrer", "fa-boxes-stacked", "Lots") +
