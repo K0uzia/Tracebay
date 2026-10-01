@@ -1,58 +1,63 @@
 <p align="center">
-  <img src="apps/client/assets/tracebaieBanner.svg" alt="Tracebaie">
+  <img src="apps/client/assets/brand/logos/svg/tracebay-logo-blanc.svg" alt="Tracebay" width="760" style="background-color:#1B1F24;padding:2.5rem 3rem">
 </p>
 
-<p align="center">
-  <a href="https://github.com/K0uzia/tracebaie/tree/main/docs"><img src="https://img.shields.io/badge/docs-GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="Documentation"></a>
-  <a href="https://github.com/K0uzia/tracebaie/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-Source--Available-0F172A?style=for-the-badge" alt="Licence source-available"></a>
-  <a href="https://github.com/K0uzia"><img src="https://img.shields.io/badge/Author-K0uzia-blueviolet?style=for-the-badge" alt="K0uzia"></a>
-</p>
-<p align="center">
-  <a href="https://github.com/K0uzia/tracebaie/blob/main/package.json"><img src="https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FK0uzia%2Ftracebaie%2Fmain%2Fpackage.json&amp;query=%24.version&amp;label=version&amp;logo=npm&amp;logoColor=white&amp;style=for-the-badge" alt="Version"></a>
-  <a href="https://github.com/K0uzia/tracebaie/blob/main/package.json"><img src="https://img.shields.io/badge/node.js-%3E%3D18-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js ≥ 18"></a>
-  <a href="https://github.com/K0uzia/tracebaie/blob/main/apps/client/package.json"><img src="https://img.shields.io/badge/Electron-39.x-47848F?style=for-the-badge&logo=electron&logoColor=white" alt="Electron 39"></a>
-</p>
+![Documentation](https://img.shields.io/badge/docs-GitHub-181717?style=for-the-badge&logo=github&logoColor=white)![Licence source-available](https://img.shields.io/badge/License-Source--Available-0F172A?style=for-the-badge)![K0uzia](https://img.shields.io/badge/Author-K0uzia-blueviolet?style=for-the-badge)
 
-**Tracebaie** est une application de bureau de **traçabilité de matériel informatique** : réception de lots, disques, commandes, dons et prêts, inventaire et archives PDF. Un agenda partagé complète l’atelier.
+![Version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fraw.githubusercontent.com%2FK0uzia%2FTracebay%2Fmain%2Fpackage.json&query=%24.version&label=version&logo=npm&logoColor=white&style=for-the-badge)![Node.js ≥ 18](https://img.shields.io/badge/node.js-%3E%3D18-339933?style=for-the-badge&logo=node.js&logoColor=white)![Electron 39](https://img.shields.io/badge/Electron-39.x-47848F?style=for-the-badge&logo=electron&logoColor=white)
 
-| Module | Rôle |
-| ------ | ---- |
-| **Agenda** | Calendrier partagé (semaine, mois, année) |
+**Tracebay** est un logiciel de bureau de **traçabilité de matériel informatique** : réception de lots, disques, commandes, dons et prêts, inventaire et archives PDF. Un agenda partagé complète l’atelier.
+
+
+| Module        | Rôle                                                              |
+| ------------- | ----------------------------------------------------------------- |
+| **Agenda**    | Calendrier partagé (semaine, mois, année)                         |
 | **Réception** | Lots, disques, commandes, dons, prêts, inventaire et archives PDF |
 
-Démo navigateur (données fictives, sans Electron) : [k0uzia.github.io/tracebaie](https://k0uzia.github.io/tracebaie/)
+
+Démo navigateur (données fictives, sans Electron) : [k0uzia.github.io/Tracebay](https://k0uzia.github.io/Tracebay/)
 
 ---
 
+
+
 ## Licence
 
-Le code est **consultable** sous [Tracebaie Source-Available License](LICENSE).
+Le code est **consultable** sous [Tracebay Source-Available License](LICENSE).
 
-| Autorisé | Soumis à autorisation écrite |
-| -------- | ---------------------------- |
-| Usage, étude, modification | Vente du logiciel ou d’un produit essentiellement similaire |
+
+| Autorisé                                     | Soumis à autorisation écrite                                        |
+| -------------------------------------------- | ------------------------------------------------------------------- |
+| Usage, étude, modification                   | Vente du logiciel ou d’un produit essentiellement similaire         |
 | Déploiement interne, y compris professionnel | Redistribution commerciale, OEM, marque blanche, offre SaaS payante |
+
 
 Les dépendances tierces conservent leurs licences. Pour une licence commerciale : [github.com/K0uzia](https://github.com/K0uzia).
 
 ---
 
+
+
 ## Branches
 
-| Branche | Contenu |
-| ------- | ------- |
-| **`main`** | Application client (Electron), démo, docs côté app |
-| **`proxmox`** | Backend / serveur (API Fastify, PostgreSQL, Docker, scripts de déploiement) |
+
+| Branche   | Contenu                                                                     |
+| --------- | --------------------------------------------------------------------------- |
+| `main`    | logiciel client (Electron), démo, docs côté app                             |
+| `proxmox` | Backend / serveur (API Fastify, PostgreSQL, Docker, scripts de déploiement) |
+
 
 Ne pas remettre le backend dans `main` : travailler et déployer le serveur depuis la branche `proxmox`.
 
 ## Architecture
 
-| Composant | Stack | Emplacement |
-| --------- | ----- | ----------- |
-| Client | Electron 39, HTML / JavaScript, `electron-builder` | `apps/client/` sur **`main`** |
-| Démo | HTML / CSS / JS, `localStorage` | `demo/` sur **`main`** |
-| Backend | Fastify, TypeScript, PostgreSQL, JWT | branche **`proxmox`** (`proxmox/app/`, Docker, scripts) |
+
+| Composant | Stack                                              | Emplacement                                         |
+| --------- | -------------------------------------------------- | --------------------------------------------------- |
+| Client    | Electron 39, HTML / JavaScript, `electron-builder` | `apps/client/` sur `main`                           |
+| Démo      | HTML / CSS / JS, `localStorage`                    | `demo/` sur `main`                                  |
+| Backend   | Fastify, TypeScript, PostgreSQL, JWT               | branche `proxmox` (`proxmox/app/`, Docker, scripts) |
+
 
 Le client communique en HTTP JSON. Les URL sont définies dans `connection.json` (`local`, `proxmox`, `production`). Le processus principal (`main.js`) gère les PDF, `lsblk` (Linux) et les mises à jour.
 
@@ -74,6 +79,8 @@ flowchart LR
     M --> FS["Fichiers / partage"]
 ```
 
+
+
 ```
 # Branche main (app)
 ├── apps/client/          Client Electron (seul workspace npm)
@@ -87,6 +94,8 @@ flowchart LR
 
 ---
 
+
+
 ## Fonctionnement
 
 Point d’entrée : **Agenda**. Navigation : Agenda, Reception, thème, paramètres (mises à jour).
@@ -99,20 +108,24 @@ Vues semaine, mois et année. Création, modification et suppression d’événe
 
 **Saisie**
 
-| Page | Fonction |
-| ---- | -------- |
-| Lots | Scan ou saisie des numéros de série, type, marque, modèle. L’enregistrement crée un lot actif. |
-| Disques | Session d’effacement ou de destruction. Saisie ou détection `lsblk` (Linux). PDF à l’enregistrement. |
-| Commande | Lignes produits, quantités, prix. PDF et persistance. |
-| Dons | Certificat de don. PDF. |
-| Prêts | Fiche de prêt ou de location. PDF. |
+
+| Page     | Fonction                                                                                             |
+| -------- | ---------------------------------------------------------------------------------------------------- |
+| Lots     | Scan ou saisie des numéros de série, type, marque, modèle. L’enregistrement crée un lot actif.       |
+| Disques  | Session d’effacement ou de destruction. Saisie ou détection `lsblk` (Linux). PDF à l’enregistrement. |
+| Commande | Lignes produits, quantités, prix. PDF et persistance.                                                |
+| Dons     | Certificat de don. PDF.                                                                              |
+| Prêts    | Fiche de prêt ou de location. PDF.                                                                   |
+
 
 **Suivi**
 
-| Page | Fonction |
-| ---- | -------- |
-| Inventaire | Lots en cours. États, techniciens, OS. Clôture automatique et PDF final lorsque chaque machine est complète. |
+
+| Page       | Fonction                                                                                                                       |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Inventaire | Lots en cours. États, techniciens, OS. Clôture automatique et PDF final lorsque chaque machine est complète.                   |
 | Historique | Archives (lots, disques, commandes, dons, prêts), édition selon le type, PDF, e-mail (lots et disques), marquage « récupéré ». |
+
 
 ```
 Lots  →  Inventaire  →  Historique
@@ -121,9 +134,11 @@ Disques · Commande · Dons · Prêts  →  Historique
 
 Les lots sont le seul flux avec étape Inventaire. L’authentification est un JWT silencieux (`localStorage`) : pas d’écran de compte, les API restent protégées.
 
-**Hors produit :** Accueil, Dossier, Applications, Raccourcis, Chat, connexion, Options, Traçabilité comme page distincte.
+**Hors produit :** Accueil, Dossier, logiciels, Raccourcis, Chat, connexion, Options, Traçabilité comme page distincte.
 
 ---
+
+
 
 ## Sécurité (client)
 
@@ -136,6 +151,8 @@ Voir [SECURITY.md](SECURITY.md).
 
 ---
 
+
+
 ## Démarrage
 
 Prérequis : Node.js ≥ 18.
@@ -145,7 +162,7 @@ npm ci
 npm start
 ```
 
-Backend / serveur : cloner ou basculer sur la branche **`proxmox`**, puis suivre le README de cette branche.
+Backend / serveur : cloner ou basculer sur la branche `proxmox`, puis suivre le README de cette branche.
 
 Configurer `apps/client/public/config/connection.json`.
 
@@ -153,26 +170,34 @@ Configurer `apps/client/public/config/connection.json`.
 python3 -m http.server 8080 --directory demo
 ```
 
+
+
 ### Distribution
 
-| Cible | Détail |
-| ----- | ------ |
-| Linux | AppImage ou `.deb` (`electron-builder`, `apps/client/dist/`) |
-| Windows | NSIS ou portable |
-| macOS | DMG |
-| Mises à jour | `electron-updater`, GitHub Releases |
-| CI | [`.github/workflows/build-client.yml`](.github/workflows/build-client.yml) |
 
-Déploiement backend : branche [`proxmox`](https://github.com/K0uzia/tracebaie/tree/proxmox).
+| Cible        | Détail                                                                     |
+| ------------ | -------------------------------------------------------------------------- |
+| Linux        | AppImage ou `.deb` (`electron-builder`, `apps/client/dist/`)               |
+| Windows      | NSIS ou portable                                                           |
+| macOS        | DMG                                                                        |
+| Mises à jour | `electron-updater`, GitHub Releases                                        |
+| CI           | `[.github/workflows/build-client.yml](.github/workflows/build-client.yml)` |
+
+
+Déploiement backend : branche `[proxmox](https://github.com/K0uzia/Tracebay/tree/proxmox)`.
 
 ---
 
+
+
 ## Documentation
 
-- [Fonctionnement détaillé](FONCTIONNEMENT-APPLICATION.md)
+- [Fonctionnement détaillé](FONCTIONNEMENT-logiciel.md)
 - [API](docs/API.md)
 - [Base de données](docs/DATABASE.md)
 - [Démo](demo/README.md)
+
+
 
 ## Contribution
 

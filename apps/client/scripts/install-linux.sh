@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Installation Tracebaie sous Linux (Debian/Ubuntu et dérivés).
-# Identité système (binaire / paquet) = workspace — nom affiché = Tracebaie.
+# Installation Tracebay sous Linux (Debian/Ubuntu et dérivés).
+# Identité système (binaire / paquet) = workspace — nom affiché = Tracebay.
 # Usage :
 #   ./install-linux.sh workspace.AppImage
 #   ./install-linux.sh workspace.deb
@@ -8,7 +8,7 @@ set -euo pipefail
 
 FILE="${1:-}"
 if [[ -z "$FILE" || ! -f "$FILE" ]]; then
-  echo "Usage: $0 <workspace.AppImage|workspace.deb> (ou tracebaie.*)"
+  echo "Usage: $0 <workspace.AppImage|workspace.deb> (ou Tracebay.*)"
   exit 1
 fi
 
@@ -28,8 +28,8 @@ if [[ "$EXT_LOWER" == "appimage" ]]; then
   mkdir -p "$DESKTOP_DIR"
   cat > "${DESKTOP_DIR}/workspace.desktop" <<EOF
 [Desktop Entry]
-Name=Tracebaie
-Comment=Tracebaie — traçabilité de matériel informatique
+Name=Tracebay
+Comment=Tracebay — traçabilité de matériel informatique
 Exec=${DEST}
 Icon=workspace
 Terminal=false
@@ -51,7 +51,7 @@ if [[ "$EXT_LOWER" == "deb" ]]; then
     sudo dpkg -i "$ABS" || true
     sudo apt-get install -f -y
   fi
-  echo "Installation terminée. Lancez « Tracebaie » (commande : workspace)."
+  echo "Installation terminée. Lancez « Tracebay » (commande : workspace)."
   exit 0
 fi
 

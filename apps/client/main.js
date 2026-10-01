@@ -1,5 +1,5 @@
 /**
- * Tracebaie Client - Electron Main Process
+ * Tracebay Client - Electron Main Process
  * Gère la fenêtre d'application et la connexion au serveur distant
  */
 const { app, BrowserWindow, ipcMain, shell, Notification, nativeImage, Menu, globalShortcut, crashReporter, net } = require('electron');
@@ -478,11 +478,11 @@ function tryLinuxAppImageUpdateHelperDetailed(currentAppPath, newAppPath) {
 /**
  * Sous Linux .deb : helper détaché qui, APRÈS la mort de l’app :
  * 1) installe le .deb via **un seul** pkexec (évite le spam de boîtes admin)
- * 2) relance `workspace` (identité Debian) ou `tracebaie` (installs transitoires)
+ * 2) relance `workspace` (identité Debian) ou `Tracebay` (installs transitoires)
  *
  * Important : le paquet Debian / binaire restent « workspace » pour que les
  * mises à jour remplacent le .deb déjà installé et que les scripts machines
- * (autostart) continuent de fonctionner. Le nom affiché UI reste Tracebaie.
+ * (autostart) continuent de fonctionner. Le nom affiché UI reste Tracebay.
  *
  * Important : ne jamais lancer dpkg/pkexec tant que l’app tourne — les binaires
  * sous /usr/lib/workspace sont ouverts, et pkexec détaché + quit immédiat
@@ -611,13 +611,13 @@ if [ -x /usr/bin/workspace ]; then bin=/usr/bin/workspace;
 elif command -v workspace >/dev/null 2>&1; then bin=$(command -v workspace);
 elif [ -x /usr/local/bin/workspace ]; then bin=/usr/local/bin/workspace;
 elif [ -x /usr/lib/workspace/workspace ]; then bin=/usr/lib/workspace/workspace;
-elif [ -x /usr/bin/tracebaie ]; then bin=/usr/bin/tracebaie;
-elif command -v tracebaie >/dev/null 2>&1; then bin=$(command -v tracebaie);
-elif [ -x /usr/local/bin/tracebaie ]; then bin=/usr/local/bin/tracebaie;
-elif [ -x /usr/lib/tracebaie/tracebaie ]; then bin=/usr/lib/tracebaie/tracebaie;
+elif [ -x /usr/bin/Tracebay ]; then bin=/usr/bin/Tracebay;
+elif command -v Tracebay >/dev/null 2>&1; then bin=$(command -v Tracebay);
+elif [ -x /usr/local/bin/Tracebay ]; then bin=/usr/local/bin/Tracebay;
+elif [ -x /usr/lib/Tracebay/Tracebay ]; then bin=/usr/lib/Tracebay/Tracebay;
 fi
 if [ -z "$bin" ]; then
-  log "FAIL workspace/tracebaie binary not found after install"
+  log "FAIL workspace/Tracebay binary not found after install"
   exit 1
 fi
 
@@ -670,7 +670,7 @@ exit 0
 
 // --- Mise à jour manuelle (AppImage, .deb, DMG, NSIS) ---
 const GITHUB_OWNER = 'K0uzia';
-const GITHUB_REPO = 'tracebaie';
+const GITHUB_REPO = 'Tracebay';
 
 function normalizeSemver(v) {
     const s = String(v || '').trim().replace(/^v/i, '');
@@ -708,7 +708,7 @@ function getInstallPackageType() {
 function githubRequestHeaders(extra = {}) {
     return {
         'Accept': 'application/vnd.github+json',
-        'User-Agent': `TracebaieClient/${app.getVersion?.() || '0.0.0'}`,
+        'User-Agent': `TracebayClient/${app.getVersion?.() || '0.0.0'}`,
         'X-GitHub-Api-Version': '2022-11-28',
         ...extra
     };
@@ -729,9 +729,9 @@ function defaultAssetFileName(packageType = getInstallPackageType()) {
     if (packageType === 'deb') return 'workspace.deb';
     if (packageType === 'dmg') {
         const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
-        return `Tracebaie-${app.getVersion?.() || '0.0.0'}-${arch}.dmg`;
+        return `Tracebay-${app.getVersion?.() || '0.0.0'}-${arch}.dmg`;
     }
-    if (packageType === 'nsis') return 'Tracebaie.exe';
+    if (packageType === 'nsis') return 'Tracebay.exe';
     return null;
 }
 
@@ -850,16 +850,16 @@ function pickReleaseAsset(releaseJson, packageType = getInstallPackageType()) {
     if (packageType === 'AppImage') {
         return assets.find(a => nameOf(a) === 'workspace.appimage')
             || assets.find(a => /workspace.*\.appimage$/i.test(nameOf(a)))
-            || assets.find(a => nameOf(a) === 'tracebaie.appimage')
-            || assets.find(a => /tracebaie.*\.appimage$/i.test(nameOf(a)))
+            || assets.find(a => nameOf(a) === 'Tracebay.appimage')
+            || assets.find(a => /Tracebay.*\.appimage$/i.test(nameOf(a)))
             || assets.find(a => /\.appimage$/i.test(nameOf(a)))
             || null;
     }
     if (packageType === 'deb') {
         return assets.find(a => nameOf(a) === 'workspace.deb')
             || assets.find(a => /workspace.*\.deb$/i.test(nameOf(a)))
-            || assets.find(a => nameOf(a) === 'tracebaie.deb')
-            || assets.find(a => /tracebaie.*\.deb$/i.test(nameOf(a)))
+            || assets.find(a => nameOf(a) === 'Tracebay.deb')
+            || assets.find(a => /Tracebay.*\.deb$/i.test(nameOf(a)))
             || assets.find(a => /\.deb$/i.test(nameOf(a)))
             || null;
     }
@@ -872,8 +872,8 @@ function pickReleaseAsset(releaseJson, packageType = getInstallPackageType()) {
     if (packageType === 'nsis') {
         return assets.find(a => nameOf(a) === 'workspace.exe')
             || assets.find(a => /workspace.*\.(exe|msi)$/i.test(nameOf(a)))
-            || assets.find(a => nameOf(a) === 'tracebaie.exe')
-            || assets.find(a => /tracebaie.*\.(exe|msi)$/i.test(nameOf(a)))
+            || assets.find(a => nameOf(a) === 'Tracebay.exe')
+            || assets.find(a => /Tracebay.*\.(exe|msi)$/i.test(nameOf(a)))
             || assets.find(a => /\.(exe|msi)$/i.test(nameOf(a)))
             || null;
     }
@@ -1349,62 +1349,19 @@ function checkServerConnection(retries = 0) {
  * Écran de démarrage (splash) affiché pendant le chargement
  */
 function createSplashWindow() {
-    const splashHtml = `
-<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: linear-gradient(145deg, #1a237e 0%, #0d47a1 100%);
-    color: #fff;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 2rem;
-  }
-  .logo { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; letter-spacing: 0.02em; }
-  .tagline { font-size: 0.9rem; opacity: 0.85; margin-bottom: 2rem; }
-  .spinner {
-    width: 40px; height: 40px;
-    border: 3px solid rgba(255,255,255,0.25);
-    border-top-color: #fff;
-    border-radius: 50%;
-    animation: spin 0.9s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .message { margin-top: 1.25rem; font-size: 0.85rem; opacity: 0.9; }
-  .progress-wrap { margin-top: 1rem; width: 100%; max-width: 260px; display: none; }
-  .progress-wrap.visible { display: block; }
-  .progress-bar { height: 8px; background: rgba(255,255,255,0.25); border-radius: 4px; overflow: hidden; }
-  .progress-fill { height: 100%; width: 0%; background: rgba(255,255,255,0.9); border-radius: 4px; transition: width 0.2s ease; }
-</style></head><body>
-  <div class="logo">Tracebaie</div>
-  <div class="tagline">By K0uzia</div>
-  <div class="spinner"></div>
-  <p class="message">Chargement en cours…</p>
-  <div class="progress-wrap" id="splash-progress">
-    <div class="progress-bar"><div class="progress-fill" id="splash-progress-fill"></div></div>
-  </div>
-</body></html>`;
     const win = new BrowserWindow({
-        width: 380,
-        height: 280,
+        width: 420,
+        height: 320,
         frame: true,
         transparent: false,
         resizable: false,
         show: false,
         alwaysOnTop: true,
         webPreferences: { nodeIntegration: false, contextIsolation: true },
-        icon: (() => {
-            const base = app.isPackaged ? app.getAppPath() : __dirname;
-            const p = path.join(base, 'assets', process.platform === 'win32' ? 'icon.ico' : 'icon.png');
-            return fs.existsSync(p) ? p : undefined;
-        })(),
+        icon: getAppIconPath() || undefined,
     });
     win.setMenuBarVisibility(false);
-    win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(splashHtml));
+    win.loadFile(path.join(__dirname, 'assets', 'splash.html'));
     win.once('ready-to-show', () => win.show());
     splashWindow = win;
     win.on('closed', () => { splashWindow = null; });
@@ -1482,16 +1439,15 @@ function closeSplashWindow() {
  * Essaie plusieurs bases (__dirname, process.cwd(), getAppPath) pour dev et packagé.
  */
 function getAppIconPath() {
-    const iconName = process.platform === 'win32' ? 'icon.ico' : process.platform === 'darwin' ? 'icon.icns' : 'icon.png';
+    const relative = process.platform === 'win32'
+        ? path.join('assets', 'windows', 'icon.ico')
+        : process.platform === 'darwin'
+            ? path.join('assets', 'macos', 'icon.icns')
+            : path.join('assets', 'linux', 'icons', '512x512.png');
     const bases = [__dirname, process.cwd(), app.getAppPath()].filter(Boolean);
-    const tried = [];
     for (const base of bases) {
-        const inAssets = path.join(base, 'assets', iconName);
-        const pngFallback = path.join(base, 'assets', 'icon.png');
-        if (fs.existsSync(inAssets)) return inAssets;
-        tried.push(inAssets);
-        if (iconName !== 'icon.png' && fs.existsSync(pngFallback)) return pngFallback;
-        if (iconName !== 'icon.png') tried.push(pngFallback);
+        const candidate = path.join(base, relative);
+        if (fs.existsSync(candidate)) return candidate;
     }
     return null;
 }
@@ -1693,10 +1649,10 @@ function setupChatNotifications() {
         } catch (_) { }
         // Notification système (popup à droite sur la plupart des OS)
         if (Notification.isSupported()) {
-            const iconPath = path.join(__dirname, 'build', 'icon.png');
+            const iconPath = path.join(__dirname, 'assets', 'linux', 'icons', '256x256.png');
             const opts = { body: `${pseudo} a envoyé un message` };
             if (fs.existsSync(iconPath)) opts.icon = iconPath;
-            const n = new Notification('Tracebaie - Chat', opts);
+            const n = new Notification('Tracebay - Chat', opts);
             n.on('click', () => {
                 if (win && !win.isDestroyed()) {
                     win.show();
@@ -1737,8 +1693,8 @@ function launchApp() {
  */
 app.on('ready', async () => {
     startupBegin = Date.now();
-    app.setName('Tracebaie');
-    console.log('🚀 Démarrage Tracebaie Client...');
+    app.setName('Tracebay');
+    console.log('🚀 Démarrage Tracebay Client...');
     console.log(`📍 Configuration depuis: ${MODE} (connexion-config.json)`);
     console.log(`🔗 Serveur par défaut: ${SERVER_URL}`);
     console.log(`🌍 Environnement: ${isProduction ? 'PRODUCTION' : 'DÉVELOPPEMENT'}`);
@@ -2144,7 +2100,7 @@ app.on('before-quit', () => {
     if (quittingForUpdate) {
         return;
     }
-    console.log('⏹️  Arrêt de Tracebaie Client');
+    console.log('⏹️  Arrêt de Tracebay Client');
     pdfWindows.forEach((win) => {
         if (win && !win.isDestroyed()) {
             win.close();

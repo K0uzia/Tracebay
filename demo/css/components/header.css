@@ -46,9 +46,26 @@ menu {
     color: #f3f6fb;
 }
 
+.nav-brand {
+    padding: 0 var(--unit-1);
+}
+
 .nav-logo .logo {
-    height: 20px;
-    width: 20px;
+    height: 24px;
+    width: auto;
+    display: none;
+}
+
+.nav-logo .logo--on-dark {
+    display: block;
+}
+
+html[data-theme-dark="0"] .nav-logo .logo--on-dark {
+    display: none;
+}
+
+html[data-theme-dark="0"] .nav-logo .logo--on-light {
+    display: block;
 }
 
 .nav-links {

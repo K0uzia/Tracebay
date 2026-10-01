@@ -2,6 +2,6 @@
 ; Required to exist even when empty: the Windows job fails if this path is missing.
 
 !macro customInit
-  ; Close a running instance so the installer can overwrite Tracebaie.exe.
-  nsExec::Exec 'taskkill /F /IM Tracebaie.exe /T'
+  ; Close a running instance so the installer can overwrite Tracebay.exe.
+  nsExec::Exec 'taskkill /F /IM Tracebay.exe /T'
 !macroend

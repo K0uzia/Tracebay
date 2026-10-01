@@ -54,6 +54,24 @@
     color: rgba(124, 156, 255, 0.9);
 }
 
+.r-brand-kicker .brand-wordmark {
+    height: 16px;
+    width: auto;
+    display: none;
+}
+
+.r-brand-kicker .brand-wordmark--on-dark {
+    display: block;
+}
+
+html[data-theme-dark="0"] .r-brand-kicker .brand-wordmark--on-dark {
+    display: none;
+}
+
+html[data-theme-dark="0"] .r-brand-kicker .brand-wordmark--on-light {
+    display: block;
+}
+
 .r-brand-title {
     margin: 0;
     font-size: 1.35rem;

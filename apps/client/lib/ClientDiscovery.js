@@ -1,6 +1,6 @@
 /**
  * ClientDiscovery.js
- * Système de détection du serveur Tracebaie par les clients
+ * Système de détection du serveur Tracebay par les clients
  * Écoute les beacons UDP du serveur
  */
 

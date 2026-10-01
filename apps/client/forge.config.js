@@ -1,13 +1,13 @@
 module.exports = {
     packagerConfig: {
         asar: true,
-        icon: './assets/icon',
+        icon: './assets/linux/icons/512x512.png',
     },
     makers: [
         {
             name: '@electron-forge/maker-squirrel',
             config: {
-                name: 'tracebaie_client'
+                name: 'Tracebay_client'
             }
         },
         {
@@ -19,15 +19,15 @@ module.exports = {
             platforms: ['linux'],
             config: {    
                 maintainer: 'K0uzia <k0uzia@users.noreply.github.com>',
-                homepage: 'https://github.com/K0uzia/tracebaie',
+                homepage: 'https://github.com/K0uzia/Tracebay',
                 categories: ['Utility', 'Network'],
                 section: 'utils',
                 priority: 'optional',
-                icon: './assets/icon.png',
-                productName: 'Tracebaie',
+                icon: './assets/linux/icons/512x512.png',
+                productName: 'Tracebay',
                 name: 'workspace',
                 bin: 'workspace',
-                productDescription: 'Tracebaie — traçabilité de matériel informatique',
+                productDescription: 'Tracebay — traçabilité de matériel informatique',
                 depends: ['libgtk-3-0', 'libnotify4', 'libnss3', 'xdg-utils'],
                 recommends: [],
                 suggests: []
@@ -40,7 +40,7 @@ module.exports = {
             config: {
                 repository: {
                     owner: 'K0uzia',
-                    name: 'tracebaie'
+                    name: 'Tracebay'
                 },
                 prerelease: false,
                 draft: true,

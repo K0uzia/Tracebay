@@ -1,10 +1,10 @@
-# Tracebaie Démo statique
+# Tracebay Démo statique
 
 Copie navigable de **l’application actuelle** (pas de l’ancienne doc) : uniquement HTML, CSS et JavaScript, avec un **faux backend** en `localStorage`.
 
 ## En ligne
 
-https://k0uzia.github.io/tracebaie/
+https://k0uzia.github.io/Tracebay/
 
 ## Lancer en local
 
@@ -20,7 +20,7 @@ Puis aller sur [http://localhost:8080](http://localhost:8080).
 
 **Navigation**
 
-- Logo / Tracebaie → Agenda
+- Logo / Tracebay → Agenda
 - Agenda
 - Reception
 - Thème clair / sombre

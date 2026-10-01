@@ -1,9 +1,9 @@
 [Desktop Entry]
-Name=Tracebaie (Dev)
-Comment=Tracebaie — lancement en développement
+Name=Tracebay (Dev)
+Comment=Tracebay — lancement en développement
 Exec=REMPLACER_PAR_CHEMIN_ABSOLU_APPS_CLIENT/start-dev.sh
-Icon=REMPLACER_PAR_CHEMIN_ABSOLU_APPS_CLIENT/assets/icon.png
+Icon=REMPLACER_PAR_CHEMIN_ABSOLU_APPS_CLIENT/assets/linux/tracebay.svg
 Terminal=true
 Type=Application
 Categories=Development;Network;
-StartupWMClass=Tracebaie
+StartupWMClass=Tracebay

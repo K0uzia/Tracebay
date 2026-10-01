@@ -3,10 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Tracebaie Démo</title>
+  <title>Tracebay Démo</title>
+  <link rel="icon" type="image/svg+xml" href="apps/client/assets/brand/logos/svg/tracebay-favicon.svg" media="(prefers-color-scheme: light)">
+  <link rel="icon" type="image/svg+xml" href="apps/client/assets/brand/logos/svg/tracebay-favicon-fond-sombre.svg" media="(prefers-color-scheme: dark)">
   <script>
     try {
-      var t = localStorage.getItem("tracebaie_theme_dark");
+      var t = localStorage.getItem("Tracebay_theme_dark");
       document.documentElement.setAttribute("data-theme-dark", t === "0" ? "0" : "1");
     } catch (e) {}
   </script>
@@ -26,11 +28,9 @@
   <header id="header">
     <menu>
       <div class="nav-logo">
-        <button class="nav-btn nav-brand-mark" data-page="agenda" aria-label="Agenda">
-          <img class="logo" src="./src/icons/logo.svg" alt="">
-        </button>
-        <button class="nav-btn nav-brand-link" data-page="agenda">
-          <span class="nav-brand-copy"><span class="nav-brand-title">Tracebaie</span></span>
+        <button class="nav-btn nav-brand" data-page="agenda" aria-label="Tracebay">
+          <img class="logo logo--on-light" src="apps/client/assets/brand/logos/svg/tracebay-reduit-16px.svg" alt="Tracebay">
+          <img class="logo logo--on-dark" src="apps/client/assets/brand/logos/svg/tracebay-reduit-16px-fond-sombre.svg" alt="Tracebay">
         </button>
       </div>
       <nav class="nav-links" id="navLinks">
@@ -60,7 +60,7 @@
   <footer id="footer">
     <div class="footer-contain">
       <div class="footer-copyright">
-        <a href="https://github.com/K0uzia/tracebaie" target="_blank" rel="noopener noreferrer"><p>© 2026 - Tracebaie <span id="footer-app-version">V3.3.9</span> - By K0uzia</p></a>
+        <a href="https://github.com/K0uzia/Tracebay" target="_blank" rel="noopener noreferrer"><p>© 2026 - Tracebay <span id="footer-app-version">V3.3.10</span> - By K0uzia</p></a>
       </div>
       <div class="footer-system-info">
         <span class="footer-info-item" id="footer-ip" title="Adresse IP locale">
