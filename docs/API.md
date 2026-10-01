@@ -1,6 +1,6 @@
 # API Reference - Proxmox Backend
 
-Complete API documentation for Tracebaie Proxmox Backend (Fastify).
+Complete API documentation for Tracebay Proxmox Backend (Fastify).
 
 ## Base URL
 

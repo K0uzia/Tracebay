@@ -1,9 +1,9 @@
 {
-  "name": "tracebaie",
-  "version": "3.3.9",
+  "name": "Tracebay",
+  "version": "3.3.10",
   "main": "main.js",
-  "homepage": "https://github.com/K0uzia/tracebaie#readme",
-  "description": "Tracebaie — traçabilité de matériel (lots, disques, archives) et agenda",
+  "homepage": "https://github.com/K0uzia/Tracebay#readme",
+  "description": "Tracebay — traçabilité de matériel (lots, disques, archives) et agenda",
   "author": "K0uzia",
   "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
@@ -50,8 +50,8 @@
     "audit:fix": "npm audit --fix"
   },
   "build": {
-    "appId": "com.tracebaie.client",
-    "productName": "Tracebaie",
+    "appId": "com.Tracebay.client",
+    "productName": "Tracebay",
     "copyright": "Copyright © 2026 K0uzia",
     "electronVersion": "39.2.4",
     "npmRebuild": false,
@@ -61,7 +61,7 @@
     "publish": {
       "provider": "github",
       "owner": "K0uzia",
-      "repo": "tracebaie",
+      "repo": "Tracebay",
       "releaseType": "release"
     },
     "files": [
@@ -101,7 +101,7 @@
           ]
         }
       ],
-      "icon": "assets/icon.ico",
+      "icon": "assets/windows/icon.ico",
       "artifactName": "${productName}.${ext}"
     },
     "nsis": {
@@ -109,11 +109,11 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Tracebaie",
+      "shortcutName": "Tracebay",
       "include": "build/installer.nsh",
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico",
+      "installerIcon": "assets/windows/icon.ico",
+      "uninstallerIcon": "assets/windows/icon.ico",
+      "installerHeaderIcon": "assets/windows/icon.ico",
       "deleteAppDataOnUninstall": false
     },
     "portable": {
@@ -129,7 +129,7 @@
           ]
         }
       ],
-      "icon": "assets/icon.png",
+      "icon": "assets/macos/icon.icns",
       "category": "public.app-category.productivity",
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "identity": null,
@@ -140,7 +140,7 @@
     },
     "dmg": {
       "title": "${productName} ${version}",
-      "icon": "build/icon.png",
+      "icon": "assets/macos/icon-1024.png",
       "contents": [
         {
           "x": 410,
@@ -162,7 +162,7 @@
     "linux": {
       "maintainer": "K0uzia <k0uzia@users.noreply.github.com>",
       "executableName": "workspace",
-      "synopsis": "Tracebaie — traçabilité de matériel informatique",
+      "synopsis": "Tracebay — traçabilité de matériel informatique",
       "target": [
         {
           "target": "AppImage",
@@ -177,13 +177,13 @@
           ]
         }
       ],
-      "icon": "assets/icon.png",
+      "icon": "assets/linux/icons",
       "category": "Utility",
       "artifactName": "workspace.${ext}",
       "desktop": {
         "entry": {
-          "Name": "Tracebaie",
-          "Comment": "Tracebaie — traçabilité de matériel informatique",
+          "Name": "Tracebay",
+          "Comment": "Tracebay — traçabilité de matériel informatique",
           "Categories": "Utility;",
           "StartupWMClass": "workspace"
         }
@@ -210,17 +210,17 @@
       "artifactName": "workspace.${ext}",
       "fpm": [
         "--name", "workspace",
-        "--replaces", "tracebaie",
-        "--conflicts", "tracebaie",
-        "--provides", "tracebaie"
+        "--replaces", "Tracebay",
+        "--conflicts", "Tracebay",
+        "--provides", "Tracebay"
       ]
     }
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/K0uzia/tracebaie.git"
+    "url": "git+https://github.com/K0uzia/Tracebay.git"
   },
   "bugs": {
-    "url": "https://github.com/K0uzia/tracebaie/issues"
+    "url": "https://github.com/K0uzia/Tracebay/issues"
   }
 }

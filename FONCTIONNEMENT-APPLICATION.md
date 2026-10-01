@@ -1,8 +1,8 @@
-# Tracebaie — Fonctionnement de l'application
+# Tracebay — Fonctionnement de l'application
 
-Documentation fonctionnelle du client Electron **Tracebaie** : architecture, pages, module Réception et flux métier.
+Documentation fonctionnelle du client Electron **Tracebay** : architecture, pages, module Réception et flux métier.
 
-Le code est publié sous [Tracebaie Source-Available License](LICENSE) (usage interne autorisé, revente soumise à accord).
+Le code est publié sous [Tracebay Source-Available License](LICENSE) (usage interne autorisé, revente soumise à accord).
 
 ---
 
@@ -29,7 +29,7 @@ Le code est publié sous [Tracebaie Source-Available License](LICENSE) (usage in
 
 ## 1. Vue d'ensemble
 
-**Tracebaie** est une application de bureau (Electron) de **traçabilité de matériel**. L’UI actuelle a **deux espaces** :
+**Tracebay** est une application de bureau (Electron) de **traçabilité de matériel**. L’UI actuelle a **deux espaces** :
 
 - Un module métier de **réception et traçabilité** (lots, disques, commandes, dons, prêts, inventaire, archives PDF)
 - Un **agenda** partagé (complément, pas le cœur du produit)
@@ -109,7 +109,7 @@ Barre en haut avec :
 
 | Bouton | Page |
 |--------|------|
-| Logo / Tracebaie | Agenda |
+| Logo / Tracebay | Agenda |
 | Agenda | Calendrier |
 | Reception | Module métier (défaut : Lots) |
 | Thème | Clair / sombre |
@@ -603,4 +603,4 @@ En **navigateur web** (sans Electron), l'interface s'affiche mais les fonctions 
 - [README.md](./README.md) — Vue d'ensemble (`main` = app, `proxmox` = backend)
 - [docs/API.md](./docs/API.md) — Contrat API backend
 - [docs/DATABASE.md](./docs/DATABASE.md) — Schéma base de données
-- Branche [`proxmox`](https://github.com/K0uzia/tracebaie/tree/proxmox) — Backend Fastify + TypeScript / serveur
+- Branche [`proxmox`](https://github.com/K0uzia/Tracebay/tree/proxmox) — Backend Fastify + TypeScript / serveur

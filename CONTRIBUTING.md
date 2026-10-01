@@ -1,6 +1,6 @@
 # Contribution
 
-En soumettant une contribution, vous acceptez le [code de conduite](CODE_OF_CONDUCT.md) et concédez votre travail sous la [Tracebaie Source-Available License](LICENSE).
+En soumettant une contribution, vous acceptez le [code de conduite](CODE_OF_CONDUCT.md) et concédez votre travail sous la [Tracebay Source-Available License](LICENSE).
 
 ## Branches
 
