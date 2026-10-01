@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme-dark="1">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tracebay Démo</title>
+  <link rel="icon" type="image/svg+xml" href="apps/client/assets/brand/logos/svg/tracebay-favicon.svg" media="(prefers-color-scheme: light)">
+  <link rel="icon" type="image/svg+xml" href="apps/client/assets/brand/logos/svg/tracebay-favicon-fond-sombre.svg" media="(prefers-color-scheme: dark)">
+  <script>
+    try {
+      var t = localStorage.getItem("Tracebay_theme_dark");
+      document.documentElement.setAttribute("data-theme-dark", t === "0" ? "0" : "1");
+    } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
+  <link rel="stylesheet" href="./css/global.css?v=a90c48a">
+  <link rel="stylesheet" href="./css/demo-banner.css?v=a90c48a">
+  <link rel="stylesheet" href="./css/demo-ui.css?v=a90c48a">
+  <link rel="stylesheet" href="./css/pdf-preview.css?v=a90c48a">
+</head>
+<body>
+  <div class="demo-banner" role="status">
+    <i class="fa-solid fa-flask" aria-hidden="true"></i>
+    <span><strong>Mode démo</strong></span>
+    <button type="button" id="btn-reset-demo">Réinitialiser</button>
+  </div>
+
+  <header id="header">
+    <menu>
+      <div class="nav-logo">
+        <button class="nav-btn nav-brand" data-page="agenda" aria-label="Tracebay">
+          <img class="logo logo--on-light" src="apps/client/assets/brand/logos/svg/tracebay-reduit-16px.svg" alt="Tracebay">
+          <img class="logo logo--on-dark" src="apps/client/assets/brand/logos/svg/tracebay-reduit-16px-fond-sombre.svg" alt="Tracebay">
+        </button>
+      </div>
+      <nav class="nav-links" id="navLinks">
+        <div class="nav-primary">
+          <button class="nav-btn" data-page="agenda"><i class="fas fa-calendar-alt"></i> Agenda</button>
+          <button class="nav-btn nav-reception" data-page="reception"><i class="fas fa-bell"></i> Reception</button>
+        </div>
+        <div class="nav-action">
+          <button type="button" class="nav-btn nav-theme" id="navThemeToggle" title="Basculer le thème" aria-label="Basculer le thème">
+            <i class="fa-solid fa-moon" id="navThemeIcon" aria-hidden="true"></i>
+            <span class="profile-text" id="navThemeText">Thème sombre</span>
+          </button>
+          <button class="nav-btn nav-settings" id="navSettings" title="Paramètres">
+            <i class="fa-solid fa-gear"></i><span class="profile-text">Paramètres</span>
+            <span class="profile-update-ping hidden" id="profileUpdatePing" aria-hidden="true"></span>
+          </button>
+        </div>
+      </nav>
+      <button class="nav-burger" id="navBurger" aria-label="Ouvrir menu">
+        <span></span><span></span><span></span>
+      </button>
+    </menu>
+  </header>
+
+  <main id="content"></main>
+
+  <footer id="footer">
+    <div class="footer-contain">
+      <div class="footer-copyright">
+        <a href="https://github.com/K0uzia/Tracebay" target="_blank" rel="noopener noreferrer"><p>© 2026 - Tracebay <span id="footer-app-version">V3.4.0</span> - By K0uzia</p></a>
+      </div>
+      <div class="footer-system-info">
+        <span class="footer-info-item" id="footer-ip" title="Adresse IP locale">
+          <i class="fas fa-network-wired"></i> <span id="footer-ip-value">10.42.0.18</span>
+        </span>
+        <span class="footer-info-item" id="footer-ram" title="Mémoire RAM">
+          <i class="fas fa-memory"></i> <span id="footer-ram-value">6.1 / 16 Go</span>
+        </span>
+        <span class="footer-info-item" id="footer-server" title="État du serveur">
+          <i class="fas fa-server" id="footer-server-icon" style="color:#2ecc71"></i> <span id="footer-server-value" style="color:#2ecc71">En ligne</span>
+        </span>
+        <span class="footer-info-item" id="footer-connection" title="État de la connexion">
+          <i class="fas fa-wifi" id="footer-connection-icon" style="color:#2ecc71"></i> <span id="footer-connection-value">OK</span>
+        </span>
+      </div>
+    </div>
+  </footer>
+
+  <div id="settingsModalContainer"></div>
+  <dialog class="universal-modal" id="demo-modal"></dialog>
+
+  <script src="./js/backend.js?v=a90c48a"></script>
+  <script src="./js/app.js?v=a90c48a"></script>
+</body>
+</html>

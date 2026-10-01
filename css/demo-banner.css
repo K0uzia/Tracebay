@@ -1,0 +1,38 @@
+.demo-banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  background: linear-gradient(90deg, #1c2340 0%, #2d3073 55%, #3e3b8c 100%);
+  color: #f4f7fb;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: 200;
+}
+
+.demo-banner i {
+  color: #f5c542;
+}
+
+.demo-banner span {
+  flex: 1;
+  min-width: 0;
+}
+
+.demo-banner button {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.demo-banner button:hover {
+  background: rgba(255, 255, 255, 0.18);
+}

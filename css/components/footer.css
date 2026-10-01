@@ -1,0 +1,120 @@
+#footer {
+    flex-shrink: 0;
+}
+
+.footer-contain {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: var(--unit-1) var(--unit-2);
+    background: var(--bg-elevated);
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+    gap: var(--unit-4);
+    min-height: 0;
+    box-sizing: border-box;
+}
+
+.footer-copyright {
+    flex-shrink: 0;
+    min-width: 0;
+}
+
+.footer-copyright p {
+    margin: 0;
+    font-size: 0.9rem;
+}
+.footer-copyright a {
+    text-decoration: none;
+    color: var(--text);
+}
+
+.footer-copyright a:hover {
+    text-decoration: underline;
+    color: var(--jaune);
+}
+
+.footer-system-info {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--unit-3);
+    min-width: 0;
+}
+
+.footer-info-item {
+    display: flex;
+    align-items: center;
+    gap: var(--unit-1);
+    white-space: nowrap;
+    font-size: 0.85rem;
+}
+
+.footer-info-item i {
+    flex-shrink: 0;
+}
+
+#footer-ip-value {
+    cursor: pointer;
+    transition: opacity 0.2s ease;
+    user-select: none;
+}
+
+#footer-ip-value:hover {
+    opacity: 0.8;
+    text-decoration: underline;
+    color: var(--jaune);
+}
+
+/* Responsive tablette */
+@media (max-width: 768px) {
+    .footer-contain {
+        flex-direction: column;
+        padding: var(--unit-2);
+        gap: var(--unit-2);
+    }
+
+    .footer-system-info {
+        gap: var(--unit-2);
+        font-size: 0.8rem;
+    }
+
+    .footer-copyright p {
+        font-size: 0.85rem;
+    }
+
+    .footer-info-item {
+        font-size: 0.8rem;
+    }
+}
+
+/* Responsive mobile */
+@media (max-width: 480px) {
+    .footer-contain {
+        padding: var(--unit-1) var(--unit-2);
+        gap: var(--unit-1);
+    }
+
+    .footer-system-info {
+        gap: var(--unit-1);
+        font-size: 0.75rem;
+    }
+
+    .footer-copyright p {
+        font-size: 0.75rem;
+    }
+
+    .footer-info-item {
+        font-size: 0.75rem;
+    }
+
+    .footer-info-item span {
+        max-width: 120px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+}

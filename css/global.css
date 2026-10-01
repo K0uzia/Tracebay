@@ -1,0 +1,246 @@
+@import url(./default/variables.css?v=a90c48a);
+@import url(./default/theme-dark.css?v=a90c48a);
+@import url(./default/normalize.css?v=a90c48a);
+@import url(./default/section.css?v=a90c48a);
+
+/* ----------CSS COMPONENTS----------- */
+@import url(./components/header.css?v=a90c48a);
+@import url(./components/footer.css?v=a90c48a);
+@import url(./components/settings-modal.css?v=a90c48a);
+
+/* ----------CSS PAGES----------- */
+@import url(./modules/agenda.css?v=a90c48a);
+@import url(./modules/reception.css?v=a90c48a);
+
+/* ----------CSS RECEPTION (modulaire par sous-page) ----------- */
+@import url(./modules/receptions/recep-common.css?v=a90c48a);
+@import url(./modules/receptions/entrer.css?v=a90c48a);
+@import url(./modules/receptions/inventaire.css?v=a90c48a);
+@import url(./modules/receptions/historique.css?v=a90c48a);
+@import url(./modules/receptions/tracabiliter.css?v=a90c48a);
+@import url(./modules/receptions/disques.css?v=a90c48a);
+@import url(./modules/receptions/commande.css?v=a90c48a);
+@import url(./modules/receptions/dons.css?v=a90c48a);
+@import url(./modules/receptions/prets.css?v=a90c48a);
+
+/* ----------CSS MODULES----------- */
+@import url(./modules/modal.css?v=a90c48a);
+
+/* Overrides dark réception (après pages + modal pour gagner la cascade) */
+@import url(./modules/receptions/recep-dark.css?v=a90c48a);
+
+/* Thème clair — après recep-dark pour écraser couleurs hardcodées */
+@import url(./default/theme-light.css?v=a90c48a);
+
+/* ---------- Notifications toast ---------- */
+.notification {
+    position: fixed;
+    top: var(--unit-4);
+    right: var(--unit-4);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: min(360px, calc(100vw - var(--unit-4) * 2));
+    max-width: min(420px, calc(100vw - var(--unit-4) * 2));
+    padding: 12px 14px 12px 12px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.45;
+    z-index: 999998;
+    opacity: 0;
+    transform: translateY(-8px);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    pointer-events: none;
+    box-shadow: var(--shadow-medium);
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.notification.hide {
+    opacity: 0;
+    transform: translateY(-8px);
+}
+
+.notification-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    background: rgba(124, 156, 255, 0.16);
+    color: var(--accent);
+}
+
+.notification-icon i {
+    font-size: 0.875rem;
+    line-height: 1;
+}
+
+.notification-message {
+    flex: 1;
+    min-width: 0;
+}
+
+.notification.success {
+    background: linear-gradient(rgba(76, 175, 80, 0.22), rgba(76, 175, 80, 0.22)), var(--bg-elevated);
+    border-color: rgba(76, 175, 80, 0.55);
+}
+.notification.success .notification-icon {
+    background: rgba(76, 175, 80, 0.28);
+    color: var(--valid);
+}
+
+.notification.error {
+    background: linear-gradient(rgba(239, 83, 80, 0.22), rgba(239, 83, 80, 0.22)), var(--bg-elevated);
+    border-color: rgba(239, 83, 80, 0.55);
+}
+.notification.error .notification-icon {
+    background: rgba(239, 83, 80, 0.28);
+    color: var(--error);
+}
+
+.notification.info {
+    background: linear-gradient(rgba(124, 156, 255, 0.22), rgba(124, 156, 255, 0.22)), var(--bg-elevated);
+    border-color: rgba(124, 156, 255, 0.55);
+}
+.notification.info .notification-icon {
+    background: rgba(124, 156, 255, 0.28);
+    color: var(--accent);
+}
+
+.notification.warning {
+    background: linear-gradient(rgba(242, 188, 27, 0.22), rgba(242, 188, 27, 0.22)), var(--bg-elevated);
+    border-color: rgba(242, 188, 27, 0.55);
+}
+.notification.warning .notification-icon {
+    background: rgba(242, 188, 27, 0.3);
+    color: var(--jaune);
+}
+
+.notification.has-action {
+    pointer-events: auto;
+}
+
+.notification-action {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 0.25rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: rgba(124, 156, 255, 0.1);
+    color: var(--accent);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: var(--transition);
+}
+
+.notification-action:hover {
+    background: rgba(124, 156, 255, 0.18);
+    border-color: rgba(124, 156, 255, 0.35);
+}
+
+.notification--bottom {
+    top: auto;
+    bottom: var(--unit-4);
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%) translateY(8px);
+    min-width: auto;
+}
+
+.notification--bottom.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+.notification--bottom.hide {
+    transform: translateX(-50%) translateY(8px);
+}
+
+/* Focus clavier (Tab) : contour discret au lieu du outline par défaut */
+:focus {
+    outline: none;
+}
+:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+/* Thème clair — toasts (après règles .notification du fichier) */
+html[data-theme-dark="0"] .notification {
+    color: #0d1117 !important;
+    box-shadow: 0 8px 24px rgba(13, 17, 23, 0.1) !important;
+}
+
+html[data-theme-dark="0"] .notification.info {
+    background: #eef0fa !important;
+    border-color: rgba(62, 59, 140, 0.32) !important;
+}
+html[data-theme-dark="0"] .notification.info .notification-icon {
+    background: rgba(62, 59, 140, 0.14);
+    color: #3e3b8c;
+}
+html[data-theme-dark="0"] .notification.info .notification-icon i {
+    color: #3e3b8c;
+}
+
+html[data-theme-dark="0"] .notification.success {
+    background: #eaf6eb !important;
+    border-color: rgba(46, 125, 50, 0.35) !important;
+}
+html[data-theme-dark="0"] .notification.success .notification-icon {
+    background: rgba(46, 125, 50, 0.16);
+    color: #2e7d32;
+}
+html[data-theme-dark="0"] .notification.success .notification-icon i {
+    color: #2e7d32;
+}
+
+html[data-theme-dark="0"] .notification.error {
+    background: #fdeeee !important;
+    border-color: rgba(198, 40, 40, 0.32) !important;
+}
+html[data-theme-dark="0"] .notification.error .notification-icon {
+    background: rgba(198, 40, 40, 0.14);
+    color: #c62828;
+}
+html[data-theme-dark="0"] .notification.error .notification-icon i {
+    color: #c62828;
+}
+
+html[data-theme-dark="0"] .notification.warning {
+    background: #fff6e5 !important;
+    border-color: rgba(180, 83, 9, 0.32) !important;
+}
+html[data-theme-dark="0"] .notification.warning .notification-icon {
+    background: rgba(245, 158, 11, 0.2);
+    color: #b45309;
+}
+html[data-theme-dark="0"] .notification.warning .notification-icon i {
+    color: #b45309;
+}
+
+html[data-theme-dark="0"] .notification-action {
+    background: rgba(62, 59, 140, 0.1) !important;
+    color: #3e3b8c !important;
+    border-color: rgba(62, 59, 140, 0.25) !important;
+}
