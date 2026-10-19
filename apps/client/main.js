@@ -603,7 +603,7 @@ function defaultAssetFileName(packageType = getInstallPackageType()) {
         return `Tracebay-${app.getVersion?.() || '0.0.0'}-${arch}.dmg`;
     }
     if (packageType === 'nsis') {
-        return 'Tracebay.exe';
+        return 'Tracebay-Setup.exe';
     }
     return null;
 }
@@ -747,7 +747,9 @@ function pickReleaseAsset(releaseJson, packageType = getInstallPackageType()) {
             || null;
     }
     if (packageType === 'nsis') {
-        return assets.find(a => nameOf(a) === 'workspace.exe')
+        // Installeur (NSIS) en priorité : la version portable porte un autre nom (Tracebay-Portable.exe)
+        return assets.find(a => nameOf(a) === 'tracebay-setup.exe')
+            || assets.find(a => nameOf(a) === 'workspace.exe')
             || assets.find(a => /workspace.*\.(exe|msi)$/i.test(nameOf(a)))
             || assets.find(a => nameOf(a) === 'Tracebay.exe')
             || assets.find(a => /Tracebay.*\.(exe|msi)$/i.test(nameOf(a)))

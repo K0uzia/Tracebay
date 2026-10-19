@@ -95,7 +95,7 @@
         }
       ],
       "icon": "assets/windows/icon.ico",
-      "artifactName": "${productName}.${ext}"
+      "artifactName": "Tracebay-Setup.${ext}"
     },
     "nsis": {
       "oneClick": false,
@@ -110,7 +110,7 @@
       "deleteAppDataOnUninstall": false
     },
     "portable": {
-      "artifactName": "${productName}.${ext}"
+      "artifactName": "Tracebay-Portable.${ext}"
     },
     "mac": {
       "target": [
