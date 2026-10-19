@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node .claude/skills/desk-audit/scripts/check-desktop.mjs *)",
+      "Bash(node .claude/skills/desk-audit/scripts/check-desktop.mjs)",
+      "Bash(node .claude/skills/desk-audit/scripts/check-repo.mjs)",
+      "Bash(npm run lint:check)",
+      "Bash(npm test)",
+      "Bash(npm audit --omit=dev)",
+      "Bash(npx @electron/asar list *)",
+      "Bash(npx @electron/fuses read *)"
+    ]
+  }
+}
