@@ -536,10 +536,24 @@ function compareSemver(a, b) {
  * Type d'install Linux détecté : AppImage (portable) ou deb (paquet système).
  * Sur les autres OS, retourne le nom de plateforme.
  */
+/**
+ * Chemin de l'AppImage en cours d'exécution, ou null.
+ * APPIMAGE seul ne suffit pas : la variable est héritée par tout programme lancé depuis une autre AppImage
+ * (terminal d'un éditeur en AppImage, par exemple). On vérifie que l'exécutable est bien dans son montage (APPDIR).
+ */
+function currentAppImagePath() {
+    const appImage = process.env.APPIMAGE;
+    const appDir = process.env.APPDIR;
+    if (!appImage || !appDir || !fs.existsSync(appImage)) {
+        return null;
+    }
+    const exec = path.resolve(process.execPath);
+    return exec.startsWith(path.resolve(appDir) + path.sep) ? appImage : null;
+}
+
 function getInstallPackageType() {
     if (process.platform === 'linux') {
-        const appImage = process.env.APPIMAGE;
-        if (appImage && fs.existsSync(appImage)) {
+        if (currentAppImagePath()) {
             return 'AppImage';
         }
         return 'deb';
@@ -829,7 +843,7 @@ function sendUpdateDone(payload) {
  * peut mourir avant le redémarrage et l’app se ferme sans se relancer.
  */
 async function downloadAndApplyAppImageUpdate() {
-    const currentApp = process.env.APPIMAGE;
+    const currentApp = currentAppImagePath();
     if (!currentApp || !fs.existsSync(currentApp)) {
         return { success: false, error: 'APPIMAGE introuvable (lance l’app via AppImage)' };
     }
@@ -988,7 +1002,7 @@ async function installPendingAppUpdate() {
     const packageType = pendingAppUpdate.packageType || getInstallPackageType();
 
     if (packageType === 'AppImage') {
-        const currentApp = pendingAppUpdate.currentApp || process.env.APPIMAGE;
+        const currentApp = pendingAppUpdate.currentApp || currentAppImagePath();
         const downloadedPath = pendingAppUpdate.downloadedPath;
         if (!currentApp || !fs.existsSync(currentApp)) {
             return { success: false, error: 'APPIMAGE actuelle introuvable' };
