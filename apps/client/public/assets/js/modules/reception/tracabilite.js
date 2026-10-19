@@ -1630,7 +1630,9 @@ export default class TracabiliteManager {
         if (/\.\.(\/|$)/.test(normalized)) {
             return false;
         }
-        return normalized.startsWith('/mnt/team/');
+        // Tout chemin local absolu (partage /mnt/team, dossier choisi dans les réglages, C:\...) ;
+        // le processus principal vérifie de son côté que le chemin est autorisé avant de l'ouvrir.
+        return /^(\/|[a-zA-Z]:\/)/.test(normalized);
     }
 
     toDirectoryPath(candidatePath) {

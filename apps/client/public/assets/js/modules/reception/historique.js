@@ -981,7 +981,7 @@ export default class HistoriqueManager {
         const name = (commande.commande_name || commande.name || '').trim() || 'Commande';
         const dateStr = String(commande.date || commande.created_at || '').trim();
         const rawPdfPath = String(commande.pdf_path || '').trim();
-        const isLocalPath = rawPdfPath.startsWith('/mnt/') || rawPdfPath.startsWith('/home/') || rawPdfPath.startsWith('/Users/');
+        const isLocalPath = /^(\/|[a-zA-Z]:[\\/])/.test(rawPdfPath);
         const remotePdfUrl = commande.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : `/${  rawPdfPath}`)) : '');
         const hasPdf = (isLocalPath && rawPdfPath) || (remotePdfUrl && remotePdfUrl.length > 0);
         if (!hasPdf) {
@@ -1020,7 +1020,7 @@ export default class HistoriqueManager {
         const lotName = (don.lot_name || don.name || '').trim();
         const dateStr = String(don.date || (don.created_at || '')).trim();
         const rawPdfPath = String(don.pdf_path || '').trim();
-        const isLocalPath = rawPdfPath.startsWith('/mnt/') || rawPdfPath.startsWith('/home/') || rawPdfPath.startsWith('/Users/');
+        const isLocalPath = /^(\/|[a-zA-Z]:[\\/])/.test(rawPdfPath);
         const pdfUrl = don.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : `/${  rawPdfPath}`)) : '');
         const hasPdf = (isLocalPath && rawPdfPath) || (pdfUrl && pdfUrl.length > 0);
         if (!hasPdf) {
@@ -1058,7 +1058,7 @@ export default class HistoriqueManager {
     buildPretPdfActions(pret) {
         const ref = (pret.reference || pret.title || pret.lot_name || pret.name || '').trim();
         const rawPdfPath = String(pret.pdf_path || '').trim();
-        const isLocalPath = rawPdfPath.startsWith('/mnt/') || rawPdfPath.startsWith('/home/') || rawPdfPath.startsWith('/Users/');
+        const isLocalPath = /^(\/|[a-zA-Z]:[\\/])/.test(rawPdfPath);
         const pdfUrl = pret.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : `/${  rawPdfPath}`)) : '');
         const hasPdf = (isLocalPath && rawPdfPath) || (pdfUrl && pdfUrl.length > 0);
         if (!hasPdf) {
