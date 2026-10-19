@@ -63,7 +63,7 @@ class ConnectionConfig {
                 const health = await this.testServerHealth(url);
                 if (health) {
                     return {
-                        url: url,
+                        url,
                         ws: url.replace('http', 'ws')
                     };
                 }

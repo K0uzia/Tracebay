@@ -47,14 +47,14 @@ export default class FolderManager {
                             ...folderConfig,
                             blacklist: data.blacklist ?? folderConfig.blacklist,
                             ignoreSuffixes: data.ignoreSuffixes || folderConfig.ignoreSuffixes,
-                            ignoreExtensions: data.ignoreExtensions || folderConfig.ignoreExtensions,
+                            ignoreExtensions: data.ignoreExtensions || folderConfig.ignoreExtensions
                         };
                         if (preset) {
                             console.log('✅ FolderManager config chargée depuis serveur, preset:', this.preset);
                             return {
                                 ...base,
                                 ...preset,
-                                blacklist: preset.blacklist !== undefined ? preset.blacklist : base.blacklist,
+                                blacklist: preset.blacklist !== undefined ? preset.blacklist : base.blacklist
                             };
                         }
                         return base;
@@ -62,9 +62,11 @@ export default class FolderManager {
                 }
             }
         } catch {
-            // Serveur inaccessible ou route non disponible — fallback local silencieux
+            // Serveur inaccessible ou route non disponible : fallback local silencieux
         }
-        if (this.preset) return folderConfig.resolvePreset(this.preset);
+        if (this.preset) {
+            return folderConfig.resolvePreset(this.preset);
+        }
         return { ...folderConfig };
     }
 
@@ -80,7 +82,9 @@ export default class FolderManager {
 
     resolvePath(btn) {
         const explicitPath = btn.dataset.folderPath;
-        if (explicitPath) return explicitPath;
+        if (explicitPath) {
+            return explicitPath;
+        }
 
         const base = btn.dataset.folderBase || this.config.basePath || '';
         const sub = btn.dataset.folderSubpath || '';
@@ -88,7 +92,9 @@ export default class FolderManager {
     }
 
     async openFolder(btn, path) {
-        if (!path) return;
+        if (!path) {
+            return;
+        }
         
         if (this.isOpening) {
             console.log('⏳ Ouverture en cours, mise en attente');
@@ -131,7 +137,9 @@ export default class FolderManager {
     async listFolders(pathOverride) {
         const path = pathOverride || this.getListPath();
 
-        if (!path) return [];
+        if (!path) {
+            return [];
+        }
 
         if (this.cache.has(path)) {
             return this.cache.get(path);
@@ -166,16 +174,22 @@ export default class FolderManager {
     }
 
     async loadAndRender() {
-        if (!this.listContainer) return;
+        if (!this.listContainer) {
+            return;
+        }
         
         const folders = await this.listFolders();
-        if (!folders || folders.length === 0) return;
+        if (!folders || folders.length === 0) {
+            return;
+        }
         
         this.renderList(folders);
     }
 
     renderList(folders) {
-        if (!this.listContainer) return;
+        if (!this.listContainer) {
+            return;
+        }
 
         this.listContainer.classList.toggle('folders-list--scrollable', folders.length > 10);
         

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installation Tracebay sous Linux (Debian/Ubuntu et dérivés).
-# Identité système (binaire / paquet) = workspace — nom affiché = Tracebay.
+# Identité système (binaire / paquet) = workspace : nom affiché = Tracebay.
 # Usage :
 #   ./install-linux.sh workspace.AppImage
 #   ./install-linux.sh workspace.deb
@@ -29,7 +29,7 @@ if [[ "$EXT_LOWER" == "appimage" ]]; then
   cat > "${DESKTOP_DIR}/workspace.desktop" <<EOF
 [Desktop Entry]
 Name=Tracebay
-Comment=Tracebay — traçabilité de matériel informatique
+Comment=Tracebay : traçabilité de matériel informatique
 Exec=${DEST}
 Icon=workspace
 Terminal=false

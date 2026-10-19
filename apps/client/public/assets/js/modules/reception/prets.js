@@ -1,5 +1,5 @@
 /**
- * PRÊTS MATÉRIEL – Réception
+ * PRÊTS MATÉRIEL : Réception
  *
  * --- Contrat API backend (autre branche) ---
  *
@@ -49,7 +49,9 @@ const TYPE_LABELS = {
 const MODE_PERIPH = ['ecran', 'clavier', 'souris'];
 
 function formatDateISOFromInput(value) {
-    if (!value || typeof value !== 'string') return '';
+    if (!value || typeof value !== 'string') {
+        return '';
+    }
     const t = value.trim().slice(0, 10);
     return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : '';
 }
@@ -72,7 +74,9 @@ export default class PretsManager {
         this.syncPayantMontant();
         const dd = document.getElementById('prets-date-debut');
         const df = document.getElementById('prets-date-fin');
-        if (dd && !dd.value) dd.value = new Date().toISOString().slice(0, 10);
+        if (dd && !dd.value) {
+            dd.value = new Date().toISOString().slice(0, 10);
+        }
         if (df && !df.value) {
             const d = new Date();
             d.setMonth(d.getMonth() + 1);
@@ -101,10 +105,16 @@ export default class PretsManager {
         const montant = document.getElementById('prets-montant');
         const wrap = document.getElementById('prets-montant-wrap');
         const isPayant = !!payant?.checked;
-        if (wrap) wrap.hidden = !isPayant;
-        if (!montant) return;
+        if (wrap) {
+            wrap.hidden = !isPayant;
+        }
+        if (!montant) {
+            return;
+        }
         montant.disabled = !isPayant;
-        if (!isPayant) montant.value = '';
+        if (!isPayant) {
+            montant.value = '';
+        }
     }
 
     getMetaFromForm() {
@@ -176,7 +186,9 @@ export default class PretsManager {
     }
 
     addTableLine() {
-        if (this._addingLine) return;
+        if (this._addingLine) {
+            return;
+        }
         this._addingLine = true;
         const tbody = document.getElementById('prets-tbody');
         if (!tbody) {
@@ -240,7 +252,9 @@ export default class PretsManager {
     }
 
     applyTypeModeToRow(row) {
-        if (!row) return;
+        if (!row) {
+            return;
+        }
         const typeVal = row.querySelector('.prets-select-type')?.value || '';
         const tdMarque = row.querySelector('.col-marque');
         const tdModele = row.querySelector('.col-modele');
@@ -250,7 +264,9 @@ export default class PretsManager {
         const snIn = row.querySelector('.prets-in-sn');
 
         [tdMarque, tdModele, tdSn].forEach((td) => {
-            if (!td) return;
+            if (!td) {
+                return;
+            }
             td.hidden = false;
             td.style.removeProperty('display');
         });
@@ -285,7 +301,9 @@ export default class PretsManager {
         }
 
         const snBlocked = typeVal !== 'pc';
-        if (tdSn) tdSn.classList.toggle('prets-td--blocked', snBlocked);
+        if (tdSn) {
+            tdSn.classList.toggle('prets-td--blocked', snBlocked);
+        }
         if (snIn) {
             if (snBlocked) {
                 snIn.value = '';
@@ -300,7 +318,9 @@ export default class PretsManager {
         document.querySelectorAll('#prets-tbody .prets-line').forEach((row, idx) => {
             row.dataset.lineIndex = String(idx);
             const numCell = row.querySelector('.col-num');
-            if (numCell) numCell.textContent = String(idx + 1);
+            if (numCell) {
+                numCell.textContent = String(idx + 1);
+            }
         });
     }
 
@@ -403,9 +423,9 @@ export default class PretsManager {
         return {
             num: l.num,
             typeDisplay: typeD,
-            marqueName: marqueStr || '—',
-            modeleName: modeleStr || '—',
-            serialNumber: (l.type === 'autres' || isPeriphType(l.type)) ? '—' : (String(l.serialNumber || '').trim() || '—'),
+            marqueName: marqueStr || '-',
+            modeleName: modeleStr || '-',
+            serialNumber: (l.type === 'autres' || isPeriphType(l.type)) ? '-' : (String(l.serialNumber || '').trim() || '-'),
             quantite: l.quantite
         };
     }
@@ -413,7 +433,9 @@ export default class PretsManager {
     async savePdf() {
         const meta = this.getMetaFromForm();
         const lines = this.getLinesFromTable();
-        if (!this.validate(meta, lines)) return;
+        if (!this.validate(meta, lines)) {
+            return;
+        }
 
         const invoke = window.electron?.invoke || window.electronAPI?.invoke;
         if (!invoke) {
@@ -456,7 +478,7 @@ export default class PretsManager {
             window.app?.showNotification?.('Génération du PDF…', 'info');
             const result = await invoke('generate-pret-materiel-pdf', payload);
             if (result?.success && result.pdf_path) {
-                window.app?.showNotification?.('Fiche enregistrée : ' + result.pdf_path, 'success');
+                window.app?.showNotification?.(`Fiche enregistrée : ${  result.pdf_path}`, 'success');
                 try {
                     const createRes = await api.post('pretsMateriel.create', {
                         ...serverBody,

@@ -41,7 +41,7 @@ class AuthManager {
         if (userId && username && token) {
             this.user = {
                 id: parseInt(userId),
-                username: username
+                username
             };
             logger.debug('Session trouvée, vérification...', { userId: this.user.id, username: this.user.username });
             // Ne pas bloquer l'initialisation si la vérification échoue (erreur réseau)

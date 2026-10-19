@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=Tracebay (Dev)
-Comment=Tracebay — lancement en développement
+Comment=Tracebay : lancement en développement
 Exec=REMPLACER_PAR_CHEMIN_ABSOLU_APPS_CLIENT/start-dev.sh
 Icon=REMPLACER_PAR_CHEMIN_ABSOLU_APPS_CLIENT/assets/linux/tracebay.svg
 Terminal=true

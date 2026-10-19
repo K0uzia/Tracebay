@@ -49,7 +49,9 @@ export default class GestionLotsManager {
         // Restaurer le brouillon local, sinon ligne SCAN vide
         setTimeout(() => {
             const tbody = document.getElementById('lot-table-body');
-            if (!tbody) return;
+            if (!tbody) {
+                return;
+            }
 
             const draft = this.loadDraft();
             const hasDraft = draft && (
@@ -81,7 +83,9 @@ export default class GestionLotsManager {
         try {
             // Charger les marques
             const marquesRes = await api.get('marques.list', { useCache: false });
-            if (!marquesRes.ok) throw new Error('Erreur chargement marques');
+            if (!marquesRes.ok) {
+                throw new Error('Erreur chargement marques');
+            }
             const marquesData = await marquesRes.json();
             // Gérer les deux formats : tableau direct ou avec wrapper
             this.marques = Array.isArray(marquesData) ? marquesData : (marquesData.items || marquesData.marques || []);
@@ -163,11 +167,13 @@ export default class GestionLotsManager {
      * Mettre à jour les modèles basé sur la marque sélectionnée
      */
     updateModeleSelect(marqueId, selectElement) {
-        if (!marqueId || !selectElement) return;
+        if (!marqueId || !selectElement) {
+            return;
+        }
         
         const currentValue = selectElement.value;
         logger.debug('Filtrage modèles pour marque:', { marqueId, totalModeles: this.modeles.length, currentValue });
-        const filteredModeles = this.modeles.filter(m => m.marque_id == marqueId);
+        const filteredModeles = this.modeles.filter(m => String(m.marque_id) === String(marqueId));
         logger.debug('Modèles filtrés:', { count: filteredModeles.length, modeles: filteredModeles });
         
         selectElement.innerHTML = '<option value="">Modèle...</option>';
@@ -175,14 +181,14 @@ export default class GestionLotsManager {
             const option = document.createElement('option');
             option.value = modele.id;
             option.textContent = modele.name;
-            if (modele.id == currentValue) {
+            if (String(modele.id) === String(currentValue)) {
                 option.selected = true;
             }
             selectElement.appendChild(option);
         });
         
         // Restaurer la valeur si elle existe toujours
-        if (currentValue && Array.from(selectElement.options).some(opt => opt.value == currentValue)) {
+        if (currentValue && Array.from(selectElement.options).some(opt => String(opt.value) === String(currentValue))) {
             selectElement.value = currentValue;
         }
         
@@ -192,7 +198,9 @@ export default class GestionLotsManager {
     }
 
     addListener(element, event, handler) {
-        if (!element) return;
+        if (!element) {
+            return;
+        }
         element.addEventListener(event, handler);
         this.listeners.push({ element, event, handler });
     }
@@ -248,7 +256,9 @@ export default class GestionLotsManager {
             const tbody = document.getElementById('lot-table-body');
             if (tbody) {
                 this._onRowCheckboxChange = (e) => {
-                    if (!e.target.classList?.contains('row-checkbox')) return;
+                    if (!e.target.classList?.contains('row-checkbox')) {
+                        return;
+                    }
                     this.updateSelectionBar();
                 };
                 this.addListener(tbody, 'change', this._onRowCheckboxChange);
@@ -271,7 +281,9 @@ export default class GestionLotsManager {
                     const isAutres = modalMassType.value === 'autres';
                     modalMassTypeOther.style.display = isAutres ? 'block' : 'none';
                     modalMassTypeOther.required = isAutres;
-                    if (!isAutres) modalMassTypeOther.value = '';
+                    if (!isAutres) {
+                        modalMassTypeOther.value = '';
+                    }
                 });
             }
 
@@ -284,12 +296,18 @@ export default class GestionLotsManager {
         }, 300);
 
         this._onMarqueChange = (e) => {
-            if (e.target.name !== 'marque' || !e.target.closest('#lot-table-body')) return;
+            if (e.target.name !== 'marque' || !e.target.closest('#lot-table-body')) {
+                return;
+            }
             const row = e.target.closest('tr');
-            if (!row) return;
+            if (!row) {
+                return;
+            }
             const modeleSelect = row.querySelector('select[name="modele"]');
             const selectedMarqueId = e.target.value;
-            if (!modeleSelect) return;
+            if (!modeleSelect) {
+                return;
+            }
             if (selectedMarqueId) {
                 this.updateModeleSelect(selectedMarqueId, modeleSelect);
             } else {
@@ -300,8 +318,12 @@ export default class GestionLotsManager {
         document.addEventListener('change', this._onMarqueChange);
 
         this._onBarcodeKeydown = (e) => {
-            if (!document.getElementById('lot-table-body')) return;
-            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+            if (!document.getElementById('lot-table-body')) {
+                return;
+            }
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+                return;
+            }
 
             if (e.key === 'Enter' && this._barcodeBuffer.length > 3) {
                 e.preventDefault();
@@ -323,19 +345,27 @@ export default class GestionLotsManager {
         document.addEventListener('keydown', this._onBarcodeKeydown);
 
         this._onSerialEnter = (e) => {
-            if (e.target.name !== 'serial_number' || e.key !== 'Enter') return;
-            if (!e.target.closest('#lot-table-body')) return;
+            if (e.target.name !== 'serial_number' || e.key !== 'Enter') {
+                return;
+            }
+            if (!e.target.closest('#lot-table-body')) {
+                return;
+            }
 
             const snInput = e.target;
             const value = (snInput.value || '').trim();
-            if (!value) return;
+            if (!value) {
+                return;
+            }
 
             e.preventDefault();
             e.stopPropagation();
 
             const tbody = document.getElementById('lot-table-body');
             const row = snInput.closest('tr');
-            if (!tbody || !row) return;
+            if (!tbody || !row) {
+                return;
+            }
 
             if (this.isDuplicateSerial(value, row)) {
                 this.showNotification(`S/N déjà présent: ${value}`, 'warning');
@@ -365,33 +395,43 @@ export default class GestionLotsManager {
 
     isDuplicateSerial(serial, excludeRow = null) {
         const tbody = document.getElementById('lot-table-body');
-        if (!tbody) return false;
+        if (!tbody) {
+            return false;
+        }
         const normalized = serial.trim().toUpperCase();
         return [...tbody.querySelectorAll('tr')].some(r => {
-            if (r === excludeRow) return false;
+            if (r === excludeRow) {
+                return false;
+            }
             const other = r.querySelector('input[name="serial_number"]');
             return other && other.value.trim().toUpperCase() === normalized;
         });
     }
 
     /**
-     * Ligne sans S/N (placeholder pour le prochain scan) — à ignorer à l'enregistrement / compteur.
+     * Ligne sans S/N (placeholder pour le prochain scan) : à ignorer à l'enregistrement / compteur.
      */
     isEmptySerialRow(row) {
-        if (!row) return true;
+        if (!row) {
+            return true;
+        }
         const sn = row.querySelector('input[name="serial_number"]')?.value?.trim();
         return !sn;
     }
 
     /**
      * Focus fiable sur un champ S/N (évite le smooth scroll qui vole le focus
-     * dès que le tableau déborde du viewport — typiquement après ~3 lignes).
+     * dès que le tableau déborde du viewport : typiquement après ~3 lignes).
      * Focus immédiat + double rAF pour résister aux reflows / toasts.
      */
     focusSerialInput(input) {
-        if (!input) return;
+        if (!input) {
+            return;
+        }
         const apply = () => {
-            if (!input.isConnected) return;
+            if (!input.isConnected) {
+                return;
+            }
             input.focus({ preventScroll: true });
             const row = input.closest('tr');
             if (row) {
@@ -415,7 +455,9 @@ export default class GestionLotsManager {
         }
 
         const tbody = document.getElementById('lot-table-body');
-        if (!tbody) return;
+        if (!tbody) {
+            return;
+        }
 
         if (this.isDuplicateSerial(value)) {
             logger.warn('⚠️ Doublon détecté:', value);
@@ -451,7 +493,9 @@ export default class GestionLotsManager {
         logger.debug('➕ Ajout manuel');
         
         const tbody = document.getElementById('lot-table-body');
-        if (!tbody) return;
+        if (!tbody) {
+            return;
+        }
 
         const row = this.createRow('', 'manual');
         tbody.appendChild(row);
@@ -550,8 +594,11 @@ export default class GestionLotsManager {
                 const isAutres = typeSelect.value === 'autres';
                 typeOtherInput.style.display = isAutres ? 'inline-block' : 'none';
                 typeOtherInput.required = isAutres;
-                if (isAutres) typeOtherInput.focus();
-                else typeOtherInput.value = '';
+                if (isAutres) {
+                    typeOtherInput.focus();
+                } else {
+                    typeOtherInput.value = '';
+                }
             });
         }
         
@@ -586,7 +633,9 @@ export default class GestionLotsManager {
      * Applique type / marque / modèle depuis un brouillon sur une ligne déjà créée.
      */
     applyRowDraftData(row, data) {
-        if (!row || !data) return;
+        if (!row || !data) {
+            return;
+        }
 
         const typeSelect = row.querySelector('select[name="type"]');
         const typeOtherInput = row.querySelector('input[name="type_other"]');
@@ -630,7 +679,9 @@ export default class GestionLotsManager {
         logger.debug('💾 Enregistrement du lot');
         
         const tbody = document.getElementById('lot-table-body');
-        if (!tbody) return;
+        if (!tbody) {
+            return;
+        }
 
         const rows = tbody.querySelectorAll('tr');
         if (rows.length === 0) {
@@ -707,9 +758,13 @@ export default class GestionLotsManager {
             this.clearDraft();
             // Vider le tableau pour que le flush navigation ne recrée pas le brouillon
             const tbody = document.getElementById('lot-table-body');
-            if (tbody) tbody.innerHTML = '';
+            if (tbody) {
+                tbody.innerHTML = '';
+            }
             const lotNameInput = document.getElementById('input-lot-name');
-            if (lotNameInput) lotNameInput.value = '';
+            if (lotNameInput) {
+                lotNameInput.value = '';
+            }
             this.showNotification(`Lot #${lotId || ''} enregistré (${lotData.length} articles)`, 'success');
             
             // Générer le PDF du lot (body attendu par le backend pour nommage et rangement)
@@ -775,11 +830,15 @@ export default class GestionLotsManager {
      */
     confirmCancelLot() {
         const tbody = document.getElementById('lot-table-body');
-        if (tbody) tbody.innerHTML = '';
+        if (tbody) {
+            tbody.innerHTML = '';
+        }
         
         // Réinitialiser le champ d'information du lot
         const lotNameInput = document.getElementById('input-lot-name');
-        if (lotNameInput) lotNameInput.value = '';
+        if (lotNameInput) {
+            lotNameInput.value = '';
+        }
         
         this.currentRowNumber = 1;
         this.clearDraft();
@@ -814,7 +873,9 @@ export default class GestionLotsManager {
             // Appel API réel
             const response = await api.post('marques.list', { name: newMarque });
             
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             
             const data = await response.json();
             
@@ -922,7 +983,9 @@ export default class GestionLotsManager {
      */
     populateMarqueSelect() {
         const select = document.getElementById('select-marque-for-modele');
-        if (!select) return;
+        if (!select) {
+            return;
+        }
 
         select.innerHTML = `
             <option value="">-- Sélectionner une marque --</option>
@@ -1000,7 +1063,7 @@ export default class GestionLotsManager {
                 const option = document.createElement('option');
                 option.value = m.id;
                 option.textContent = m.name;
-                if (m.id == currentValue) {
+                if (String(m.id) === String(currentValue)) {
                     option.selected = true;
                 }
                 select.appendChild(option);
@@ -1010,7 +1073,7 @@ export default class GestionLotsManager {
             if (currentValue) {
                 select.value = currentValue;
                 // Vérifier que la valeur a bien été définie
-                if (select.value != currentValue) {
+                if (String(select.value) !== String(currentValue)) {
                     logger.warn(`⚠️ Impossible de restaurer la valeur ${currentValue} pour le select marque ${index + 1}`);
                 }
             }
@@ -1095,7 +1158,9 @@ export default class GestionLotsManager {
      */
     deleteRow(row) {
         const tbody = document.getElementById('lot-table-body');
-        if (!tbody || !row?.isConnected) return;
+        if (!tbody || !row?.isConnected) {
+            return;
+        }
 
         const nextSibling = row.nextElementSibling;
         row.remove();
@@ -1105,8 +1170,11 @@ export default class GestionLotsManager {
 
         this.showNotification('Ligne supprimée', 'success', {
             onUndo: () => {
-                if (nextSibling) tbody.insertBefore(row, nextSibling);
-                else tbody.appendChild(row);
+                if (nextSibling) {
+                    tbody.insertBefore(row, nextSibling);
+                } else {
+                    tbody.appendChild(row);
+                }
                 this.renumberRows();
                 this.ensureEmptyScanRowAndFocus();
                 this.updateLotUI();
@@ -1121,7 +1189,9 @@ export default class GestionLotsManager {
      */
     ensureEmptyScanRowAndFocus() {
         const tbody = document.getElementById('lot-table-body');
-        if (!tbody) return null;
+        if (!tbody) {
+            return null;
+        }
 
         const rows = [...tbody.querySelectorAll('tr')];
         const emptyRow = rows.find(r => {
@@ -1145,13 +1215,17 @@ export default class GestionLotsManager {
      */
     renumberRows() {
         const tbody = document.getElementById('lot-table-body');
-        if (!tbody) return;
+        if (!tbody) {
+            return;
+        }
         
         const rows = tbody.querySelectorAll('tr');
         let filledIndex = 0;
         rows.forEach((row) => {
             const numCell = row.querySelector('td:nth-child(2) span');
-            if (!numCell) return;
+            if (!numCell) {
+                return;
+            }
             if (this.isEmptySerialRow(row)) {
                 numCell.textContent = '';
                 return;
@@ -1206,7 +1280,9 @@ export default class GestionLotsManager {
         
         selectedRows.forEach(checkbox => {
             const row = checkbox.closest('tr');
-            if (!row) return;
+            if (!row) {
+                return;
+            }
             
             if (massType) {
                 const typeSelect = row.querySelector('[name="type"]');
@@ -1223,12 +1299,16 @@ export default class GestionLotsManager {
             
             if (massMarque) {
                 const marqueSelect = row.querySelector('[name="marque"]');
-                if (marqueSelect) marqueSelect.value = massMarque;
+                if (marqueSelect) {
+                    marqueSelect.value = massMarque;
+                }
             }
             
             if (massModele) {
                 const modeleSelect = row.querySelector('[name="modele"]');
-                if (modeleSelect) modeleSelect.value = massModele;
+                if (modeleSelect) {
+                    modeleSelect.value = massModele;
+                }
             }
         });
         
@@ -1260,7 +1340,9 @@ export default class GestionLotsManager {
     updateLineCount() {
         const tbody = document.getElementById('lot-table-body');
         const countEl = document.getElementById('lot-line-count-value');
-        if (!tbody || !countEl) return;
+        if (!tbody || !countEl) {
+            return;
+        }
         // Ne compter que les lignes avec S/N (exclure le placeholder SCAN vide)
         const filled = [...tbody.querySelectorAll('tr')].filter((row) => !this.isEmptySerialRow(row)).length;
         countEl.textContent = String(filled);
@@ -1318,8 +1400,12 @@ export default class GestionLotsManager {
     }
 
     draftHasContent(draft) {
-        if (!draft) return false;
-        if (draft.lotName && String(draft.lotName).trim()) return true;
+        if (!draft) {
+            return false;
+        }
+        if (draft.lotName && String(draft.lotName).trim()) {
+            return true;
+        }
         return Array.isArray(draft.rows) && draft.rows.some((r) =>
             (r.serialNumber && String(r.serialNumber).trim()) ||
             r.type || r.marqueId || r.modeleId
@@ -1327,7 +1413,9 @@ export default class GestionLotsManager {
     }
 
     scheduleSaveDraft() {
-        if (this._restoringDraft) return;
+        if (this._restoringDraft) {
+            return;
+        }
         clearTimeout(this._draftSaveTimer);
         this._draftSaveTimer = setTimeout(() => this.saveDraft(), 200);
     }
@@ -1339,7 +1427,9 @@ export default class GestionLotsManager {
     saveDraft() {
         try {
             const tbody = document.getElementById('lot-table-body');
-            if (!tbody) return;
+            if (!tbody) {
+                return;
+            }
 
             const draft = this.collectDraft();
             if (!this.draftHasContent(draft)) {
@@ -1357,9 +1447,13 @@ export default class GestionLotsManager {
     loadDraft() {
         try {
             const raw = localStorage.getItem(this.getDraftStorageKey());
-            if (!raw) return null;
+            if (!raw) {
+                return null;
+            }
             const draft = JSON.parse(raw);
-            if (!draft || typeof draft !== 'object') return null;
+            if (!draft || typeof draft !== 'object') {
+                return null;
+            }
             return draft;
         } catch (error) {
             logger.warn('⚠️ Impossible de lire le brouillon lot:', error);
@@ -1380,7 +1474,9 @@ export default class GestionLotsManager {
 
     restoreDraft(draft) {
         const tbody = document.getElementById('lot-table-body');
-        if (!tbody || !draft) return;
+        if (!tbody || !draft) {
+            return;
+        }
 
         this._restoringDraft = true;
         try {
@@ -1414,7 +1510,9 @@ export default class GestionLotsManager {
 
     flashScanPanel() {
         const toolbar = document.getElementById('lot-toolbar');
-        if (!toolbar) return;
+        if (!toolbar) {
+            return;
+        }
 
         toolbar.classList.add('is-scanning');
         clearTimeout(this._scanFlashTimer);
@@ -1471,7 +1569,9 @@ export default class GestionLotsManager {
         this.currentRowNumber = 1;
 
         const tbody = document.getElementById('lot-table-body');
-        if (tbody) tbody.innerHTML = '';
+        if (tbody) {
+            tbody.innerHTML = '';
+        }
 
         logger.debug('✅ GestionLotsManager nettoyé');
     }

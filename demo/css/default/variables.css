@@ -120,7 +120,7 @@
     --chat-modal-blur: 2px;
 }
 
-/* Mode clair (toggle thème) — contraste fort partout */
+/* Mode clair (toggle thème) : contraste fort partout */
 html[data-theme-dark="0"] {
     --bg-base: #f4f5f7;
     --bg-elevated: #ffffff;
@@ -132,7 +132,7 @@ html[data-theme-dark="0"] {
     --text-muted: #4b5563;
     --border: rgba(13, 17, 23, 0.14);
 
-    /* Alias legacy — texte sombre sur surfaces claires */
+    /* Alias legacy : texte sombre sur surfaces claires */
     --blanc: #ffffff;
     --noir: #0d1117;
     --text: #1a1a1a;

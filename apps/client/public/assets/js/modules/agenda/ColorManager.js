@@ -24,7 +24,9 @@ export default class ColorManager {
         const favorites = this.getFavorites();
         if (!favorites.includes(color)) {
             favorites.unshift(color);
-            if (favorites.length > 12) favorites.pop();
+            if (favorites.length > 12) {
+                favorites.pop();
+            }
             localStorage.setItem(this.storageKey, JSON.stringify(favorites));
         }
     }

@@ -19,10 +19,16 @@ const SIZE_PRESETS = ['250 Go', '500 Go', '1 To', '2 To', '4 To', '8 To'];
 
 function getShredForDisk(disk) {
     const existing = (disk.shred || '').trim();
-    if (existing && existing === 'Destruction physique') return existing;
+    if (existing && existing === 'Destruction physique') {
+        return existing;
+    }
     const t = (disk.disk_type || '').toUpperCase();
-    if (t === 'SSD') return 'Secure E. + Sanitize';
-    if (t === 'HDD') return 'DoD';
+    if (t === 'SSD') {
+        return 'Secure E. + Sanitize';
+    }
+    if (t === 'HDD') {
+        return 'DoD';
+    }
     return '-';
 }
 
@@ -73,11 +79,15 @@ export default class DisquesManager {
     async loadReferenceData() {
         try {
             const marquesRes = await api.get('marques.list', { useCache: false });
-            if (!marquesRes.ok) throw new Error('Erreur chargement marques');
+            if (!marquesRes.ok) {
+                throw new Error('Erreur chargement marques');
+            }
             const marquesData = await marquesRes.json();
             this.marques = Array.isArray(marquesData) ? marquesData : (marquesData.items || marquesData.marques || []);
             const modelesRes = await api.get('marques.all', { useCache: false });
-            if (!modelesRes.ok) throw new Error('Endpoint modèles non trouvé');
+            if (!modelesRes.ok) {
+                throw new Error('Endpoint modèles non trouvé');
+            }
             const modelesData = await modelesRes.json();
             const marquesAvecModeles = Array.isArray(modelesData) ? modelesData : (modelesData.items || []);
             this.modeles = [];
@@ -100,7 +110,9 @@ export default class DisquesManager {
     }
 
     addListener(el, event, handler) {
-        if (!el) return;
+        if (!el) {
+            return;
+        }
         el.addEventListener(event, handler);
         this.listeners.push({ element: el, event, handler });
     }
@@ -116,22 +128,28 @@ export default class DisquesManager {
             document.removeEventListener('keydown', this._onBarcodeKeydown);
             this._onBarcodeKeydown = null;
         }
-        if (this._barcodeTimer) clearTimeout(this._barcodeTimer);
+        if (this._barcodeTimer) {
+            clearTimeout(this._barcodeTimer);
+        }
         this.listeners.forEach(({ element, event, handler }) => {
             element?.removeEventListener(event, handler);
         });
         this.listeners = [];
-        logger.debug('Destruction DisquesManager (session conservée: ' + sessionDisksCache.length + ' ligne(s))');
+        logger.debug(`Destruction DisquesManager (session conservée: ${  sessionDisksCache.length  } ligne(s))`);
     }
 
     focusSerialInput() {
         const inp = document.querySelector('#disques-session-tbody tr:last-child input[name="disques_serial"]');
-        if (inp) inp.focus();
+        if (inp) {
+            inp.focus();
+        }
     }
 
     syncAllFromDom() {
         const tbody = document.getElementById('disques-session-tbody');
-        if (!tbody) return;
+        if (!tbody) {
+            return;
+        }
         const rows = [...tbody.querySelectorAll('tr')];
         if (rows.length) {
             this.sessionDisks = rows.map(tr => this.readRow(tr));
@@ -170,7 +188,7 @@ export default class DisquesManager {
         }
         const interfaceVal = tr.querySelector('select[name="disques_interface"]')?.value || 'SATA';
         const destruction = tr.querySelector('.js-disques-destruction')?.checked === true;
-        let shred = destruction ? 'Destruction physique' : '';
+        const shred = destruction ? 'Destruction physique' : '';
         const d = {
             serial,
             marque,
@@ -181,7 +199,9 @@ export default class DisquesManager {
             shred,
             autoDetected
         };
-        if (!d.shred) d.shred = getShredForDisk(d);
+        if (!d.shred) {
+            d.shred = getShredForDisk(d);
+        }
         return d;
     }
 
@@ -193,17 +213,18 @@ export default class DisquesManager {
             val = '';
         } else {
             const m = this.marques.find(x => (x.name || '').trim() === current);
-            if (m) val = String(m.id);
-            else {
+            if (m) {
+                val = String(m.id);
+            } else {
                 val = VALUE_AUTRE;
                 autre = escapeAttr(current);
             }
         }
-        const opts = '<option value="">--</option>' +
+        const opts = `<option value="">--</option>${ 
             this.marques.map(m =>
                 `<option value="${escapeHtml(String(m.id))}" ${String(m.id) === val ? 'selected' : ''}>${escapeHtml(m.name)}</option>`
-            ).join('') +
-            `<option value="${VALUE_AUTRE}" ${val === VALUE_AUTRE ? 'selected' : ''}>Autre</option>`;
+            ).join('') 
+        }<option value="${VALUE_AUTRE}" ${val === VALUE_AUTRE ? 'selected' : ''}>Autre</option>`;
         const showAutre = val === VALUE_AUTRE ? 'inline-block' : 'none';
         return `<select name="disques_marque" class="js-disques-marque">${opts}</select>` +
             `<input type="text" name="disques_marque_autre" class="type-other-input disques-marque-autre" style="display:${showAutre}" value="${autre}" placeholder="Autre marque" autocomplete="off">`;
@@ -222,8 +243,9 @@ export default class DisquesManager {
             const mo = this.modeles.find(x =>
                 String(x.marque_id) === marqueId && (x.name || '').trim() === modeleName
             );
-            if (mo) val = String(mo.id);
-            else {
+            if (mo) {
+                val = String(mo.id);
+            } else {
                 val = VALUE_AUTRE;
                 autre = escapeAttr(modeleName);
             }
@@ -234,11 +256,11 @@ export default class DisquesManager {
         const filtered = marqueId
             ? this.modeles.filter(m => String(m.marque_id) === String(marqueId))
             : [];
-        const opts = '<option value="">--</option>' +
+        const opts = `<option value="">--</option>${ 
             filtered.map(m =>
                 `<option value="${escapeHtml(String(m.id))}" ${String(m.id) === val ? 'selected' : ''}>${escapeHtml(m.name)}</option>`
-            ).join('') +
-            `<option value="${VALUE_AUTRE}" ${val === VALUE_AUTRE ? 'selected' : ''}>Autre</option>`;
+            ).join('') 
+        }<option value="${VALUE_AUTRE}" ${val === VALUE_AUTRE ? 'selected' : ''}>Autre</option>`;
         const showAutre = val === VALUE_AUTRE ? 'inline-block' : 'none';
         return `<select name="disques_modele" class="js-disques-modele">${opts}</select>` +
             `<input type="text" name="disques_modele_autre" class="type-other-input disques-modele-autre" style="display:${showAutre}" value="${autre}" placeholder="Autre modèle" autocomplete="off">`;
@@ -256,11 +278,11 @@ export default class DisquesManager {
             selVal = 'autre';
             custom = escapeAttr(raw);
         }
-        const opts = '<option value="">--</option>' +
+        const opts = `<option value="">--</option>${ 
             SIZE_PRESETS.map(p =>
                 `<option value="${escapeHtml(p)}" ${selVal === p ? 'selected' : ''}>${escapeHtml(p)}</option>`
-            ).join('') +
-            `<option value="autre" ${selVal === 'autre' ? 'selected' : ''}>Autre</option>`;
+            ).join('') 
+        }<option value="autre" ${selVal === 'autre' ? 'selected' : ''}>Autre</option>`;
         const showC = selVal === 'autre' ? 'inline-block' : 'none';
         return `<select name="disques_size">${opts}</select>` +
             `<input type="text" name="disques_size_custom" class="type-other-input" style="display:${showC}" value="${custom}" placeholder="Ex: 512 Go" autocomplete="off">`;
@@ -270,7 +292,9 @@ export default class DisquesManager {
         const dt = (d.disk_type || '').toUpperCase();
         const list = dt === 'HDD' ? INTERFACES_HDD : dt === 'SSD' ? INTERFACES_SSD : INTERFACES_ALL;
         let cur = (d.interface || 'SATA').trim();
-        if (!list.some(o => o.value === cur)) cur = list[0]?.value || 'SATA';
+        if (!list.some(o => o.value === cur)) {
+            cur = list[0]?.value || 'SATA';
+        }
         const opts = list.map(o =>
             `<option value="${escapeHtml(o.value)}" ${o.value === cur ? 'selected' : ''}>${escapeHtml(o.label)}</option>`
         ).join('');
@@ -281,11 +305,11 @@ export default class DisquesManager {
         const serial = escapeHtml((d.serial || ''));
         const dt = (d.disk_type || '').trim();
         const diskTypeSelect =
-            `<select name="disk_type" class="js-disques-disk-type">` +
-            `<option value="">--</option>` +
+            '<select name="disk_type" class="js-disques-disk-type">' +
+            '<option value="">--</option>' +
             `<option value="HDD" ${dt === 'HDD' ? 'selected' : ''}>HDD</option>` +
             `<option value="SSD" ${dt === 'SSD' ? 'selected' : ''}>SSD</option>` +
-            `</select>`;
+            '</select>';
         const destruct = (d.shred || '') === 'Destruction physique';
         const shredPreview = escapeHtml(d.shred || getShredForDisk(d));
         const lsblk = d.autoDetected ? '1' : '0';
@@ -308,9 +332,13 @@ export default class DisquesManager {
     renderSessionTable() {
         const tbody = document.getElementById('disques-session-tbody');
         const selAll = document.getElementById('disques-select-all');
-        if (!tbody) return;
+        if (!tbody) {
+            return;
+        }
         tbody.innerHTML = this.sessionDisks.map((d, i) => this.buildRowHtml(d, i)).join('');
-        if (selAll) selAll.checked = false;
+        if (selAll) {
+            selAll.checked = false;
+        }
         this.updateSaveButtonState();
     }
 
@@ -324,34 +352,45 @@ export default class DisquesManager {
     updateShredCell(tr) {
         const d = this.readRow(tr);
         const span = tr.querySelector('.js-disques-shred-label');
-        if (span) span.textContent = d.shred || '-';
+        if (span) {
+            span.textContent = d.shred || '-';
+        }
     }
 
     populateModeleSelect(tr, marqueId) {
         const sel = tr.querySelector('select[name="disques_modele"]');
         const autre = tr.querySelector('.disques-modele-autre');
-        if (!sel) return;
+        if (!sel) {
+            return;
+        }
         const current = sel.value;
         const filtered = marqueId && marqueId !== VALUE_AUTRE
             ? this.modeles.filter(m => String(m.marque_id) === String(marqueId))
             : [];
-        sel.innerHTML = '<option value="">--</option>' +
+        sel.innerHTML = `<option value="">--</option>${ 
             filtered.map(m =>
                 `<option value="${escapeHtml(String(m.id))}">${escapeHtml(m.name)}</option>`
-            ).join('') +
-            `<option value="${VALUE_AUTRE}">Autre</option>`;
-        if (current && Array.from(sel.options).some(o => o.value === current)) sel.value = current;
-        else sel.value = '';
+            ).join('') 
+        }<option value="${VALUE_AUTRE}">Autre</option>`;
+        if (current && Array.from(sel.options).some(o => o.value === current)) {
+            sel.value = current;
+        } else {
+            sel.value = '';
+        }
         if (autre) {
             autre.style.display = sel.value === VALUE_AUTRE ? 'inline-block' : 'none';
-            if (sel.value !== VALUE_AUTRE) autre.value = '';
+            if (sel.value !== VALUE_AUTRE) {
+                autre.value = '';
+            }
         }
     }
 
     refillInterfaceSelect(tr) {
         const typeSel = tr.querySelector('select[name="disk_type"]');
         const iface = tr.querySelector('select[name="disques_interface"]');
-        if (!typeSel || !iface) return;
+        if (!typeSel || !iface) {
+            return;
+        }
         const dt = (typeSel.value || '').toUpperCase();
         const list = dt === 'HDD' ? INTERFACES_HDD : dt === 'SSD' ? INTERFACES_SSD : INTERFACES_ALL;
         const cur = iface.value;
@@ -364,13 +403,17 @@ export default class DisquesManager {
     handleTableChange(e) {
         const t = e.target;
         const tr = t.closest('tr');
-        if (!tr || !tr.closest('#disques-session-tbody')) return;
+        if (!tr || !tr.closest('#disques-session-tbody')) {
+            return;
+        }
 
         if (t.matches('select[name="disques_marque"]')) {
             const autre = tr.querySelector('.disques-marque-autre');
             if (autre) {
                 autre.style.display = t.value === VALUE_AUTRE ? 'inline-block' : 'none';
-                if (t.value !== VALUE_AUTRE) autre.value = '';
+                if (t.value !== VALUE_AUTRE) {
+                    autre.value = '';
+                }
             }
             this.populateModeleSelect(tr, t.value === VALUE_AUTRE ? '' : t.value);
         }
@@ -378,7 +421,9 @@ export default class DisquesManager {
             const autre = tr.querySelector('.disques-modele-autre');
             if (autre) {
                 autre.style.display = t.value === VALUE_AUTRE ? 'inline-block' : 'none';
-                if (t.value !== VALUE_AUTRE) autre.value = '';
+                if (t.value !== VALUE_AUTRE) {
+                    autre.value = '';
+                }
             }
         }
         if (t.matches('select[name="disk_type"]')) {
@@ -388,7 +433,9 @@ export default class DisquesManager {
             const cust = tr.querySelector('input[name="disques_size_custom"]');
             if (cust) {
                 cust.style.display = t.value === 'autre' ? 'inline-block' : 'none';
-                if (t.value !== 'autre') cust.value = '';
+                if (t.value !== 'autre') {
+                    cust.value = '';
+                }
             }
         }
         this.updateShredCell(tr);
@@ -396,18 +443,24 @@ export default class DisquesManager {
 
     removeDiskAt(index) {
         this.syncAllFromDom();
-        if (index < 0 || index >= this.sessionDisks.length) return;
+        if (index < 0 || index >= this.sessionDisks.length) {
+            return;
+        }
 
         const removed = { ...this.sessionDisks[index] };
         const hadSingleEmpty = this.sessionDisks.length === 1 && !(removed.serial || '').trim();
 
         this.sessionDisks.splice(index, 1);
         const addedPlaceholder = !this.sessionDisks.length;
-        if (addedPlaceholder) this.sessionDisks.push(emptyDisk());
+        if (addedPlaceholder) {
+            this.sessionDisks.push(emptyDisk());
+        }
         this.renderSessionTable();
         this.focusSerialInput();
 
-        if (hadSingleEmpty) return;
+        if (hadSingleEmpty) {
+            return;
+        }
 
         window.app?.showNotification?.('Ligne supprimée', 'success', {
             onUndo: () => {
@@ -434,8 +487,11 @@ export default class DisquesManager {
                 shred: (diskOrSerial.shred || '').trim() || '',
                 autoDetected: !!diskOrSerial.autoDetected || !!fromLsblk
             };
-            if (diskOrSerial.physicalDestruction === true) d.shred = 'Destruction physique';
-            else if (!d.shred) d.shred = getShredForDisk(d);
+            if (diskOrSerial.physicalDestruction === true) {
+                d.shred = 'Destruction physique';
+            } else if (!d.shred) {
+                d.shred = getShredForDisk(d);
+            }
         } else {
             d = {
                 serial: (diskOrSerial || '').trim(),
@@ -487,7 +543,9 @@ export default class DisquesManager {
         }
         try {
             const response = await api.post('marques.list', { name: newMarque });
-            if (!response.ok) throw new Error('HTTP ' + response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP ${  response.status}`);
+            }
             const data = await response.json();
             this.marques.push({ id: data.id || data.item?.id || this.marques.length + 1, name: newMarque });
             api.invalidateMarquesCache?.();
@@ -499,11 +557,13 @@ export default class DisquesManager {
             const sel = document.getElementById('disques-select-marque-for-modele');
             if (sel) {
                 const cur = sel.value;
-                sel.innerHTML = '<option value="">-- Sélectionner une marque --</option>' +
+                sel.innerHTML = `<option value="">-- Sélectionner une marque --</option>${ 
                     this.marques.map(m =>
                         `<option value="${escapeHtml(String(m.id))}">${escapeHtml(m.name)}</option>`
-                    ).join('');
-                if (cur) sel.value = cur;
+                    ).join('')}`;
+                if (cur) {
+                    sel.value = cur;
+                }
             }
         } catch (err) {
             logger.error('submitNewMarque:', err);
@@ -521,7 +581,7 @@ export default class DisquesManager {
         const marqueId = selectMarque.value;
         const newModele = inputModele.value.trim();
         const exists = this.modeles.some(m =>
-            m.marque_id == marqueId && (m.name || '').trim().toLowerCase() === newModele.toLowerCase()
+            String(m.marque_id) === String(marqueId) && (m.name || '').trim().toLowerCase() === newModele.toLowerCase()
         );
         if (exists) {
             window.app?.showNotification?.('Ce modèle existe déjà pour cette marque', 'warning');
@@ -538,7 +598,9 @@ export default class DisquesManager {
                 },
                 body: JSON.stringify({ name: newModele })
             });
-            if (!res.ok) throw new Error(await res.text().catch(() => 'HTTP ' + res.status));
+            if (!res.ok) {
+                throw new Error(await res.text().catch(() => `HTTP ${  res.status}`));
+            }
             const data = await res.json();
             this.modeles.push({
                 id: data.id || data.item?.id || this.modeles.length + 1,
@@ -580,9 +642,13 @@ export default class DisquesManager {
             this.listeners.push({ element: table, event: 'input', handler: onInput });
             const onClick = e => {
                 const btn = e.target.closest('.btn-delete-row');
-                if (!btn || !table.contains(btn)) return;
+                if (!btn || !table.contains(btn)) {
+                    return;
+                }
                 const idx = parseInt(btn.dataset.rowIndex, 10);
-                if (!Number.isNaN(idx)) this.removeDiskAt(idx);
+                if (!Number.isNaN(idx)) {
+                    this.removeDiskAt(idx);
+                }
             };
             table.addEventListener('click', onClick);
             this.listeners.push({ element: table, event: 'click', handler: onClick });
@@ -598,10 +664,16 @@ export default class DisquesManager {
         }
 
         this._onSerialEnter = e => {
-            if (e.target.name !== 'disques_serial' || e.key !== 'Enter') return;
-            if (!e.target.closest('#disques-session-tbody')) return;
+            if (e.target.name !== 'disques_serial' || e.key !== 'Enter') {
+                return;
+            }
+            if (!e.target.closest('#disques-session-tbody')) {
+                return;
+            }
             const sn = (e.target.value || '').trim();
-            if (!sn) return;
+            if (!sn) {
+                return;
+            }
             e.preventDefault();
             e.stopPropagation();
             this.syncAllFromDom();
@@ -629,8 +701,12 @@ export default class DisquesManager {
         document.addEventListener('keydown', this._onSerialEnter);
 
         this._onBarcodeKeydown = e => {
-            if (!document.getElementById('disques-session-tbody')) return;
-            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+            if (!document.getElementById('disques-session-tbody')) {
+                return;
+            }
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) {
+                return;
+            }
             if (e.key === 'Enter' && this._barcodeBuf.length > 3) {
                 const code = this._barcodeBuf.trim();
                 this._barcodeBuf = '';
@@ -649,30 +725,40 @@ export default class DisquesManager {
         document.addEventListener('keydown', this._onBarcodeKeydown);
 
         const btnAddLine = document.getElementById('disques-btn-add-line');
-        if (btnAddLine) this.addListener(btnAddLine, 'click', () => this.addManualLine());
+        if (btnAddLine) {
+            this.addListener(btnAddLine, 'click', () => this.addManualLine());
+        }
 
         const btnAddMarque = document.getElementById('disques-btn-add-marque');
-        if (btnAddMarque) this.addListener(btnAddMarque, 'click', () => this.modalManager?.open?.('disques-modal-add-marque'));
+        if (btnAddMarque) {
+            this.addListener(btnAddMarque, 'click', () => this.modalManager?.open?.('disques-modal-add-marque'));
+        }
         const btnAddModele = document.getElementById('disques-btn-add-modele');
         if (btnAddModele) {
             this.addListener(btnAddModele, 'click', () => {
                 const sel = document.getElementById('disques-select-marque-for-modele');
                 if (sel) {
-                    sel.innerHTML = '<option value="">-- Sélectionner une marque --</option>' +
+                    sel.innerHTML = `<option value="">-- Sélectionner une marque --</option>${ 
                         this.marques.map(m =>
                             `<option value="${escapeHtml(String(m.id))}">${escapeHtml(m.name)}</option>`
-                        ).join('');
+                        ).join('')}`;
                 }
                 this.modalManager?.open?.('disques-modal-add-modele');
             });
         }
         const btnSubmitMarque = document.getElementById('disques-btn-submit-marque');
-        if (btnSubmitMarque) this.addListener(btnSubmitMarque, 'click', () => this.submitNewMarque());
+        if (btnSubmitMarque) {
+            this.addListener(btnSubmitMarque, 'click', () => this.submitNewMarque());
+        }
         const btnSubmitModele = document.getElementById('disques-btn-submit-modele');
-        if (btnSubmitModele) this.addListener(btnSubmitModele, 'click', () => this.submitNewModele());
+        if (btnSubmitModele) {
+            this.addListener(btnSubmitModele, 'click', () => this.submitNewModele());
+        }
 
         const btnLsblk = document.getElementById('disques-btn-lsblk');
-        if (btnLsblk) this.addListener(btnLsblk, 'click', () => this.runLsblk());
+        if (btnLsblk) {
+            this.addListener(btnLsblk, 'click', () => this.runLsblk());
+        }
 
         const btnNewSession = document.getElementById('disques-btn-new-session');
         if (btnNewSession) {
@@ -680,21 +766,29 @@ export default class DisquesManager {
                 this.sessionDisks = [emptyDisk()];
                 this.renderSessionTable();
                 const sa = document.getElementById('disques-select-all');
-                if (sa) sa.checked = false;
+                if (sa) {
+                    sa.checked = false;
+                }
                 this.focusSerialInput();
                 window.app?.showNotification?.('Nouvelle session', 'info');
             });
         }
 
         const btnSave = document.getElementById('disques-btn-save');
-        if (btnSave) this.addListener(btnSave, 'click', () => this.saveSession());
+        if (btnSave) {
+            this.addListener(btnSave, 'click', () => this.saveSession());
+        }
 
         const lsblkAddSelected = document.getElementById('lsblk-btn-add-selected');
-        if (lsblkAddSelected) this.addListener(lsblkAddSelected, 'click', () => this.addLsblkSelected());
+        if (lsblkAddSelected) {
+            this.addListener(lsblkAddSelected, 'click', () => this.addLsblkSelected());
+        }
     }
 
     addDiskFromBarcode(serial) {
-        if (!serial) return;
+        if (!serial) {
+            return;
+        }
         this.syncAllFromDom();
         const norm = serial.toUpperCase();
         if (this.sessionDisks.some(d => (d.serial || '').trim().toUpperCase() === norm)) {
@@ -738,7 +832,9 @@ export default class DisquesManager {
 
     openLsblkModal(disks) {
         const listEl = document.getElementById('lsblk-disks-list');
-        if (!listEl) return;
+        if (!listEl) {
+            return;
+        }
         listEl.innerHTML = disks.map((d, i) => {
             const meta = [d.disk_type || '', d.type || '', d.size || ''].filter(Boolean).join(' · ');
             const modelVendor = [d.vendor, d.model].filter(Boolean).join(' ');
@@ -746,7 +842,7 @@ export default class DisquesManager {
             <label class="lsblk-disk-row">
                 <input type="checkbox" class="lsblk-disk-check" data-index="${i}" checked>
                 <span>${escapeHtml(d.serial || d.name || '-')}</span>
-                <span class="lsblk-disk-meta">${escapeHtml(meta)}${modelVendor ? ' · ' + escapeHtml(modelVendor) : ''}</span>
+                <span class="lsblk-disk-meta">${escapeHtml(meta)}${modelVendor ? ` · ${  escapeHtml(modelVendor)}` : ''}</span>
             </label>
         `;
         }).join('');
@@ -755,18 +851,26 @@ export default class DisquesManager {
 
     addLsblkSelected() {
         const listEl = document.getElementById('lsblk-disks-list');
-        if (!listEl) return;
+        if (!listEl) {
+            return;
+        }
         this.syncAllFromDom();
         const checked = listEl.querySelectorAll('.lsblk-disk-check:checked');
         let added = 0;
         checked.forEach(cb => {
             const i = parseInt(cb.dataset.index, 10);
             const src = this.lsblkPendingDisks[i];
-            if (!src) return;
+            if (!src) {
+                return;
+            }
             const serial = (src.serial || src.name || '').trim();
-            if (!serial) return;
+            if (!serial) {
+                return;
+            }
             const norm = serial.toUpperCase();
-            if (this.sessionDisks.some(ex => (ex.serial || '').trim().toUpperCase() === norm)) return;
+            if (this.sessionDisks.some(ex => (ex.serial || '').trim().toUpperCase() === norm)) {
+                return;
+            }
             const row = {
                 serial,
                 marque: (src.vendor || '').trim() || '-',
@@ -802,19 +906,25 @@ export default class DisquesManager {
             window.app?.showNotification?.('Des numéros de série sont en doublon', 'warning');
             return;
         }
-        if (this._savingSession) return;
+        if (this._savingSession) {
+            return;
+        }
         this._savingSession = true;
         const nameEl = document.getElementById('disques-session-name');
         const sessionName = (nameEl && nameEl.value) ? nameEl.value.trim() : '';
         const dateStr = new Date().toISOString().slice(0, 10);
         const btnSave = document.getElementById('disques-btn-save');
-        if (btnSave) btnSave.disabled = true;
+        if (btnSave) {
+            btnSave.disabled = true;
+        }
         try {
             const disksPayload = filled.map(({ autoDetected, ...rest }) => rest);
             const session = await createSession({ name: sessionName || undefined, date: dateStr, disks: disksPayload });
             this.sessionDisks = [emptyDisk()];
             this.renderSessionTable();
-            if (nameEl) nameEl.value = '';
+            if (nameEl) {
+                nameEl.value = '';
+            }
             window.app?.showNotification?.('Session enregistrée en traçabilité', 'success');
 
             if (window.electron?.invoke && session?.id) {

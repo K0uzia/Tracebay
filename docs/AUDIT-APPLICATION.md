@@ -17,7 +17,7 @@
 ### 1.2 Cibles identifiées
 | Élément | Détail |
 |--------|--------|
-| **OS supportés** | Windows (x64), macOS (x64, arm64), Linux (x64 – AppImage, deb) |
+| **OS supportés** | Windows (x64), macOS (x64, arm64), Linux (x64 : AppImage, deb) |
 | **Electron** | ^39.2.4 (package.json) |
 | **Node.js** | ≥18 (engines root), CI utilise Node 20 |
 | **Modules Node (main)** | `fs`, `path`, `http`, `child_process` (exec, execSync, spawn), `os`, `url` ; `pdfkit`, `electron-updater`, `electron-squirrel-startup` |
@@ -28,14 +28,14 @@
 - **Dépôt** : Git, monorepo (workspace root + `apps/client`).
 - **Scripts** : `npm start`, `electron .`, `electron-forge start`, `electron-builder` (build:prod:linux/win/mac).
 - **Documentation** : `docs/backend-shortcuts-api.md` ; pas de schéma d’architecture central.
-- **CI/CD** : `.github/workflows/build-client.yml` – build Linux/Windows/macOS sur push `main` (paths: `apps/client/**`), publication GitHub Release (GH_TOKEN / GITHUB_TOKEN).
+- **CI/CD** : `.github/workflows/build-client.yml` : build Linux/Windows/macOS sur push `main` (paths: `apps/client/**`), publication GitHub Release (GH_TOKEN / GITHUB_TOKEN).
 
 ---
 
 ## 2. Architecture et configuration Electron
 
 ### 2.1 Versions Electron et Node
-- **Electron** : 39.2.4 – version récente, à maintenir à jour pour correctifs de sécurité.
+- **Electron** : 39.2.4 : version récente, à maintenir à jour pour correctifs de sécurité.
 - **Node** : aligné sur celle fournie par Electron ; racine du projet exige `>=18`.
 
 **Recommandation** : Suivre les releases Electron (et les advisory) et mettre à jour régulièrement.
@@ -88,10 +88,10 @@
 - **open-pdf-window** : Validation correcte (pas de `..`, `/`, `\` dans le nom de fichier ; chemin construit côté main). **Conforme.**
 
 ### 3.2 Chargement de contenu
-- **Fenêtre principale** : `loadURL('file://' + path.join(__dirname, 'public', 'index.html'))` – pas de loadURL dynamique basé sur des entrées utilisateur. **Conforme.**
+- **Fenêtre principale** : `loadURL('file://' + path.join(__dirname, 'public', 'index.html'))` : pas de loadURL dynamique basé sur des entrées utilisateur. **Conforme.**
 - **Splash** : HTML en ligne (data URL) généré en dur. **Conforme.**
 - **Fenêtre PDF** : `file://` avec chemin dérivé de `pdfFile` validé (nom simple, pas de traversal). **Conforme.**
-- **DevTools** : Ouverts automatiquement en développement (`if (!isProduction) mainWindow.webContents.openDevTools()`), pas en production. **Conforme.** Les raccourcis F12 / Ctrl+Shift+I restent enregistrés même en prod – à considérer pour une build “fermée” (désactiver en prod si politique stricte).
+- **DevTools** : Ouverts automatiquement en développement (`if (!isProduction) mainWindow.webContents.openDevTools()`), pas en production. **Conforme.** Les raccourcis F12 / Ctrl+Shift+I restent enregistrés même en prod : à considérer pour une build “fermée” (désactiver en prod si politique stricte).
 
 ### 3.3 Risque XSS (injection HTML/JS)
 - **innerHTML** : Très utilisé dans le renderer (listes, modales, notifications, chat, etc.). Plusieurs modules utilisent une fonction **escapeHtml** (ShortcutManager, ChatManager, Historique, Disques, etc.) pour les données affichées ; `app.js` échappe les messages de notification avec `replace(/</g, '&lt;')`.
@@ -122,7 +122,7 @@
 
 ### 4.2 Secrets et configuration
 - **Clé API Giphy** : Une clé par défaut est **en dur** dans `ChatSecurityConfig.js` : `'mvekVgYYTsuZWKdfbyHDgUvtCEfUt4IR'`. Elle est utilisée comme fallback si `window.APP_CONFIG.giphyApiKey` n’est pas défini. **Non conforme** : secret versionné et exposé (risque d’abus de quota, révocation nécessaire).
-- **Fichier d’exemple** : `app-config.local.example.js` indique de mettre sa clé dans `APP_CONFIG.giphyApiKey` – bonne pratique pour l’override, mais la valeur par défaut ne doit pas être une vraie clé.
+- **Fichier d’exemple** : `app-config.local.example.js` indique de mettre sa clé dans `APP_CONFIG.giphyApiKey` : bonne pratique pour l’override, mais la valeur par défaut ne doit pas être une vraie clé.
 
 **Recommandations :**
 - Supprimer la clé en dur de `ChatSecurityConfig.js` et n’utiliser que `window.APP_CONFIG.giphyApiKey` (ou variable d’environnement en build). En absence de clé, la fonctionnalité GIF peut rester désactivée avec un message explicite (déjà partiellement en place).
@@ -155,7 +155,7 @@
 - Limiter les opérations bloquantes dans le main au démarrage (ex. découverte réseau) ou les déporter dans un worker / délai après show.
 
 ### 5.3 Observabilité
-- **Logs** : Logger centralisé (`Logger.js`) avec niveaux ; logs côté main via `console.log/error/warn`. Présence de logs de debug (fetch vers des URLs d’ingest de session) dans `main.js` (ex. open-pdf-with-system-app, update-downloaded, showMainAndCloseSplash) – à retirer ou conditionner à un mode debug pour ne pas exposer de données en production.
+- **Logs** : Logger centralisé (`Logger.js`) avec niveaux ; logs côté main via `console.log/error/warn`. Présence de logs de debug (fetch vers des URLs d’ingest de session) dans `main.js` (ex. open-pdf-with-system-app, update-downloaded, showMainAndCloseSplash) : à retirer ou conditionner à un mode debug pour ne pas exposer de données en production.
 - **Crash reporting** : Aucune intégration Sentry / Electron crashReporter repérée. **Recommandation** : envisager l’envoi des crashs (avec consentement et sans PII) pour diagnostiquer les erreurs en production.
 
 ---
@@ -194,7 +194,7 @@
 
 | Gravité | Élément | Preuve / emplacement | Impact |
 |--------|---------|----------------------|--------|
-| **Haute** | Clé API Giphy en dur | `ChatSecurityConfig.js` | Secret exposé. | **Corrigé** — clé lue uniquement depuis `GIPHY_API_KEY` (env) ou `userData/workspace-config.json` (Paramètres > Clé Giphy) ; plus aucune clé en dur dans le code. |
+| **Haute** | Clé API Giphy en dur | `ChatSecurityConfig.js` | Secret exposé. | **Corrigé** : clé lue uniquement depuis `GIPHY_API_KEY` (env) ou `userData/workspace-config.json` (Paramètres > Clé Giphy) ; plus aucune clé en dur dans le code. |
 | **Haute** | Risque de command injection dans `launch-app` | `main.js` : `exec(fullCmd)` avec `command` du payload | Exécution de commandes arbitraires si la source du `command` est compromise |
 | **Moyenne** | Pas de restriction de chemin pour `list-folders` / `open-path` / `read-file-as-base64` | `main.js` handlers IPC | Lecture/ouverture de chemins arbitraires si le renderer est compromis |
 | **Moyenne** | JWT en clair dans localStorage | Plusieurs modules (api.js, AuthManager, etc.) | Vol de session en cas d’XSS ou accès physique |

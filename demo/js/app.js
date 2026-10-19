@@ -1016,8 +1016,8 @@
             (function () {
               var counts = {};
               items.forEach(function (it) {
-                var marque = String(it.brand || it.marque || it.marque_name || "").trim() || "—";
-                var modele = String(it.model || it.modele || it.modele_name || "").trim() || "—";
+                var marque = String(it.brand || it.marque || it.marque_name || "").trim() || "-";
+                var modele = String(it.model || it.modele || it.modele_name || "").trim() || "-";
                 var key = marque + "\0" + modele;
                 counts[key] = counts[key] || { marque: marque, modele: modele, count: 0 };
                 counts[key].count += 1;
@@ -1030,8 +1030,8 @@
               var open = !!App.modelBreakdownVisible[lot.id];
               var chipsHtml = open ? ("<div class=\"inventaire-model-breakdown\" aria-label=\"Quantité par modèle\">" +
                 rows.map(function (r) {
-                  var shortLabel = r.modele !== "—" ? r.modele : r.marque;
-                  var fullLabel = (r.modele !== "—" && r.marque !== "—") ? (r.marque + " " + r.modele) : shortLabel;
+                  var shortLabel = r.modele !== "-" ? r.modele : r.marque;
+                  var fullLabel = (r.modele !== "-" && r.marque !== "-") ? (r.marque + " " + r.modele) : shortLabel;
                   return "<span class=\"inventaire-model-chip\" title=\"" + esc(fullLabel) + "\">" +
                     "<span class=\"inventaire-model-chip__label\">" + esc(shortLabel) + "</span>" +
                     "<b class=\"inventaire-model-chip__qty\">" + r.count + "</b></span>";

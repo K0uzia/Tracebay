@@ -1,4 +1,4 @@
-# Backend — Prêts matériel (réception)
+# Backend : Prêts matériel (réception)
 
 Document de préparation pour implémentation sur la branche **proxmox** (API serveur). Le client Electron + web est déjà branché sur ces URLs.
 
@@ -19,7 +19,7 @@ Authentification : alignée sur le reste de l’API (header `Authorization: Bear
 
 ---
 
-## 2. `POST /api/prets-materiel` — corps JSON
+## 2. `POST /api/prets-materiel` : corps JSON
 
 Champs envoyés par le client (`prets.js`, après succès IPC PDF) :
 
@@ -67,7 +67,7 @@ Erreurs : JSON `{ "message": "..." }` ou `{ "error": "..." }` (affiché en notif
 
 ---
 
-## 3. `GET /api/prets-materiel/tracabilite` — liste
+## 3. `GET /api/prets-materiel/tracabilite` : liste
 
 Utilisé par `historique.js` et `tracabilite.js` (`fetch` + `Authorization`).
 
@@ -104,11 +104,11 @@ Chaque élément de liste devrait exposer (noms **snake_case** préférés ; le 
 | `pdf_path` | Ouverture locale / téléchargement |
 | `pdf_url` | Optionnel si PDF servi par HTTP |
 | `created_at` | Tri / secours date |
-| `lines` | Tableau de lignes (ou clés imbriquées : `pret_lignes`, `pretLignes`, `pret_lines` — voir `extractPretLinesFromRecord`) |
+| `lines` | Tableau de lignes (ou clés imbriquées : `pret_lignes`, `pretLignes`, `pret_lines` : voir `extractPretLinesFromRecord`) |
 
 ---
 
-## 4. `GET /api/prets-materiel/:id` — détail
+## 4. `GET /api/prets-materiel/:id` : détail
 
 Le client peut recevoir `{ "data": { ... } }` ou `{ "pret": { ... } }` / `pret_materiel` / etc. (`unwrapDetailRecord`).
 

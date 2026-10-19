@@ -47,7 +47,9 @@ export default class AgendaController {
     }
 
     async init() {
-        if (!this.calendarGrid) return;
+        if (!this.calendarGrid) {
+            return;
+        }
 
         this.setupNavigation();
         this.setupViewSwitch();

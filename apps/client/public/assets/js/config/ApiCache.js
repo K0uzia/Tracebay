@@ -46,7 +46,9 @@ class ApiCache {
      */
     has(key) {
         const entry = this.cache.get(key);
-        if (!entry) return false;
+        if (!entry) {
+            return false;
+        }
         
         // Vérifier si l'entrée a expiré
         if (Date.now() > entry.expiresAt) {
@@ -153,7 +155,9 @@ class ApiCache {
      * @private
      */
     startCleanup() {
-        if (this.cleanupInterval) return;
+        if (this.cleanupInterval) {
+            return;
+        }
         
         // Nettoyer toutes les 5 minutes
         this.cleanupInterval = setInterval(() => {

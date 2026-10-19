@@ -38,11 +38,15 @@ export default class InventaireManager {
     async loadReferenceData() {
         try {
             const marquesRes = await api.get('marques.list', { useCache: false });
-            if (!marquesRes.ok) return;
+            if (!marquesRes.ok) {
+                return;
+            }
             const marquesData = await marquesRes.json();
             this.marques = Array.isArray(marquesData) ? marquesData : (marquesData.items || marquesData.marques || []);
             const modelesRes = await api.get('marques.all', { useCache: false });
-            if (!modelesRes.ok) return;
+            if (!modelesRes.ok) {
+                return;
+            }
             const modelesData = await modelesRes.json();
             const marquesAvecModeles = Array.isArray(modelesData) ? modelesData : (modelesData.items || []);
             this.modeles = [];
@@ -66,10 +70,18 @@ export default class InventaireManager {
 
     normalizeTypeValue(rawType) {
         const value = String(rawType || '').trim().toLowerCase();
-        if (!value) return '';
-        if (value === 'pc portable') return 'portable';
-        if (value === 'pc fixe') return 'fixe';
-        if (value === 'écran') return 'ecran';
+        if (!value) {
+            return '';
+        }
+        if (value === 'pc portable') {
+            return 'portable';
+        }
+        if (value === 'pc fixe') {
+            return 'fixe';
+        }
+        if (value === 'écran') {
+            return 'ecran';
+        }
         return value;
     }
 
@@ -90,7 +102,7 @@ export default class InventaireManager {
                     lot.local_pdf_path = prev;
                 }
             });
-            logger.info('📦 Inventaire : ' + this.lots.length + ' lot(s) chargé(s)');
+            logger.info(`📦 Inventaire : ${  this.lots.length  } lot(s) chargé(s)`);
             this.renderLots();
         } catch (error) {
             logger.error('❌ Erreur chargement lots:', error);
@@ -104,7 +116,9 @@ export default class InventaireManager {
      */
     renderLotsError(error) {
         const container = document.getElementById('lots-list');
-        if (!container) return;
+        if (!container) {
+            return;
+        }
         const message = error && error.message ? error.message : 'Erreur inconnue';
         container.innerHTML = `
             <div class="empty-state error-state">
@@ -117,7 +131,9 @@ export default class InventaireManager {
             </div>
         `;
         const btn = document.getElementById('btn-retry-lots-inventaire');
-        if (btn) btn.addEventListener('click', () => this.loadLots());
+        if (btn) {
+            btn.addEventListener('click', () => this.loadLots());
+        }
     }
 
     /**
@@ -125,7 +141,9 @@ export default class InventaireManager {
      */
     renderLots() {
         const container = document.getElementById('lots-list');
-        if (!container) return;
+        if (!container) {
+            return;
+        }
 
         // S'assurer que this.lots est défini et est un tableau
         if (!this.lots || !Array.isArray(this.lots)) {
@@ -237,7 +255,7 @@ export default class InventaireManager {
                 <div class="inventaire-lot-header" style="cursor: pointer;">
                     <div class="inventaire-lot-title">
                         <i class="fa-solid fa-chevron-right expand-icon"></i>
-                        <h3>Lot #${lot.id}${safeLotName ? ' · ' + safeLotName : ''}</h3>
+                        <h3>Lot #${lot.id}${safeLotName ? ` · ${  safeLotName}` : ''}</h3>
                         <span class="badge-created">${this.formatDate(lot.created_at)}</span>
                     </div>
                     <div class="inventaire-lot-meta">
@@ -349,11 +367,13 @@ export default class InventaireManager {
      * @returns {number}
      */
     countDistinctModels(items) {
-        if (!Array.isArray(items) || items.length === 0) return 0;
+        if (!Array.isArray(items) || items.length === 0) {
+            return 0;
+        }
         const keys = new Set();
         for (const item of items) {
-            const marque = String(item.marque_name || '').trim() || '—';
-            const modele = String(item.modele_name || '').trim() || '—';
+            const marque = String(item.marque_name || '').trim() || '-';
+            const modele = String(item.modele_name || '').trim() || '-';
             keys.add(`${marque}\0${modele}`);
         }
         return keys.size;
@@ -365,12 +385,14 @@ export default class InventaireManager {
      * @returns {string} HTML
      */
     renderModelBreakdown(items) {
-        if (!Array.isArray(items) || items.length === 0) return '';
+        if (!Array.isArray(items) || items.length === 0) {
+            return '';
+        }
 
         const counts = new Map();
         for (const item of items) {
-            const marque = String(item.marque_name || '').trim() || '—';
-            const modele = String(item.modele_name || '').trim() || '—';
+            const marque = String(item.marque_name || '').trim() || '-';
+            const modele = String(item.modele_name || '').trim() || '-';
             const key = `${marque}\0${modele}`;
             const existing = counts.get(key);
             if (existing) {
@@ -381,17 +403,21 @@ export default class InventaireManager {
         }
 
         const rows = Array.from(counts.values()).sort((a, b) => {
-            if (b.count !== a.count) return b.count - a.count;
+            if (b.count !== a.count) {
+                return b.count - a.count;
+            }
             const labelA = `${a.marque} ${a.modele}`.toLowerCase();
             const labelB = `${b.marque} ${b.modele}`.toLowerCase();
             return labelA.localeCompare(labelB, 'fr');
         });
 
-        if (rows.length === 0) return '';
+        if (rows.length === 0) {
+            return '';
+        }
 
         const chips = rows.map(({ marque, modele, count }) => {
-            const shortLabel = modele !== '—' ? modele : marque;
-            const fullLabel = modele !== '—' && marque !== '—'
+            const shortLabel = modele !== '-' ? modele : marque;
+            const fullLabel = modele !== '-' && marque !== '-'
                 ? `${marque} ${modele}`
                 : shortLabel;
             return `<span class="inventaire-model-chip" title="${this.escapeHtml(fullLabel)}"><span class="inventaire-model-chip__label">${this.escapeHtml(shortLabel)}</span><b class="inventaire-model-chip__qty">${count}</b></span>`;
@@ -419,7 +445,9 @@ export default class InventaireManager {
      */
     renderLotPdfActionButtons(lot) {
         const localPath = this.getCandidatePdfPathFromItem(lot);
-        if (!this.isAllowedLocalPath(localPath)) return '';
+        if (!this.isAllowedLocalPath(localPath)) {
+            return '';
+        }
         const safeLocal = this.escapeHtml(String(localPath));
         return `
             <button type="button" class="btn-open-pdf-location-lot lot-btn lot-btn--pdf-location" data-lot-id="${lot.id}" title="Ouvrir le dossier du PDF provisoire">
@@ -442,7 +470,9 @@ export default class InventaireManager {
         // Toggle lot expansion
         document.querySelectorAll('.inventaire-lot-header').forEach(header => {
             header.addEventListener('click', (e) => {
-                if (isPdfAction(e.target)) return;
+                if (isPdfAction(e.target)) {
+                    return;
+                }
                 
                 const card = header.closest('.inventaire-lot-card');
                 const content = card.querySelector('.lot-content');
@@ -520,13 +550,15 @@ export default class InventaireManager {
 
     populateMarqueSelect(selectedMarqueName) {
         const marqueSelect = document.getElementById('modal-pc-marque-select');
-        if (!marqueSelect) return null;
+        if (!marqueSelect) {
+            return null;
+        }
         const itemMarque = String(selectedMarqueName || '').trim();
         const marqueMatch = this.marques.find(m => (m.name || '').trim() === itemMarque);
         const marqueSelVal = marqueMatch ? String(marqueMatch.id) : (itemMarque ? VALUE_AUTRE : '');
-        marqueSelect.innerHTML = '<option value="">-- Marque --</option>'
-            + this.marques.map(m => `<option value="${this.escapeHtml(m.id)}" ${marqueSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')
-            + `<option value="${VALUE_AUTRE}" ${marqueSelVal === VALUE_AUTRE ? 'selected' : ''}>Autre</option>`;
+        marqueSelect.innerHTML = `<option value="">-- Marque --</option>${
+            this.marques.map(m => `<option value="${this.escapeHtml(m.id)}" ${marqueSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')
+        }<option value="${VALUE_AUTRE}" ${marqueSelVal === VALUE_AUTRE ? 'selected' : ''}>Autre</option>`;
         const marqueOther = document.getElementById('modal-pc-marque-other');
         if (marqueOther) {
             marqueOther.value = marqueSelVal === VALUE_AUTRE ? itemMarque : '';
@@ -537,16 +569,18 @@ export default class InventaireManager {
 
     populateModeleSelect(marqueMatch, selectedModeleName) {
         const modeleSelect = document.getElementById('modal-pc-modele-select');
-        if (!modeleSelect) return;
+        if (!modeleSelect) {
+            return;
+        }
         const itemModele = String(selectedModeleName || '').trim();
         const modelesForMarque = marqueMatch
             ? this.modeles.filter(m => String(m.marque_id) === String(marqueMatch.id))
             : [];
         const modeleMatch = modelesForMarque.find(m => (m.name || '').trim() === itemModele);
         const modeleSelVal = modeleMatch ? String(modeleMatch.id) : (itemModele ? VALUE_AUTRE : '');
-        modeleSelect.innerHTML = '<option value="">-- Modèle --</option>'
-            + modelesForMarque.map(m => `<option value="${this.escapeHtml(m.id)}" ${modeleSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')
-            + `<option value="${VALUE_AUTRE}" ${modeleSelVal === VALUE_AUTRE ? 'selected' : ''}>Autre</option>`;
+        modeleSelect.innerHTML = `<option value="">-- Modèle --</option>${
+            modelesForMarque.map(m => `<option value="${this.escapeHtml(m.id)}" ${modeleSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')
+        }<option value="${VALUE_AUTRE}" ${modeleSelVal === VALUE_AUTRE ? 'selected' : ''}>Autre</option>`;
         const modeleOther = document.getElementById('modal-pc-modele-other');
         if (modeleOther) {
             modeleOther.value = modeleSelVal === VALUE_AUTRE ? itemModele : '';
@@ -562,7 +596,9 @@ export default class InventaireManager {
             typeSelect.addEventListener('change', () => {
                 const isOther = typeSelect.value === VALUE_AUTRE;
                 typeOther.style.display = isOther ? 'block' : 'none';
-                if (!isOther) typeOther.value = '';
+                if (!isOther) {
+                    typeOther.value = '';
+                }
             });
         }
 
@@ -576,15 +612,17 @@ export default class InventaireManager {
                 const isAutre = marqueSelect.value === VALUE_AUTRE;
                 if (marqueOther) {
                     marqueOther.style.display = isAutre ? 'block' : 'none';
-                    if (!isAutre) marqueOther.value = '';
+                    if (!isAutre) {
+                        marqueOther.value = '';
+                    }
                 }
                 if (modeleSelect) {
                     const filtered = marqueSelect.value && marqueSelect.value !== VALUE_AUTRE
                         ? this.modeles.filter(m => String(m.marque_id) === String(marqueSelect.value))
                         : [];
-                    modeleSelect.innerHTML = '<option value="">-- Modèle --</option>'
-                        + filtered.map(m => `<option value="${this.escapeHtml(m.id)}">${this.escapeHtml(m.name)}</option>`).join('')
-                        + `<option value="${VALUE_AUTRE}">Autre</option>`;
+                    modeleSelect.innerHTML = `<option value="">-- Modèle --</option>${
+                        filtered.map(m => `<option value="${this.escapeHtml(m.id)}">${this.escapeHtml(m.name)}</option>`).join('')
+                    }<option value="${VALUE_AUTRE}">Autre</option>`;
                 }
                 if (modeleOther) {
                     modeleOther.style.display = 'none';
@@ -595,10 +633,14 @@ export default class InventaireManager {
         if (modeleSelect && !modeleSelect.dataset.bound) {
             modeleSelect.dataset.bound = '1';
             modeleSelect.addEventListener('change', () => {
-                if (!modeleOther) return;
+                if (!modeleOther) {
+                    return;
+                }
                 const isOther = modeleSelect.value === VALUE_AUTRE;
                 modeleOther.style.display = isOther ? 'block' : 'none';
-                if (!isOther) modeleOther.value = '';
+                if (!isOther) {
+                    modeleOther.value = '';
+                }
             });
         }
     }
@@ -645,7 +687,7 @@ export default class InventaireManager {
         let item = null;
         let foundLot = null;
         for (const lot of this.lots) {
-            item = lot.items.find(i => i.id == itemId);
+            item = lot.items.find(i => String(i.id) === String(itemId));
             if (item) {
                 foundLot = lot;
                 break;
@@ -663,7 +705,9 @@ export default class InventaireManager {
         this.updateModalChrome();
 
         const serialInput = document.getElementById('modal-pc-serial-input');
-        if (serialInput) serialInput.value = item.serial_number || '';
+        if (serialInput) {
+            serialInput.value = item.serial_number || '';
+        }
 
         const itemType = this.normalizeTypeValue(item.type);
         const isOtherType = itemType && !LOT_TYPE_OPTIONS.slice(1, -1).includes(itemType);
@@ -690,7 +734,9 @@ export default class InventaireManager {
         this.setupModalMaterialListeners();
 
         const osSelect = document.getElementById('modal-pc-os-select');
-        if (osSelect) osSelect.value = getOsOption(item.os).value;
+        if (osSelect) {
+            osSelect.value = getOsOption(item.os).value;
+        }
         document.getElementById('modal-pc-entry').textContent = item.entry_type || '-';
         document.getElementById('modal-pc-date-changed').textContent = this.formatDateTime(item.state_changed_at) || '-';
         const stateSelect = document.getElementById('modal-pc-state');
@@ -729,15 +775,31 @@ export default class InventaireManager {
         const infoBox = document.querySelector('#modal-edit-pc .pc-info-box');
         const suiviSection = document.getElementById('modal-pc-suivi-section');
         if (this.modalMode === 'add') {
-            if (title) title.innerHTML = '<i class="fa-solid fa-plus" aria-hidden="true"></i> Ajouter du matériel';
-            if (saveBtn) saveBtn.innerHTML = '<i class="fa-solid fa-plus" aria-hidden="true"></i> Ajouter';
-            if (infoBox) infoBox.style.display = 'none';
-            if (suiviSection) suiviSection.style.display = '';
+            if (title) {
+                title.innerHTML = '<i class="fa-solid fa-plus" aria-hidden="true"></i> Ajouter du matériel';
+            }
+            if (saveBtn) {
+                saveBtn.innerHTML = '<i class="fa-solid fa-plus" aria-hidden="true"></i> Ajouter';
+            }
+            if (infoBox) {
+                infoBox.style.display = 'none';
+            }
+            if (suiviSection) {
+                suiviSection.style.display = '';
+            }
         } else {
-            if (title) title.innerHTML = '<i class="fa-solid fa-computer" aria-hidden="true"></i> Éditer le matériel';
-            if (saveBtn) saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Enregistrer';
-            if (infoBox) infoBox.style.display = '';
-            if (suiviSection) suiviSection.style.display = '';
+            if (title) {
+                title.innerHTML = '<i class="fa-solid fa-computer" aria-hidden="true"></i> Éditer le matériel';
+            }
+            if (saveBtn) {
+                saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Enregistrer';
+            }
+            if (infoBox) {
+                infoBox.style.display = '';
+            }
+            if (suiviSection) {
+                suiviSection.style.display = '';
+            }
         }
     }
 
@@ -756,10 +818,14 @@ export default class InventaireManager {
         this.updateModalChrome();
 
         const serialInput = document.getElementById('modal-pc-serial-input');
-        if (serialInput) serialInput.value = '';
+        if (serialInput) {
+            serialInput.value = '';
+        }
         const typeSelect = document.getElementById('modal-pc-type-select');
         const typeOther = document.getElementById('modal-pc-type-other');
-        if (typeSelect) typeSelect.value = '';
+        if (typeSelect) {
+            typeSelect.value = '';
+        }
         if (typeOther) {
             typeOther.value = '';
             typeOther.style.display = 'none';
@@ -769,20 +835,30 @@ export default class InventaireManager {
         this.setupModalMaterialListeners();
 
         const osSelect = document.getElementById('modal-pc-os-select');
-        if (osSelect) osSelect.value = 'linux';
+        if (osSelect) {
+            osSelect.value = 'linux';
+        }
         const entryEl = document.getElementById('modal-pc-entry');
-        if (entryEl) entryEl.textContent = 'manual';
+        if (entryEl) {
+            entryEl.textContent = 'manual';
+        }
         const dateEl = document.getElementById('modal-pc-date-changed');
-        if (dateEl) dateEl.textContent = '-';
+        if (dateEl) {
+            dateEl.textContent = '-';
+        }
         const stateSelect = document.getElementById('modal-pc-state');
         const stateOther = document.getElementById('modal-pc-state-other');
-        if (stateSelect) stateSelect.value = '';
+        if (stateSelect) {
+            stateSelect.value = '';
+        }
         if (stateOther) {
             stateOther.value = '';
             stateOther.style.display = 'none';
         }
         const tech = document.getElementById('modal-pc-technician');
-        if (tech) tech.value = '';
+        if (tech) {
+            tech.value = '';
+        }
 
         this.modalManager.open('modal-edit-pc');
         setTimeout(() => serialInput?.focus(), 50);
@@ -795,11 +871,15 @@ export default class InventaireManager {
         let item = null;
         for (const lot of this.lots) {
             item = (lot.items || []).find(i => String(i.id) === String(itemId));
-            if (item) break;
+            if (item) {
+                break;
+            }
         }
         const label = item?.serial_number ? `S/N ${item.serial_number}` : `matériel #${itemId}`;
         const ok = window.confirm(`Retirer ${label} de ce lot ?\nVous pourrez annuler via la notification.`);
-        if (!ok) return;
+        if (!ok) {
+            return;
+        }
 
         try {
             await removeLotItem(itemId);
@@ -809,8 +889,12 @@ export default class InventaireManager {
             if (card) {
                 const content = card.querySelector('.lot-content');
                 const icon = card.querySelector('.expand-icon');
-                if (content) content.style.display = 'block';
-                if (icon) icon.style.transform = 'rotate(90deg)';
+                if (content) {
+                    content.style.display = 'block';
+                }
+                if (icon) {
+                    icon.style.transform = 'rotate(90deg)';
+                }
             }
             this.showNotification('Matériel retiré du lot', 'success', {
                 onUndo: async () => {
@@ -821,8 +905,12 @@ export default class InventaireManager {
                         if (c) {
                             const content = c.querySelector('.lot-content');
                             const icon = c.querySelector('.expand-icon');
-                            if (content) content.style.display = 'block';
-                            if (icon) icon.style.transform = 'rotate(90deg)';
+                            if (content) {
+                                content.style.display = 'block';
+                            }
+                            if (icon) {
+                                icon.style.transform = 'rotate(90deg)';
+                            }
                         }
                         this.showNotification('Matériel restauré', 'success');
                     } catch (err) {
@@ -874,7 +962,9 @@ export default class InventaireManager {
             modalStateSelect.addEventListener('change', () => {
                 const isOther = modalStateSelect.value === 'autres';
                 modalStateOther.style.display = isOther ? 'block' : 'none';
-                if (!isOther) modalStateOther.value = '';
+                if (!isOther) {
+                    modalStateOther.value = '';
+                }
             });
         }
 
@@ -919,14 +1009,16 @@ export default class InventaireManager {
             const itemCount = Array.isArray(lot.items) ? lot.items.length : (lot.item_count || 0);
             textEl.innerHTML =
                 `Voulez-vous vraiment supprimer ${this.escapeHtml(label)}&nbsp;? ` +
-                `Cette action est <strong>irréversible</strong> et retirera ` +
+                'Cette action est <strong>irréversible</strong> et retirera ' +
                 `${this.escapeHtml(itemCount)} matériel(s) associé(s).`;
         }
         if (this.modalManager) {
             this.modalManager.open('modal-confirm-delete-lot');
         } else {
             const dialog = document.getElementById('modal-confirm-delete-lot');
-            if (dialog?.showModal) dialog.showModal();
+            if (dialog?.showModal) {
+                dialog.showModal();
+            }
         }
     }
 
@@ -940,7 +1032,9 @@ export default class InventaireManager {
             return;
         }
         const btn = document.getElementById('btn-confirm-delete-lot');
-        if (btn) btn.disabled = true;
+        if (btn) {
+            btn.disabled = true;
+        }
         try {
             await deleteLot(lotId);
             this.pendingDeleteLotId = null;
@@ -956,7 +1050,9 @@ export default class InventaireManager {
             logger.error('Delete lot failed:', err);
             this.showNotification(err?.message || 'Erreur lors de la suppression du lot', 'error');
         } finally {
-            if (btn) btn.disabled = false;
+            if (btn) {
+                btn.disabled = false;
+            }
         }
     }
 
@@ -1012,7 +1108,7 @@ export default class InventaireManager {
                     'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}`
                 },
                 body: JSON.stringify({
-                    state: state,
+                    state,
                     technician: technician || null,
                     os: osValue || 'linux',
                     serial_number: material.serial_number,
@@ -1073,7 +1169,9 @@ export default class InventaireManager {
                         const lotJson = await lotRes.json();
                         const items = Array.isArray(lotJson.items) ? lotJson.items : (lotJson.item?.items || []);
                         const allComplete = items.length > 0 && items.every(it => (it.state && it.state.trim() !== '') && (it.technician && it.technician.trim() !== ''));
-                        if (allComplete) lotJustFinished = true;
+                        if (allComplete) {
+                            lotJustFinished = true;
+                        }
                     }
                 } catch (_) { /* ignorer */ }
             }
@@ -1116,7 +1214,7 @@ export default class InventaireManager {
             // Réappliquer en mémoire les valeurs qu'on vient d'envoyer (notamment os) au cas où le backend ne les renvoie pas dans GET
             const itemId = this.currentEditingItemId;
             for (const lot of this.lots) {
-                const it = lot.items && lot.items.find(i => i.id == itemId);
+                const it = lot.items && lot.items.find(i => String(i.id) === String(itemId));
                 if (it) {
                     it.state = state;
                     it.technician = technician || null;
@@ -1185,8 +1283,12 @@ export default class InventaireManager {
             if (card) {
                 const content = card.querySelector('.lot-content');
                 const icon = card.querySelector('.expand-icon');
-                if (content) content.style.display = 'block';
-                if (icon) icon.style.transform = 'rotate(90deg)';
+                if (content) {
+                    content.style.display = 'block';
+                }
+                if (icon) {
+                    icon.style.transform = 'rotate(90deg)';
+                }
             }
             this.showNotification('Matériel ajouté au lot', 'success');
         } catch (err) {
@@ -1242,7 +1344,9 @@ export default class InventaireManager {
      * puis envoyer le PDF au serveur.
      */
     async generateLotPdf(lotId, { finishedAt = null, provisional = false, uploadToServer = true } = {}) {
-        if (!lotId || !window.electron?.invoke) return;
+        if (!lotId || !window.electron?.invoke) {
+            return;
+        }
         const basePath = '/mnt/team/#TEAM/#TRAÇABILITÉ';
         const dateForFile = provisional
             ? new Date().toISOString().slice(0, 10)
@@ -1253,15 +1357,21 @@ export default class InventaireManager {
             const res = await fetch(`${serverUrl}/api/lots/${lotId}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` }
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
             const data = await res.json();
             lot = data.item || data;
-            if (lot && !lot.items && data.items) lot.items = data.items;
+            if (lot && !lot.items && data.items) {
+                lot.items = data.items;
+            }
         } catch (e) {
             logger.warn('Chargement lot pour PDF:', e);
             throw e;
         }
-        if (!lot || !Array.isArray(lot.items)) return;
+        if (!lot || !Array.isArray(lot.items)) {
+            return;
+        }
         const lotName = (lot.lot_name || lot.name) ? String(lot.lot_name || lot.name).trim() : `Lot_${lotId}`;
         const pdfLotName = provisional ? `${lotName}_provisoire` : lotName;
         const result = await window.electron.invoke('generate-lot-pdf', {
@@ -1314,7 +1424,7 @@ export default class InventaireManager {
         return result;
     }
 
-    /** @deprecated alias — utiliser generateLotPdf */
+    /** @deprecated alias : utiliser generateLotPdf */
     async generateLotPdfOnFinished(lotId, finishedAt) {
         return this.generateLotPdf(lotId, { finishedAt, provisional: false });
     }
@@ -1341,16 +1451,26 @@ export default class InventaireManager {
 
     isAllowedLocalPath(candidatePath) {
         const p = String(candidatePath || '').trim();
-        if (!p) return false;
-        if (/^https?:\/\//i.test(p)) return false;
-        if (p.startsWith('/api/')) return false;
+        if (!p) {
+            return false;
+        }
+        if (/^https?:\/\//i.test(p)) {
+            return false;
+        }
+        if (p.startsWith('/api/')) {
+            return false;
+        }
         const normalized = p.replace(/\\/g, '/');
-        if (/\.\.(\/|$)/.test(normalized)) return false;
+        if (/\.\.(\/|$)/.test(normalized)) {
+            return false;
+        }
         return normalized.startsWith('/mnt/team/');
     }
 
     toDirectoryPath(candidatePath) {
-        if (!candidatePath || /^https?:\/\//i.test(candidatePath)) return null;
+        if (!candidatePath || /^https?:\/\//i.test(candidatePath)) {
+            return null;
+        }
         const normalized = String(candidatePath).trim().replace(/\\/g, '/');
         if (/\.pdf$/i.test(normalized)) {
             return normalized.replace(/\/[^/]+$/i, '');
@@ -1444,11 +1564,17 @@ export default class InventaireManager {
      * Raccourci Ctrl/Cmd+F : focus la barre de recherche inventaire
      */
     setupSearchShortcut() {
-        if (this._searchKeyHandler) return;
+        if (this._searchKeyHandler) {
+            return;
+        }
         this._searchKeyHandler = (e) => {
-            if (!(e.ctrlKey || e.metaKey) || e.key !== 'f') return;
+            if (!(e.ctrlKey || e.metaKey) || e.key !== 'f') {
+                return;
+            }
             const searchInput = document.getElementById('filter-search-inventaire');
-            if (!searchInput) return;
+            if (!searchInput) {
+                return;
+            }
             e.preventDefault();
             searchInput.focus();
             searchInput.select();
@@ -1486,7 +1612,9 @@ export default class InventaireManager {
                 const searchOk = !searchQuery || lotMatchesSearch || itemMatches;
                 const visible = stateOk && searchOk;
                 row.style.display = visible ? '' : 'none';
-                if (visible) visibleCount++;
+                if (visible) {
+                    visibleCount++;
+                }
             });
 
             if (searchQuery && visibleCount === 0) {
@@ -1498,8 +1626,12 @@ export default class InventaireManager {
             if (searchQuery && visibleCount > 0) {
                 const content = card.querySelector('.lot-content');
                 const icon = card.querySelector('.expand-icon');
-                if (content) content.style.display = 'block';
-                if (icon) icon.style.transform = 'rotate(90deg)';
+                if (content) {
+                    content.style.display = 'block';
+                }
+                if (icon) {
+                    icon.style.transform = 'rotate(90deg)';
+                }
             }
         });
     }
@@ -1508,7 +1640,9 @@ export default class InventaireManager {
      * Formater une date
      */
     formatDate(dateStr) {
-        if (!dateStr) return '-';
+        if (!dateStr) {
+            return '-';
+        }
         const date = new Date(dateStr);
         return date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' });
     }
@@ -1517,7 +1651,9 @@ export default class InventaireManager {
      * Formater une date et heure
      */
     formatDateTime(dateStr) {
-        if (!dateStr) return '-';
+        if (!dateStr) {
+            return '-';
+        }
         const date = new Date(dateStr);
         return date.toLocaleDateString('fr-FR', { 
             year: 'numeric', 

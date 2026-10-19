@@ -1,5 +1,5 @@
 /**
- * Page Lots (réception) – Couleurs inspirées v3.1.8 (valid, jaune, bleu2, orange, error).
+ * Page Lots (réception) : Couleurs inspirées v3.1.8 (valid, jaune, bleu2, orange, error).
  * Mise en page actuelle : cards, pas de bordure décorative.
  */
 
@@ -73,7 +73,7 @@
     min-height: 0;
 }
 
-/* ---------- Carte config (nom du lot + actions) — spécifique Entrer ---------- */
+/* ---------- Carte config (nom du lot + actions) : spécifique Entrer ---------- */
 .entrer-page .lot-config__field--name {
     max-width: 280px;
 }
@@ -459,7 +459,7 @@
 }
 
 /* =============================================================================
-   LOTS SAISIE – Minimal dark (page Réception > Lots uniquement)
+   LOTS SAISIE : Minimal dark (page Réception > Lots uniquement)
    ============================================================================= */
 
 .lots-saisie-page {
@@ -923,7 +923,7 @@
 }
 
 /* =============================================================================
-   MODALES LOTS – Thème sombre minimal (page Réception > Lots)
+   MODALES LOTS : Thème sombre minimal (page Réception > Lots)
    ============================================================================= */
 
 .r-root .lots-modal.universal-modal {

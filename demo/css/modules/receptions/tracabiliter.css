@@ -1,4 +1,4 @@
-/* Réception – page Traçabilité (alignée lot-page) */
+/* Réception : page Traçabilité (alignée lot-page) */
 
 .tracabilite-container.lot-page {
     width: 100%;
@@ -137,7 +137,7 @@
     gap: var(--unit-4);
 }
 
-/* Sections année / mois – sobre */
+/* Sections année / mois : sobre */
 .tracabilite-container .year-section {
     margin-bottom: var(--unit-4);
 }
@@ -181,7 +181,7 @@
     color: var(--bleu1);
 }
 
-/* Liste de cartes – même rendu qu’historique */
+/* Liste de cartes : même rendu qu’historique */
 .tracabilite-container .lots-list {
     display: flex;
     flex-direction: column;

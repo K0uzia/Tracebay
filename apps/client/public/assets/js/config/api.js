@@ -28,7 +28,9 @@ let initialized = false;
 function applyConnectionConfig(cfg) {
     const mode = cfg.mode || 'local';
     const env = cfg.environments?.[mode] || cfg.environments?.local;
-    if (!env?.url) return false;
+    if (!env?.url) {
+        return false;
+    }
 
     config = cfg;
     window.SERVER_CONFIG = {
@@ -36,7 +38,7 @@ function applyConnectionConfig(cfg) {
         serverWsUrl: env.ws,
         environment: mode,
         getEndpoint: (path) => getEndpointPath(path),
-        getFullUrl: (endpoint) => `${env.url}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`
+        getFullUrl: (endpoint) => `${env.url}${endpoint.startsWith('/') ? endpoint : `/${  endpoint}`}`
     };
     window.APP_CONFIG = {
         ...(window.APP_CONFIG || {}),
@@ -51,11 +53,15 @@ function applyConnectionConfig(cfg) {
 }
 
 async function init() {
-    if (initialized) return;
+    if (initialized) {
+        return;
+    }
 
     try {
         const response = await fetch('./config/connection.json');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
 
         const cfg = await response.json();
         if (applyConnectionConfig(cfg)) {
@@ -101,7 +107,9 @@ async function init() {
 
 /** En Electron : récupère get-app-config (giphyApiKey, etc.) et fusionne dans APP_CONFIG. */
 async function mergeAppConfigFromMain() {
-    if (typeof window.electron?.invoke !== 'function') return;
+    if (typeof window.electron?.invoke !== 'function') {
+        return;
+    }
     try {
         const appConfig = await window.electron.invoke('get-app-config');
         if (appConfig && typeof appConfig === 'object') {
@@ -119,7 +127,9 @@ async function mergeAppConfigFromMain() {
  * getEndpointPath('shortcuts.categories.list') // '/api/shortcuts/categories'
  */
 function getEndpointPath(path) {
-    if (!config?.endpoints) return '';
+    if (!config?.endpoints) {
+        return '';
+    }
     
     const parts = path.split('.');
     let current = config.endpoints;
@@ -154,11 +164,11 @@ function getUrl(endpointPath) {
     // Chercher dans la config
     const endpoint = getEndpointPath(endpointPath);
     if (endpoint) {
-        return `${serverUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+        return `${serverUrl}${endpoint.startsWith('/') ? endpoint : `/${  endpoint}`}`;
     }
     
     // Fallback : utiliser le chemin tel quel
-    return `${serverUrl}${endpointPath.startsWith('/') ? endpointPath : '/' + endpointPath}`;
+    return `${serverUrl}${endpointPath.startsWith('/') ? endpointPath : `/${  endpointPath}`}`;
 }
 
 /**

@@ -45,7 +45,9 @@ export default class HistoriqueManager {
 
     fillYearSelect() {
         const select = document.getElementById('filter-year-historique');
-        if (!select) return;
+        if (!select) {
+            return;
+        }
         const currentYear = new Date().getFullYear();
         const startYear = currentYear - 10;
         select.innerHTML = '';
@@ -57,14 +59,18 @@ export default class HistoriqueManager {
             const opt = document.createElement('option');
             opt.value = String(y);
             opt.textContent = String(y);
-            if (y === currentYear) opt.selected = true;
+            if (y === currentYear) {
+                opt.selected = true;
+            }
             select.appendChild(opt);
         }
     }
 
     fillMonthSelect() {
         const select = document.getElementById('filter-month-historique');
-        if (!select) return;
+        if (!select) {
+            return;
+        }
         const months = [
             'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
             'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
@@ -84,7 +90,9 @@ export default class HistoriqueManager {
     }
 
     syncPdfBridge() {
-        if (!this.pdf) return;
+        if (!this.pdf) {
+            return;
+        }
         this.pdf.lots = this.lots;
         this.pdf.sessionsDisques = this.sessionsDisques;
         this.pdf.commandes = this.commandes;
@@ -110,9 +118,9 @@ export default class HistoriqueManager {
             const [lots, sessions, commandesRes, donsRes, pretsRes] = await Promise.all([
                 loadLotsWithItems({ status: 'finished' }),
                 getSessions().catch(() => []),
-                fetch(`${serverUrl}${endpointCommandes.startsWith('/') ? endpointCommandes : '/' + endpointCommandes}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
-                fetch(`${serverUrl}${endpointDons.startsWith('/') ? endpointDons : '/' + endpointDons}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
-                fetch(`${serverUrl}${endpointPrets.startsWith('/') ? endpointPrets : '/' + endpointPrets}`, { method: 'GET', headers }).catch(() => ({ ok: false }))
+                fetch(`${serverUrl}${endpointCommandes.startsWith('/') ? endpointCommandes : `/${  endpointCommandes}`}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
+                fetch(`${serverUrl}${endpointDons.startsWith('/') ? endpointDons : `/${  endpointDons}`}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
+                fetch(`${serverUrl}${endpointPrets.startsWith('/') ? endpointPrets : `/${  endpointPrets}`}`, { method: 'GET', headers }).catch(() => ({ ok: false }))
             ]);
             this.lots = (lots || []).sort((a, b) =>
                 new Date(b.finished_at || b.created_at) - new Date(a.finished_at || a.created_at)
@@ -132,7 +140,9 @@ export default class HistoriqueManager {
                         lines: this.extractCommandeLinesFromRecord(c)
                     }));
                     this.commandes.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
-                } catch (_) { this.commandes = []; }
+                } catch (_) {
+                    this.commandes = []; 
+                }
             } else {
                 this.commandes = [];
             }
@@ -146,7 +156,9 @@ export default class HistoriqueManager {
                         lines: this.extractDonLinesFromRecord(d)
                     }));
                     this.dons.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
-                } catch (_) { this.dons = []; }
+                } catch (_) {
+                    this.dons = []; 
+                }
             } else {
                 this.dons = [];
             }
@@ -163,12 +175,14 @@ export default class HistoriqueManager {
                         lines: this.extractPretLinesFromRecord(p)
                     }));
                     this.prets.sort((a, b) => this.parseFlexibleDate(this.getPretSortDateHist(b)) - this.parseFlexibleDate(this.getPretSortDateHist(a)));
-                } catch (_) { this.prets = []; }
+                } catch (_) {
+                    this.prets = []; 
+                }
             } else {
                 this.prets = [];
             }
 
-            logger.info('📦 Historique : ' + this.lots.length + ' lot(s), ' + this.sessionsDisques.length + ' session(s) disques, ' + this.commandes.length + ' commande(s), ' + this.dons.length + ' don(s), ' + this.prets.length + ' prêt(s)');
+            logger.info(`📦 Historique : ${  this.lots.length  } lot(s), ${  this.sessionsDisques.length  } session(s) disques, ${  this.commandes.length  } commande(s), ${  this.dons.length  } don(s), ${  this.prets.length  } prêt(s)`);
             this.syncPdfBridge();
             this.renderLots();
         } catch (error) {
@@ -184,24 +198,34 @@ export default class HistoriqueManager {
     }
 
     getPretSortDateHist(p) {
-        if (!p || typeof p !== 'object') return '';
+        if (!p || typeof p !== 'object') {
+            return '';
+        }
         const d = p.date_debut || p.date || p.created_at || '';
         return String(d).trim().slice(0, 10);
     }
 
     extractPretLinesFromRecord(obj) {
-        if (!obj || typeof obj !== 'object') return [];
+        if (!obj || typeof obj !== 'object') {
+            return [];
+        }
         const keys = ['lines', 'lignes', 'items', 'pret_lignes', 'pretLignes', 'pret_lines'];
         for (const k of keys) {
             const arr = this.parseLinesArray(obj[k]);
-            if (arr.length > 0) return arr;
+            if (arr.length > 0) {
+                return arr;
+            }
         }
         return [];
     }
 
     pretLineTypeDisplayHist(line) {
-        if (!line || typeof line !== 'object') return '-';
-        if (line.typeDisplay) return String(line.typeDisplay).trim();
+        if (!line || typeof line !== 'object') {
+            return '-';
+        }
+        if (line.typeDisplay) {
+            return String(line.typeDisplay).trim();
+        }
         const labels = { pc: 'PC', ecran: 'Écran', clavier: 'Clavier', souris: 'Souris', autres: 'Autres' };
         const t = String(line.type || '').toLowerCase();
         const detail = String(
@@ -211,7 +235,9 @@ export default class HistoriqueManager {
             || line.designation
             || ''
         ).trim();
-        if (t === 'autres' && detail) return detail;
+        if (t === 'autres' && detail) {
+            return detail;
+        }
         return labels[t] || String(line.type || '-').trim() || '-';
     }
 
@@ -220,7 +246,9 @@ export default class HistoriqueManager {
      */
     renderLotsError(error) {
         const container = document.getElementById('historique-list');
-        if (!container) return;
+        if (!container) {
+            return;
+        }
         const message = error && error.message ? error.message : 'Erreur inconnue';
         container.innerHTML = `
             <div class="empty-state error-state">
@@ -233,7 +261,9 @@ export default class HistoriqueManager {
             </div>
         `;
         const btn = document.getElementById('btn-retry-lots-historique');
-        if (btn) btn.addEventListener('click', () => this.loadData());
+        if (btn) {
+            btn.addEventListener('click', () => this.loadData());
+        }
     }
 
     /**
@@ -241,7 +271,9 @@ export default class HistoriqueManager {
      */
     renderLots() {
         const container = document.getElementById('historique-list');
-        if (!container) return;
+        if (!container) {
+            return;
+        }
 
         const searchText = (document.getElementById('filter-search-historique')?.value || '').trim().toLowerCase();
         const typeFilter = (document.getElementById('filter-type-historique')?.value || 'tous').trim();
@@ -266,13 +298,15 @@ export default class HistoriqueManager {
         if (monthFilter && monthFilter !== 'tous') {
             const monthNum = parseInt(monthFilter, 10);
             toRender = toRender.filter(({ date }) => {
-                // getMonth() est 0-indexé → +1 pour comparer à 1–12
+                // getMonth() est 0-indexé → +1 pour comparer à 1-12
                 return this.parseFlexibleDate(date).getMonth() + 1 === monthNum;
             });
         }
         if (searchText) {
             toRender = toRender.filter(({ type, item }) => {
-                if (this.matchesHistoriqueSearch(type, item, searchText)) return true;
+                if (this.matchesHistoriqueSearch(type, item, searchText)) {
+                    return true;
+                }
                 return false;
             });
         }
@@ -286,7 +320,9 @@ export default class HistoriqueManager {
                 ];
                 periodBits.push(months[parseInt(monthFilter, 10) - 1] || monthFilter);
             }
-            if (yearFilter && yearFilter !== 'tous') periodBits.push(yearFilter);
+            if (yearFilter && yearFilter !== 'tous') {
+                periodBits.push(yearFilter);
+            }
             const periodHint = periodBits.length ? ` pour ${periodBits.join(' ')}` : '';
             container.innerHTML = `
                 <div class="empty-state">
@@ -299,10 +335,18 @@ export default class HistoriqueManager {
         }
 
         container.innerHTML = toRender.map(({ type, item }) => {
-            if (type === 'lot') return this.createLotElement(item);
-            if (type === 'disque') return this.createDisqueElement(item);
-            if (type === 'don') return this.createDonElement(item);
-            if (type === 'pret') return this.createPretElement(item);
+            if (type === 'lot') {
+                return this.createLotElement(item);
+            }
+            if (type === 'disque') {
+                return this.createDisqueElement(item);
+            }
+            if (type === 'don') {
+                return this.createDonElement(item);
+            }
+            if (type === 'pret') {
+                return this.createPretElement(item);
+            }
             return this.createCommandeElement(item);
         }).join('');
         this.attachLotEventListeners();
@@ -316,7 +360,9 @@ export default class HistoriqueManager {
      * @returns {boolean}
      */
     matchesHistoriqueSearch(type, item, searchText) {
-        if (!searchText) return true;
+        if (!searchText) {
+            return true;
+        }
         const haystacks = [];
 
         if (type === 'lot') {
@@ -530,7 +576,7 @@ export default class HistoriqueManager {
             <div class="historique-lot-card" data-type="lot" data-lot-id="${lot.id}">
                 <div class="historique-lot-header">
                     <div class="historique-lot-title">
-                        <h3><i class="fa-solid fa-desktop historique-type-icon" aria-hidden="true"></i> Lot #${lot.id}${lot.lot_name ? ' | ' + this.escapeHtml(lot.lot_name) : ''}</h3>
+                        <h3><i class="fa-solid fa-desktop historique-type-icon" aria-hidden="true"></i> Lot #${lot.id}${lot.lot_name ? ` | ${  this.escapeHtml(lot.lot_name)}` : ''}</h3>
                         <span class="${recoveryBadgeClass}">${recoveryBadgeText}</span>
                         <span class="badge-created">Terminé le ${this.formatDate(lot.finished_at)}</span>
                     </div>
@@ -571,9 +617,13 @@ export default class HistoriqueManager {
      * Formater une date en DD/MM/AAAA (sans heure)
      */
     formatDateDDMMYYYY(dateStr) {
-        if (!dateStr) return '-';
+        if (!dateStr) {
+            return '-';
+        }
         const d = this.parseFlexibleDate(dateStr);
-        if (isNaN(d.getTime())) return '-';
+        if (isNaN(d.getTime())) {
+            return '-';
+        }
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = d.getFullYear();
@@ -582,61 +632,111 @@ export default class HistoriqueManager {
 
     parseFlexibleDate(raw) {
         const value = String(raw || '').trim();
-        if (!value) return new Date(0);
+        if (!value) {
+            return new Date(0);
+        }
         if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
             const d = new Date(value.slice(0, 10));
-            if (!Number.isNaN(d.getTime())) return d;
+            if (!Number.isNaN(d.getTime())) {
+                return d;
+            }
         }
         const fr = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
         if (fr) {
             const [, dd, mm, yyyy] = fr;
             const d = new Date(`${yyyy}-${mm}-${dd}`);
-            if (!Number.isNaN(d.getTime())) return d;
+            if (!Number.isNaN(d.getTime())) {
+                return d;
+            }
         }
         const fallback = new Date(value);
         return Number.isNaN(fallback.getTime()) ? new Date(0) : fallback;
     }
 
     extractListFromApiPayload(payload, keys = []) {
-        if (Array.isArray(payload)) return payload;
-        if (!payload || typeof payload !== 'object') return [];
+        if (Array.isArray(payload)) {
+            return payload;
+        }
+        if (!payload || typeof payload !== 'object') {
+            return [];
+        }
         for (const key of keys) {
-            if (Array.isArray(payload[key])) return payload[key];
+            if (Array.isArray(payload[key])) {
+                return payload[key];
+            }
         }
         if (payload.data && typeof payload.data === 'object') {
             for (const key of keys) {
-                if (Array.isArray(payload.data[key])) return payload.data[key];
+                if (Array.isArray(payload.data[key])) {
+                    return payload.data[key];
+                }
             }
-            if (Array.isArray(payload.data)) return payload.data;
+            if (Array.isArray(payload.data)) {
+                return payload.data;
+            }
         }
         return [];
     }
 
     parseLinesArray(rawLines) {
-        if (Array.isArray(rawLines)) return rawLines;
-        if (rawLines == null) return [];
+        if (Array.isArray(rawLines)) {
+            return rawLines;
+        }
+        if (rawLines == null) {
+            return [];
+        }
         if (typeof rawLines === 'object') {
-            if (Array.isArray(rawLines.lines)) return rawLines.lines;
-            if (Array.isArray(rawLines.lignes)) return rawLines.lignes;
-            if (Array.isArray(rawLines.items)) return rawLines.items;
-            if (Array.isArray(rawLines.commande_lignes)) return rawLines.commande_lignes;
-            if (Array.isArray(rawLines.commandeLignes)) return rawLines.commandeLignes;
-            if (Array.isArray(rawLines.data)) return rawLines.data;
-            if (Array.isArray(rawLines.results)) return rawLines.results;
+            if (Array.isArray(rawLines.lines)) {
+                return rawLines.lines;
+            }
+            if (Array.isArray(rawLines.lignes)) {
+                return rawLines.lignes;
+            }
+            if (Array.isArray(rawLines.items)) {
+                return rawLines.items;
+            }
+            if (Array.isArray(rawLines.commande_lignes)) {
+                return rawLines.commande_lignes;
+            }
+            if (Array.isArray(rawLines.commandeLignes)) {
+                return rawLines.commandeLignes;
+            }
+            if (Array.isArray(rawLines.data)) {
+                return rawLines.data;
+            }
+            if (Array.isArray(rawLines.results)) {
+                return rawLines.results;
+            }
             return [];
         }
         if (typeof rawLines === 'string') {
             try {
                 const parsed = JSON.parse(rawLines);
-                if (Array.isArray(parsed)) return parsed;
+                if (Array.isArray(parsed)) {
+                    return parsed;
+                }
                 if (parsed && typeof parsed === 'object') {
-                    if (Array.isArray(parsed.lines)) return parsed.lines;
-                    if (Array.isArray(parsed.lignes)) return parsed.lignes;
-                    if (Array.isArray(parsed.items)) return parsed.items;
-                    if (Array.isArray(parsed.commande_lignes)) return parsed.commande_lignes;
-                    if (Array.isArray(parsed.commandeLignes)) return parsed.commandeLignes;
-                    if (Array.isArray(parsed.data)) return parsed.data;
-                    if (Array.isArray(parsed.results)) return parsed.results;
+                    if (Array.isArray(parsed.lines)) {
+                        return parsed.lines;
+                    }
+                    if (Array.isArray(parsed.lignes)) {
+                        return parsed.lignes;
+                    }
+                    if (Array.isArray(parsed.items)) {
+                        return parsed.items;
+                    }
+                    if (Array.isArray(parsed.commande_lignes)) {
+                        return parsed.commande_lignes;
+                    }
+                    if (Array.isArray(parsed.commandeLignes)) {
+                        return parsed.commandeLignes;
+                    }
+                    if (Array.isArray(parsed.data)) {
+                        return parsed.data;
+                    }
+                    if (Array.isArray(parsed.results)) {
+                        return parsed.results;
+                    }
                 }
                 return [];
             } catch (_) {
@@ -650,42 +750,64 @@ export default class HistoriqueManager {
      * Réponse GET détail souvent enveloppée ({ data: { lignes: [...] } }) : évite full.lines vide.
      */
     unwrapDetailRecord(data) {
-        if (!data || typeof data !== 'object') return data;
+        if (!data || typeof data !== 'object') {
+            return data;
+        }
         const nestedKeys = ['commande', 'don', 'pret', 'pret_materiel', 'item', 'record', 'result', 'body'];
         for (const k of nestedKeys) {
             const v = data[k];
-            if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+            if (v && typeof v === 'object' && !Array.isArray(v)) {
+                return v;
+            }
         }
-        if (data.data && typeof data.data === 'object' && !Array.isArray(data.data)) return data.data;
+        if (data.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+            return data.data;
+        }
         return data;
     }
 
     extractCommandeLinesFromRecord(obj) {
-        if (!obj || typeof obj !== 'object') return [];
+        if (!obj || typeof obj !== 'object') {
+            return [];
+        }
         const keys = ['lines', 'lignes', 'items', 'commande_lignes', 'commandeLignes', 'commande_lines', 'lignes_commande', 'products'];
         for (const k of keys) {
             const arr = this.parseLinesArray(obj[k]);
-            if (arr.length > 0) return arr;
+            if (arr.length > 0) {
+                return arr;
+            }
         }
         return [];
     }
 
     extractDonLinesFromRecord(obj) {
-        if (!obj || typeof obj !== 'object') return [];
+        if (!obj || typeof obj !== 'object') {
+            return [];
+        }
         const keys = ['lines', 'lignes', 'items', 'don_lignes', 'donLignes', 'don_lines'];
         for (const k of keys) {
             const arr = this.parseLinesArray(obj[k]);
-            if (arr.length > 0) return arr;
+            if (arr.length > 0) {
+                return arr;
+            }
         }
         return [];
     }
 
     normalizeTypeValue(rawType) {
         const value = String(rawType || '').trim().toLowerCase();
-        if (!value) return '';
-        if (value === 'pc portable') return 'portable';
-        if (value === 'pc fixe') return 'fixe';
-        if (value === 'écran') return 'ecran';
+        if (!value) {
+            return '';
+        }
+        if (value === 'pc portable') {
+            return 'portable';
+        }
+        if (value === 'pc fixe') {
+            return 'fixe';
+        }
+        if (value === 'écran') {
+            return 'ecran';
+        }
         return value;
     }
 
@@ -697,28 +819,38 @@ export default class HistoriqueManager {
     resolveDetailEndpoint(kind, id) {
         if (kind === 'commande') {
             const dynamic = window.SERVER_CONFIG?.getEndpoint?.('commandes.get');
-            if (dynamic && /:id/.test(dynamic)) return dynamic.replace(':id', String(id));
+            if (dynamic && /:id/.test(dynamic)) {
+                return dynamic.replace(':id', String(id));
+            }
             return `/api/commandes/${id}`;
         }
         if (kind === 'don') {
             const dynamic = window.SERVER_CONFIG?.getEndpoint?.('dons.get');
-            if (dynamic && /:id/.test(dynamic)) return dynamic.replace(':id', String(id));
+            if (dynamic && /:id/.test(dynamic)) {
+                return dynamic.replace(':id', String(id));
+            }
             return `/api/dons/${id}`;
         }
         if (kind === 'pret') {
             const dynamic = window.SERVER_CONFIG?.getEndpoint?.('pretsMateriel.get');
-            if (dynamic && /:id/.test(dynamic)) return dynamic.replace(':id', String(id));
+            if (dynamic && /:id/.test(dynamic)) {
+                return dynamic.replace(':id', String(id));
+            }
             return `/api/prets-materiel/${id}`;
         }
         return null;
     }
 
     async loadCommandeProductsReference() {
-        if (Array.isArray(this.commandeProductsRef) && this.commandeProductsRef.length) return;
+        if (Array.isArray(this.commandeProductsRef) && this.commandeProductsRef.length) {
+            return;
+        }
         this.commandeProductsRef = [];
         try {
             const res = await api.get('/api/commandes/products', { useCache: false });
-            if (!res.ok) return;
+            if (!res.ok) {
+                return;
+            }
             const data = await res.json();
             const list = this.extractListFromApiPayload(data, ['items', 'products', 'data', 'rows']);
             this.commandeProductsRef = Array.isArray(list) ? list : [];
@@ -800,7 +932,7 @@ export default class HistoriqueManager {
                 <button type="button" class="btn-action btn-open-pdf-location-lot" data-lot-id="${lot.id}" title="Ouvrir le dossier du PDF">
                     <i class="fa-solid fa-folder-open" aria-hidden="true"></i> Emplacement PDF
                 </button>
-                <button type="button" class="btn-action btn-view-pdf" data-pdf-url="${(api.getServerUrl() + '/api/lots/' + lot.id + '/pdf?v=' + Date.now()).replace(/"/g, '&quot;')}" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}"${lotLocalPdfAttr} title="Ouvrir le PDF">
+                <button type="button" class="btn-action btn-view-pdf" data-pdf-url="${(`${api.getServerUrl()  }/api/lots/${  lot.id  }/pdf?v=${  Date.now()}`).replace(/"/g, '&quot;')}" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}"${lotLocalPdfAttr} title="Ouvrir le PDF">
                     <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir PDF
                 </button>
                 <button type="button" class="btn-action btn-download-pdf" data-lot-id="${lot.id}" data-pdf-path="/api/lots/${lot.id}/pdf" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}" title="Télécharger le PDF">
@@ -820,7 +952,9 @@ export default class HistoriqueManager {
 
     buildDisquePdfActions(session) {
         const hasPdf = session.pdf_path != null && session.pdf_path !== '';
-        if (!hasPdf) return '<span class="text-muted">PDF non généré</span>';
+        if (!hasPdf) {
+            return '<span class="text-muted">PDF non généré</span>';
+        }
         const sessionPdfLocal = String(session.pdf_path || '').trim();
         const disqueLocalPdfAttr = sessionPdfLocal && this.pdf.isAllowedLocalPath(sessionPdfLocal)
             ? ` data-local-pdf-path="${this.escapeHtml(sessionPdfLocal)}"`
@@ -848,10 +982,12 @@ export default class HistoriqueManager {
         const dateStr = String(commande.date || commande.created_at || '').trim();
         const rawPdfPath = String(commande.pdf_path || '').trim();
         const isLocalPath = rawPdfPath.startsWith('/mnt/') || rawPdfPath.startsWith('/home/') || rawPdfPath.startsWith('/Users/');
-        const remotePdfUrl = commande.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : '/' + rawPdfPath)) : '');
+        const remotePdfUrl = commande.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : `/${  rawPdfPath}`)) : '');
         const hasPdf = (isLocalPath && rawPdfPath) || (remotePdfUrl && remotePdfUrl.length > 0);
-        if (!hasPdf) return '<span class="text-muted">PDF non disponible</span>';
-        const safeUrl = remotePdfUrl ? (remotePdfUrl + (remotePdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;') : '';
+        if (!hasPdf) {
+            return '<span class="text-muted">PDF non disponible</span>';
+        }
+        const safeUrl = remotePdfUrl ? (`${remotePdfUrl + (remotePdfUrl.includes('?') ? '&' : '?')  }v=${  Date.now()}`).replace(/"/g, '&quot;') : '';
         const safeDate = this.pdf.normalizeDateForPath(dateStr || new Date().toISOString().slice(0, 10));
         const safeName = (name.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') || 'commande');
         const downloadFilename = `${safeName}_${safeDate}.pdf`;
@@ -885,10 +1021,12 @@ export default class HistoriqueManager {
         const dateStr = String(don.date || (don.created_at || '')).trim();
         const rawPdfPath = String(don.pdf_path || '').trim();
         const isLocalPath = rawPdfPath.startsWith('/mnt/') || rawPdfPath.startsWith('/home/') || rawPdfPath.startsWith('/Users/');
-        const pdfUrl = don.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : '/' + rawPdfPath)) : '');
+        const pdfUrl = don.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : `/${  rawPdfPath}`)) : '');
         const hasPdf = (isLocalPath && rawPdfPath) || (pdfUrl && pdfUrl.length > 0);
-        if (!hasPdf) return '<span class="text-muted">Certificat non disponible</span>';
-        const safeUrl = pdfUrl ? (pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;') : '';
+        if (!hasPdf) {
+            return '<span class="text-muted">Certificat non disponible</span>';
+        }
+        const safeUrl = pdfUrl ? (`${pdfUrl + (pdfUrl.includes('?') ? '&' : '?')  }v=${  Date.now()}`).replace(/"/g, '&quot;') : '';
         const safeDate = this.pdf.normalizeDateForPath(dateStr || new Date().toISOString().slice(0, 10));
         const safeName = (lotName ? lotName.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') : 'don');
         const downloadFilename = `${safeName}_${safeDate}.pdf`;
@@ -921,10 +1059,12 @@ export default class HistoriqueManager {
         const ref = (pret.reference || pret.title || pret.lot_name || pret.name || '').trim();
         const rawPdfPath = String(pret.pdf_path || '').trim();
         const isLocalPath = rawPdfPath.startsWith('/mnt/') || rawPdfPath.startsWith('/home/') || rawPdfPath.startsWith('/Users/');
-        const pdfUrl = pret.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : '/' + rawPdfPath)) : '');
+        const pdfUrl = pret.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : `/${  rawPdfPath}`)) : '');
         const hasPdf = (isLocalPath && rawPdfPath) || (pdfUrl && pdfUrl.length > 0);
-        if (!hasPdf) return '<span class="text-muted">PDF non disponible</span>';
-        const safeUrl = pdfUrl ? (pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;') : '';
+        if (!hasPdf) {
+            return '<span class="text-muted">PDF non disponible</span>';
+        }
+        const safeUrl = pdfUrl ? (`${pdfUrl + (pdfUrl.includes('?') ? '&' : '?')  }v=${  Date.now()}`).replace(/"/g, '&quot;') : '';
         const safeDate = this.pdf.normalizeDateForPath(this.getPretSortDateHist(pret) || new Date().toISOString().slice(0, 10));
         const sanitize = (s) => String(s ?? '').trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '').slice(0, 80) || '';
         const borrowerRaw = String(pret.borrower_name || pret.emprunteur || '').trim();
@@ -960,28 +1100,35 @@ export default class HistoriqueManager {
      */
     linkCellHtmlForCommandeModal(raw) {
         const s = String(raw ?? '').trim();
-        if (!s || s === '-') return '—';
+        if (!s || s === '-') {
+            return '-';
+        }
         if (/^mailto:/i.test(s)) {
             try {
                 const u = new URL(s);
                 const path = decodeURIComponent((u.pathname || '').replace(/^\//, ''));
                 const at = path.indexOf('@');
                 const label = at > 0 ? path.slice(at + 1).split('?')[0] : path;
-                return `<a href="${this.escapeAttr(s)}" class="hist-cmd-link-modal" title="${this.escapeAttr(s)}">${this.escapeHtml(label || '—')}</a>`;
+                return `<a href="${this.escapeAttr(s)}" class="hist-cmd-link-modal" title="${this.escapeAttr(s)}">${this.escapeHtml(label || '-')}</a>`;
             } catch {
                 /* fallthrough */
             }
         }
         let href = s;
         if (!/^https?:\/\//i.test(href) && !/^mailto:/i.test(href) && !/^tel:/i.test(href)) {
-            if (/^\/\//.test(href)) href = `https:${href}`;
-            else if (/[a-z0-9.-]+\.[a-z]{2,}/i.test(href)) href = `https://${href}`;
+            if (/^\/\//.test(href)) {
+                href = `https:${href}`;
+            } else if (/[a-z0-9.-]+\.[a-z]{2,}/i.test(href)) {
+                href = `https://${href}`;
+            }
         }
         try {
             const u = new URL(href);
             // Refuser javascript:, data:, file:... (lien saisi par l'utilisateur)
-            if (!/^(https?|tel):$/i.test(u.protocol)) throw new Error('protocole refusé');
-            const label = (u.hostname || '').replace(/^www\./i, '') || u.hostname || '—';
+            if (!/^(https?|tel):$/i.test(u.protocol)) {
+                throw new Error('protocole refusé');
+            }
+            const label = (u.hostname || '').replace(/^www\./i, '') || u.hostname || '-';
             return `<a href="${this.escapeAttr(u.href)}" target="_blank" rel="noopener noreferrer" class="hist-cmd-link-modal" title="${this.escapeAttr(s)}">${this.escapeHtml(label)}</a>`;
         } catch {
             const short = s.length > 48 ? `${s.slice(0, 45)}…` : s;
@@ -1113,7 +1260,9 @@ export default class HistoriqueManager {
      */
     attachPdfEventListeners() {
         const pdf = this.pdf;
-        if (!pdf) return;
+        if (!pdf) {
+            return;
+        }
         this.syncPdfBridge();
 
         const on = (selector, handler) => {
@@ -1206,18 +1355,26 @@ export default class HistoriqueManager {
 
     async editCommandeFromHistorique(commandeId) {
         const commande = this.commandes.find(c => String(c.id) === String(commandeId));
-        if (!commande) return;
+        if (!commande) {
+            return;
+        }
         this.currentEditingCommandeId = String(commandeId);
         const nameInput = document.getElementById('input-commande-name-hist');
         const catInput = document.getElementById('input-commande-category-hist');
-        if (nameInput) nameInput.value = String(commande.commande_name || commande.name || '').trim();
-        if (catInput) catInput.value = String(commande.category || '').trim();
+        if (nameInput) {
+            nameInput.value = String(commande.commande_name || commande.name || '').trim();
+        }
+        if (catInput) {
+            catInput.value = String(commande.category || '').trim();
+        }
         this.modalManager.open('modal-edit-commande-hist');
     }
 
     async saveCommandeFromHistorique() {
         const commandeId = this.currentEditingCommandeId;
-        if (!commandeId) return;
+        if (!commandeId) {
+            return;
+        }
         const nameInput = document.getElementById('input-commande-name-hist');
         const catInput = document.getElementById('input-commande-category-hist');
         const newName = String(nameInput?.value || '').trim();
@@ -1231,7 +1388,9 @@ export default class HistoriqueManager {
                 commande_name: newName,
                 category: newCategory
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
             await this.loadData();
             this.modalManager.close('modal-edit-commande-hist');
             this.showNotification('Commande mise à jour', 'success');
@@ -1242,7 +1401,9 @@ export default class HistoriqueManager {
 
     async editCommandeItemsFromHistorique(commandeId) {
         let commande = this.commandes.find(c => String(c.id) === String(commandeId));
-        if (!commande) return;
+        if (!commande) {
+            return;
+        }
         let lines = this.extractCommandeLinesFromRecord(commande);
         const endpoint = this.resolveDetailEndpoint('commande', commandeId);
         if (endpoint) {
@@ -1261,9 +1422,11 @@ export default class HistoriqueManager {
         await this.loadCommandeProductsReference();
         this.currentEditingCommandeId = String(commandeId);
         const tbody = document.getElementById('modal-edit-commande-items-body');
-        if (!tbody) return;
+        if (!tbody) {
+            return;
+        }
         if (lines.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6">Aucune ligne disponible</td></tr>`;
+            tbody.innerHTML = '<tr><td colspan="6">Aucune ligne disponible</td></tr>';
         } else {
             tbody.innerHTML = lines.map((line, idx) => `
                 <tr data-line-index="${idx}">
@@ -1271,19 +1434,19 @@ export default class HistoriqueManager {
                     <td>
                         <select class="hist-cmd-product-select">
                             ${(() => {
-                        const val = String(line?.product_name || line?.product_name_ref || line?.produit || '').trim();
-                                const names = (this.commandeProductsRef || []).map(p => String(p?.name || '').trim()).filter(Boolean);
-                                const isKnown = val && names.includes(val);
-                                return '<option value="">-- Produit --</option>'
-                                    + names.map(n => `<option value="${this.escapeAttr(n)}" ${val === n ? 'selected' : ''}>${this.escapeHtml(n)}</option>`).join('')
-                                    + `<option value="${VALUE_AUTRE_GENERIC}" ${val && !isKnown ? 'selected' : ''}>Autre</option>`;
-                            })()}
+        const val = String(line?.product_name || line?.product_name_ref || line?.produit || '').trim();
+        const names = (this.commandeProductsRef || []).map(p => String(p?.name || '').trim()).filter(Boolean);
+        const isKnown = val && names.includes(val);
+        return `<option value="">-- Produit --</option>${
+            names.map(n => `<option value="${this.escapeAttr(n)}" ${val === n ? 'selected' : ''}>${this.escapeHtml(n)}</option>`).join('')
+        }<option value="${VALUE_AUTRE_GENERIC}" ${val && !isKnown ? 'selected' : ''}>Autre</option>`;
+    })()}
                         </select>
                         <input type="text" class="hist-cmd-product-other" value="${this.escapeAttr(String(line?.product_name || line?.product_name_ref || line?.produit || ''))}" placeholder="Produit libre" style="margin-top:6px;display:${(() => {
-                            const val = String(line?.product_name || line?.product_name_ref || line?.produit || '').trim();
-                            const names = (this.commandeProductsRef || []).map(p => String(p?.name || '').trim()).filter(Boolean);
-                            return val && !names.includes(val) ? 'block' : 'none';
-                        })()};">
+    const val = String(line?.product_name || line?.product_name_ref || line?.produit || '').trim();
+    const names = (this.commandeProductsRef || []).map(p => String(p?.name || '').trim()).filter(Boolean);
+    return val && !names.includes(val) ? 'block' : 'none';
+})()};">
                     </td>
                     <td><input type="number" class="hist-cmd-quantity" min="0" step="1" value="${this.escapeAttr(String(line?.quantity ?? ''))}" placeholder="Qté"></td>
                     <td><input type="number" class="hist-cmd-price" min="0" step="0.01" value="${this.escapeAttr(String(line?.unit_price ?? line?.price ?? ''))}" placeholder="Prix"></td>
@@ -1295,10 +1458,14 @@ export default class HistoriqueManager {
                 sel.addEventListener('change', () => {
                     const row = sel.closest('tr');
                     const otherInput = row?.querySelector('.hist-cmd-product-other');
-                    if (!otherInput) return;
+                    if (!otherInput) {
+                        return;
+                    }
                     const isOther = sel.value === VALUE_AUTRE_GENERIC;
                     otherInput.style.display = isOther ? 'block' : 'none';
-                    if (!isOther) otherInput.value = sel.value || '';
+                    if (!isOther) {
+                        otherInput.value = sel.value || '';
+                    }
                 });
             });
         }
@@ -1307,7 +1474,9 @@ export default class HistoriqueManager {
 
     async saveCommandeItemsFromHistorique() {
         const commandeId = this.currentEditingCommandeId;
-        if (!commandeId) return;
+        if (!commandeId) {
+            return;
+        }
         const rows = Array.from(document.querySelectorAll('#modal-edit-commande-items-body tr[data-line-index]'));
         const lines = rows.map((row) => {
             const productSel = row.querySelector('.hist-cmd-product-select');
@@ -1316,15 +1485,18 @@ export default class HistoriqueManager {
                 ? String(productOther?.value || '').trim()
                 : String(productSel?.value || '').trim();
             return {
-            product_name: productName || null,
-            quantity: Number(row.querySelector('.hist-cmd-quantity')?.value || 0) || 0,
-            price: String(row.querySelector('.hist-cmd-price')?.value || '').trim(),
-            shipping: String(row.querySelector('.hist-cmd-shipping')?.value || '').trim(),
-            link: String(row.querySelector('.hist-cmd-link')?.value || '').trim() || null
-        };});
+                product_name: productName || null,
+                quantity: Number(row.querySelector('.hist-cmd-quantity')?.value || 0) || 0,
+                price: String(row.querySelector('.hist-cmd-price')?.value || '').trim(),
+                shipping: String(row.querySelector('.hist-cmd-shipping')?.value || '').trim(),
+                link: String(row.querySelector('.hist-cmd-link')?.value || '').trim() || null
+            };
+        });
         try {
             const res = await api.put(`/api/commandes/${commandeId}`, { lines });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
             await this.loadData();
             this.modalManager.close('modal-edit-commande-items-hist');
             this.showNotification('Matériel commande mis à jour', 'success');
@@ -1335,7 +1507,9 @@ export default class HistoriqueManager {
 
     async viewCommandeDetails(commandeId) {
         let commande = this.commandes.find(c => String(c.id) === String(commandeId));
-        if (!commande) return;
+        if (!commande) {
+            return;
+        }
         let lines = this.extractCommandeLinesFromRecord(commande);
         const endpoint = this.resolveDetailEndpoint('commande', commandeId);
         if (endpoint) {
@@ -1352,11 +1526,15 @@ export default class HistoriqueManager {
             } catch (_) { /* on garde la version de base */ }
         }
         const idxCmd = this.commandes.findIndex(c => String(c.id) === String(commandeId));
-        if (idxCmd >= 0) this.commandes[idxCmd] = { ...this.commandes[idxCmd], ...commande, lines };
+        if (idxCmd >= 0) {
+            this.commandes[idxCmd] = { ...this.commandes[idxCmd], ...commande, lines };
+        }
         const linesCount = lines.length > 0 ? lines.length : (commande.line_count ?? 0);
         const setText = (id, value) => {
             const el = document.getElementById(id);
-            if (el) el.textContent = value;
+            if (el) {
+                el.textContent = value;
+            }
         };
         setText('modal-commande-title', String(commande.commande_name || commande.name || 'Commande'));
         setText('modal-commande-date', this.formatDateDDMMYYYY(commande.date || commande.created_at));
@@ -1365,7 +1543,7 @@ export default class HistoriqueManager {
         const tbody = document.getElementById('modal-commande-lines');
         if (tbody) {
             if (lines.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6">Aucun détail produit disponible</td></tr>`;
+                tbody.innerHTML = '<tr><td colspan="6">Aucun détail produit disponible</td></tr>';
             } else {
                 tbody.innerHTML = lines.map((line, idx) => `
                     <tr>
@@ -1384,7 +1562,9 @@ export default class HistoriqueManager {
 
     async viewDonDetails(donId) {
         let don = this.dons.find(d => String(d.id) === String(donId));
-        if (!don) return;
+        if (!don) {
+            return;
+        }
         let lines = this.extractDonLinesFromRecord(don);
         const endpoint = this.resolveDetailEndpoint('don', donId);
         if (endpoint) {
@@ -1407,7 +1587,9 @@ export default class HistoriqueManager {
         const stagiaire = String(don.stagiaire_afpa || don.stagiaire || stagiaireFromLines || '-');
         const setText = (id, value) => {
             const el = document.getElementById(id);
-            if (el) el.textContent = value;
+            if (el) {
+                el.textContent = value;
+            }
         };
         setText('modal-don-title', String(don.lot_name || don.name || `Don #${don.id || ''}`));
         setText('modal-don-date', this.formatDateDDMMYYYY(don.date || don.created_at));
@@ -1416,7 +1598,7 @@ export default class HistoriqueManager {
         const tbody = document.getElementById('modal-don-lines-body');
         if (tbody) {
             if (lines.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7">Aucune ligne de don disponible</td></tr>`;
+                tbody.innerHTML = '<tr><td colspan="7">Aucune ligne de don disponible</td></tr>';
             } else {
                 tbody.innerHTML = lines.map((line, idx) => `
                     <tr>
@@ -1436,7 +1618,9 @@ export default class HistoriqueManager {
 
     async viewPretDetails(pretId) {
         let pret = this.prets.find(p => String(p.id) === String(pretId));
-        if (!pret) return;
+        if (!pret) {
+            return;
+        }
         let lines = this.extractPretLinesFromRecord(pret);
         const endpoint = this.resolveDetailEndpoint('pret', pretId);
         if (endpoint) {
@@ -1453,10 +1637,14 @@ export default class HistoriqueManager {
             } catch (_) { /* garde liste */ }
         }
         const idx = this.prets.findIndex(p => String(p.id) === String(pretId));
-        if (idx >= 0) this.prets[idx] = { ...this.prets[idx], ...pret, lines };
+        if (idx >= 0) {
+            this.prets[idx] = { ...this.prets[idx], ...pret, lines };
+        }
         const setText = (id, value) => {
             const el = document.getElementById(id);
-            if (el) el.textContent = value;
+            if (el) {
+                el.textContent = value;
+            }
         };
         const ref = String(pret.reference || pret.title || pret.lot_name || pret.name || `Prêt #${pret.id || ''}`);
         const dateDoc = this.formatDateDDMMYYYY(pret.date || this.getPretSortDateHist(pret) || pret.created_at);
@@ -1469,26 +1657,26 @@ export default class HistoriqueManager {
         const montant = pret.remuneration_montant ?? pret.remunerationMontant;
         const remTxt = gratuit
             ? 'Prêt gratuit'
-            : (montant != null && Number.isFinite(Number(montant)) ? `${Number(montant).toFixed(2).replace('.', ',')} €` : '—');
+            : (montant != null && Number.isFinite(Number(montant)) ? `${Number(montant).toFixed(2).replace('.', ',')} €` : '-');
         setText('modal-pret-title', ref);
         setText('modal-pret-date', dateDoc);
         setText('modal-pret-period', `du ${d0} au ${d1}`);
-        setText('modal-pret-borrower', `${bt} — ${borrower}`);
+        setText('modal-pret-borrower', `${bt} : ${borrower}`);
         setText('modal-pret-remuneration', remTxt);
         setText('modal-pret-lines-count', String(lines.length));
         const tbody = document.getElementById('modal-pret-lines-body');
         if (tbody) {
             if (lines.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6">Aucune ligne</td></tr>`;
+                tbody.innerHTML = '<tr><td colspan="6">Aucune ligne</td></tr>';
             } else {
-                const cell = (v) => this.escapeHtml(String(v ?? '').trim() || '—');
+                const cell = (v) => this.escapeHtml(String(v ?? '').trim() || '-');
                 tbody.innerHTML = lines.map((line, idx) => {
                     const t = String(line?.type || '').toLowerCase();
                     const isAutres = t === 'autres';
                     const typeCol = this.escapeHtml(this.pretLineTypeDisplayHist(line));
                     const marque = cell(line?.marque ?? line?.marqueName);
                     const modele = cell(line?.modele ?? line?.modeleName);
-                    const sn = isAutres ? '—' : cell(line?.serialNumber ?? line?.serial_number ?? line?.serial);
+                    const sn = isAutres ? '-' : cell(line?.serialNumber ?? line?.serial_number ?? line?.serial);
                     return `
                     <tr>
                         <td>${idx + 1}</td>
@@ -1507,16 +1695,22 @@ export default class HistoriqueManager {
 
     async editDonFromHistorique(donId) {
         const don = this.dons.find(d => String(d.id) === String(donId));
-        if (!don) return;
+        if (!don) {
+            return;
+        }
         this.currentEditingDonId = String(donId);
         const lotNameInput = document.getElementById('input-don-lot-name-hist');
-        if (lotNameInput) lotNameInput.value = String(don.lot_name || don.name || '').trim();
+        if (lotNameInput) {
+            lotNameInput.value = String(don.lot_name || don.name || '').trim();
+        }
         this.modalManager.open('modal-edit-don-hist');
     }
 
     async saveDonFromHistorique() {
         const donId = this.currentEditingDonId;
-        if (!donId) return;
+        if (!donId) {
+            return;
+        }
         const lotNameInput = document.getElementById('input-don-lot-name-hist');
         const newName = String(lotNameInput?.value || '').trim();
         if (!newName) {
@@ -1525,7 +1719,9 @@ export default class HistoriqueManager {
         }
         try {
             const res = await api.put(`/api/dons/${donId}`, { lot_name: newName });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
             await this.loadData();
             this.modalManager.close('modal-edit-don-hist');
             this.showNotification('Don mis à jour', 'success');
@@ -1536,7 +1732,9 @@ export default class HistoriqueManager {
 
     async editDonItemsFromHistorique(donId) {
         let don = this.dons.find(d => String(d.id) === String(donId));
-        if (!don) return;
+        if (!don) {
+            return;
+        }
         let lines = this.parseLinesArray(don.lines || don.lignes || don.items);
         const endpoint = this.resolveDetailEndpoint('don', donId);
         if (lines.length === 0 && endpoint) {
@@ -1555,9 +1753,11 @@ export default class HistoriqueManager {
         await this.loadReferenceDataDisques();
         this.currentEditingDonId = String(donId);
         const tbody = document.getElementById('modal-edit-don-items-body');
-        if (!tbody) return;
+        if (!tbody) {
+            return;
+        }
         if (lines.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7">Aucune ligne disponible</td></tr>`;
+            tbody.innerHTML = '<tr><td colspan="7">Aucune ligne disponible</td></tr>';
         } else {
             tbody.innerHTML = lines.map((line, idx) => `
                 <tr data-line-index="${idx}">
@@ -1565,48 +1765,48 @@ export default class HistoriqueManager {
                     <td>
                         <select class="hist-don-type-select">
                             ${(() => {
-                                const val = this.normalizeTypeValue(line?.type);
-                                const known = DON_TYPE_OPTIONS.slice(1, -1);
-                                const isOther = val && !known.includes(val);
-                                return DON_TYPE_OPTIONS.map(opt => {
-                                    const value = opt === 'Autre' ? VALUE_AUTRE_GENERIC : opt;
-                                    const selected = (opt === 'Autre' && isOther) || (opt !== 'Autre' && val === opt);
-                                    return `<option value="${this.escapeAttr(value)}" ${selected ? 'selected' : ''}>${this.escapeHtml(opt || '-- Type --')}</option>`;
-                                }).join('');
-                            })()}
+        const val = this.normalizeTypeValue(line?.type);
+        const known = DON_TYPE_OPTIONS.slice(1, -1);
+        const isOther = val && !known.includes(val);
+        return DON_TYPE_OPTIONS.map(opt => {
+            const value = opt === 'Autre' ? VALUE_AUTRE_GENERIC : opt;
+            const selected = (opt === 'Autre' && isOther) || (opt !== 'Autre' && val === opt);
+            return `<option value="${this.escapeAttr(value)}" ${selected ? 'selected' : ''}>${this.escapeHtml(opt || '-- Type --')}</option>`;
+        }).join('');
+    })()}
                         </select>
                         <input type="text" class="hist-don-type-other" value="${this.escapeAttr(this.normalizeTypeValue(line?.type))}" placeholder="Type libre" style="margin-top:6px;display:${(() => {
-                            const val = this.normalizeTypeValue(line?.type);
-                            const known = DON_TYPE_OPTIONS.slice(1, -1);
-                            return val && !known.includes(val) ? 'block' : 'none';
-                        })()};">
+    const val = this.normalizeTypeValue(line?.type);
+    const known = DON_TYPE_OPTIONS.slice(1, -1);
+    return val && !known.includes(val) ? 'block' : 'none';
+})()};">
                     </td>
                     <td>
                         ${(() => {
-                            const marqueVal = String(line?.marqueName || line?.marque || '').trim();
-                            const marqueMatch = this.marques.find(m => (m.name || '').trim() === marqueVal);
-                            const marqueSelVal = marqueMatch ? String(marqueMatch.id) : (marqueVal ? VALUE_AUTRE_DISQUES : '');
-                            const options = '<option value="">-- Marque --</option>'
-                                + this.marques.map(m => `<option value="${m.id}" ${marqueSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')
-                                + `<option value="${VALUE_AUTRE_DISQUES}" ${marqueSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>`;
-                            return `<select class="hist-don-marque-select">${options}</select>
+        const marqueVal = String(line?.marqueName || line?.marque || '').trim();
+        const marqueMatch = this.marques.find(m => (m.name || '').trim() === marqueVal);
+        const marqueSelVal = marqueMatch ? String(marqueMatch.id) : (marqueVal ? VALUE_AUTRE_DISQUES : '');
+        const options = `<option value="">-- Marque --</option>${
+            this.marques.map(m => `<option value="${m.id}" ${marqueSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')
+        }<option value="${VALUE_AUTRE_DISQUES}" ${marqueSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>`;
+        return `<select class="hist-don-marque-select">${options}</select>
                                     <input type="text" class="hist-don-marque-other" value="${this.escapeAttr(marqueVal)}" placeholder="Marque libre" style="margin-top:6px;display:${marqueSelVal === VALUE_AUTRE_DISQUES ? 'block' : 'none'};">`;
-                        })()}
+    })()}
                     </td>
                     <td>
                         ${(() => {
-                            const marqueVal = String(line?.marqueName || line?.marque || '').trim();
-                            const modeleVal = String(line?.modeleName || line?.modele || '').trim();
-                            const marqueMatch = this.marques.find(m => (m.name || '').trim() === marqueVal);
-                            const modelesForMarque = marqueMatch ? this.modeles.filter(m => m.marque_id == marqueMatch.id) : [];
-                            const modeleMatch = modelesForMarque.find(m => (m.name || '').trim() === modeleVal);
-                            const modeleSelVal = modeleMatch ? String(modeleMatch.id) : (modeleVal ? VALUE_AUTRE_DISQUES : '');
-                            const options = '<option value="">-- Modèle --</option>'
-                                + modelesForMarque.map(m => `<option value="${m.id}" ${modeleSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')
-                                + `<option value="${VALUE_AUTRE_DISQUES}" ${modeleSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>`;
-                            return `<select class="hist-don-modele-select">${options}</select>
+        const marqueVal = String(line?.marqueName || line?.marque || '').trim();
+        const modeleVal = String(line?.modeleName || line?.modele || '').trim();
+        const marqueMatch = this.marques.find(m => (m.name || '').trim() === marqueVal);
+        const modelesForMarque = marqueMatch ? this.modeles.filter(m => String(m.marque_id) === String(marqueMatch.id)) : [];
+        const modeleMatch = modelesForMarque.find(m => (m.name || '').trim() === modeleVal);
+        const modeleSelVal = modeleMatch ? String(modeleMatch.id) : (modeleVal ? VALUE_AUTRE_DISQUES : '');
+        const options = `<option value="">-- Modèle --</option>${
+            modelesForMarque.map(m => `<option value="${m.id}" ${modeleSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')
+        }<option value="${VALUE_AUTRE_DISQUES}" ${modeleSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>`;
+        return `<select class="hist-don-modele-select">${options}</select>
                                     <input type="text" class="hist-don-modele-other" value="${this.escapeAttr(modeleVal)}" placeholder="Modèle libre" style="margin-top:6px;display:${modeleSelVal === VALUE_AUTRE_DISQUES ? 'block' : 'none'};">`;
-                        })()}
+    })()}
                     </td>
                     <td><input type="text" class="hist-don-serial" value="${this.escapeAttr(String(line?.serialNumber || line?.serial || ''))}" placeholder="S/N"></td>
                     <td><input type="text" class="hist-don-date" value="${this.escapeAttr(String(line?.date || ''))}" placeholder="Date"></td>
@@ -1617,10 +1817,14 @@ export default class HistoriqueManager {
                 sel.addEventListener('change', () => {
                     const row = sel.closest('tr');
                     const otherInput = row?.querySelector('.hist-don-type-other');
-                    if (!otherInput) return;
+                    if (!otherInput) {
+                        return;
+                    }
                     const isOther = sel.value === VALUE_AUTRE_GENERIC;
                     otherInput.style.display = isOther ? 'block' : 'none';
-                    if (!isOther) otherInput.value = sel.value || '';
+                    if (!isOther) {
+                        otherInput.value = sel.value || '';
+                    }
                 });
             });
             tbody.querySelectorAll('.hist-don-marque-select').forEach((sel) => {
@@ -1630,14 +1834,16 @@ export default class HistoriqueManager {
                     const modeleSel = row?.querySelector('.hist-don-modele-select');
                     const modeleOther = row?.querySelector('.hist-don-modele-other');
                     const isAutre = sel.value === VALUE_AUTRE_DISQUES;
-                    if (marqueOther) marqueOther.style.display = isAutre ? 'block' : 'none';
+                    if (marqueOther) {
+                        marqueOther.style.display = isAutre ? 'block' : 'none';
+                    }
                     if (modeleSel) {
                         const filtered = sel.value && sel.value !== VALUE_AUTRE_DISQUES
                             ? this.modeles.filter(m => String(m.marque_id) === String(sel.value))
                             : [];
-                        modeleSel.innerHTML = '<option value="">-- Modèle --</option>'
-                            + filtered.map(m => `<option value="${m.id}">${this.escapeHtml(m.name)}</option>`).join('')
-                            + `<option value="${VALUE_AUTRE_DISQUES}">Autre</option>`;
+                        modeleSel.innerHTML = `<option value="">-- Modèle --</option>${
+                            filtered.map(m => `<option value="${m.id}">${this.escapeHtml(m.name)}</option>`).join('')
+                        }<option value="${VALUE_AUTRE_DISQUES}">Autre</option>`;
                     }
                     if (modeleOther) {
                         modeleOther.style.display = 'none';
@@ -1649,10 +1855,14 @@ export default class HistoriqueManager {
                 sel.addEventListener('change', () => {
                     const row = sel.closest('tr');
                     const modeleOther = row?.querySelector('.hist-don-modele-other');
-                    if (!modeleOther) return;
+                    if (!modeleOther) {
+                        return;
+                    }
                     const isAutre = sel.value === VALUE_AUTRE_DISQUES;
                     modeleOther.style.display = isAutre ? 'block' : 'none';
-                    if (!isAutre) modeleOther.value = '';
+                    if (!isAutre) {
+                        modeleOther.value = '';
+                    }
                 });
             });
         }
@@ -1661,7 +1871,9 @@ export default class HistoriqueManager {
 
     async saveDonItemsFromHistorique() {
         const donId = this.currentEditingDonId;
-        if (!donId) return;
+        if (!donId) {
+            return;
+        }
         const rows = Array.from(document.querySelectorAll('#modal-edit-don-items-body tr[data-line-index]'));
         const lines = rows.map((row) => {
             const typeSel = row.querySelector('.hist-don-type-select');
@@ -1674,28 +1886,33 @@ export default class HistoriqueManager {
             const modeleSel = row.querySelector('.hist-don-modele-select');
             const modeleOther = row.querySelector('.hist-don-modele-other');
             let marque = null;
-            if (marqueSel?.value === VALUE_AUTRE_DISQUES) marque = String(marqueOther?.value || '').trim() || null;
-            else if (marqueSel?.value) {
+            if (marqueSel?.value === VALUE_AUTRE_DISQUES) {
+                marque = String(marqueOther?.value || '').trim() || null;
+            } else if (marqueSel?.value) {
                 const m = this.marques.find(x => String(x.id) === String(marqueSel.value));
                 marque = m?.name || null;
             }
             let modele = null;
-            if (modeleSel?.value === VALUE_AUTRE_DISQUES) modele = String(modeleOther?.value || '').trim() || null;
-            else if (modeleSel?.value) {
+            if (modeleSel?.value === VALUE_AUTRE_DISQUES) {
+                modele = String(modeleOther?.value || '').trim() || null;
+            } else if (modeleSel?.value) {
                 const m = this.modeles.find(x => String(x.id) === String(modeleSel.value));
                 modele = m?.name || null;
             }
             return {
-            type: this.normalizeTypeValue(type) || null,
-            marque,
-            modele,
-            serial: String(row.querySelector('.hist-don-serial')?.value || '').trim() || null,
-            date: String(row.querySelector('.hist-don-date')?.value || '').trim() || null,
-            stagiaire: String(row.querySelector('.hist-don-stagiaire')?.value || '').trim() || null
-        };});
+                type: this.normalizeTypeValue(type) || null,
+                marque,
+                modele,
+                serial: String(row.querySelector('.hist-don-serial')?.value || '').trim() || null,
+                date: String(row.querySelector('.hist-don-date')?.value || '').trim() || null,
+                stagiaire: String(row.querySelector('.hist-don-stagiaire')?.value || '').trim() || null
+            };
+        });
         try {
             const res = await api.put(`/api/dons/${donId}`, { lines });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
             await this.loadData();
             this.modalManager.close('modal-edit-don-items-hist');
             this.showNotification('Matériel don mis à jour', 'success');
@@ -1711,14 +1928,18 @@ export default class HistoriqueManager {
         }
         try {
             const result = await window.electron.invoke('open-path', { path: targetPath });
-            if (!result?.success) throw new Error(result?.error || 'Impossible d’ouvrir le dossier');
+            if (!result?.success) {
+                throw new Error(result?.error || 'Impossible d’ouvrir le dossier');
+            }
         } catch (err) {
             this.showNotification(err?.message || 'Impossible d’ouvrir le dossier', 'error');
         }
     }
 
     openPdfUrl(url) {
-        if (!url) return;
+        if (!url) {
+            return;
+        }
         if (window.electron?.invoke) {
             window.electron.invoke('open-pdf-with-system-app', {
                 url,
@@ -1731,12 +1952,16 @@ export default class HistoriqueManager {
     }
 
     async downloadPdfUrl(url, filename) {
-        if (!url) return;
+        if (!url) {
+            return;
+        }
         try {
             const response = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` }
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1756,7 +1981,9 @@ export default class HistoriqueManager {
      */
     async markDisqueSessionAsRecovered(sessionId) {
         const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
-        if (!session) return;
+        if (!session) {
+            return;
+        }
         const button = document.querySelector(`.btn-to-recover-disque[data-session-id="${sessionId}"]`);
         if (button) {
             button.disabled = true;
@@ -1782,10 +2009,14 @@ export default class HistoriqueManager {
      */
     editDisqueSessionName(sessionId) {
         const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
-        if (!session) return;
+        if (!session) {
+            return;
+        }
         this.currentEditingSessionId = sessionId;
         const input = document.getElementById('input-disque-session-name');
-        if (input) input.value = (session.name || '').trim();
+        if (input) {
+            input.value = (session.name || '').trim();
+        }
         this.modalManager.open('modal-edit-disque-name');
     }
 
@@ -1793,7 +2024,9 @@ export default class HistoriqueManager {
      * Sauvegarder le nom de la session disques
      */
     async saveDisqueSessionName() {
-        if (!this.currentEditingSessionId) return;
+        if (!this.currentEditingSessionId) {
+            return;
+        }
         const input = document.getElementById('input-disque-session-name');
         const newName = input?.value?.trim() ?? '';
         if (!newName) {
@@ -1808,9 +2041,13 @@ export default class HistoriqueManager {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` },
                 body: JSON.stringify({ name: newName })
             });
-            if (!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
+            if (!res.ok) {
+                throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
+            }
             const session = this.sessionsDisques.find(s => String(s.id) === String(this.currentEditingSessionId));
-            if (session) session.name = newName;
+            if (session) {
+                session.name = newName;
+            }
             this.currentEditingSessionId = null;
             this.modalManager.close('modal-edit-disque-name');
             this.renderLots();
@@ -1824,11 +2061,15 @@ export default class HistoriqueManager {
     async loadReferenceDataDisques() {
         try {
             const marquesRes = await api.get('marques.list', { useCache: false });
-            if (!marquesRes.ok) return;
+            if (!marquesRes.ok) {
+                return;
+            }
             const marquesData = await marquesRes.json();
             this.marques = Array.isArray(marquesData) ? marquesData : (marquesData.items || marquesData.marques || []);
             const modelesRes = await api.get('marques.all', { useCache: false });
-            if (!modelesRes.ok) return;
+            if (!modelesRes.ok) {
+                return;
+            }
             const modelesData = await modelesRes.json();
             const marquesAvecModeles = Array.isArray(modelesData) ? modelesData : (modelesData.items || []);
             this.modeles = [];
@@ -1855,14 +2096,18 @@ export default class HistoriqueManager {
      */
     async editDisqueItems(sessionId) {
         const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
-        if (!session) return;
+        if (!session) {
+            return;
+        }
         await this.loadReferenceDataDisques();
         const full = await getSession(sessionId).catch(() => session);
         const disks = Array.isArray(full.disks) ? full.disks : [];
         this.currentEditingSessionId = sessionId;
         document.getElementById('modal-edit-disque-session-title').textContent = (full.name || '').trim() || 'Lot disques';
         const container = document.getElementById('modal-edit-disque-items-list');
-        if (!container) return;
+        if (!container) {
+            return;
+        }
         const sizeOpts = ['', '250 Go', '500 Go', '1 To', '2 To', '4 To', '8 To', 'autre'];
         const typeOpts = ['', 'HDD', 'SSD'];
         const ifaceOpts = ['SATA', 'SAS', 'NVMe', 'M.2'];
@@ -1873,16 +2118,16 @@ export default class HistoriqueManager {
             const modeleVal = (d.modele || '').trim();
             const marqueMatch = this.marques.find(m => (m.name || '').trim() === marqueVal);
             const marqueId = marqueMatch ? marqueMatch.id : null;
-            const modelesForMarque = marqueId ? this.modeles.filter(m => m.marque_id == marqueId) : [];
+            const modelesForMarque = marqueId ? this.modeles.filter(m => String(m.marque_id) === String(marqueId)) : [];
             const modeleMatch = modelesForMarque.find(m => (m.name || '').trim() === modeleVal);
             const marqueSelVal = marqueMatch ? marqueMatch.id : (marqueVal ? VALUE_AUTRE_DISQUES : '');
             const modeleSelVal = modeleMatch ? modeleMatch.id : (modeleVal ? VALUE_AUTRE_DISQUES : '');
-            const marqueOpts = '<option value="">-- Marque --</option>' +
-                this.marques.map(m => `<option value="${m.id}" ${marqueSelVal === m.id ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('') +
-                `<option value="${VALUE_AUTRE_DISQUES}" ${marqueSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>`;
-            const modeleOpts = '<option value="">-- Modèle --</option>' +
-                modelesForMarque.map(m => `<option value="${m.id}" ${modeleSelVal === m.id ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('') +
-                `<option value="${VALUE_AUTRE_DISQUES}" ${modeleSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>`;
+            const marqueOpts = `<option value="">-- Marque --</option>${ 
+                this.marques.map(m => `<option value="${m.id}" ${marqueSelVal === m.id ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('') 
+            }<option value="${VALUE_AUTRE_DISQUES}" ${marqueSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>`;
+            const modeleOpts = `<option value="">-- Modèle --</option>${ 
+                modelesForMarque.map(m => `<option value="${m.id}" ${modeleSelVal === m.id ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('') 
+            }<option value="${VALUE_AUTRE_DISQUES}" ${modeleSelVal === VALUE_AUTRE_DISQUES ? 'selected' : ''}>Autre</option>`;
             const showMarqueAutre = marqueSelVal === VALUE_AUTRE_DISQUES;
             const showModeleAutre = modeleSelVal === VALUE_AUTRE_DISQUES;
             return `<tr class="historique-disque-edit-row" data-disk-index="${i}">
@@ -1909,7 +2154,9 @@ export default class HistoriqueManager {
             sel.addEventListener('change', () => {
                 const row = sel.closest('.historique-disque-edit-row');
                 const custom = row?.querySelector('.disque-edit-size-custom');
-                if (custom) custom.style.display = sel.value === 'autre' ? 'inline-block' : 'none';
+                if (custom) {
+                    custom.style.display = sel.value === 'autre' ? 'inline-block' : 'none';
+                }
             });
         });
         container.querySelectorAll('.disque-edit-marque').forEach(sel => {
@@ -1921,14 +2168,16 @@ export default class HistoriqueManager {
                 const isAutre = sel.value === VALUE_AUTRE_DISQUES;
                 if (marqueAutre) {
                     marqueAutre.style.display = isAutre ? 'inline-block' : 'none';
-                    if (!isAutre) marqueAutre.value = '';
+                    if (!isAutre) {
+                        marqueAutre.value = '';
+                    }
                 }
                 if (modeleSel) {
                     const marqueId = sel.value && sel.value !== VALUE_AUTRE_DISQUES ? sel.value : '';
-                    const filtered = marqueId ? this.modeles.filter(m => m.marque_id == marqueId) : [];
-                    modeleSel.innerHTML = '<option value="">-- Modèle --</option>' +
-                        filtered.map(m => `<option value="${m.id}">${this.escapeHtml(m.name)}</option>`).join('') +
-                        `<option value="${VALUE_AUTRE_DISQUES}">Autre</option>`;
+                    const filtered = marqueId ? this.modeles.filter(m => String(m.marque_id) === String(marqueId)) : [];
+                    modeleSel.innerHTML = `<option value="">-- Modèle --</option>${ 
+                        filtered.map(m => `<option value="${m.id}">${this.escapeHtml(m.name)}</option>`).join('') 
+                    }<option value="${VALUE_AUTRE_DISQUES}">Autre</option>`;
                 }
                 if (modeleAutre) {
                     modeleAutre.style.display = 'none';
@@ -1943,7 +2192,9 @@ export default class HistoriqueManager {
                 const isAutre = sel.value === VALUE_AUTRE_DISQUES;
                 if (modeleAutre) {
                     modeleAutre.style.display = isAutre ? 'inline-block' : 'none';
-                    if (!isAutre) modeleAutre.value = '';
+                    if (!isAutre) {
+                        modeleAutre.value = '';
+                    }
                 }
             });
         });
@@ -1954,9 +2205,13 @@ export default class HistoriqueManager {
      * Enregistrer les modifications du matériel (lot disques)
      */
     async applyDisqueItemsEdits() {
-        if (!this.currentEditingSessionId) return;
+        if (!this.currentEditingSessionId) {
+            return;
+        }
         const container = document.getElementById('modal-edit-disque-items-list');
-        if (!container) return;
+        if (!container) {
+            return;
+        }
         const rows = container.querySelectorAll('.historique-disque-edit-row[data-disk-index]');
         const disks = [];
         for (const row of rows) {
@@ -1976,14 +2231,16 @@ export default class HistoriqueManager {
             const modeleSel = row.querySelector('.disque-edit-modele');
             const modeleAutre = row.querySelector('.disque-edit-modele-autre');
             let marque = null;
-            if (marqueSel?.value === VALUE_AUTRE_DISQUES && marqueAutre?.value?.trim()) marque = marqueAutre.value.trim();
-            else if (marqueSel?.value && marqueSel.value !== VALUE_AUTRE_DISQUES) {
+            if (marqueSel?.value === VALUE_AUTRE_DISQUES && marqueAutre?.value?.trim()) {
+                marque = marqueAutre.value.trim();
+            } else if (marqueSel?.value && marqueSel.value !== VALUE_AUTRE_DISQUES) {
                 const m = this.marques.find(x => String(x.id) === String(marqueSel.value));
                 marque = m ? m.name : null;
             }
             let modele = null;
-            if (modeleSel?.value === VALUE_AUTRE_DISQUES && modeleAutre?.value?.trim()) modele = modeleAutre.value.trim();
-            else if (modeleSel?.value && modeleSel.value !== VALUE_AUTRE_DISQUES) {
+            if (modeleSel?.value === VALUE_AUTRE_DISQUES && modeleAutre?.value?.trim()) {
+                modele = modeleAutre.value.trim();
+            } else if (modeleSel?.value && modeleSel.value !== VALUE_AUTRE_DISQUES) {
                 const m = this.modeles.find(x => String(x.id) === String(modeleSel.value));
                 modele = m ? m.name : null;
             }
@@ -2005,9 +2262,13 @@ export default class HistoriqueManager {
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` },
                 body: JSON.stringify({ disks })
             });
-            if (!res.ok) throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
+            if (!res.ok) {
+                throw new Error(await res.text().catch(() => `HTTP ${res.status}`));
+            }
             const session = this.sessionsDisques.find(s => String(s.id) === String(this.currentEditingSessionId));
-            if (session) session.disks = disks;
+            if (session) {
+                session.disks = disks;
+            }
             this.currentEditingSessionId = null;
             this.modalManager.close('modal-edit-disque-items');
             this.renderLots();
@@ -2023,7 +2284,9 @@ export default class HistoriqueManager {
      */
     async viewDisqueSessionDetails(sessionId) {
         const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
-        if (!session) return;
+        if (!session) {
+            return;
+        }
         const full = await getSession(sessionId).catch(() => session);
         const name = (full.name || '').trim() || 'Lot disques';
         const dateFormatted = this.formatDateDDMMYYYY(full.date || (full.created_at || '').slice(0, 10));
@@ -2056,8 +2319,10 @@ export default class HistoriqueManager {
      * Voir les détails d'un lot
      */
     viewLotDetails(lotId) {
-        const lot = this.lots.find(l => l.id == lotId);
-        if (!lot) return;
+        const lot = this.lots.find(l => String(l.id) === String(lotId));
+        if (!lot) {
+            return;
+        }
 
         const total = lot.total || 0;
         const recond = lot.recond || 0;
@@ -2075,10 +2340,16 @@ export default class HistoriqueManager {
         const pctRecond = total > 0 ? Math.round((recond / total) * 100) : 0;
         const statRecondEl = document.getElementById('recep-stat-recond');
         const progressRecondEl = document.getElementById('recep-progress-recond');
-        if (statRecondEl) statRecondEl.textContent = pctRecond + '%';
-        if (progressRecondEl) progressRecondEl.style.width = pctRecond + '%';
+        if (statRecondEl) {
+            statRecondEl.textContent = `${pctRecond  }%`;
+        }
+        if (progressRecondEl) {
+            progressRecondEl.style.width = `${pctRecond  }%`;
+        }
         const statStateEl = document.getElementById('recep-stat-state');
-        if (statStateEl) statStateEl.textContent = pctRecond >= 50 ? 'Bon' : pctRecond >= 25 ? 'Moyen' : 'Faible';
+        if (statStateEl) {
+            statStateEl.textContent = pctRecond >= 50 ? 'Bon' : pctRecond >= 25 ? 'Moyen' : 'Faible';
+        }
 
         // Items
         const itemsContainer = document.getElementById('modal-lot-items');
@@ -2098,9 +2369,15 @@ export default class HistoriqueManager {
         }, null, 2));
         
         const formatItemDateTime = (it) => {
-            if (it.created_at) return this.formatDateTime(it.created_at);
-            if (it.state_changed_at) return this.formatDateTime(it.state_changed_at);
-            if (it.date && it.time) return `${it.date} ${it.time}`;
+            if (it.created_at) {
+                return this.formatDateTime(it.created_at);
+            }
+            if (it.state_changed_at) {
+                return this.formatDateTime(it.state_changed_at);
+            }
+            if (it.date && it.time) {
+                return `${it.date} ${it.time}`;
+            }
             return '-';
         };
         itemsContainer.innerHTML = items.map((item, idx) => `
@@ -2206,8 +2483,10 @@ export default class HistoriqueManager {
      * Éditer le nom du lot
      */
     editLotName(lotId) {
-        const lot = this.lots.find(l => l.id == lotId);
-        if (!lot) return;
+        const lot = this.lots.find(l => String(l.id) === String(lotId));
+        if (!lot) {
+            return;
+        }
 
         // Stocker l'ID du lot en cours d'édition
         this.currentEditingLotId = lotId;
@@ -2226,8 +2505,10 @@ export default class HistoriqueManager {
      * Sauvegarder le nom du lot
      */
     saveLotName() {
-        const lot = this.lots.find(l => l.id == this.currentEditingLotId);
-        if (!lot) return;
+        const lot = this.lots.find(l => String(l.id) === String(this.currentEditingLotId));
+        if (!lot) {
+            return;
+        }
 
         const inputLotName = document.getElementById('input-lot-name');
         const newName = inputLotName.value.trim();
@@ -2253,41 +2534,43 @@ export default class HistoriqueManager {
             },
             body: JSON.stringify({ lot_name: newName })
         })
-        .then(async res => {
-            logger.debug('📡 Réponse sauvegarde nom:', JSON.stringify({ 
-                status: res.status, 
-                statusText: res.statusText,
-                ok: res.ok 
-            }, null, 2));
-            
-            if (res.ok) {
-                const data = await res.json();
-                logger.debug('✅ Nom du lot mis à jour:', JSON.stringify(data, null, 2));
-                this.showNotification('Nom du lot mis à jour', 'success');
-                this.modalManager.close('modal-edit-lot-name');
-                this.renderLots();
-            } else {
-                const errorText = await res.text();
-                logger.error('❌ Erreur réponse:', JSON.stringify({ 
+            .then(async res => {
+                logger.debug('📡 Réponse sauvegarde nom:', JSON.stringify({ 
                     status: res.status, 
-                    errorText 
+                    statusText: res.statusText,
+                    ok: res.ok 
                 }, null, 2));
-                const errorData = JSON.parse(errorText).catch(() => ({}));
-                throw new Error(errorData.message || `Erreur ${res.status}: ${errorText}`);
-            }
-        })
-        .catch(err => {
-            logger.error('❌ Erreur sauvegarde nom:', JSON.stringify({ error: err.message, stack: err.stack }, null, 2));
-            this.showNotification('Erreur lors de la mise à jour', 'error');
-        });
+            
+                if (res.ok) {
+                    const data = await res.json();
+                    logger.debug('✅ Nom du lot mis à jour:', JSON.stringify(data, null, 2));
+                    this.showNotification('Nom du lot mis à jour', 'success');
+                    this.modalManager.close('modal-edit-lot-name');
+                    this.renderLots();
+                } else {
+                    const errorText = await res.text();
+                    logger.error('❌ Erreur réponse:', JSON.stringify({ 
+                        status: res.status, 
+                        errorText 
+                    }, null, 2));
+                    const errorData = JSON.parse(errorText).catch(() => ({}));
+                    throw new Error(errorData.message || `Erreur ${res.status}: ${errorText}`);
+                }
+            })
+            .catch(err => {
+                logger.error('❌ Erreur sauvegarde nom:', JSON.stringify({ error: err.message, stack: err.stack }, null, 2));
+                this.showNotification('Erreur lors de la mise à jour', 'error');
+            });
     }
 
     /**
      * Marquer un lot comme récupéré
      */
     async markAsRecovered(lotId) {
-        const lot = this.lots.find(l => l.id == lotId);
-        if (!lot) return;
+        const lot = this.lots.find(l => String(l.id) === String(lotId));
+        if (!lot) {
+            return;
+        }
 
         const items = Array.isArray(lot.items) ? lot.items : [];
         const canRecover = items.length > 0 && items.every(item =>
@@ -2362,7 +2645,7 @@ export default class HistoriqueManager {
      * Éditer l'état du matériel et les techniciens
      */
     async editLotItems(lotId) {
-        const lot = this.lots.find(l => l.id == lotId);
+        const lot = this.lots.find(l => String(l.id) === String(lotId));
         if (!lot) {
             logger.error('Lot non trouvé:', lotId);
             return;
@@ -2387,9 +2670,15 @@ export default class HistoriqueManager {
         }, null, 2));
 
         const formatItemDateTime = (it) => {
-            if (it.created_at) return this.formatDateTime(it.created_at);
-            if (it.state_changed_at) return this.formatDateTime(it.state_changed_at);
-            if (it.date && it.time) return `${it.date} ${it.time}`;
+            if (it.created_at) {
+                return this.formatDateTime(it.created_at);
+            }
+            if (it.state_changed_at) {
+                return this.formatDateTime(it.state_changed_at);
+            }
+            if (it.date && it.time) {
+                return `${it.date} ${it.time}`;
+            }
             return '-';
         };
         this.currentEditingLotId = lotId;
@@ -2417,10 +2706,10 @@ export default class HistoriqueManager {
                     <td>
                         <select class="item-type-select" data-item-id="${item.id}">
                             ${LOT_TYPE_OPTIONS.map(opt => {
-                                const value = opt === 'Autre' ? VALUE_AUTRE_GENERIC : opt;
-                                const selected = (opt === 'Autre' && isOtherType) || (opt !== 'Autre' && itemType === opt);
-                                return `<option value="${this.escapeAttr(value)}" ${selected ? 'selected' : ''}>${this.escapeHtml(opt || '-- Type --')}</option>`;
-                            }).join('')}
+        const value = opt === 'Autre' ? VALUE_AUTRE_GENERIC : opt;
+        const selected = (opt === 'Autre' && isOtherType) || (opt !== 'Autre' && itemType === opt);
+        return `<option value="${this.escapeAttr(value)}" ${selected ? 'selected' : ''}>${this.escapeHtml(opt || '-- Type --')}</option>`;
+    }).join('')}
                         </select>
                         <input type="text" class="item-type-other-input" data-item-id="${item.id}" value="${isOtherType ? this.escapeAttr(itemType) : ''}" placeholder="Précisez le type" style="margin-top:6px;display:${isOtherType ? 'block' : 'none'};">
                     </td>
@@ -2473,20 +2762,28 @@ export default class HistoriqueManager {
                 sel.addEventListener('change', () => {
                     const row = sel.closest('tr');
                     const otherInput = row?.querySelector('.item-state-other-input');
-                    if (!otherInput) return;
+                    if (!otherInput) {
+                        return;
+                    }
                     const isOther = sel.value === 'autres';
                     otherInput.style.display = isOther ? 'block' : 'none';
-                    if (!isOther) otherInput.value = '';
+                    if (!isOther) {
+                        otherInput.value = '';
+                    }
                 });
             });
             itemsContainer.querySelectorAll('.item-type-select').forEach(sel => {
                 sel.addEventListener('change', () => {
                     const row = sel.closest('tr');
                     const otherInput = row?.querySelector('.item-type-other-input');
-                    if (!otherInput) return;
+                    if (!otherInput) {
+                        return;
+                    }
                     const isOther = sel.value === VALUE_AUTRE_GENERIC;
                     otherInput.style.display = isOther ? 'block' : 'none';
-                    if (!isOther) otherInput.value = sel.value || '';
+                    if (!isOther) {
+                        otherInput.value = sel.value || '';
+                    }
                 });
             });
             itemsContainer.querySelectorAll('.item-marque-select').forEach(sel => {
@@ -2496,14 +2793,16 @@ export default class HistoriqueManager {
                     const modeleSel = row?.querySelector('.item-modele-select');
                     const modeleOther = row?.querySelector('.item-modele-other-input');
                     const isAutre = sel.value === VALUE_AUTRE_DISQUES;
-                    if (marqueOther) marqueOther.style.display = isAutre ? 'block' : 'none';
+                    if (marqueOther) {
+                        marqueOther.style.display = isAutre ? 'block' : 'none';
+                    }
                     if (modeleSel) {
                         const filtered = sel.value && sel.value !== VALUE_AUTRE_DISQUES
                             ? this.modeles.filter(m => String(m.marque_id) === String(sel.value))
                             : [];
-                        modeleSel.innerHTML = '<option value="">-- Modèle --</option>'
-                            + filtered.map(m => `<option value="${m.id}">${this.escapeHtml(m.name)}</option>`).join('')
-                            + `<option value="${VALUE_AUTRE_DISQUES}">Autre</option>`;
+                        modeleSel.innerHTML = `<option value="">-- Modèle --</option>${
+                            filtered.map(m => `<option value="${m.id}">${this.escapeHtml(m.name)}</option>`).join('')
+                        }<option value="${VALUE_AUTRE_DISQUES}">Autre</option>`;
                     }
                     if (modeleOther) {
                         modeleOther.style.display = 'none';
@@ -2515,10 +2814,14 @@ export default class HistoriqueManager {
                 sel.addEventListener('change', () => {
                     const row = sel.closest('tr');
                     const modeleOther = row?.querySelector('.item-modele-other-input');
-                    if (!modeleOther) return;
+                    if (!modeleOther) {
+                        return;
+                    }
                     const isOther = sel.value === VALUE_AUTRE_DISQUES;
                     modeleOther.style.display = isOther ? 'block' : 'none';
-                    if (!isOther) modeleOther.value = '';
+                    if (!isOther) {
+                        modeleOther.value = '';
+                    }
                 });
             });
         }
@@ -2533,8 +2836,10 @@ export default class HistoriqueManager {
      * Apliquer les changements à l'édition des items
      */
     async applyItemEdits() {
-        const lot = this.lots.find(l => l.id == this.currentEditingLotId);
-        if (!lot) return;
+        const lot = this.lots.find(l => String(l.id) === String(this.currentEditingLotId));
+        if (!lot) {
+            return;
+        }
 
         await this.loadReferenceDataDisques();
 
@@ -2565,7 +2870,7 @@ export default class HistoriqueManager {
                 updates.push({
                     itemId,
                     serial_number: String(serialInput?.value || '').trim() || null,
-                    state: state,
+                    state,
                     technician: technician || null,
                     os: os || 'linux',
                     type: (() => {
@@ -2577,7 +2882,9 @@ export default class HistoriqueManager {
                     marque_name: (() => {
                         const marqueSel = row.querySelector('.item-marque-select');
                         const marqueOther = row.querySelector('.item-marque-other-input');
-                        if (marqueSel?.value === VALUE_AUTRE_DISQUES) return String(marqueOther?.value || '').trim() || null;
+                        if (marqueSel?.value === VALUE_AUTRE_DISQUES) {
+                            return String(marqueOther?.value || '').trim() || null;
+                        }
                         if (marqueSel?.value) {
                             const m = this.marques.find(x => String(x.id) === String(marqueSel.value));
                             return m?.name || null;
@@ -2587,7 +2894,9 @@ export default class HistoriqueManager {
                     modele_name: (() => {
                         const modeleSel = row.querySelector('.item-modele-select');
                         const modeleOther = row.querySelector('.item-modele-other-input');
-                        if (modeleSel?.value === VALUE_AUTRE_DISQUES) return String(modeleOther?.value || '').trim() || null;
+                        if (modeleSel?.value === VALUE_AUTRE_DISQUES) {
+                            return String(modeleOther?.value || '').trim() || null;
+                        }
                         if (modeleSel?.value) {
                             const m = this.modeles.find(x => String(x.id) === String(modeleSel.value));
                             return m?.name || null;
@@ -2669,15 +2978,15 @@ export default class HistoriqueManager {
             }
             return response.json();
         }))
-        .then(() => {
-            this.showNotification('Matériel mis à jour', 'success');
-            this.modalManager.close('modal-edit-lot-items');
-            this.loadData();
-        })
-        .catch(err => {
-            logger.error('Erreur:', err);
-            this.showNotification('Erreur lors de la mise à jour', 'error');
-        });
+            .then(() => {
+                this.showNotification('Matériel mis à jour', 'success');
+                this.modalManager.close('modal-edit-lot-items');
+                this.loadData();
+            })
+            .catch(err => {
+                logger.error('Erreur:', err);
+                this.showNotification('Erreur lors de la mise à jour', 'error');
+            });
     }
 
     /**
@@ -2688,8 +2997,10 @@ export default class HistoriqueManager {
             this.showNotification('Génération PDF disponible uniquement dans l\'application Electron', 'warning');
             return;
         }
-        const lot = this.lots.find(l => l.id == lotId);
-        if (!lot) return;
+        const lot = this.lots.find(l => String(l.id) === String(lotId));
+        if (!lot) {
+            return;
+        }
 
         const btn = document.querySelector(`.btn-regenerate-lot-pdf[data-lot-id="${lotId}"]`);
         if (btn) {
@@ -2706,11 +3017,17 @@ export default class HistoriqueManager {
             const res = await fetch(`${serverUrl}/api/lots/${lotId}`, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` }
             });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
             const data = await res.json();
             const fullLot = data.item || data;
-            if (fullLot && !fullLot.items && data.items) fullLot.items = data.items;
-            if (!fullLot?.items?.length) throw new Error('Lot sans items');
+            if (fullLot && !fullLot.items && data.items) {
+                fullLot.items = data.items;
+            }
+            if (!fullLot?.items?.length) {
+                throw new Error('Lot sans items');
+            }
 
             const lotName = (fullLot.lot_name || fullLot.name) ? String(fullLot.lot_name || fullLot.name).trim() : `Lot_${lotId}`;
             const result = await window.electron.invoke('generate-lot-pdf', {
@@ -2763,7 +3080,9 @@ export default class HistoriqueManager {
      * Formater une date
      */
     formatDate(dateStr) {
-        if (!dateStr) return '-';
+        if (!dateStr) {
+            return '-';
+        }
         const date = new Date(dateStr);
         return date.toLocaleDateString('fr-FR', { year: 'numeric', month: 'short', day: 'numeric' });
     }
@@ -2772,7 +3091,9 @@ export default class HistoriqueManager {
      * Formater une date et heure
      */
     formatDateTime(dateStr) {
-        if (!dateStr) return '-';
+        if (!dateStr) {
+            return '-';
+        }
         const date = new Date(dateStr);
         return date.toLocaleString('fr-FR', {
             year: 'numeric',

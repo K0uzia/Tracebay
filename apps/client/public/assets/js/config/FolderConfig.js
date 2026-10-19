@@ -12,7 +12,7 @@ export const folderConfig = {
             blacklist: ['#TRAÇABILITÉ', '#INTERNE', '#INVITES', '#COMMANDES','#OVERLAYS','lacapsule-git','CapsuleOS','CapsuleOS-app']
         },
         guest: {
-            basePath: '/mnt/team/#TEAM/#INVITES',
+            basePath: '/mnt/team/#TEAM/#INVITES'
         },
         development: {
             basePath: '/mnt/team/#TEAM/#INTERNE/#WEB',
@@ -31,15 +31,25 @@ export const folderConfig = {
     ignoreExtensions: ['.tmp', '.bak', '.log', '.lock'],
 
     isBlacklisted(name) {
-        if (this.blacklist.includes(name)) return true;
-        if (name.startsWith('~$')) return true;
-        if (name.startsWith('.') && name !== '.' && name !== '..') return true;
+        if (this.blacklist.includes(name)) {
+            return true;
+        }
+        if (name.startsWith('~$')) {
+            return true;
+        }
+        if (name.startsWith('.') && name !== '.' && name !== '..') {
+            return true;
+        }
 
         for (const suffix of this.ignoreSuffixes) {
-            if (name.endsWith(suffix)) return true;
+            if (name.endsWith(suffix)) {
+                return true;
+            }
         }
         for (const ext of this.ignoreExtensions) {
-            if (name.endsWith(ext)) return true;
+            if (name.endsWith(ext)) {
+                return true;
+            }
         }
         return false;
     },
@@ -48,10 +58,14 @@ export const folderConfig = {
      * Récupère la config d'un preset ou la config par défaut
      */
     resolvePreset(name) {
-        if (!name) return this;
+        if (!name) {
+            return this;
+        }
         const key = name.toLowerCase();
         const preset = this.fileManagers?.[key];
-        if (!preset) return this;
+        if (!preset) {
+            return this;
+        }
         return {
             ...this,
             ...preset,

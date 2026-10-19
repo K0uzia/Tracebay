@@ -139,7 +139,9 @@ export default class ModalManager {
         const container = document.getElementById(`${modalType}-color-favorites`);
         const colorInput = document.getElementById(`${modalType}_color`);
 
-        if (!container) return;
+        if (!container) {
+            return;
+        }
 
         container.innerHTML = '';
         
@@ -194,13 +196,17 @@ export default class ModalManager {
 
     /** Déplace le dialog dans body pour éviter les problèmes d'affichage (stacking context, overflow) */
     ensureDialogInBody(dialogEl) {
-        if (!dialogEl || dialogEl.parentNode === document.body) return;
+        if (!dialogEl || dialogEl.parentNode === document.body) {
+            return;
+        }
         document.body.appendChild(dialogEl);
     }
 
     showModal(modalEl) {
         const el = typeof modalEl?.id === 'string' ? document.getElementById(modalEl.id) : modalEl;
-        if (!el) return;
+        if (!el) {
+            return;
+        }
         this.ensureDialogInBody(el);
         if (typeof el.showModal === 'function') {
             try {
@@ -220,13 +226,17 @@ export default class ModalManager {
 
     openCreateModal(dateObj) {
         const createModalEl = document.getElementById('agenda-create-modal');
-        if (!createModalEl) return;
+        if (!createModalEl) {
+            return;
+        }
 
         const form = document.getElementById('createEventForm');
         form?.reset();
 
         const colorInput = document.getElementById('create_color');
-        if (colorInput) colorInput.value = '#5b7cfa';
+        if (colorInput) {
+            colorInput.value = '#5b7cfa';
+        }
 
         const allDayCheckbox = document.getElementById('create_all_day');
         if (allDayCheckbox) {
@@ -238,14 +248,22 @@ export default class ModalManager {
             const ymd = this.formatLocalISODate(dateObj);
             const dateInput = document.getElementById('create_date');
             const endDateInput = document.getElementById('create_end_date');
-            if (dateInput) dateInput.value = ymd;
-            if (endDateInput) endDateInput.value = ymd;
+            if (dateInput) {
+                dateInput.value = ymd;
+            }
+            if (endDateInput) {
+                endDateInput.value = ymd;
+            }
         }
 
         const startTimeInput = document.getElementById('create_start_time');
         const endTimeInput = document.getElementById('create_end_time');
-        if (startTimeInput) startTimeInput.value = '09:00';
-        if (endTimeInput) endTimeInput.value = '10:00';
+        if (startTimeInput) {
+            startTimeInput.value = '09:00';
+        }
+        if (endTimeInput) {
+            endTimeInput.value = '10:00';
+        }
 
         syncDateInputs('create_date', 'create_end_date', { forceUpdate: true });
         this.updateColorPalette('create');
@@ -279,16 +297,26 @@ export default class ModalManager {
         const editStartTime = document.getElementById('edit_start_time');
         const editEndTime = document.getElementById('edit_end_time');
 
-        if (editDate) editDate.value = startDateStr;
-        if (editEndDate) editEndDate.value = endDateStr;
-        if (editStartTime) editStartTime.value = startTimeStr;
-        if (editEndTime) editEndTime.value = endTimeStr;
+        if (editDate) {
+            editDate.value = startDateStr;
+        }
+        if (editEndDate) {
+            editEndDate.value = endDateStr;
+        }
+        if (editStartTime) {
+            editStartTime.value = startTimeStr;
+        }
+        if (editEndTime) {
+            editEndTime.value = endTimeStr;
+        }
 
         document.getElementById('edit_description').value = ev.description || '';
 
         const colorToSelect = ev.color || '#5b7cfa';
         const editColor = document.getElementById('edit_color');
-        if (editColor) editColor.value = colorToSelect;
+        if (editColor) {
+            editColor.value = colorToSelect;
+        }
 
         syncDateInputs('edit_date', 'edit_end_date', { forceUpdate: true });
         this.updateColorPalette('edit');
@@ -296,7 +324,9 @@ export default class ModalManager {
         const isLocked = ev?.locked === true || ev?.source === 'holiday' || (typeof ev?.id === 'string' && ev.id.startsWith('holiday:'));
         const lockInputs = (locked) => {
             const modal = document.getElementById('agenda-edit-modal');
-            if (!modal) return;
+            if (!modal) {
+                return;
+            }
 
             // Inputs en read-only/disabled
             const inputIds = [
@@ -305,7 +335,9 @@ export default class ModalManager {
             ];
             inputIds.forEach((id) => {
                 const el = document.getElementById(id);
-                if (!el) return;
+                if (!el) {
+                    return;
+                }
                 if (el.tagName === 'INPUT' && el.type === 'checkbox') {
                     el.disabled = !!locked;
                 } else if ('disabled' in el) {
@@ -316,8 +348,12 @@ export default class ModalManager {
             // Boutons footer
             const deleteBtn = document.getElementById('triggerDeleteBtn');
             const submitBtn = modal.querySelector('button[type="submit"][form="editEventForm"]');
-            if (deleteBtn) deleteBtn.style.display = locked ? 'none' : '';
-            if (submitBtn) submitBtn.style.display = locked ? 'none' : '';
+            if (deleteBtn) {
+                deleteBtn.style.display = locked ? 'none' : '';
+            }
+            if (submitBtn) {
+                submitBtn.style.display = locked ? 'none' : '';
+            }
 
             // Petit message dans la modale
             let note = modal.querySelector('[data-agenda-locked-note]');

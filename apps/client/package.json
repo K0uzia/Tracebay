@@ -154,7 +154,7 @@
     "linux": {
       "maintainer": "K0uzia <k0uzia@users.noreply.github.com>",
       "executableName": "workspace",
-      "synopsis": "Tracebay — traçabilité de matériel informatique",
+      "synopsis": "Tracebay : traçabilité de matériel informatique",
       "target": [
         {
           "target": "AppImage",
@@ -175,7 +175,7 @@
       "desktop": {
         "entry": {
           "Name": "Tracebay",
-          "Comment": "Tracebay — traçabilité de matériel informatique",
+          "Comment": "Tracebay : traçabilité de matériel informatique",
           "Categories": "Utility;",
           "StartupWMClass": "workspace"
         }

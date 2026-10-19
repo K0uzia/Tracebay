@@ -1,4 +1,4 @@
-/* ======= AGENDA — thème sombre professionnel ======= */
+/* ======= AGENDA : thème sombre professionnel ======= */
 
 #dashboard-calendar {
     display: block;
@@ -228,7 +228,7 @@
     border-radius: 3px;
 }
 
-/* Chips événements — fond teinté, sans border-left */
+/* Chips événements : fond teinté, sans border-left */
 .calendar-event-chip {
     position: relative;
     display: flex;

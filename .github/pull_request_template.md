@@ -8,8 +8,8 @@
 
 ## Branche de base
 
-- [ ] `main` — app client / démo / docs app
-- [ ] `proxmox` — backend / serveur
+- [ ] `main` : app client / démo / docs app
+- [ ] `proxmox` : backend / serveur
 
 ## Composants
 

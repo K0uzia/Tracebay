@@ -11,7 +11,9 @@ const logger = getLogger();
 const DONS_PDF_BASE = '/mnt/team/#TEAM/#TRAÇABILITÉ/don_stagiaires';
 
 function escapeHtml(s) {
-    if (s == null) return '';
+    if (s == null) {
+        return '';
+    }
     const div = document.createElement('div');
     div.textContent = String(s);
     // innerHTML n'échappe pas les guillemets : nécessaire pour les attributs (value="", title="")
@@ -20,12 +22,20 @@ function escapeHtml(s) {
 
 /** Convertit YYYY-MM-DD en DD/MM/AAAA */
 function formatDateDDMMAAAA(isoDate) {
-    if (!isoDate || typeof isoDate !== 'string') return isoDate || '';
+    if (!isoDate || typeof isoDate !== 'string') {
+        return isoDate || '';
+    }
     const parts = isoDate.trim().split(/[-/]/);
-    if (parts.length !== 3) return isoDate;
+    if (parts.length !== 3) {
+        return isoDate;
+    }
     const [y, m, d] = parts;
-    if (y.length === 4 && m.length <= 2 && d.length <= 2) return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
-    if (d.length === 4 && m.length <= 2 && y.length <= 2) return `${y.padStart(2, '0')}/${m.padStart(2, '0')}/${d}`;
+    if (y.length === 4 && m.length <= 2 && d.length <= 2) {
+        return `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+    }
+    if (d.length === 4 && m.length <= 2 && y.length <= 2) {
+        return `${y.padStart(2, '0')}/${m.padStart(2, '0')}/${d}`;
+    }
     return isoDate;
 }
 
@@ -64,12 +74,16 @@ export default class DonsManager {
     async loadReferenceData() {
         try {
             const marquesRes = await api.get('marques.list', { useCache: false });
-            if (!marquesRes.ok) throw new Error('Erreur chargement marques');
+            if (!marquesRes.ok) {
+                throw new Error('Erreur chargement marques');
+            }
             const marquesData = await marquesRes.json();
             this.marques = Array.isArray(marquesData) ? marquesData : (marquesData.items || marquesData.marques || []);
 
             const modelesRes = await api.get('marques.all', { useCache: false });
-            if (!modelesRes.ok) throw new Error('Endpoint modèles non trouvé');
+            if (!modelesRes.ok) {
+                throw new Error('Endpoint modèles non trouvé');
+            }
             const modelesData = await modelesRes.json();
             const marquesAvecModeles = Array.isArray(modelesData) ? modelesData : (modelesData.items || []);
             this.modeles = [];
@@ -95,7 +109,9 @@ export default class DonsManager {
     updateMarqueSelects() {
         const selects = document.querySelectorAll('.dons-select-marque, #select-marque-for-modele');
         selects.forEach(select => {
-            if (!select) return;
+            if (!select) {
+                return;
+            }
             const currentValue = select.value;
             const isModeleModal = select.id === 'select-marque-for-modele';
             select.innerHTML = isModeleModal
@@ -107,14 +123,18 @@ export default class DonsManager {
                 option.textContent = marque.name;
                 select.appendChild(option);
             });
-            if (currentValue) select.value = currentValue;
+            if (currentValue) {
+                select.value = currentValue;
+            }
         });
     }
 
     updateModeleSelect(marqueId, selectElement) {
-        if (!marqueId || !selectElement) return;
+        if (!marqueId || !selectElement) {
+            return;
+        }
         const currentValue = selectElement.value;
-        const filtered = this.modeles.filter(m => m.marque_id == marqueId);
+        const filtered = this.modeles.filter(m => String(m.marque_id) === String(marqueId));
         selectElement.innerHTML = '<option value="">Modèle...</option>';
         filtered.forEach(m => {
             const opt = document.createElement('option');
@@ -122,7 +142,9 @@ export default class DonsManager {
             opt.textContent = m.name;
             selectElement.appendChild(opt);
         });
-        if (currentValue && filtered.some(m => m.id == currentValue)) selectElement.value = currentValue;
+        if (currentValue && filtered.some(m => String(m.id) === String(currentValue))) {
+            selectElement.value = currentValue;
+        }
     }
 
     getLinesFromTable() {
@@ -161,7 +183,9 @@ export default class DonsManager {
     }
 
     addTableLine() {
-        if (this._addingLine) return;
+        if (this._addingLine) {
+            return;
+        }
         this._addingLine = true;
         const tbody = document.getElementById('dons-tbody');
         if (!tbody) {
@@ -218,12 +242,16 @@ export default class DonsManager {
         this.attachLineListeners(tr);
         this.updateLineNumbers();
         this.updateRemoveButtonsState();
-        setTimeout(() => { this._addingLine = false; }, 0);
+        setTimeout(() => {
+            this._addingLine = false; 
+        }, 0);
     }
 
     removeTableLine(lineIndex) {
         const row = document.querySelector(`#dons-tbody .dons-line[data-line-index="${lineIndex}"]`);
-        if (row) row.remove();
+        if (row) {
+            row.remove();
+        }
         this.updateLineNumbers();
         this.updateRemoveButtonsState();
     }
@@ -232,9 +260,13 @@ export default class DonsManager {
         document.querySelectorAll('#dons-tbody .dons-line').forEach((row, idx) => {
             row.dataset.lineIndex = String(idx);
             const numCell = row.querySelector('.col-num');
-            if (numCell) numCell.textContent = idx + 1;
+            if (numCell) {
+                numCell.textContent = idx + 1;
+            }
             const removeBtn = row.querySelector('.btn-remove-line');
-            if (removeBtn) removeBtn.dataset.line = String(idx);
+            if (removeBtn) {
+                removeBtn.dataset.line = String(idx);
+            }
         });
     }
 
@@ -258,8 +290,11 @@ export default class DonsManager {
             this.addListener(typeSelect, 'change', () => {
                 const isAutres = typeSelect.value === 'autres';
                 typeOther.style.display = isAutres ? 'inline-block' : 'none';
-                if (isAutres) typeOther.focus();
-                else typeOther.value = '';
+                if (isAutres) {
+                    typeOther.focus();
+                } else {
+                    typeOther.value = '';
+                }
             });
         }
         const marqueSelect = row?.querySelector('.dons-select-marque');
@@ -298,13 +333,19 @@ export default class DonsManager {
         this.updateRemoveButtonsState();
 
         const btnSavePdf = document.getElementById('dons-btn-save-pdf');
-        if (btnSavePdf) this.addListener(btnSavePdf, 'click', () => this.savePdf());
+        if (btnSavePdf) {
+            this.addListener(btnSavePdf, 'click', () => this.savePdf());
+        }
 
         const btnSubmitMarque = document.getElementById('btn-submit-marque');
-        if (btnSubmitMarque) this.addListener(btnSubmitMarque, 'click', () => this.submitNewMarque());
+        if (btnSubmitMarque) {
+            this.addListener(btnSubmitMarque, 'click', () => this.submitNewMarque());
+        }
 
         const btnSubmitModele = document.getElementById('btn-submit-modele');
-        if (btnSubmitModele) this.addListener(btnSubmitModele, 'click', () => this.submitNewModele());
+        if (btnSubmitModele) {
+            this.addListener(btnSubmitModele, 'click', () => this.submitNewModele());
+        }
 
         const btnAddModele = document.getElementById('dons-btn-add-modele');
         if (btnAddModele) {
@@ -326,7 +367,9 @@ export default class DonsManager {
 
     populateMarqueSelect() {
         const select = document.getElementById('select-marque-for-modele');
-        if (!select) return;
+        if (!select) {
+            return;
+        }
         select.innerHTML = '<option value="">-- Sélectionner une marque --</option>';
         this.marques.forEach(m => {
             const opt = document.createElement('option');
@@ -345,7 +388,9 @@ export default class DonsManager {
         const name = input.value.trim();
         try {
             const response = await api.post('marques.list', { name });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const data = await response.json();
             this.marques.push({ id: data.id || data.item?.id || this.marques.length + 1, name });
             api.invalidateMarquesCache?.();
@@ -379,7 +424,9 @@ export default class DonsManager {
                 },
                 body: JSON.stringify({ name })
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const data = await response.json();
             this.modeles.push({ id: data.id || data.item?.id || this.modeles.length + 1, name, marque_id: marqueId });
             api.invalidateMarquesCache?.();
@@ -436,7 +483,7 @@ export default class DonsManager {
             window.app?.showNotification?.('Génération du certificat...', 'info');
             const result = await invoke('generate-don-pdf', payload);
             if (result?.success && result.pdf_path) {
-                window.app?.showNotification?.('Certificat enregistré : ' + result.pdf_path, 'success');
+                window.app?.showNotification?.(`Certificat enregistré : ${  result.pdf_path}`, 'success');
                 try {
                     const createRes = await api.post('dons.create', {
                         lot_name: lotName || null,

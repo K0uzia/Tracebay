@@ -20,17 +20,27 @@ class AgendaStore {
     }
 
     _isLockedEvent(eventLike) {
-        if (!eventLike || typeof eventLike !== 'object') return false;
-        if (eventLike.locked === true) return true;
-        if (eventLike.source === 'holiday') return true;
-        if (this._isLockedEventId(eventLike.id)) return true;
+        if (!eventLike || typeof eventLike !== 'object') {
+            return false;
+        }
+        if (eventLike.locked === true) {
+            return true;
+        }
+        if (eventLike.source === 'holiday') {
+            return true;
+        }
+        if (this._isLockedEventId(eventLike.id)) {
+            return true;
+        }
         return false;
     }
 
     _getAuthHeaders() {
         const token = localStorage.getItem('workspace_jwt');
         const headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
+        if (token) {
+            headers['Authorization'] = `Bearer ${token}`;
+        }
         return headers;
     }
 
@@ -145,12 +155,16 @@ class AgendaStore {
         const zone = options.zone || 'metropole';
         const start = parseLocalDate(startDate);
         const end = parseLocalDate(endDate);
-        if (!start || !end) return [];
+        if (!start || !end) {
+            return [];
+        }
 
         const startYear = start.getFullYear();
         const endYear = end.getFullYear();
         const years = [];
-        for (let y = startYear; y <= endYear; y++) years.push(y);
+        for (let y = startYear; y <= endYear; y++) {
+            years.push(y);
+        }
 
         if (!this.useApi) {
             // En mode localStorage (démo), on n’injecte rien automatiquement
@@ -164,7 +178,9 @@ class AgendaStore {
             const results = await Promise.all(years.map(async (year) => {
                 const url = `${baseUrl}?year=${encodeURIComponent(year)}&zone=${encodeURIComponent(zone)}&_t=${Date.now()}`;
                 const response = await fetch(url, { headers: this._getAuthHeaders(), cache: 'no-store' });
-                if (!response.ok) return [];
+                if (!response.ok) {
+                    return [];
+                }
                 const data = await response.json().catch(() => ({}));
                 return (data?.success && Array.isArray(data.data)) ? data.data : [];
             }));

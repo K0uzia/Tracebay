@@ -49,7 +49,9 @@ export default class TracabiliteManager {
      */
     fillYearSelect() {
         const select = document.getElementById('filter-tracabilite-year');
-        if (!select) return;
+        if (!select) {
+            return;
+        }
         const currentYear = new Date().getFullYear();
         const startYear = currentYear - 10;
         select.innerHTML = '';
@@ -57,7 +59,9 @@ export default class TracabiliteManager {
             const opt = document.createElement('option');
             opt.value = String(y);
             opt.textContent = String(y);
-            if (y === currentYear) opt.selected = true;
+            if (y === currentYear) {
+                opt.selected = true;
+            }
             select.appendChild(opt);
         }
     }
@@ -77,9 +81,9 @@ export default class TracabiliteManager {
             const [lots, sessions, commandesRes, donsRes, pretsRes] = await Promise.all([
                 loadLotsWithItems({ status: 'all' }),
                 getSessions().catch(() => []),
-                fetch(`${serverUrl}${endpointCommandes.startsWith('/') ? endpointCommandes : '/' + endpointCommandes}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
-                fetch(`${serverUrl}${endpointDons.startsWith('/') ? endpointDons : '/' + endpointDons}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
-                fetch(`${serverUrl}${endpointPrets.startsWith('/') ? endpointPrets : '/' + endpointPrets}`, { method: 'GET', headers }).catch(() => ({ ok: false }))
+                fetch(`${serverUrl}${endpointCommandes.startsWith('/') ? endpointCommandes : `/${  endpointCommandes}`}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
+                fetch(`${serverUrl}${endpointDons.startsWith('/') ? endpointDons : `/${  endpointDons}`}`, { method: 'GET', headers }).catch(() => ({ ok: false })),
+                fetch(`${serverUrl}${endpointPrets.startsWith('/') ? endpointPrets : `/${  endpointPrets}`}`, { method: 'GET', headers }).catch(() => ({ ok: false }))
             ]);
 
             this.lots = (lots || []).sort((a, b) =>
@@ -100,7 +104,9 @@ export default class TracabiliteManager {
                         lines: this.extractCommandeLinesFromRecord(c)
                     }));
                     this.commandes.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
-                } catch (_) { this.commandes = []; }
+                } catch (_) {
+                    this.commandes = []; 
+                }
             } else {
                 this.commandes = [];
                 this.apiIssues.push({
@@ -118,7 +124,9 @@ export default class TracabiliteManager {
                         lines: this.extractDonLinesFromRecord(d)
                     }));
                     this.dons.sort((a, b) => this.parseFlexibleDate(b.date || b.created_at) - this.parseFlexibleDate(a.date || a.created_at));
-                } catch (_) { this.dons = []; }
+                } catch (_) {
+                    this.dons = []; 
+                }
             } else {
                 this.dons = [];
                 this.apiIssues.push({
@@ -139,7 +147,9 @@ export default class TracabiliteManager {
                         lines: this.extractPretLinesFromRecord(p)
                     }));
                     this.prets.sort((a, b) => this.parseFlexibleDate(this.getPretSortDate(b)) - this.parseFlexibleDate(this.getPretSortDate(a)));
-                } catch (_) { this.prets = []; }
+                } catch (_) {
+                    this.prets = []; 
+                }
             } else {
                 this.prets = [];
                 this.apiIssues.push({
@@ -149,7 +159,7 @@ export default class TracabiliteManager {
                 });
             }
 
-            logger.info('📦 Traçabilité : ' + this.lots.length + ' lot(s), ' + this.sessionsDisques.length + ' disque(s), ' + this.commandes.length + ' commande(s), ' + this.dons.length + ' don(s), ' + this.prets.length + ' prêt(s)');
+            logger.info(`📦 Traçabilité : ${  this.lots.length  } lot(s), ${  this.sessionsDisques.length  } disque(s), ${  this.commandes.length  } commande(s), ${  this.dons.length  } don(s), ${  this.prets.length  } prêt(s)`);
             this.renderTable();
         } catch (error) {
             logger.error('❌ Erreur chargement lots:', error);
@@ -164,24 +174,34 @@ export default class TracabiliteManager {
     }
 
     getPretSortDate(p) {
-        if (!p || typeof p !== 'object') return '';
+        if (!p || typeof p !== 'object') {
+            return '';
+        }
         const d = p.date_debut || p.date || p.created_at || '';
         return String(d).trim().slice(0, 10);
     }
 
     extractPretLinesFromRecord(obj) {
-        if (!obj || typeof obj !== 'object') return [];
+        if (!obj || typeof obj !== 'object') {
+            return [];
+        }
         const keys = ['lines', 'lignes', 'items', 'pret_lignes', 'pretLignes', 'pret_lines'];
         for (const k of keys) {
             const arr = this.parseLinesArray(obj[k]);
-            if (arr.length > 0) return arr;
+            if (arr.length > 0) {
+                return arr;
+            }
         }
         return [];
     }
 
     pretLineTypeDisplay(line) {
-        if (!line || typeof line !== 'object') return '-';
-        if (line.typeDisplay) return String(line.typeDisplay).trim();
+        if (!line || typeof line !== 'object') {
+            return '-';
+        }
+        if (line.typeDisplay) {
+            return String(line.typeDisplay).trim();
+        }
         const t = String(line.type || '').toLowerCase();
         const detail = String(
             line.type_detail
@@ -190,7 +210,9 @@ export default class TracabiliteManager {
             || line.designation
             || ''
         ).trim();
-        if (t === 'autres' && detail) return detail;
+        if (t === 'autres' && detail) {
+            return detail;
+        }
         return PRET_TYPE_LABELS[t] || String(line.type || '-').trim() || '-';
     }
 
@@ -206,9 +228,9 @@ export default class TracabiliteManager {
             return {
                 num: line.num != null ? line.num : i + 1,
                 typeDisplay: this.pretLineTypeDisplay(line),
-                marqueName: marque || '—',
-                modeleName: modele || '—',
-                serialNumber: sansSn ? '—' : (sn || '—'),
+                marqueName: marque || '-',
+                modeleName: modele || '-',
+                serialNumber: sansSn ? '-' : (sn || '-'),
                 quantite: line.quantite != null ? line.quantite : (line.quantity ?? 0)
             };
         });
@@ -219,7 +241,9 @@ export default class TracabiliteManager {
      */
     renderLotsError(error) {
         const container = document.getElementById('tracabilite-grouped');
-        if (!container) return;
+        if (!container) {
+            return;
+        }
         const message = error && error.message ? error.message : 'Erreur inconnue';
         container.innerHTML = `
             <div class="empty-state error-state">
@@ -232,7 +256,9 @@ export default class TracabiliteManager {
             </div>
         `;
         const btn = document.getElementById('btn-retry-lots-tracabilite');
-        if (btn) btn.addEventListener('click', () => this.loadLots());
+        if (btn) {
+            btn.addEventListener('click', () => this.loadLots());
+        }
     }
 
     /**
@@ -240,7 +266,9 @@ export default class TracabiliteManager {
      */
     renderTable() {
         const container = document.getElementById('tracabilite-grouped');
-        if (!container) return;
+        if (!container) {
+            return;
+        }
         const issuesHtml = this.renderApiIssuesBanner();
 
         // Filtrer pour les lots terminés : soit tous les items ont état + technicien, soit le backend a marqué le lot (status + finished_at)
@@ -316,7 +344,7 @@ export default class TracabiliteManager {
                 ${issuesHtml}
                 <div class="empty-state">
                     <i class="fa-solid fa-inbox"></i>
-                    <p>Aucun élément pour ${selectedYear}${typeFilter !== 'tous' ? ' (filtre : ' + typeFilter + ')' : ''}</p>
+                    <p>Aucun élément pour ${selectedYear}${typeFilter !== 'tous' ? ` (filtre : ${  typeFilter  })` : ''}</p>
                     <small>Changez d'année ou de type pour afficher les documents</small>
                 </div>
             `;
@@ -331,24 +359,44 @@ export default class TracabiliteManager {
         const groupedPrets = this.groupByYearMonthPrets(pretsForYear);
         const allMonthsByYear = {};
         for (const [year, months] of Object.entries(groupedLots)) {
-            if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
-            Object.keys(months).forEach(m => { allMonthsByYear[year][m] = true; });
+            if (!allMonthsByYear[year]) {
+                allMonthsByYear[year] = {};
+            }
+            Object.keys(months).forEach(m => {
+                allMonthsByYear[year][m] = true; 
+            });
         }
         for (const [year, months] of Object.entries(groupedSessions)) {
-            if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
-            Object.keys(months).forEach(m => { allMonthsByYear[year][m] = true; });
+            if (!allMonthsByYear[year]) {
+                allMonthsByYear[year] = {};
+            }
+            Object.keys(months).forEach(m => {
+                allMonthsByYear[year][m] = true; 
+            });
         }
         for (const [year, months] of Object.entries(groupedCommandes)) {
-            if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
-            Object.keys(months).forEach(m => { allMonthsByYear[year][m] = true; });
+            if (!allMonthsByYear[year]) {
+                allMonthsByYear[year] = {};
+            }
+            Object.keys(months).forEach(m => {
+                allMonthsByYear[year][m] = true; 
+            });
         }
         for (const [year, months] of Object.entries(groupedDons)) {
-            if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
-            Object.keys(months).forEach(m => { allMonthsByYear[year][m] = true; });
+            if (!allMonthsByYear[year]) {
+                allMonthsByYear[year] = {};
+            }
+            Object.keys(months).forEach(m => {
+                allMonthsByYear[year][m] = true; 
+            });
         }
         for (const [year, months] of Object.entries(groupedPrets)) {
-            if (!allMonthsByYear[year]) allMonthsByYear[year] = {};
-            Object.keys(months).forEach(m => { allMonthsByYear[year][m] = true; });
+            if (!allMonthsByYear[year]) {
+                allMonthsByYear[year] = {};
+            }
+            Object.keys(months).forEach(m => {
+                allMonthsByYear[year][m] = true; 
+            });
         }
 
         let html = '';
@@ -372,15 +420,35 @@ export default class TracabiliteManager {
                     </div>
                     <div class="lots-list">`;
 
-                if (showLots) { for (const lot of lots) { html += this.createLotCard(lot); } }
-                if (showDisques) { for (const session of sessions) { html += this.createDisqueCard(session); } }
-                if (showCommandes) { for (const cmd of commandes) { html += this.createCommandeCard(cmd); } }
-                if (showDons) { for (const don of dons) { html += this.createDonCard(don); } }
-                if (showPrets) { for (const pret of prets) { html += this.createPretCard(pret); } }
+                if (showLots) {
+                    for (const lot of lots) {
+                        html += this.createLotCard(lot); 
+                    } 
+                }
+                if (showDisques) {
+                    for (const session of sessions) {
+                        html += this.createDisqueCard(session); 
+                    } 
+                }
+                if (showCommandes) {
+                    for (const cmd of commandes) {
+                        html += this.createCommandeCard(cmd); 
+                    } 
+                }
+                if (showDons) {
+                    for (const don of dons) {
+                        html += this.createDonCard(don); 
+                    } 
+                }
+                if (showPrets) {
+                    for (const pret of prets) {
+                        html += this.createPretCard(pret); 
+                    } 
+                }
 
-                html += `</div></div>`;
+                html += '</div></div>';
             }
-            html += `</div>`;
+            html += '</div>';
         }
 
         container.innerHTML = `${issuesHtml}${html}`;
@@ -388,7 +456,9 @@ export default class TracabiliteManager {
     }
 
     renderApiIssuesBanner() {
-        if (!Array.isArray(this.apiIssues) || this.apiIssues.length === 0) return '';
+        if (!Array.isArray(this.apiIssues) || this.apiIssues.length === 0) {
+            return '';
+        }
         const rows = this.apiIssues.map(i =>
             `<li><strong>${this.escapeHtml(i.module)}</strong> : ${this.escapeHtml(String(i.endpoint))} (HTTP ${this.escapeHtml(String(i.status))})</li>`
         ).join('');
@@ -411,8 +481,12 @@ export default class TracabiliteManager {
             const date = new Date(lot.finished_at || lot.created_at);
             const year = date.getFullYear().toString();
             const month = String(date.getMonth() + 1).padStart(2, '0');
-            if (!grouped[year]) grouped[year] = {};
-            if (!grouped[year][month]) grouped[year][month] = [];
+            if (!grouped[year]) {
+                grouped[year] = {};
+            }
+            if (!grouped[year][month]) {
+                grouped[year][month] = [];
+            }
             grouped[year][month].push(lot);
         });
         return grouped;
@@ -428,8 +502,12 @@ export default class TracabiliteManager {
             const date = dateStr ? new Date(dateStr) : new Date();
             const year = date.getFullYear().toString();
             const month = String(date.getMonth() + 1).padStart(2, '0');
-            if (!grouped[year]) grouped[year] = {};
-            if (!grouped[year][month]) grouped[year][month] = [];
+            if (!grouped[year]) {
+                grouped[year] = {};
+            }
+            if (!grouped[year][month]) {
+                grouped[year][month] = [];
+            }
             grouped[year][month].push(s);
         });
         return grouped;
@@ -445,8 +523,12 @@ export default class TracabiliteManager {
             const date = this.parseFlexibleDate(dateStr);
             const year = date.getFullYear().toString();
             const month = String(date.getMonth() + 1).padStart(2, '0');
-            if (!grouped[year]) grouped[year] = {};
-            if (!grouped[year][month]) grouped[year][month] = [];
+            if (!grouped[year]) {
+                grouped[year] = {};
+            }
+            if (!grouped[year][month]) {
+                grouped[year][month] = [];
+            }
             grouped[year][month].push(c);
         });
         return grouped;
@@ -462,8 +544,12 @@ export default class TracabiliteManager {
             const date = this.parseFlexibleDate(dateStr);
             const year = date.getFullYear().toString();
             const month = String(date.getMonth() + 1).padStart(2, '0');
-            if (!grouped[year]) grouped[year] = {};
-            if (!grouped[year][month]) grouped[year][month] = [];
+            if (!grouped[year]) {
+                grouped[year] = {};
+            }
+            if (!grouped[year][month]) {
+                grouped[year][month] = [];
+            }
             grouped[year][month].push(d);
         });
         return grouped;
@@ -476,8 +562,12 @@ export default class TracabiliteManager {
             const date = this.parseFlexibleDate(dateStr);
             const year = date.getFullYear().toString();
             const month = String(date.getMonth() + 1).padStart(2, '0');
-            if (!grouped[year]) grouped[year] = {};
-            if (!grouped[year][month]) grouped[year][month] = [];
+            if (!grouped[year]) {
+                grouped[year] = {};
+            }
+            if (!grouped[year][month]) {
+                grouped[year][month] = [];
+            }
             grouped[year][month].push(p);
         });
         return grouped;
@@ -485,61 +575,111 @@ export default class TracabiliteManager {
 
     parseFlexibleDate(raw) {
         const value = String(raw || '').trim();
-        if (!value) return new Date(0);
+        if (!value) {
+            return new Date(0);
+        }
         if (/^\d{4}-\d{2}-\d{2}/.test(value)) {
             const d = new Date(value.slice(0, 10));
-            if (!Number.isNaN(d.getTime())) return d;
+            if (!Number.isNaN(d.getTime())) {
+                return d;
+            }
         }
         const fr = value.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
         if (fr) {
             const [, dd, mm, yyyy] = fr;
             const d = new Date(`${yyyy}-${mm}-${dd}`);
-            if (!Number.isNaN(d.getTime())) return d;
+            if (!Number.isNaN(d.getTime())) {
+                return d;
+            }
         }
         const fallback = new Date(value);
         return Number.isNaN(fallback.getTime()) ? new Date(0) : fallback;
     }
 
     extractListFromApiPayload(payload, keys = []) {
-        if (Array.isArray(payload)) return payload;
-        if (!payload || typeof payload !== 'object') return [];
+        if (Array.isArray(payload)) {
+            return payload;
+        }
+        if (!payload || typeof payload !== 'object') {
+            return [];
+        }
         for (const key of keys) {
-            if (Array.isArray(payload[key])) return payload[key];
+            if (Array.isArray(payload[key])) {
+                return payload[key];
+            }
         }
         if (payload.data && typeof payload.data === 'object') {
             for (const key of keys) {
-                if (Array.isArray(payload.data[key])) return payload.data[key];
+                if (Array.isArray(payload.data[key])) {
+                    return payload.data[key];
+                }
             }
-            if (Array.isArray(payload.data)) return payload.data;
+            if (Array.isArray(payload.data)) {
+                return payload.data;
+            }
         }
         return [];
     }
 
     parseLinesArray(rawLines) {
-        if (Array.isArray(rawLines)) return rawLines;
-        if (rawLines == null) return [];
+        if (Array.isArray(rawLines)) {
+            return rawLines;
+        }
+        if (rawLines == null) {
+            return [];
+        }
         if (typeof rawLines === 'object') {
-            if (Array.isArray(rawLines.lines)) return rawLines.lines;
-            if (Array.isArray(rawLines.lignes)) return rawLines.lignes;
-            if (Array.isArray(rawLines.items)) return rawLines.items;
-            if (Array.isArray(rawLines.commande_lignes)) return rawLines.commande_lignes;
-            if (Array.isArray(rawLines.commandeLignes)) return rawLines.commandeLignes;
-            if (Array.isArray(rawLines.data)) return rawLines.data;
-            if (Array.isArray(rawLines.results)) return rawLines.results;
+            if (Array.isArray(rawLines.lines)) {
+                return rawLines.lines;
+            }
+            if (Array.isArray(rawLines.lignes)) {
+                return rawLines.lignes;
+            }
+            if (Array.isArray(rawLines.items)) {
+                return rawLines.items;
+            }
+            if (Array.isArray(rawLines.commande_lignes)) {
+                return rawLines.commande_lignes;
+            }
+            if (Array.isArray(rawLines.commandeLignes)) {
+                return rawLines.commandeLignes;
+            }
+            if (Array.isArray(rawLines.data)) {
+                return rawLines.data;
+            }
+            if (Array.isArray(rawLines.results)) {
+                return rawLines.results;
+            }
             return [];
         }
         if (typeof rawLines === 'string') {
             try {
                 const parsed = JSON.parse(rawLines);
-                if (Array.isArray(parsed)) return parsed;
+                if (Array.isArray(parsed)) {
+                    return parsed;
+                }
                 if (parsed && typeof parsed === 'object') {
-                    if (Array.isArray(parsed.lines)) return parsed.lines;
-                    if (Array.isArray(parsed.lignes)) return parsed.lignes;
-                    if (Array.isArray(parsed.items)) return parsed.items;
-                    if (Array.isArray(parsed.commande_lignes)) return parsed.commande_lignes;
-                    if (Array.isArray(parsed.commandeLignes)) return parsed.commandeLignes;
-                    if (Array.isArray(parsed.data)) return parsed.data;
-                    if (Array.isArray(parsed.results)) return parsed.results;
+                    if (Array.isArray(parsed.lines)) {
+                        return parsed.lines;
+                    }
+                    if (Array.isArray(parsed.lignes)) {
+                        return parsed.lignes;
+                    }
+                    if (Array.isArray(parsed.items)) {
+                        return parsed.items;
+                    }
+                    if (Array.isArray(parsed.commande_lignes)) {
+                        return parsed.commande_lignes;
+                    }
+                    if (Array.isArray(parsed.commandeLignes)) {
+                        return parsed.commandeLignes;
+                    }
+                    if (Array.isArray(parsed.data)) {
+                        return parsed.data;
+                    }
+                    if (Array.isArray(parsed.results)) {
+                        return parsed.results;
+                    }
                 }
                 return [];
             } catch (_) {
@@ -550,32 +690,46 @@ export default class TracabiliteManager {
     }
 
     unwrapDetailRecord(data) {
-        if (!data || typeof data !== 'object') return data;
+        if (!data || typeof data !== 'object') {
+            return data;
+        }
         const nestedKeys = ['commande', 'don', 'pret', 'pret_materiel', 'item', 'record', 'result', 'body'];
         for (const k of nestedKeys) {
             const v = data[k];
-            if (v && typeof v === 'object' && !Array.isArray(v)) return v;
+            if (v && typeof v === 'object' && !Array.isArray(v)) {
+                return v;
+            }
         }
-        if (data.data && typeof data.data === 'object' && !Array.isArray(data.data)) return data.data;
+        if (data.data && typeof data.data === 'object' && !Array.isArray(data.data)) {
+            return data.data;
+        }
         return data;
     }
 
     extractCommandeLinesFromRecord(obj) {
-        if (!obj || typeof obj !== 'object') return [];
+        if (!obj || typeof obj !== 'object') {
+            return [];
+        }
         const keys = ['lines', 'lignes', 'items', 'commande_lignes', 'commandeLignes', 'commande_lines', 'lignes_commande', 'products'];
         for (const k of keys) {
             const arr = this.parseLinesArray(obj[k]);
-            if (arr.length > 0) return arr;
+            if (arr.length > 0) {
+                return arr;
+            }
         }
         return [];
     }
 
     extractDonLinesFromRecord(obj) {
-        if (!obj || typeof obj !== 'object') return [];
+        if (!obj || typeof obj !== 'object') {
+            return [];
+        }
         const keys = ['lines', 'lignes', 'items', 'don_lignes', 'donLignes', 'don_lines'];
         for (const k of keys) {
             const arr = this.parseLinesArray(obj[k]);
-            if (arr.length > 0) return arr;
+            if (arr.length > 0) {
+                return arr;
+            }
         }
         return [];
     }
@@ -599,9 +753,13 @@ export default class TracabiliteManager {
      * Formater une date en DD/MM/AAAA (sans heure)
      */
     formatDateDDMMYYYY(dateStr) {
-        if (!dateStr) return '-';
+        if (!dateStr) {
+            return '-';
+        }
         const d = this.parseFlexibleDate(dateStr);
-        if (isNaN(d.getTime())) return '-';
+        if (isNaN(d.getTime())) {
+            return '-';
+        }
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = d.getFullYear();
@@ -621,7 +779,7 @@ export default class TracabiliteManager {
         const sessionName = (session.name || '').trim() || 'Lot disques';
         const rawDate = session.date ?? session.created_at ?? '';
         const dateOnly = typeof rawDate === 'string' ? rawDate.slice(0, 10) : (rawDate ? new Date(rawDate).toISOString().slice(0, 10) : '');
-        const dateFormatted = dateOnly && /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) ? this.formatDateTime(dateOnly + 'T12:00:00') : '-';
+        const dateFormatted = dateOnly && /^\d{4}-\d{2}-\d{2}$/.test(dateOnly) ? this.formatDateTime(`${dateOnly  }T12:00:00`) : '-';
         const basePdfUrl = getSessionPdfUrl(session.id);
         const pdfUrl = `${basePdfUrl}${basePdfUrl.includes('?') ? '&' : '?'}v=${Date.now()}`;
         const isRecovered = session.recovered_at != null && session.recovered_at !== '';
@@ -680,9 +838,9 @@ export default class TracabiliteManager {
         const lineCount = Array.isArray(commande.lines) ? commande.lines.length : (commande.line_count ?? 0);
         const rawPdfPath = String(commande.pdf_path || '').trim();
         const isLocalPath = rawPdfPath.startsWith('/mnt/') || rawPdfPath.startsWith('/home/') || rawPdfPath.startsWith('/Users/');
-        const remotePdfUrl = commande.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : '/' + rawPdfPath)) : '');
+        const remotePdfUrl = commande.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : `/${  rawPdfPath}`)) : '');
         const hasPdf = (isLocalPath && rawPdfPath) || (remotePdfUrl && remotePdfUrl.length > 0);
-        const safeUrl = remotePdfUrl ? (remotePdfUrl + (remotePdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;') : '';
+        const safeUrl = remotePdfUrl ? (`${remotePdfUrl + (remotePdfUrl.includes('?') ? '&' : '?')  }v=${  Date.now()}`).replace(/"/g, '&quot;') : '';
         const safeDate = this.normalizeDateForPath(dateStr || new Date().toISOString().slice(0, 10));
         const safeName = (name.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') || 'commande');
         const downloadFilename = `${safeName}_${safeDate}.pdf`;
@@ -737,7 +895,7 @@ export default class TracabiliteManager {
      */
     createDonCard(don) {
         const lotName = (don.lot_name || don.name || '').trim();
-        const title = lotName ? `Don : ${this.escapeHtml(lotName)}` : 'Don #' + (don.id || '');
+        const title = lotName ? `Don : ${this.escapeHtml(lotName)}` : `Don #${  don.id || ''}`;
         const dateStr = String(don.date || (don.created_at || '')).trim();
         const dateFormatted = this.formatDateDDMMYYYY(dateStr);
         const stagiaireFromLines = Array.isArray(don.lines)
@@ -746,9 +904,9 @@ export default class TracabiliteManager {
         const stagiaire = (don.stagiaire_afpa || don.stagiaire || stagiaireFromLines || '').trim() || '-';
         const rawPdfPath = String(don.pdf_path || '').trim();
         const isLocalPath = rawPdfPath.startsWith('/mnt/') || rawPdfPath.startsWith('/home/') || rawPdfPath.startsWith('/Users/');
-        const pdfUrl = don.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : '/' + rawPdfPath)) : '');
+        const pdfUrl = don.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : `/${  rawPdfPath}`)) : '');
         const hasPdf = (isLocalPath && rawPdfPath) || (pdfUrl && pdfUrl.length > 0);
-        const safeUrl = pdfUrl ? (pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;') : '';
+        const safeUrl = pdfUrl ? (`${pdfUrl + (pdfUrl.includes('?') ? '&' : '?')  }v=${  Date.now()}`).replace(/"/g, '&quot;') : '';
         const safeDate = this.normalizeDateForPath(dateStr || new Date().toISOString().slice(0, 10));
         const safeName = (lotName ? lotName.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '') : 'don');
         const downloadFilename = `${safeName}_${safeDate}.pdf`;
@@ -803,19 +961,21 @@ export default class TracabiliteManager {
      */
     createPretCard(pret) {
         const ref = (pret.reference || pret.title || pret.lot_name || pret.name || '').trim();
-        const title = ref ? `Prêt : ${this.escapeHtml(ref)}` : 'Prêt #' + (pret.id || '');
+        const title = ref ? `Prêt : ${this.escapeHtml(ref)}` : `Prêt #${  pret.id || ''}`;
         const dateStr = String(pret.date || pret.date_debut || (pret.created_at || '')).trim();
         const dateFormatted = this.formatDateDDMMYYYY(dateStr);
         const borrower = String(pret.borrower_name || pret.emprunteur || '-').trim() || '-';
         const rawPdfPath = String(pret.pdf_path || '').trim();
         const isLocalPath = rawPdfPath.startsWith('/mnt/') || rawPdfPath.startsWith('/home/') || rawPdfPath.startsWith('/Users/');
-        const pdfUrl = pret.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : '/' + rawPdfPath)) : '');
+        const pdfUrl = pret.pdf_url || (rawPdfPath && !isLocalPath ? (api.getServerUrl() + (rawPdfPath.startsWith('/') ? rawPdfPath : `/${  rawPdfPath}`)) : '');
         const hasPdf = (isLocalPath && rawPdfPath) || (pdfUrl && pdfUrl.length > 0);
-        const safeUrl = pdfUrl ? (pdfUrl + (pdfUrl.includes('?') ? '&' : '?') + 'v=' + Date.now()).replace(/"/g, '&quot;') : '';
+        const safeUrl = pdfUrl ? (`${pdfUrl + (pdfUrl.includes('?') ? '&' : '?')  }v=${  Date.now()}`).replace(/"/g, '&quot;') : '';
         const safeDate = this.normalizeDateForPath(this.getPretSortDate(pret) || new Date().toISOString().slice(0, 10));
         const sanitizePretDownloadBase = (s) => {
             const t = String(s ?? '').trim();
-            if (!t) return '';
+            if (!t) {
+                return '';
+            }
             const out = t.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '').slice(0, 80);
             return out || '';
         };
@@ -949,7 +1109,7 @@ export default class TracabiliteManager {
                         <button type="button" class="btn-action btn-open-pdf-location-lot" data-lot-id="${lot.id}" title="Ouvrir le dossier du PDF">
                             <i class="fa-solid fa-folder-open" aria-hidden="true"></i> Emplacement PDF
                         </button>
-                        <button type="button" class="btn-action btn-view-pdf" data-pdf-url="${(api.getServerUrl() + '/api/lots/' + lot.id + '/pdf?v=' + Date.now()).replace(/"/g, '&quot;')}" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}"${lotLocalPdfAttr} title="Ouvrir le PDF du lot dans le navigateur">
+                        <button type="button" class="btn-action btn-view-pdf" data-pdf-url="${(`${api.getServerUrl()  }/api/lots/${  lot.id  }/pdf?v=${  Date.now()}`).replace(/"/g, '&quot;')}" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}"${lotLocalPdfAttr} title="Ouvrir le PDF du lot dans le navigateur">
                             <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir le PDF
                         </button>
                         <button type="button" class="btn-action btn-download-pdf" data-lot-id="${lot.id}" data-pdf-path="/api/lots/${lot.id}/pdf" data-download-filename="${downloadFileName.replace(/"/g, '&quot;')}" title="Télécharger le PDF du lot">
@@ -1112,7 +1272,9 @@ export default class TracabiliteManager {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const pdfPath = (btn.dataset.pdfPath || '').replace(/&quot;/g, '"');
-                if (!pdfPath) return;
+                if (!pdfPath) {
+                    return;
+                }
                 await this.openPathOnDesktop(pdfPath);
             });
         });
@@ -1146,7 +1308,9 @@ export default class TracabiliteManager {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const pdfPath = (btn.dataset.pdfPath || '').replace(/&quot;/g, '"');
-                if (!pdfPath) return;
+                if (!pdfPath) {
+                    return;
+                }
                 await this.openPathOnDesktop(pdfPath);
             });
         });
@@ -1196,7 +1360,9 @@ export default class TracabiliteManager {
             btn.addEventListener('click', async (e) => {
                 e.stopPropagation();
                 const pdfPath = (btn.dataset.pdfPath || '').replace(/&quot;/g, '"');
-                if (!pdfPath) return;
+                if (!pdfPath) {
+                    return;
+                }
                 await this.openPathOnDesktop(pdfPath);
             });
         });
@@ -1219,8 +1385,12 @@ export default class TracabiliteManager {
     async regenerateCommandePdf(commandeId) {
         try {
             let commande = this.commandes.find(c => String(c.id) === String(commandeId));
-            if (!commande) throw new Error('Commande introuvable');
-            if (!window.electron?.invoke) throw new Error('Régénération disponible uniquement dans l’application desktop');
+            if (!commande) {
+                throw new Error('Commande introuvable');
+            }
+            if (!window.electron?.invoke) {
+                throw new Error('Régénération disponible uniquement dans l’application desktop');
+            }
             let rawLines = this.extractCommandeLinesFromRecord(commande);
             if (rawLines.length === 0) {
                 try {
@@ -1247,9 +1417,13 @@ export default class TracabiliteManager {
                 basePath: COMMANDES_PDF_BASE
             };
             const result = await window.electron.invoke('generate-commande-pdf', payload);
-            if (!result?.success || !result?.pdf_path) throw new Error(result?.error || 'Échec génération');
+            if (!result?.success || !result?.pdf_path) {
+                throw new Error(result?.error || 'Échec génération');
+            }
             const idxPdf = this.commandes.findIndex(c => String(c.id) === String(commandeId));
-            if (idxPdf >= 0) this.commandes[idxPdf].pdf_path = result.pdf_path;
+            if (idxPdf >= 0) {
+                this.commandes[idxPdf].pdf_path = result.pdf_path;
+            }
             try {
                 await api.put(`/api/commandes/${commandeId}`, { pdf_path: result.pdf_path });
             } catch (_) { /* backend optionnel */ }
@@ -1263,8 +1437,12 @@ export default class TracabiliteManager {
     async regenerateDonPdf(donId) {
         try {
             const don = this.dons.find(d => String(d.id) === String(donId));
-            if (!don) throw new Error('Don introuvable');
-            if (!window.electron?.invoke) throw new Error('Régénération disponible uniquement dans l’application desktop');
+            if (!don) {
+                throw new Error('Don introuvable');
+            }
+            if (!window.electron?.invoke) {
+                throw new Error('Régénération disponible uniquement dans l’application desktop');
+            }
             const payload = {
                 lotName: String(don.lot_name || don.name || 'don').trim(),
                 date: String(don.date || '').trim() || new Date().toISOString().slice(0, 10),
@@ -1272,7 +1450,9 @@ export default class TracabiliteManager {
                 basePath: DONS_PDF_BASE
             };
             const result = await window.electron.invoke('generate-don-pdf', payload);
-            if (!result?.success || !result?.pdf_path) throw new Error(result?.error || 'Échec génération');
+            if (!result?.success || !result?.pdf_path) {
+                throw new Error(result?.error || 'Échec génération');
+            }
             don.pdf_path = result.pdf_path;
             try {
                 await api.put(`/api/dons/${donId}`, { pdf_path: result.pdf_path });
@@ -1312,8 +1492,12 @@ export default class TracabiliteManager {
     async regeneratePretPdf(pretId) {
         try {
             let pret = this.prets.find(p => String(p.id) === String(pretId));
-            if (!pret) throw new Error('Prêt introuvable');
-            if (!window.electron?.invoke) throw new Error('Régénération disponible uniquement dans l’application desktop');
+            if (!pret) {
+                throw new Error('Prêt introuvable');
+            }
+            if (!window.electron?.invoke) {
+                throw new Error('Régénération disponible uniquement dans l’application desktop');
+            }
             try {
                 const res = await api.get(`/api/prets-materiel/${pretId}`, { useCache: false });
                 if (res.ok) {
@@ -1322,13 +1506,17 @@ export default class TracabiliteManager {
                     if (full && typeof full === 'object' && !Array.isArray(full)) {
                         pret = { ...pret, ...full, lines: this.extractPretLinesFromRecord(full) };
                         const idx = this.prets.findIndex(p => String(p.id) === String(pretId));
-                        if (idx >= 0) this.prets[idx] = pret;
+                        if (idx >= 0) {
+                            this.prets[idx] = pret;
+                        }
                     }
                 }
             } catch (_) { /* garde l’objet liste */ }
             const payload = this.buildPretPdfPayload(pret);
             const result = await window.electron.invoke('generate-pret-materiel-pdf', payload);
-            if (!result?.success || !result.pdf_path) throw new Error(result?.error || 'Échec génération');
+            if (!result?.success || !result.pdf_path) {
+                throw new Error(result?.error || 'Échec génération');
+            }
             pret.pdf_path = result.pdf_path;
             try {
                 await api.put(`/api/prets-materiel/${pretId}`, { pdf_path: result.pdf_path });
@@ -1345,7 +1533,9 @@ export default class TracabiliteManager {
             const response = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` }
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1364,12 +1554,18 @@ export default class TracabiliteManager {
 
     async downloadLocalPdf(pdfPath, filename) {
         try {
-            if (!window.electron?.invoke) throw new Error('Téléchargement local disponible uniquement dans l’application desktop');
+            if (!window.electron?.invoke) {
+                throw new Error('Téléchargement local disponible uniquement dans l’application desktop');
+            }
             const readResult = await window.electron.invoke('read-file-as-base64', { path: pdfPath });
-            if (!readResult?.success || !readResult?.base64) throw new Error(readResult?.error || 'Lecture du PDF local impossible');
+            if (!readResult?.success || !readResult?.base64) {
+                throw new Error(readResult?.error || 'Lecture du PDF local impossible');
+            }
             const binary = atob(readResult.base64);
             const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
             const blob = new Blob([bytes], { type: 'application/pdf' });
             const downloadUrl = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -1393,9 +1589,13 @@ export default class TracabiliteManager {
 
     normalizeDateForPath(dateStr) {
         const raw = String(dateStr || '').trim();
-        if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return raw.slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}/.test(raw)) {
+            return raw.slice(0, 10);
+        }
         const d = new Date(raw);
-        if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0, 10);
+        if (Number.isNaN(d.getTime())) {
+            return new Date().toISOString().slice(0, 10);
+        }
         return d.toISOString().slice(0, 10);
     }
 
@@ -1417,16 +1617,26 @@ export default class TracabiliteManager {
 
     isAllowedLocalPath(candidatePath) {
         const p = String(candidatePath || '').trim();
-        if (!p) return false;
-        if (/^https?:\/\//i.test(p)) return false;
-        if (p.startsWith('/api/')) return false;
+        if (!p) {
+            return false;
+        }
+        if (/^https?:\/\//i.test(p)) {
+            return false;
+        }
+        if (p.startsWith('/api/')) {
+            return false;
+        }
         const normalized = p.replace(/\\/g, '/');
-        if (/\.\.(\/|$)/.test(normalized)) return false;
+        if (/\.\.(\/|$)/.test(normalized)) {
+            return false;
+        }
         return normalized.startsWith('/mnt/team/');
     }
 
     toDirectoryPath(candidatePath) {
-        if (!candidatePath || /^https?:\/\//i.test(candidatePath)) return null;
+        if (!candidatePath || /^https?:\/\//i.test(candidatePath)) {
+            return null;
+        }
         const normalized = String(candidatePath).trim().replace(/\\/g, '/');
         if (/\.pdf$/i.test(normalized)) {
             return normalized.replace(/\/[^/]+$/i, '');
@@ -1462,7 +1672,9 @@ export default class TracabiliteManager {
 
     async openLotPdfLocation(lotId) {
         const lot = this.lots.find(l => String(l.id) === String(lotId));
-        if (!lot) return;
+        if (!lot) {
+            return;
+        }
         const candidate = this.getCandidatePdfPathFromItem(lot);
         const explicit = this.isAllowedLocalPath(candidate) ? this.toDirectoryPath(candidate) : null;
         const fallback = this.buildTracabiliteDir(lot.finished_at || lot.created_at);
@@ -1471,7 +1683,9 @@ export default class TracabiliteManager {
 
     async openDisquePdfLocation(sessionId) {
         const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
-        if (!session) return;
+        if (!session) {
+            return;
+        }
         const candidate = this.getCandidatePdfPathFromItem(session);
         const explicit = this.isAllowedLocalPath(candidate) ? this.toDirectoryPath(candidate) : null;
         const fallback = this.buildTracabiliteDir(session.date || session.created_at).replace('/#TRAÇABILITÉ/', '/#TRAÇABILITÉ/Disques/');
@@ -1480,7 +1694,9 @@ export default class TracabiliteManager {
 
     async openCommandePdfLocation(commandeId) {
         const commande = this.commandes.find(c => String(c.id) === String(commandeId));
-        if (!commande) return;
+        if (!commande) {
+            return;
+        }
         const candidate = this.getCandidatePdfPathFromItem(commande);
         const explicit = this.isAllowedLocalPath(candidate) ? this.toDirectoryPath(candidate) : null;
         await this.openPathOnDesktop(explicit || '/mnt/team/#TEAM/#COMMANDES');
@@ -1488,7 +1704,9 @@ export default class TracabiliteManager {
 
     async openDonPdfLocation(donId) {
         const don = this.dons.find(d => String(d.id) === String(donId));
-        if (!don) return;
+        if (!don) {
+            return;
+        }
         const candidate = this.getCandidatePdfPathFromItem(don);
         const explicit = this.isAllowedLocalPath(candidate) ? this.toDirectoryPath(candidate) : null;
         await this.openPathOnDesktop(explicit || '/mnt/team/#TEAM/#TRAÇABILITÉ/don_stagiaires');
@@ -1496,7 +1714,9 @@ export default class TracabiliteManager {
 
     async openPretPdfLocation(pretId) {
         const pret = this.prets.find(p => String(p.id) === String(pretId));
-        if (!pret) return;
+        if (!pret) {
+            return;
+        }
         const candidate = this.getCandidatePdfPathFromItem(pret);
         const explicit = this.isAllowedLocalPath(candidate) ? this.toDirectoryPath(candidate) : null;
         await this.openPathOnDesktop(explicit || PRETS_PDF_BASE);
@@ -1556,8 +1776,11 @@ export default class TracabiliteManager {
                 let msg = text || `Erreur serveur ${res.status}`;
                 try {
                     const j = JSON.parse(text);
-                    if (j?.message) msg = j.message;
-                    else if (j?.error) msg = j.error;
+                    if (j?.message) {
+                        msg = j.message;
+                    } else if (j?.error) {
+                        msg = j.error;
+                    }
                 } catch (_) { /* garder msg */ }
                 throw new Error(msg);
             }
@@ -1575,7 +1798,9 @@ export default class TracabiliteManager {
      */
     async markDisqueSessionAsRecovered(sessionId) {
         const session = this.sessionsDisques.find(s => String(s.id) === String(sessionId));
-        if (!session) return;
+        if (!session) {
+            return;
+        }
         const btn = document.querySelector(`.btn-recover-disque[data-session-id="${sessionId}"]`);
         if (btn) {
             btn.disabled = true;
@@ -1601,7 +1826,9 @@ export default class TracabiliteManager {
      * Ouvrir le PDF avec l'application système (Electron) ou dans un nouvel onglet (navigateur).
      */
     async openPdfWithSystemApp(pdfUrl, suggestedFilename, localFilePath) {
-        if (!pdfUrl || !pdfUrl.trim()) return;
+        if (!pdfUrl || !pdfUrl.trim()) {
+            return;
+        }
         if (window.electron?.invoke) {
             try {
                 const token = localStorage.getItem('workspace_jwt') || '';
@@ -1611,7 +1838,9 @@ export default class TracabiliteManager {
                     suggestedFilename: suggestedFilename || 'tracabilite.pdf'
                 };
                 const local = (localFilePath && String(localFilePath).trim()) || '';
-                if (local) payload.localFilePath = local;
+                if (local) {
+                    payload.localFilePath = local;
+                }
                 const result = await window.electron.invoke('open-pdf-with-system-app', payload);
                 if (!result.success) {
                     this.showNotification(result.error || 'Impossible d\'ouvrir le PDF', 'error');
@@ -1631,12 +1860,14 @@ export default class TracabiliteManager {
     async downloadPDF(lotId, pdfPath, suggestedFilename) {
         try {
             const baseUrl = pdfPath.startsWith('http') ? '' : api.getServerUrl();
-            const pathPart = pdfPath.startsWith('http') ? pdfPath : (pdfPath.startsWith('/') ? pdfPath : '/' + pdfPath);
+            const pathPart = pdfPath.startsWith('http') ? pdfPath : (pdfPath.startsWith('/') ? pdfPath : `/${  pdfPath}`);
             const url = `${baseUrl}${pathPart}${pathPart.includes('?') ? '&' : '?'}v=${Date.now()}`;
             const response = await fetch(url, {
                 headers: { 'Authorization': `Bearer ${localStorage.getItem('workspace_jwt') || ''}` }
             });
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const blob = await response.blob();
             const downloadUrl = window.URL.createObjectURL(blob);
             const filename = suggestedFilename && /\.pdf$/i.test(suggestedFilename) ? suggestedFilename : `lot-${lotId}.pdf`;
@@ -1662,11 +1893,13 @@ export default class TracabiliteManager {
      * Ceci sert aussi pour « Régénérer le PDF » en cas de bug ou perte.
      */
     async generatePDF(lotId) {
-        if (this._generatingPdfLotId) return;
+        if (this._generatingPdfLotId) {
+            return;
+        }
         this._generatingPdfLotId = String(lotId);
         this.renderTable();
 
-        let lot = this.lots.find(l => l.id == lotId);
+        let lot = this.lots.find(l => String(l.id) === String(lotId));
         if (!lot || !Array.isArray(lot.items)) {
             try {
                 const serverUrl = api.getServerUrl();
@@ -1676,7 +1909,9 @@ export default class TracabiliteManager {
                 if (res.ok) {
                     const data = await res.json();
                     lot = data.item || data;
-                    if (lot && !lot.items && data.items) lot.items = data.items;
+                    if (lot && !lot.items && data.items) {
+                        lot.items = data.items;
+                    }
                 }
             } catch (e) {
                 logger.warn('Chargement détail lot:', e);
@@ -1745,7 +1980,9 @@ export default class TracabiliteManager {
                         message = err.message || err.error || message;
                     } else {
                         const text = await response.text();
-                        if (text) message = text;
+                        if (text) {
+                            message = text;
+                        }
                     }
                 } catch (_) { /* ok */ }
                 throw new Error(message);
@@ -1890,7 +2127,9 @@ export default class TracabiliteManager {
      * Formater une date pour un nom de fichier (YYYY-MM-DD)
      */
     formatDateForFilename(dateStr) {
-        if (!dateStr) return '';
+        if (!dateStr) {
+            return '';
+        }
         const d = new Date(dateStr);
         const y = d.getFullYear();
         const m = String(d.getMonth() + 1).padStart(2, '0');
@@ -1902,7 +2141,9 @@ export default class TracabiliteManager {
      * Formater une date
      */
     formatDate(dateStr) {
-        if (!dateStr) return '-';
+        if (!dateStr) {
+            return '-';
+        }
         const date = new Date(dateStr);
         return date.toLocaleDateString('fr-FR', { 
             year: 'numeric', 
@@ -1915,9 +2156,13 @@ export default class TracabiliteManager {
      * Formater une date et heure
      */
     formatDateTime(dateStr) {
-        if (!dateStr) return '-';
+        if (!dateStr) {
+            return '-';
+        }
         const date = new Date(dateStr);
-        if (isNaN(date.getTime())) return '-';
+        if (isNaN(date.getTime())) {
+            return '-';
+        }
         return date.toLocaleDateString('fr-FR', { 
             year: 'numeric', 
             month: 'numeric', 

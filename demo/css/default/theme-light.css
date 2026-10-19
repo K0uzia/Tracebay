@@ -1,5 +1,5 @@
 /**
- * Thème clair — overrides agressifs (chargé après recep-dark)
+ * Thème clair : overrides agressifs (chargé après recep-dark)
  * Cible html[data-theme-dark="0"] pour forcer lisibilité partout.
  * recep-dark.css ne s'applique qu'en data-theme-dark="1".
  */
@@ -268,7 +268,7 @@ html[data-theme-dark="0"] .calendar-details {
     box-shadow: 0 4px 16px rgba(13, 17, 23, 0.06) !important;
 }
 
-/* Contrôles agenda — surface claire distincte, pas fond blanc plat */
+/* Contrôles agenda : surface claire distincte, pas fond blanc plat */
 html[data-theme-dark="0"] .calendar-view-switch,
 html[data-theme-dark="0"] .calendar-nav {
     background: #eef0f4 !important;
@@ -295,7 +295,7 @@ html[data-theme-dark="0"] .calendar-details-empty {
     color: #4b5563 !important;
 }
 
-/* Bouton créer événement — accent solide, texte blanc */
+/* Bouton créer événement : accent solide, texte blanc */
 html[data-theme-dark="0"] #addEventBtn,
 html[data-theme-dark="0"] .agenda-action .btn-primary {
     background: #3e3b8c !important;
@@ -329,7 +329,7 @@ html[data-theme-dark="0"] .calendar-view-btn.is-active {
     box-shadow: 0 2px 8px rgba(62, 59, 140, 0.25) !important;
 }
 
-/* Nav prev/next — boutons accent lisibles */
+/* Nav prev/next : boutons accent lisibles */
 html[data-theme-dark="0"] .calendar-nav button,
 html[data-theme-dark="0"] .calendar-nav-btn,
 html[data-theme-dark="0"] .calendar-today-btn {
@@ -455,7 +455,7 @@ html[data-theme-dark="0"] #agenda-delete-modal .modal-footer {
     border-top: 1px solid rgba(13, 17, 23, 0.1) !important;
 }
 
-/* Modales agenda — boutons secondaires / primaire / danger */
+/* Modales agenda : boutons secondaires / primaire / danger */
 html[data-theme-dark="0"] .agenda-event-modal .btn-annuler,
 html[data-theme-dark="0"] .agenda-event-modal .btn-secondary,
 html[data-theme-dark="0"] #agenda-delete-modal .btn-secondary,
@@ -502,7 +502,7 @@ html[data-theme-dark="0"] #agenda-delete-modal .btn-danger:hover {
     color: #ffffff !important;
 }
 
-/* Pastilles couleur favoris — ne pas écraser le fond inline */
+/* Pastilles couleur favoris : ne pas écraser le fond inline */
 html[data-theme-dark="0"] .color-favorite-btn,
 html[data-theme-dark="0"] .color-circle {
     border: 2px solid rgba(13, 17, 23, 0.2) !important;
@@ -695,7 +695,7 @@ html[data-theme-dark="0"] .r-main-header {
     color: #0d1117 !important;
 }
 
-/* ========== Réception — composants partagés (ex-recep-dark, version claire) ========== */
+/* ========== Réception : composants partagés (ex-recep-dark, version claire) ========== */
 
 html[data-theme-dark="0"] .r-root .recep-page {
     --recep-accent: #3e3b8c;
@@ -902,7 +902,7 @@ html[data-theme-dark="0"] .r-root .recep-btn-secondary:hover {
     color: #3e3b8c !important;
 }
 
-/* Toolbars réception — une seule surface propre, enfants transparents */
+/* Toolbars réception : une seule surface propre, enfants transparents */
 html[data-theme-dark="0"] .r-root .recep-toolbar,
 html[data-theme-dark="0"] .r-root .recep-toolbar-compact,
 html[data-theme-dark="0"] .r-root .lot-config,
@@ -1022,7 +1022,7 @@ html[data-theme-dark="0"] .lots-saisie-page .lot-card {
     border-color: rgba(13, 17, 23, 0.12) !important;
 }
 
-/* Toolbar lots — pas de bloc blanc ; bordure basse uniquement */
+/* Toolbar lots : pas de bloc blanc ; bordure basse uniquement */
 html[data-theme-dark="0"] .lots-saisie-page .lot-toolbar {
     background: transparent !important;
     border-color: rgba(13, 17, 23, 0.12) !important;
@@ -1529,12 +1529,12 @@ html[data-theme-dark="0"] .inventaire-container .lot-content .btn-remove-pc:hove
     color: #991b1b !important;
 }
 
-/* ========== Agenda event chips — garder la couleur inline, texte contrasté ========== */
+/* ========== Agenda event chips : garder la couleur inline, texte contrasté ========== */
 
 html[data-theme-dark="0"] .calendar-event-chip {
     color: #0d1117 !important;
     border: 1px solid rgba(13, 17, 23, 0.12) !important;
-    /* Ne pas forcer background — le JS pose un fond teinté soft */
+    /* Ne pas forcer background : le JS pose un fond teinté soft */
 }
 
 html[data-theme-dark="0"] .calendar-event-chip-title {

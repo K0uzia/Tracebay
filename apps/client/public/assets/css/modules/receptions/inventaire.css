@@ -1,5 +1,5 @@
 /**
- * Page Inventaire – CSS autonome (même disposition que entrer/disques/commande/dons).
+ * Page Inventaire : CSS autonome (même disposition que entrer/disques/commande/dons).
  * La zone réception défile en entier (pas de hauteur figée sur la liste) pour voir tout le contenu déroulé.
  */
 
@@ -92,7 +92,7 @@
     padding: var(--unit-2) var(--unit-3);
 }
 
-/* Liste des lots : pas de scroll interne tronqué — tout le bloc défile avec la page */
+/* Liste des lots : pas de scroll interne tronqué : tout le bloc défile avec la page */
 .inventaire-container .lot-card__inner--list {
     padding: var(--unit-3);
     overflow: visible;

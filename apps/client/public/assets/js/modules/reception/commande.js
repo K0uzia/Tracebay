@@ -11,7 +11,9 @@ const logger = getLogger();
 const COMMANDES_PDF_BASE = '/mnt/team/#TEAM/#COMMANDES/';
 
 function escapeHtml(s) {
-    if (s == null) return '';
+    if (s == null) {
+        return '';
+    }
     const div = document.createElement('div');
     div.textContent = String(s);
     // innerHTML n'échappe pas les guillemets : nécessaire pour les attributs (value="", title="")
@@ -20,14 +22,18 @@ function escapeHtml(s) {
 
 /** Évite les doublons dans les listes produit si l'API renvoie des entrées répétées. */
 function dedupeCommandeProducts(list) {
-    if (!Array.isArray(list) || list.length === 0) return [];
+    if (!Array.isArray(list) || list.length === 0) {
+        return [];
+    }
     const seen = new Set();
     const out = [];
     for (const p of list) {
         const id = p?.id != null ? String(p.id) : null;
         const name = (p?.name || p?.title || '').trim();
         const key = id != null && id !== '' ? `id:${id}` : `name:${name.toLowerCase()}`;
-        if (seen.has(key)) continue;
+        if (seen.has(key)) {
+            continue;
+        }
         seen.add(key);
         out.push(p);
     }
@@ -35,14 +41,20 @@ function dedupeCommandeProducts(list) {
 }
 
 function dedupeCommandeCategories(list) {
-    if (!Array.isArray(list) || list.length === 0) return [];
+    if (!Array.isArray(list) || list.length === 0) {
+        return [];
+    }
     const seen = new Set();
     const out = [];
     for (const c of list) {
         const rawName = (c?.name || c?.label || c?.category || '').trim();
-        if (!rawName) continue;
+        if (!rawName) {
+            continue;
+        }
         const key = rawName.toLowerCase();
-        if (seen.has(key)) continue;
+        if (seen.has(key)) {
+            continue;
+        }
         seen.add(key);
         out.push({ name: rawName });
     }
@@ -93,10 +105,12 @@ export default class CommandeManager {
 
     refreshCategorySelect() {
         const select = document.getElementById('commande-category');
-        if (!select) return;
+        if (!select) {
+            return;
+        }
         const current = (select.value || '').trim();
-        const options = '<option value="">-- Catégorie --</option>' +
-            this.categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('');
+        const options = `<option value="">-- Catégorie --</option>${ 
+            this.categories.map(c => `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)}</option>`).join('')}`;
         select.innerHTML = options;
         if (current && Array.from(select.options).some(o => o.value === current)) {
             select.value = current;
@@ -130,14 +144,16 @@ export default class CommandeManager {
     refreshProductSelects() {
         document.querySelectorAll('.commande-select-product').forEach(sel => {
             const current = sel.value;
-            const options = '<option value="">-- Produit --</option>' +
+            const options = `<option value="">-- Produit --</option>${ 
                 this.products.map(p => {
                     const id = p.id != null ? p.id : p.name;
                     const name = p.name || p.title || String(id);
                     return `<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`;
-                }).join('');
+                }).join('')}`;
             sel.innerHTML = options;
-            if (current && Array.from(sel.options).some(o => o.value === current)) sel.value = current;
+            if (current && Array.from(sel.options).some(o => o.value === current)) {
+                sel.value = current;
+            }
         });
     }
 
@@ -170,11 +186,17 @@ export default class CommandeManager {
     resetFormAfterPdfSuccess() {
         const nameInput = document.getElementById('commande-name');
         const categorySelect = document.getElementById('commande-category');
-        if (nameInput) nameInput.value = '';
-        if (categorySelect) categorySelect.value = '';
+        if (nameInput) {
+            nameInput.value = '';
+        }
+        if (categorySelect) {
+            categorySelect.value = '';
+        }
 
         const tbody = document.getElementById('commande-tbody');
-        if (!tbody) return;
+        if (!tbody) {
+            return;
+        }
 
         const rows = tbody.querySelectorAll('.commande-line');
         for (let i = 1; i < rows.length; i++) {
@@ -193,11 +215,21 @@ export default class CommandeManager {
             const p = row.querySelector('.commande-input-prix');
             const f = row.querySelector('.commande-input-frais-port');
             const l = row.querySelector('.commande-input-lien');
-            if (sel) sel.value = '';
-            if (q) q.value = '';
-            if (p) p.value = '';
-            if (f) f.value = '';
-            if (l) l.value = '';
+            if (sel) {
+                sel.value = '';
+            }
+            if (q) {
+                q.value = '';
+            }
+            if (p) {
+                p.value = '';
+            }
+            if (f) {
+                f.value = '';
+            }
+            if (l) {
+                l.value = '';
+            }
         }
 
         this.refreshProductSelects();
@@ -206,7 +238,9 @@ export default class CommandeManager {
     }
 
     addTableLine() {
-        if (this._addingLine) return;
+        if (this._addingLine) {
+            return;
+        }
         this._addingLine = true;
         const tbody = document.getElementById('commande-tbody');
         if (!tbody) {
@@ -224,10 +258,10 @@ export default class CommandeManager {
                 <select class="commande-select-product" data-line="${nextIndex}">
                     <option value="">-- Produit --</option>
                     ${this.products.map(p => {
-                        const id = p.id != null ? p.id : p.name;
-                        const name = p.name || p.title || String(id);
-                        return `<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`;
-                    }).join('')}
+        const id = p.id != null ? p.id : p.name;
+        const name = p.name || p.title || String(id);
+        return `<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`;
+    }).join('')}
                 </select>
             </td>
             <td class="col-quantite" data-label="Quantité">
@@ -252,12 +286,16 @@ export default class CommandeManager {
         this.attachLineListeners(tr);
         this.updateLineNumbers();
         this.updateRemoveButtonsState();
-        setTimeout(() => { this._addingLine = false; }, 0);
+        setTimeout(() => {
+            this._addingLine = false; 
+        }, 0);
     }
 
     removeTableLine(lineIndex) {
         const row = document.querySelector(`#commande-tbody .commande-line[data-line-index="${lineIndex}"]`);
-        if (row) row.remove();
+        if (row) {
+            row.remove();
+        }
         this.updateLineNumbers();
         this.updateRemoveButtonsState();
     }
@@ -266,7 +304,9 @@ export default class CommandeManager {
         document.querySelectorAll('#commande-tbody .commande-line').forEach((row, idx) => {
             row.dataset.lineIndex = String(idx);
             const numCell = row.querySelector('.col-num');
-            if (numCell) numCell.textContent = idx + 1;
+            if (numCell) {
+                numCell.textContent = idx + 1;
+            }
             row.querySelectorAll('[data-line]').forEach(el => el.dataset.line = String(idx));
         });
     }
@@ -306,13 +346,19 @@ export default class CommandeManager {
         this.updateRemoveButtonsState();
 
         const btnAddProduct = document.getElementById('commande-btn-add-product');
-        if (btnAddProduct) this.addListener(btnAddProduct, 'click', () => this.openAddProductModal());
+        if (btnAddProduct) {
+            this.addListener(btnAddProduct, 'click', () => this.openAddProductModal());
+        }
 
         const btnAddCategory = document.getElementById('commande-btn-add-category');
-        if (btnAddCategory) this.addListener(btnAddCategory, 'click', () => this.openAddCategoryModal());
+        if (btnAddCategory) {
+            this.addListener(btnAddCategory, 'click', () => this.openAddCategoryModal());
+        }
 
         const btnSavePdf = document.getElementById('commande-btn-save-pdf');
-        if (btnSavePdf) this.addListener(btnSavePdf, 'click', () => this.savePdf());
+        if (btnSavePdf) {
+            this.addListener(btnSavePdf, 'click', () => this.savePdf());
+        }
 
         const modal = document.getElementById('commande-modal-add-product');
         if (modal) {
@@ -370,7 +416,9 @@ export default class CommandeManager {
     }
 
     async submitAddProduct() {
-        if (this._submittingAddProduct) return;
+        if (this._submittingAddProduct) {
+            return;
+        }
         const input = document.getElementById('commande-new-product-name');
         const modal = document.getElementById('commande-modal-add-product');
         const submitBtn = modal?.querySelector('button[type="submit"]');
@@ -380,7 +428,9 @@ export default class CommandeManager {
         }
         const name = input.value.trim();
         this._submittingAddProduct = true;
-        if (submitBtn) submitBtn.disabled = true;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+        }
         try {
             const res = await api.post('commandes.products.create', { name });
             if (!res.ok) {
@@ -397,7 +447,9 @@ export default class CommandeManager {
             window.app?.showNotification?.(err?.message || 'Erreur lors de l\'ajout', 'error');
         } finally {
             this._submittingAddProduct = false;
-            if (submitBtn) submitBtn.disabled = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+            }
         }
     }
 
@@ -412,7 +464,9 @@ export default class CommandeManager {
     }
 
     async submitAddCategory() {
-        if (this._submittingAddCategory) return;
+        if (this._submittingAddCategory) {
+            return;
+        }
         const input = document.getElementById('commande-new-category-name');
         const modal = document.getElementById('commande-modal-add-category');
         const submitBtn = modal?.querySelector('button[type="submit"]');
@@ -422,7 +476,9 @@ export default class CommandeManager {
         }
         const name = input.value.trim();
         this._submittingAddCategory = true;
-        if (submitBtn) submitBtn.disabled = true;
+        if (submitBtn) {
+            submitBtn.disabled = true;
+        }
         try {
             const res = await api.post('commandes.categories.create', { name });
             if (!res.ok) {
@@ -432,7 +488,9 @@ export default class CommandeManager {
             }
             await this.loadCategories();
             const select = document.getElementById('commande-category');
-            if (select) select.value = name;
+            if (select) {
+                select.value = name;
+            }
             input.value = '';
             modal?.close();
             window.app?.showNotification?.('Catégorie ajoutée', 'success');
@@ -441,7 +499,9 @@ export default class CommandeManager {
             window.app?.showNotification?.(err?.message || 'Erreur lors de l\'ajout', 'error');
         } finally {
             this._submittingAddCategory = false;
-            if (submitBtn) submitBtn.disabled = false;
+            if (submitBtn) {
+                submitBtn.disabled = false;
+            }
         }
     }
 
@@ -480,7 +540,7 @@ export default class CommandeManager {
                 basePath: COMMANDES_PDF_BASE
             });
             if (result?.success && result.pdf_path) {
-                window.app?.showNotification?.('PDF enregistré : ' + result.pdf_path, 'success');
+                window.app?.showNotification?.(`PDF enregistré : ${  result.pdf_path}`, 'success');
                 try {
                     const createRes = await api.post('commandes.create', {
                         commande_name: commandeName,

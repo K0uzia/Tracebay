@@ -301,7 +301,7 @@ html[data-theme-dark="0"] #dashboard-calendar.section .calendar-nav-btn {
   color: #3e3b8c;
 }
 
-/* Réception — boutons icône de ligne (filet de sécurité) */
+/* Réception : boutons icône de ligne (filet de sécurité) */
 .r-root .lot-table .btn-delete-row,
 .r-root .lot-table .btn-remove-line {
   display: inline-flex;

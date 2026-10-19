@@ -12,7 +12,9 @@ export default class CalendarRenderer {
     }
 
     updateLabel(view, currentDate) {
-        if (!this.calendarLabel) return;
+        if (!this.calendarLabel) {
+            return;
+        }
         
         let label = '';
         if (view === 'week') {
@@ -29,8 +31,10 @@ export default class CalendarRenderer {
     }
 
     resetDetails() {
-        if (!this.detailsPanel) return;
-        this.detailsPanel.innerHTML = `<p class="calendar-details-empty">Sélectionner un événement pour voir les détails</p>`;
+        if (!this.detailsPanel) {
+            return;
+        }
+        this.detailsPanel.innerHTML = '<p class="calendar-details-empty">Sélectionner un événement pour voir les détails</p>';
     }
 
     showLoading() {
@@ -44,7 +48,9 @@ export default class CalendarRenderer {
 
     showError(message) {
         this.errorIndicator?.removeAttribute('hidden');
-        if (this.errorIndicator) this.errorIndicator.textContent = message;
+        if (this.errorIndicator) {
+            this.errorIndicator.textContent = message;
+        }
         this.hideLoading();
     }
 
@@ -112,7 +118,9 @@ export default class CalendarRenderer {
         column.appendChild(eventContainer);
 
         column.addEventListener('click', (e) => {
-            if (e.target.closest?.('.calendar-event-chip')) return;
+            if (e.target.closest?.('.calendar-event-chip')) {
+                return;
+            }
             this.onDayClick?.(date);
         });
 
@@ -143,7 +151,9 @@ export default class CalendarRenderer {
         dayElement.appendChild(eventsContainer);
 
         dayElement.addEventListener('click', (e) => {
-            if (e.target.closest?.('.calendar-event-chip')) return;
+            if (e.target.closest?.('.calendar-event-chip')) {
+                return;
+            }
             this.onDayClick?.(date);
         });
 
@@ -175,7 +185,7 @@ export default class CalendarRenderer {
         if (events.length === 0) {
             const empty = document.createElement('p');
             empty.className = 'calendar-details-empty';
-            empty.textContent = '—';
+            empty.textContent = '-';
             container.appendChild(empty);
         } else {
             events.forEach(ev => {
@@ -221,7 +231,9 @@ export default class CalendarRenderer {
         const raw = String(hex || '').replace('#', '');
         const isLight = document.documentElement.getAttribute('data-theme-dark') === '0';
         const alpha = isLight ? 0.32 : 0.18;
-        if (!/^[0-9a-fA-F]{6}$/.test(raw)) return `rgba(91, 124, 250, ${alpha})`;
+        if (!/^[0-9a-fA-F]{6}$/.test(raw)) {
+            return `rgba(91, 124, 250, ${alpha})`;
+        }
         const r = parseInt(raw.slice(0, 2), 16);
         const g = parseInt(raw.slice(2, 4), 16);
         const b = parseInt(raw.slice(4, 6), 16);
@@ -229,7 +241,9 @@ export default class CalendarRenderer {
     }
 
     displayEventDetails(ev, onEditClick) {
-        if (!this.detailsPanel) return;
+        if (!this.detailsPanel) {
+            return;
+        }
 
         // On parse en "local clock time" pour éviter les décalages UTC/local si la source inclut un suffixe timezone.
         const startDate = this.parseLocalDateTime(ev.start) ?? new Date(ev.start.replace(' ', 'T'));
@@ -243,24 +257,24 @@ export default class CalendarRenderer {
             weekday: 'long',
             day: 'numeric',
             month: 'long',
-            year: 'numeric',
+            year: 'numeric'
         });
 
         const endDateLabel = endDate.toLocaleDateString('fr-FR', {
             weekday: 'long',
             day: 'numeric',
             month: 'long',
-            year: 'numeric',
+            year: 'numeric'
         });
 
         const startTime = startDate.toLocaleTimeString('fr-FR', {
             hour: '2-digit',
-            minute: '2-digit',
+            minute: '2-digit'
         });
 
         const endTime = endDate.toLocaleTimeString('fr-FR', {
             hour: '2-digit',
-            minute: '2-digit',
+            minute: '2-digit'
         });
 
         let dateTimeLabel = '';
@@ -277,9 +291,9 @@ export default class CalendarRenderer {
             <h3>${escapeHtml(ev.title)}</h3>
             <p><strong>Période: </strong>${dateTimeLabel}</p>
             ${ev.description ? `<p><strong>Lieux:</strong> ${escapeHtml(ev.description)}</p>` : ''}
-            ${isLocked ? `<p class="text-mute small"><strong>Info :</strong> jour férié / fête (verrouillé)</p>` : ''}
+            ${isLocked ? '<p class="text-mute small"><strong>Info :</strong> jour férié / fête (verrouillé)</p>' : ''}
         </div>
-            ${isLocked ? '' : `<button type="button" class="btn btn-primary" id="detail-edit-btn">Éditer</button>`}
+            ${isLocked ? '' : '<button type="button" class="btn btn-primary" id="detail-edit-btn">Éditer</button>'}
         `;
 
         if (!isLocked) {
@@ -328,18 +342,24 @@ export default class CalendarRenderer {
     }
 
     parseLocalDateTime(dateTime) {
-        if (typeof dateTime !== 'string') return null;
+        if (typeof dateTime !== 'string') {
+            return null;
+        }
         const normalized = dateTime.trim().replace(' ', 'T');
         const core = normalized.slice(0, 19); // YYYY-MM-DDTHH:mm:ss
         const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(core);
-        if (!m) return null;
+        if (!m) {
+            return null;
+        }
         const year = Number(m[1]);
         const month = Number(m[2]);
         const day = Number(m[3]);
         const hour = Number(m[4]);
         const minute = Number(m[5]);
         const second = Number(m[6] ?? '0');
-        if (![year, month, day, hour, minute, second].every(Number.isFinite)) return null;
+        if (![year, month, day, hour, minute, second].every(Number.isFinite)) {
+            return null;
+        }
         return new Date(year, month - 1, day, hour, minute, second, 0);
     }
 

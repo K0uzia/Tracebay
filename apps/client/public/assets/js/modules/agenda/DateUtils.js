@@ -6,13 +6,19 @@ export function formatLocalISODate(date) {
 }
 
 function parseYmd(ymd) {
-    if (typeof ymd !== 'string') return null;
+    if (typeof ymd !== 'string') {
+        return null;
+    }
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd.trim());
-    if (!m) return null;
+    if (!m) {
+        return null;
+    }
     const year = Number(m[1]);
     const month = Number(m[2]);
     const day = Number(m[3]);
-    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) {
+        return null;
+    }
     return { year, month, day };
 }
 
@@ -22,7 +28,9 @@ function parseYmd(ymd) {
  */
 export function parseLocalDate(ymd) {
     const parts = parseYmd(ymd);
-    if (!parts) return null;
+    if (!parts) {
+        return null;
+    }
     return new Date(parts.year, parts.month - 1, parts.day, 0, 0, 0, 0);
 }
 
@@ -35,18 +43,24 @@ export function parseLocalDate(ymd) {
  * But: préserver l'heure "horloge" telle qu'affichée, sans décalage timezone.
  */
 export function parseLocalDateTime(dateTime) {
-    if (typeof dateTime !== 'string') return null;
+    if (typeof dateTime !== 'string') {
+        return null;
+    }
     const normalized = dateTime.trim().replace(' ', 'T');
     const core = normalized.slice(0, 19); // YYYY-MM-DDTHH:mm:ss
     const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(core);
-    if (!m) return null;
+    if (!m) {
+        return null;
+    }
     const year = Number(m[1]);
     const month = Number(m[2]);
     const day = Number(m[3]);
     const hour = Number(m[4]);
     const minute = Number(m[5]);
     const second = Number(m[6] ?? '0');
-    if (![year, month, day, hour, minute, second].every(Number.isFinite)) return null;
+    if (![year, month, day, hour, minute, second].every(Number.isFinite)) {
+        return null;
+    }
     return new Date(year, month - 1, day, hour, minute, second, 0);
 }
 
@@ -100,10 +114,14 @@ export function getDateRange(currentDate, currentView) {
 export function syncDateInputs(startId, endId, options = {}) {
     const startInput = document.getElementById(startId);
     const endInput = document.getElementById(endId);
-    if (!startInput || !endInput) return;
+    if (!startInput || !endInput) {
+        return;
+    }
 
     const ensureOrder = () => {
-        if (!startInput.value) return;
+        if (!startInput.value) {
+            return;
+        }
 
         endInput.min = startInput.value;
 

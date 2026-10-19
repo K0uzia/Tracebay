@@ -1,5 +1,5 @@
 /**
- * Thème sombre SaaS — défaut application
+ * Thème sombre SaaS : défaut application
  * Tokens dans variables.css ; ce fichier applique surfaces, formulaires et selects.
  */
 
@@ -107,7 +107,7 @@ textarea::placeholder {
     opacity: 1;
 }
 
-/* Réception — champs tableaux et survols (override pages legacy) */
+/* Réception : champs tableaux et survols (override pages legacy) */
 .r-root .lot-table td input,
 .r-root .lot-table td select,
 .r-root .lot-table td input[type="number"],
@@ -133,7 +133,7 @@ textarea::placeholder {
     color: var(--text-primary);
 }
 
-/* Réception — contraste labels / états vides / hover tableaux */
+/* Réception : contraste labels / états vides / hover tableaux */
 .r-root .lot-config__label,
 .r-root .recep-label {
     color: #9db5ff;

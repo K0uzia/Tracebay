@@ -23,15 +23,23 @@ function getHeaders() {
 export async function getSessions(params = {}) {
     const serverUrl = api.getServerUrl();
     const endpoint = window.SERVER_CONFIG?.getEndpoint?.('disques.sessions') || '/api/disques/sessions';
-    let url = `${serverUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+    let url = `${serverUrl}${endpoint.startsWith('/') ? endpoint : `/${  endpoint}`}`;
     const search = new URLSearchParams();
-    if (params.year != null) search.set('year', String(params.year));
-    if (params.month != null) search.set('month', String(params.month));
-    if (search.toString()) url += `?${search.toString()}`;
+    if (params.year != null) {
+        search.set('year', String(params.year));
+    }
+    if (params.month != null) {
+        search.set('month', String(params.month));
+    }
+    if (search.toString()) {
+        url += `?${search.toString()}`;
+    }
 
     const response = await fetch(url, { method: 'GET', headers: getHeaders() });
     if (!response.ok) {
-        if (response.status === 404) return [];
+        if (response.status === 404) {
+            return [];
+        }
         throw new Error(`HTTP ${response.status}`);
     }
     const data = await response.json();
@@ -47,7 +55,7 @@ export async function getSessions(params = {}) {
 export async function createSession(payload) {
     const serverUrl = api.getServerUrl();
     const endpoint = window.SERVER_CONFIG?.getEndpoint?.('disques.sessions') || '/api/disques/sessions';
-    const url = `${serverUrl}${endpoint.startsWith('/') ? endpoint : '/' + endpoint}`;
+    const url = `${serverUrl}${endpoint.startsWith('/') ? endpoint : `/${  endpoint}`}`;
 
     const response = await fetch(url, {
         method: 'POST',
@@ -69,11 +77,13 @@ export async function createSession(payload) {
 export async function getSession(id) {
     const serverUrl = api.getServerUrl();
     const endpoint = window.SERVER_CONFIG?.getEndpoint?.('disques.sessions') || '/api/disques/sessions';
-    const path = `${endpoint.startsWith('/') ? endpoint : '/' + endpoint}/${id}`;
+    const path = `${endpoint.startsWith('/') ? endpoint : `/${  endpoint}`}/${id}`;
     const url = `${serverUrl}${path}`;
 
     const response = await fetch(url, { method: 'GET', headers: getHeaders() });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
     return response.json();
 }
 
@@ -86,7 +96,7 @@ export async function getSession(id) {
 export async function updateSession(id, payload) {
     const serverUrl = api.getServerUrl();
     const endpoint = window.SERVER_CONFIG?.getEndpoint?.('disques.sessions') || '/api/disques/sessions';
-    const path = `${endpoint.startsWith('/') ? endpoint : '/' + endpoint}/${id}`;
+    const path = `${endpoint.startsWith('/') ? endpoint : `/${  endpoint}`}/${id}`;
     const url = `${serverUrl}${path}`;
 
     const response = await fetch(url, {
@@ -110,5 +120,5 @@ export function getSessionPdfUrl(id) {
     const serverUrl = api.getServerUrl();
     const endpoint = window.SERVER_CONFIG?.getEndpoint?.('disques.sessionsPdf') || '/api/disques/sessions/:id/pdf';
     const path = endpoint.replace(':id', String(id));
-    return `${serverUrl}${path.startsWith('/') ? path : '/' + path}`;
+    return `${serverUrl}${path.startsWith('/') ? path : `/${  path}`}`;
 }

@@ -21,7 +21,9 @@ if (!fs.existsSync(desktopDir)) {
 fs.writeFileSync(desktopDest, content);
 fs.chmodSync(desktopDest, 0o644);
 const startScript = path.join(clientDir, 'start-dev.sh');
-if (fs.existsSync(startScript)) fs.chmodSync(startScript, 0o755);
+if (fs.existsSync(startScript)) {
+    fs.chmodSync(startScript, 0o755);
+}
 console.log('✅ Fichier .desktop installé :', desktopDest);
 console.log('   L’icône devrait s’afficher si tu lances l’app depuis le menu (Tracebay Dev),');
 console.log('   ou après redémarrage de la session si le WM matche déjà au WM_CLASS.');

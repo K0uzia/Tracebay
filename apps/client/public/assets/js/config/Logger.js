@@ -57,7 +57,9 @@ class Logger {
      * @returns {Promise<void>}
      */
     async initializeFromAppConfig() {
-        if (this._initialized) return;
+        if (this._initialized) {
+            return;
+        }
         
         if (typeof window !== 'undefined' && window.electron) {
             try {
@@ -91,7 +93,9 @@ class Logger {
      * @private
      */
     shouldLog(level) {
-        if (!this.enabled) return false;
+        if (!this.enabled) {
+            return false;
+        }
         return level >= this.level;
     }
 

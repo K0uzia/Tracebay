@@ -11,13 +11,13 @@ Guide pour l’IA : appliquer ces règles systématiquement. Priorité : lisibil
 - `cursor: default` sur `body` et éléments non interactifs.
 - `cursor: not-allowed` pour états désactivés (ex. `button[disabled]`).
 - `cursor: move` ou `grab` / `grabbing` pour drag & drop.
-- Limiter les types de curseurs : 4–5 max par page pour une UX cohérente.
+- Limiter les types de curseurs : 4-5 max par page pour une UX cohérente.
 - Curseur personnalisé : `cursor: url('icon.png') 16 16, auto;` (icône <32px, WebP/PNG optimisé).
 - Sur mobile/tactile : ne pas se reposer uniquement sur le hover pour le feedback.
 
 ---
 
-## 2. Design UI – Principes généraux
+## 2. Design UI : Principes généraux
 
 - **Mobile-first** : commencer par `@media (max-width: 480px)` puis élargir.
 - **Espacement** : multiples de 4px (4, 8, 12, 16, 24, 32, 40, 48, 64). Utiliser des variables (ex. `--unit`, `--unit-2`).

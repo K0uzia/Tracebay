@@ -1,4 +1,4 @@
-# Tracebay — Fonctionnement de l'application
+# Tracebay : Fonctionnement de l'application
 
 Documentation fonctionnelle du client Electron **Tracebay** : architecture, pages, module Réception et flux métier.
 
@@ -12,7 +12,7 @@ Le code est publié sous [Tracebay Source-Available License](LICENSE) (usage int
 2. [Architecture générale](#2-architecture-générale)
 3. [Coque globale](#3-coque-globale)
 4. [Pages principales](#4-pages-principales)
-5. [Module Réception — architecture](#5-module-réception--architecture)
+5. [Module Réception : architecture](#5-module-réception--architecture)
 6. [Flux complet : Lot PC](#6-flux-complet--lot-pc)
 7. [Flux : Disques](#7-flux--disques)
 8. [Flux : Commande](#8-flux--commande)
@@ -159,7 +159,7 @@ Calendrier complet partagé avec le serveur.
 
 **Vues** : semaine, mois, année, avec navigation temporelle.
 
-**Événements** — Création, modification, suppression via modales :
+**Événements** : Création, modification, suppression via modales :
 
 - Titre, dates début/fin
 - Option « toute la journée »
@@ -175,7 +175,7 @@ Les **jours fériés** (métropole) sont affichés en lecture seule.
 
 ---
 
-## 5. Module Réception — architecture
+## 5. Module Réception : architecture
 
 ### Deux familles de pages
 
@@ -228,7 +228,7 @@ Les **lots PC** sont le seul flux avec une **étape intermédiaire obligatoire**
 
 Parcours : **Entrer → Inventaire → Historique**.
 
-### Étape 1 — Lots (saisie à la réception)
+### Étape 1 : Lots (saisie à la réception)
 
 **Objectif** : enregistrer l'arrivée physique de matériel dans un lot.
 
@@ -262,7 +262,7 @@ Parcours : **Entrer → Inventaire → Historique**.
 
 ---
 
-### Étape 2 — Inventaire (traitement technicien)
+### Étape 2 : Inventaire (traitement technicien)
 
 **Objectif** : suivre chaque PC jusqu'à clôture du lot.
 
@@ -288,7 +288,7 @@ Un PC est **complet** si état ET technicien sont renseignés.
 
 ---
 
-### Étape 3 — Historique (lots terminés)
+### Étape 3 : Historique (lots terminés)
 
 **Actions** :
 
@@ -303,7 +303,7 @@ Un PC est **complet** si état ET technicien sont renseignés.
 
 ---
 
-### Étape 4 — PDF et archives (depuis Historique)
+### Étape 4 : PDF et archives (depuis Historique)
 
 Les actions documentaires (emplacement, voir, télécharger, e-mail, régénérer) se font dans **Historique**, plus depuis une page Traçabilité séparée.
 
@@ -319,8 +319,8 @@ Les actions documentaires (emplacement, voir, télécharger, e-mail, régénére
 
 | Phase | Statut | Visible dans | PDF |
 |-------|--------|--------------|-----|
-| Saisie | — | Lots | Tentative initiale (entrée) |
-| En cours | `active` | Inventaire | — |
+| Saisie | : | Lots | Tentative initiale (entrée) |
+| En cours | `active` | Inventaire | : |
 | Clôturé | `finished` | Historique | PDF final complet |
 | Récupéré | `finished` + `recovered_at` | Historique | Inchangé |
 
@@ -388,7 +388,7 @@ Les actions documentaires (emplacement, voir, télécharger, e-mail, régénére
 
 ### Historique / PDF
 
-- Voir / télécharger / régénérer PDF — pas d'e-mail
+- Voir / télécharger / régénérer PDF : pas d'e-mail
 
 ---
 
@@ -413,7 +413,7 @@ Les actions documentaires (emplacement, voir, télécharger, e-mail, régénére
 
 ### Historique / PDF
 
-- Voir / télécharger / régénérer — pas d'e-mail
+- Voir / télécharger / régénérer : pas d'e-mail
 
 ---
 
@@ -443,7 +443,7 @@ Les actions documentaires (emplacement, voir, télécharger, e-mail, régénére
 
 ### Historique / PDF
 
-- Voir / télécharger / régénérer — pas d'e-mail
+- Voir / télécharger / régénérer : pas d'e-mail
 
 ---
 
@@ -526,7 +526,7 @@ En parallèle : lots terminés, sessions disques, commandes, dons, prêts. Bande
 | Ouvrir le dossier | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Voir le PDF | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Télécharger | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Envoyer par e-mail | ✓ | ✓ | — | — | — |
+| Envoyer par e-mail | ✓ | ✓ | : | : | : |
 | Régénérer (Electron) | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 ### Envoi par e-mail (lots et disques)
@@ -568,14 +568,14 @@ Utile si fichier supprimé, déplacé ou corrompu : relit les données en base, 
 | Besoin | Electron (poste) | Serveur |
 |--------|------------------|---------|
 | Navigation, affichage pages | Oui | Config + données métier |
-| Ouverture dossiers / PDF locaux | Oui | — |
-| Détection disques (`lsblk`) | Oui (Linux) | — |
+| Ouverture dossiers / PDF locaux | Oui | : |
+| Détection disques (`lsblk`) | Oui (Linux) | : |
 | Génération PDF réception | Oui (templates locaux) | Parfois complément serveur |
-| Auth, lots, inventaire, historique | — | Oui |
-| Agenda (prod) | — | Oui |
+| Auth, lots, inventaire, historique | : | Oui |
+| Agenda (prod) | : | Oui |
 | Mises à jour auto | Oui | GitHub Releases |
-| Référentiels marques/modèles | — | Oui |
-| Envoi e-mails traçabilité | — | Oui |
+| Référentiels marques/modèles | : | Oui |
+| Envoi e-mails traçabilité | : | Oui |
 
 En **navigateur web** (sans Electron), l'interface s'affiche mais les fonctions liées au système de fichiers, à la détection disques et à la génération PDF locale sont limitées ou indisponibles.
 
@@ -599,7 +599,7 @@ En **navigateur web** (sans Electron), l'interface s'affiche mais les fonctions 
 
 ## Références
 
-- [README.md](./README.md) — Vue d'ensemble (`main` = app, `proxmox` = backend)
-- [docs/API.md](./docs/API.md) — Contrat API backend
-- [docs/DATABASE.md](./docs/DATABASE.md) — Schéma base de données
-- Branche [`proxmox`](https://github.com/K0uzia/Tracebay/tree/proxmox) — Backend Fastify + TypeScript / serveur
+- [README.md](./README.md) : Vue d'ensemble (`main` = app, `proxmox` = backend)
+- [docs/API.md](./docs/API.md) : Contrat API backend
+- [docs/DATABASE.md](./docs/DATABASE.md) : Schéma base de données
+- Branche [`proxmox`](https://github.com/K0uzia/Tracebay/tree/proxmox) : Backend Fastify + TypeScript / serveur

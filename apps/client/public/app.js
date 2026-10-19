@@ -1,8 +1,11 @@
+/* global logger */
 // Charger la config app (dont giphyApiKey) dès que possible en Electron
 if (typeof window !== 'undefined' && window.electron && window.electron.invoke) {
-    window.electron.invoke('get-app-config').then(function (c) {
-        if (c && typeof c === 'object') window.APP_CONFIG = Object.assign({}, window.APP_CONFIG || {}, c);
-    }).catch(function () {});
+    window.electron.invoke('get-app-config').then((c) => {
+        if (c && typeof c === 'object') {
+            window.APP_CONFIG = Object.assign({}, window.APP_CONFIG || {}, c);
+        }
+    }).catch(() => {});
 }
 
 class PageManager {
@@ -157,12 +160,16 @@ class PageManager {
         const settingsBtn = document.getElementById('settingsThemeDarkToggle');
         const settingsInput = document.getElementById('settingsThemeDark');
         const settingsText = document.getElementById('settingsThemeDarkToggleText');
-        if (settingsInput) settingsInput.value = enabled ? '1' : '0';
+        if (settingsInput) {
+            settingsInput.value = enabled ? '1' : '0';
+        }
         if (settingsBtn) {
             settingsBtn.setAttribute('aria-checked', enabled ? 'true' : 'false');
             settingsBtn.dataset.state = enabled ? 'on' : 'off';
         }
-        if (settingsText) settingsText.textContent = enabled ? 'ON' : 'OFF';
+        if (settingsText) {
+            settingsText.textContent = enabled ? 'ON' : 'OFF';
+        }
     }
 
     /**
@@ -184,16 +191,20 @@ class PageManager {
             /faviconV2/,
             /emoji-picker-element/,
             /picker\.js.*Emoji support detection/,
-            /checkZwjSupport/,
+            /checkZwjSupport/
         ];
 
         const shouldIgnore = (msg) => {
-            if (!msg) return false;
+            if (!msg) {
+                return false;
+            }
             return IGNORED_PATTERNS.some(p => p.test(String(msg)));
         };
 
         const send = (payload) => {
-            if (shouldIgnore(payload.errorMessage)) return;
+            if (shouldIgnore(payload.errorMessage)) {
+                return;
+            }
             try {
                 const blob = new Blob([JSON.stringify({
                     clientId,
@@ -320,7 +331,9 @@ class PageManager {
 
     attachSettingsNavListener() {
         const navSettings = document.getElementById('navSettings');
-        if (!navSettings || navSettings.dataset.listenerAttached) return;
+        if (!navSettings || navSettings.dataset.listenerAttached) {
+            return;
+        }
         navSettings.addEventListener('click', (e) => {
             e.preventDefault();
             this.showSettingsModal();
@@ -330,7 +343,9 @@ class PageManager {
 
     attachThemeNavListener() {
         const navTheme = document.getElementById('navThemeToggle');
-        if (!navTheme || navTheme.dataset.listenerAttached) return;
+        if (!navTheme || navTheme.dataset.listenerAttached) {
+            return;
+        }
         this.syncThemeToggleUI();
         navTheme.addEventListener('click', (e) => {
             e.preventDefault();
@@ -342,7 +357,9 @@ class PageManager {
     async loadAuthModal() {
         try {
             const response = await fetch('./components/auth-modal.html');
-            if (!response.ok) throw new Error('Auth modal not found');
+            if (!response.ok) {
+                throw new Error('Auth modal not found');
+            }
             const html = await response.text();
             document.getElementById('authModalContainer').innerHTML = html;
             this.attachAuthModalListeners();
@@ -465,7 +482,9 @@ class PageManager {
         const btnSettings = document.getElementById('btnSettings');
         const btnSettingsGuest = document.getElementById('btnSettingsGuest');
 
-        if (!navProfile || !profileDropdown || !btnLogin || !btnRegister || !btnLogout) return;
+        if (!navProfile || !profileDropdown || !btnLogin || !btnRegister || !btnLogout) {
+            return;
+        }
 
         navProfile.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -509,9 +528,13 @@ class PageManager {
 
     async checkUpdateInBackground() {
         try {
-            if (!window.electron?.invoke) return;
+            if (!window.electron?.invoke) {
+                return;
+            }
             // Éviter de spammer GitHub si init est rappelé
-            if (this._updateCheckedOnce) return;
+            if (this._updateCheckedOnce) {
+                return;
+            }
             this._updateCheckedOnce = true;
             const res = await window.electron.invoke('check-app-update', {});
             this._updateInfo = res;
@@ -524,10 +547,14 @@ class PageManager {
     async loadSettingsModal() {
         try {
             const response = await fetch('./components/settings-modal.html');
-            if (!response.ok) throw new Error('Settings modal not found');
+            if (!response.ok) {
+                throw new Error('Settings modal not found');
+            }
             const html = await response.text();
             const container = document.getElementById('settingsModalContainer');
-            if (container) container.innerHTML = html;
+            if (container) {
+                container.innerHTML = html;
+            }
             this.attachSettingsModalListeners();
             this.refreshUpdateUI();
         } catch (error) {
@@ -537,11 +564,17 @@ class PageManager {
 
     showSettingsModal() {
         const modal = document.getElementById('settingsModal');
-        if (!modal) return;
-        // Compte utilisateur retiré de l’UI — sections auth masquées si présentes
-        document.querySelectorAll('.settings-auth-only').forEach(el => { el.style.display = 'none'; });
+        if (!modal) {
+            return;
+        }
+        // Compte utilisateur retiré de l’UI : sections auth masquées si présentes
+        document.querySelectorAll('.settings-auth-only').forEach(el => {
+            el.style.display = 'none'; 
+        });
         const accountDropdown = document.getElementById('settingsDropdownAccount');
-        if (accountDropdown) accountDropdown.style.display = 'none';
+        if (accountDropdown) {
+            accountDropdown.style.display = 'none';
+        }
         this.syncThemeToggleUI();
         // Ne pas reset _updateDownloaded : le bouton Redémarrer doit rester disponible
         this.syncPendingUpdateFromMain().then(() => this.refreshUpdateUI());
@@ -550,7 +583,9 @@ class PageManager {
 
     async syncPendingUpdateFromMain() {
         try {
-            if (!window.electron?.invoke) return;
+            if (!window.electron?.invoke) {
+                return;
+            }
             const pending = await window.electron.invoke('get-pending-app-update', {});
             if (pending?.ready) {
                 this._updateDownloaded = true;
@@ -581,12 +616,18 @@ class PageManager {
         const btnDownloadUpdate = document.getElementById('settingsBtnDownloadUpdate');
         const btnRestartUpdate = document.getElementById('settingsBtnRestartUpdate');
 
-        if (!modal) return;
+        if (!modal) {
+            return;
+        }
 
         const hideModal = () => modal.classList.add('hidden');
 
-        if (closeBtn) closeBtn.addEventListener('click', hideModal);
-        if (overlay) overlay.addEventListener('click', hideModal);
+        if (closeBtn) {
+            closeBtn.addEventListener('click', hideModal);
+        }
+        if (overlay) {
+            overlay.addEventListener('click', hideModal);
+        }
         if (themeToggleBtn) {
             this.syncThemeToggleUI();
             themeToggleBtn.addEventListener('click', () => {
@@ -601,26 +642,44 @@ class PageManager {
             const progressWrap = document.getElementById('settingsUpdateProgress');
             const progressFill = document.getElementById('settingsUpdateProgressFill');
             const progressText = document.getElementById('settingsUpdateProgressText');
-            if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+            if (errEl) {
+                errEl.classList.add('hidden'); errEl.textContent = ''; 
+            }
             // Ne pas effacer un téléchargement déjà prêt sauf si l’utilisateur revérifie
-            if (hint && !this._updateDownloaded) hint.classList.add('hidden');
-            if (progressWrap) progressWrap.classList.add('hidden');
-            if (progressFill) progressFill.style.width = '0%';
-            if (progressText) progressText.textContent = '0%';
-            if (status) status.textContent = 'Vérification…';
+            if (hint && !this._updateDownloaded) {
+                hint.classList.add('hidden');
+            }
+            if (progressWrap) {
+                progressWrap.classList.add('hidden');
+            }
+            if (progressFill) {
+                progressFill.style.width = '0%';
+            }
+            if (progressText) {
+                progressText.textContent = '0%';
+            }
+            if (status) {
+                status.textContent = 'Vérification…';
+            }
             try {
                 if (!window.electron?.invoke) {
-                    if (status) status.textContent = 'Disponible uniquement dans l’application desktop';
+                    if (status) {
+                        status.textContent = 'Disponible uniquement dans l’application desktop';
+                    }
                     this._updateInfo = null;
                     this.refreshUpdateUI();
                     return;
                 }
                 const res = await window.electron.invoke('check-app-update', {});
                 this._updateInfo = res;
-                if (res?.updateReady) this._updateDownloaded = true;
+                if (res?.updateReady) {
+                    this._updateDownloaded = true;
+                }
                 this.refreshUpdateUI();
             } catch (e) {
-                if (status) status.textContent = 'Erreur de vérification';
+                if (status) {
+                    status.textContent = 'Erreur de vérification';
+                }
                 if (errEl) {
                     errEl.textContent = e?.message || String(e);
                     errEl.classList.remove('hidden');
@@ -628,7 +687,9 @@ class PageManager {
             }
         };
 
-        if (btnCheckUpdate) btnCheckUpdate.addEventListener('click', () => doCheckUpdate());
+        if (btnCheckUpdate) {
+            btnCheckUpdate.addEventListener('click', () => doCheckUpdate());
+        }
         if (btnDownloadUpdate) {
             btnDownloadUpdate.addEventListener('click', async () => {
                 const status = document.getElementById('settingsUpdateStatus');
@@ -637,25 +698,43 @@ class PageManager {
                 const progressWrap = document.getElementById('settingsUpdateProgress');
                 const progressFill = document.getElementById('settingsUpdateProgressFill');
                 const progressText = document.getElementById('settingsUpdateProgressText');
-                if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+                if (errEl) {
+                    errEl.classList.add('hidden'); errEl.textContent = ''; 
+                }
                 this._updateDownloaded = false;
-                if (hint) hint.classList.add('hidden');
+                if (hint) {
+                    hint.classList.add('hidden');
+                }
                 try {
-                    if (!window.electron?.invoke) throw new Error('Disponible uniquement dans l’application desktop');
+                    if (!window.electron?.invoke) {
+                        throw new Error('Disponible uniquement dans l’application desktop');
+                    }
                     btnDownloadUpdate.disabled = true;
-                    if (status) status.textContent = 'Téléchargement…';
-                    if (progressWrap) progressWrap.classList.remove('hidden');
-                    if (progressFill) progressFill.style.width = '0%';
-                    if (progressText) progressText.textContent = '0%';
+                    if (status) {
+                        status.textContent = 'Téléchargement…';
+                    }
+                    if (progressWrap) {
+                        progressWrap.classList.remove('hidden');
+                    }
+                    if (progressFill) {
+                        progressFill.style.width = '0%';
+                    }
+                    if (progressText) {
+                        progressText.textContent = '0%';
+                    }
                     const res = await window.electron.invoke('download-app-update', {});
                     if (!res?.success) {
                         throw new Error(res?.error || res?.detail || 'Téléchargement impossible');
                     }
-                    if (status) status.textContent = res?.latestVersion ? `Prête (v${res.latestVersion})` : 'Mise à jour prête';
+                    if (status) {
+                        status.textContent = res?.latestVersion ? `Prête (v${res.latestVersion})` : 'Mise à jour prête';
+                    }
                     this._updateDownloaded = true;
                     // Toast + hint via l'événement app-update-download-done (évite le double affichage)
                 } catch (e) {
-                    if (status) status.textContent = 'Erreur téléchargement';
+                    if (status) {
+                        status.textContent = 'Erreur téléchargement';
+                    }
                     if (errEl) {
                         errEl.textContent = e?.message || String(e);
                         errEl.classList.remove('hidden');
@@ -670,18 +749,28 @@ class PageManager {
             btnRestartUpdate.addEventListener('click', async () => {
                 const status = document.getElementById('settingsUpdateStatus');
                 const errEl = document.getElementById('settingsUpdateError');
-                if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
+                if (errEl) {
+                    errEl.classList.add('hidden'); errEl.textContent = ''; 
+                }
                 try {
-                    if (!window.electron?.invoke) throw new Error('Disponible uniquement dans l’application desktop');
+                    if (!window.electron?.invoke) {
+                        throw new Error('Disponible uniquement dans l’application desktop');
+                    }
                     btnRestartUpdate.disabled = true;
-                    if (status) status.textContent = 'Installation et redémarrage…';
+                    if (status) {
+                        status.textContent = 'Installation et redémarrage…';
+                    }
                     const res = await window.electron.invoke('install-app-update', {});
                     if (!res?.success) {
                         throw new Error(res?.error || 'Installation impossible');
                     }
-                    if (status) status.textContent = res?.message || 'Redémarrage…';
+                    if (status) {
+                        status.textContent = res?.message || 'Redémarrage…';
+                    }
                 } catch (e) {
-                    if (status) status.textContent = 'Erreur installation';
+                    if (status) {
+                        status.textContent = 'Erreur installation';
+                    }
                     if (errEl) {
                         errEl.textContent = e?.message || String(e);
                         errEl.classList.remove('hidden');
@@ -700,16 +789,30 @@ class PageManager {
                 const progressFill = document.getElementById('settingsUpdateProgressFill');
                 const progressText = document.getElementById('settingsUpdateProgressText');
                 const status = document.getElementById('settingsUpdateStatus');
-                if (progressWrap) progressWrap.classList.remove('hidden');
+                if (progressWrap) {
+                    progressWrap.classList.remove('hidden');
+                }
                 const percent = typeof p?.percent === 'number' ? p.percent : null;
                 if (percent != null) {
-                    if (progressFill) progressFill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
-                    if (progressText) progressText.textContent = `${Math.max(0, Math.min(100, percent))}%`;
-                    if (status) status.textContent = `Téléchargement… ${Math.max(0, Math.min(100, percent))}%`;
+                    if (progressFill) {
+                        progressFill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+                    }
+                    if (progressText) {
+                        progressText.textContent = `${Math.max(0, Math.min(100, percent))}%`;
+                    }
+                    if (status) {
+                        status.textContent = `Téléchargement… ${Math.max(0, Math.min(100, percent))}%`;
+                    }
                 } else {
-                    if (progressFill) progressFill.style.width = '100%';
-                    if (progressText) progressText.textContent = '…';
-                    if (status) status.textContent = 'Téléchargement…';
+                    if (progressFill) {
+                        progressFill.style.width = '100%';
+                    }
+                    if (progressText) {
+                        progressText.textContent = '…';
+                    }
+                    if (status) {
+                        status.textContent = 'Téléchargement…';
+                    }
                 }
             });
             window.electron.on('app-update-download-done', (payload) => {
@@ -719,10 +822,16 @@ class PageManager {
                 const progressWrap = document.getElementById('settingsUpdateProgress');
                 const btnDownload = document.getElementById('settingsBtnDownloadUpdate');
                 if (payload?.success) {
-                    if (errEl) { errEl.classList.add('hidden'); errEl.textContent = ''; }
-                    if (status) status.textContent = payload?.latestVersion ? `Prête (v${payload.latestVersion})` : 'Mise à jour prête';
+                    if (errEl) {
+                        errEl.classList.add('hidden'); errEl.textContent = ''; 
+                    }
+                    if (status) {
+                        status.textContent = payload?.latestVersion ? `Prête (v${payload.latestVersion})` : 'Mise à jour prête';
+                    }
                     this._updateDownloaded = true;
-                    if (hint) hint.classList.remove('hidden');
+                    if (hint) {
+                        hint.classList.remove('hidden');
+                    }
                     if (this.showNotification && payload?.needsRestart !== false) {
                         this.showNotification(
                             'Mise à jour téléchargée. Redémarrez pour l’appliquer.',
@@ -731,20 +840,28 @@ class PageManager {
                     }
                 } else {
                     this._updateDownloaded = false;
-                    if (status) status.textContent = 'Erreur téléchargement';
+                    if (status) {
+                        status.textContent = 'Erreur téléchargement';
+                    }
                     if (errEl) {
                         errEl.textContent = payload?.error || 'Téléchargement impossible';
                         errEl.classList.remove('hidden');
                     }
                 }
-                if (progressWrap) progressWrap.classList.add('hidden');
-                if (btnDownload) btnDownload.disabled = true;
+                if (progressWrap) {
+                    progressWrap.classList.add('hidden');
+                }
+                if (btnDownload) {
+                    btnDownload.disabled = true;
+                }
                 this.refreshUpdateUI();
             });
         }
 
         // Check automatique (non bloquant) quand la modale est chargée
-        setTimeout(() => { doCheckUpdate(); }, 200);
+        setTimeout(() => {
+            doCheckUpdate(); 
+        }, 200);
 
         if (formUsername) {
             formUsername.addEventListener('submit', async (e) => {
@@ -753,16 +870,24 @@ class PageManager {
                 const input = document.getElementById('settingsNewUsername');
                 const newUsername = (input && input.value || '').trim();
                 if (!newUsername || newUsername.length < 3) {
-                    if (errEl) { errEl.textContent = 'Le pseudo doit faire entre 3 et 20 caractères.'; errEl.classList.remove('hidden'); }
+                    if (errEl) {
+                        errEl.textContent = 'Le pseudo doit faire entre 3 et 20 caractères.'; errEl.classList.remove('hidden'); 
+                    }
                     return;
                 }
-                if (errEl) errEl.classList.add('hidden');
+                if (errEl) {
+                    errEl.classList.add('hidden');
+                }
                 const result = await this.authManager.updateUsername(newUsername);
                 if (result.success) {
                     hideModal();
-                    if (this.showNotification) this.showNotification('Pseudo mis à jour.', 'success');
+                    if (this.showNotification) {
+                        this.showNotification('Pseudo mis à jour.', 'success');
+                    }
                 } else {
-                    if (errEl) { errEl.textContent = result.message || 'Erreur'; errEl.classList.remove('hidden'); }
+                    if (errEl) {
+                        errEl.textContent = result.message || 'Erreur'; errEl.classList.remove('hidden'); 
+                    }
                 }
             });
         }
@@ -775,18 +900,26 @@ class PageManager {
                 const newPwd = document.getElementById('settingsNewPassword').value;
                 const confirm = document.getElementById('settingsNewPasswordConfirm').value;
                 if (newPwd !== confirm) {
-                    if (errEl) { errEl.textContent = 'Les deux mots de passe ne correspondent pas.'; errEl.classList.remove('hidden'); return; }
+                    if (errEl) {
+                        errEl.textContent = 'Les deux mots de passe ne correspondent pas.'; errEl.classList.remove('hidden'); return; 
+                    }
                 }
-                if (errEl) errEl.classList.add('hidden');
+                if (errEl) {
+                    errEl.classList.add('hidden');
+                }
                 const result = await this.authManager.changePassword(current, newPwd);
                 if (result.success) {
                     hideModal();
-                    if (this.showNotification) this.showNotification('Mot de passe modifié.', 'success');
+                    if (this.showNotification) {
+                        this.showNotification('Mot de passe modifié.', 'success');
+                    }
                     document.getElementById('settingsCurrentPassword').value = '';
                     document.getElementById('settingsNewPassword').value = '';
                     document.getElementById('settingsNewPasswordConfirm').value = '';
                 } else {
-                    if (errEl) { errEl.textContent = result.message || 'Erreur'; errEl.classList.remove('hidden'); }
+                    if (errEl) {
+                        errEl.textContent = result.message || 'Erreur'; errEl.classList.remove('hidden'); 
+                    }
                 }
             });
         }
@@ -794,13 +927,19 @@ class PageManager {
         if (btnDeleteAccount) {
             btnDeleteAccount.addEventListener('click', () => {
                 document.getElementById('settingsDeleteError').classList.add('hidden');
-                if (deleteConfirm) deleteConfirm.classList.remove('hidden');
-                if (deletePassword) deletePassword.value = '';
+                if (deleteConfirm) {
+                    deleteConfirm.classList.remove('hidden');
+                }
+                if (deletePassword) {
+                    deletePassword.value = '';
+                }
             });
         }
         if (deleteCancelBtn) {
             deleteCancelBtn.addEventListener('click', () => {
-                if (deleteConfirm) deleteConfirm.classList.add('hidden');
+                if (deleteConfirm) {
+                    deleteConfirm.classList.add('hidden');
+                }
                 document.getElementById('settingsDeleteConfirmError').classList.add('hidden');
             });
         }
@@ -809,15 +948,21 @@ class PageManager {
                 const errEl = document.getElementById('settingsDeleteConfirmError');
                 const password = deletePassword.value;
                 if (!password) {
-                    if (errEl) { errEl.textContent = 'Saisissez votre mot de passe.'; errEl.classList.remove('hidden'); return; }
+                    if (errEl) {
+                        errEl.textContent = 'Saisissez votre mot de passe.'; errEl.classList.remove('hidden'); return; 
+                    }
                 }
-                if (errEl) errEl.classList.add('hidden');
+                if (errEl) {
+                    errEl.classList.add('hidden');
+                }
                 const result = await this.authManager.deleteAccount(password);
                 if (result.success) {
                     hideModal();
                     window.location.reload();
                 } else {
-                    if (errEl) { errEl.textContent = result.message || 'Erreur'; errEl.classList.remove('hidden'); }
+                    if (errEl) {
+                        errEl.textContent = result.message || 'Erreur'; errEl.classList.remove('hidden'); 
+                    }
                 }
             });
         }
@@ -836,20 +981,31 @@ class PageManager {
         const available = !!(info && info.success && info.available);
         const readyToInstall = !!this._updateDownloaded;
 
-        if (badgeUser) badgeUser.classList.toggle('hidden', !available && !readyToInstall);
-        if (badgeGuest) badgeGuest.classList.toggle('hidden', !available && !readyToInstall);
-        if (ping) ping.classList.toggle('hidden', !available && !readyToInstall);
+        if (badgeUser) {
+            badgeUser.classList.toggle('hidden', !available && !readyToInstall);
+        }
+        if (badgeGuest) {
+            badgeGuest.classList.toggle('hidden', !available && !readyToInstall);
+        }
+        if (ping) {
+            ping.classList.toggle('hidden', !available && !readyToInstall);
+        }
 
         if (status) {
-            if (!window.electron?.invoke) status.textContent = 'Disponible uniquement dans l’application desktop';
-            else if (readyToInstall) {
+            if (!window.electron?.invoke) {
+                status.textContent = 'Disponible uniquement dans l’application desktop';
+            } else if (readyToInstall) {
                 const v = info?.latestVersion;
-                status.textContent = v ? `Prête à installer (v${v})` : 'Mise à jour prête — redémarrez pour appliquer';
+                status.textContent = v ? `Prête à installer (v${v})` : 'Mise à jour prête : redémarrez pour appliquer';
+            } else if (!info) {
+                status.textContent = 'Vérification…';
+            } else if (!info.success) {
+                status.textContent = info.error ? `Vérification impossible (${info.error})` : 'Vérification impossible';
+            } else if (available) {
+                status.textContent = `Mise à jour disponible : v${info.latestVersion} (actuelle v${info.currentVersion})`;
+            } else {
+                status.textContent = `À jour (v${info.currentVersion})`;
             }
-            else if (!info) status.textContent = 'Vérification…';
-            else if (!info.success) status.textContent = info.error ? `Vérification impossible (${info.error})` : 'Vérification impossible';
-            else if (available) status.textContent = `Mise à jour disponible : v${info.latestVersion} (actuelle v${info.currentVersion})`;
-            else status.textContent = `À jour (v${info.currentVersion})`;
         }
 
         if (btnDownload) {
@@ -914,7 +1070,9 @@ class PageManager {
     trackPageVisit(pageName) {
         try {
             // Ne pas tracker la page d'accueil pour éviter les doublons
-            if (pageName === 'home') return;
+            if (pageName === 'home') {
+                return;
+            }
 
             // Créer le gestionnaire s'il n'existe pas
             if (!window.recentItemsManager) {
@@ -944,7 +1102,9 @@ class PageManager {
                 return;
             }
             element.innerHTML = html;
-            if (onLoad) onLoad();
+            if (onLoad) {
+                onLoad();
+            }
         } catch (error) {
             logger.error(`❌ Erreur chargement ${elementId}:`, error);
         }
@@ -953,10 +1113,14 @@ class PageManager {
     async loadComponent(elementId, url, onLoad) {
         try {
             const response = await fetch(url);
-            if (!response.ok) throw new Error(`Component ${elementId} not found`);
+            if (!response.ok) {
+                throw new Error(`Component ${elementId} not found`);
+            }
             const html = await response.text();
             document.getElementById(elementId).innerHTML = html;
-            if (onLoad) onLoad();
+            if (onLoad) {
+                onLoad();
+            }
         } catch (error) {
             logger.error(`❌ Erreur chargement ${elementId}:`, error);
         }
@@ -986,11 +1150,15 @@ class PageManager {
      */
     updateFooterVersion() {
         const el = document.getElementById('footer-app-version');
-        if (!el) return;
+        if (!el) {
+            return;
+        }
         if (typeof window.electron?.invoke === 'function') {
             window.electron.invoke('get-app-config')
                 .then(config => {
-                    if (config?.appVersion) el.textContent = 'V' + config.appVersion;
+                    if (config?.appVersion) {
+                        el.textContent = `V${  config.appVersion}`;
+                    }
                 })
                 .catch(() => {});
         }
@@ -1002,10 +1170,14 @@ class PageManager {
      */
     attachFooterExternalLinks() {
         const footer = document.getElementById('footer');
-        if (!footer) return;
+        if (!footer) {
+            return;
+        }
         footer.addEventListener('click', (e) => {
             const a = e.target.closest('a[href^="http"]');
-            if (!a || !a.href) return;
+            if (!a || !a.href) {
+                return;
+            }
             if (typeof window.electron !== 'undefined' && (window.electron.openExternal || window.electron.invoke)) {
                 e.preventDefault();
                 e.stopPropagation();
@@ -1019,10 +1191,14 @@ class PageManager {
      * Ferme tous les <dialog> dans un conteneur (évite que les modales s'ouvrent automatiquement après injection HTML).
      */
     closeAllDialogsIn(container) {
-        if (!container || !container.querySelectorAll) return;
+        if (!container || !container.querySelectorAll) {
+            return;
+        }
         const dialogs = container.querySelectorAll('dialog');
         dialogs.forEach(dialog => {
-            if (typeof dialog.close === 'function') dialog.close();
+            if (typeof dialog.close === 'function') {
+                dialog.close();
+            }
             dialog.removeAttribute('open');
             const id = dialog.id;
             if (id && window.modalManager && typeof window.modalManager.forget === 'function') {
@@ -1062,7 +1238,9 @@ class PageManager {
             // Si c'est une sous-page de réception, charger d'abord reception.html
             if (isReceptionSubPage) {
                 const receptionResponse = await fetch('./pages/reception.html');
-                if (!receptionResponse.ok) throw new Error(`HTTP error! status: ${receptionResponse.status}`);
+                if (!receptionResponse.ok) {
+                    throw new Error(`HTTP error! status: ${receptionResponse.status}`);
+                }
                 let receptionHtml = await receptionResponse.text();
                 receptionHtml = this.transformFileManagers(receptionHtml);
                 receptionHtml = this.transformAppManagers(receptionHtml);
@@ -1073,7 +1251,9 @@ class PageManager {
                 // Puis charger la sous-page dans recep-section
                 const pagePath = `./pages/reception-pages/${pageName}.html`;
                 const response = await fetch(pagePath);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 let html = await response.text();
                 html = this.transformFileManagers(html);
                 html = this.transformAppManagers(html);
@@ -1093,9 +1273,11 @@ class PageManager {
                 }
                 
                 // Déterminer le chemin de la page
-                let pagePath = `./pages/${pageName}.html`;
+                const pagePath = `./pages/${pageName}.html`;
                 const response = await fetch(pagePath);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 
                 let html = await response.text();
                 html = this.transformFileManagers(html);
@@ -1126,7 +1308,9 @@ class PageManager {
             if (isReceptionSubPage) {
                 requestAnimationFrame(() => {
                     const recepSection = document.querySelector('.recep-section');
-                    if (recepSection) recepSection.scrollTop = 0;
+                    if (recepSection) {
+                        recepSection.scrollTop = 0;
+                    }
                 });
             }
         } catch (error) {
@@ -1351,7 +1535,9 @@ class PageManager {
 
     async initializeFileManagers() {
         const fmContainers = document.querySelectorAll('.filemanager[data-fm]');
-        if (!fmContainers.length) return;
+        if (!fmContainers.length) {
+            return;
+        }
 
         try {
             const [managerModule, configModule] = await Promise.all([
@@ -1372,7 +1558,7 @@ class PageManager {
                 const cfg = folderConfig.resolvePreset(key);
 
                 // Construire le markup interne
-                container.innerHTML = `<div class="folders-list"></div>`;
+                container.innerHTML = '<div class="folders-list"></div>';
 
                 const manager = new FolderManager({
                     scope: container,
@@ -1403,7 +1589,9 @@ class PageManager {
             todayEvents.sort((a, b) => a.start.localeCompare(b.start));
 
             const homeSection = document.querySelector('.home.section');
-            if (!homeSection) return;
+            if (!homeSection) {
+                return;
+            }
             
             const blockContents = homeSection.querySelectorAll('.block-content');
             const calendarContent = blockContents[1];
@@ -1418,7 +1606,7 @@ class PageManager {
                         const startTime = event.start.substring(11, 16);
                         const endTime = event.end.substring(11, 16);
                         const eventColor = event.color || '#3788d8';
-                        const backgroundColor = eventColor + '20';
+                        const backgroundColor = `${eventColor  }20`;
                         return `
                             <div class="home-event-item" data-bg-color="${esc(backgroundColor)}">
                                 <div class="home-event-item-title">${esc(event.title)}</div>
@@ -1467,21 +1655,30 @@ class PageManager {
         const duration = options.duration ?? (options.onUndo ? 5000 : 3000);
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
-        if (options.onUndo) notification.classList.add('has-action');
-        if (options.position === 'bottom') notification.classList.add('notification--bottom');
+        if (options.onUndo) {
+            notification.classList.add('has-action');
+        }
+        if (options.position === 'bottom') {
+            notification.classList.add('notification--bottom');
+        }
         notification.setAttribute('role', 'status');
 
         let icon = '<i class="fa-solid fa-circle-info"></i>';
-        if (type === 'success') icon = '<i class="fa-solid fa-check-circle"></i>';
-        else if (type === 'error') icon = '<i class="fa-solid fa-exclamation-circle"></i>';
-        else if (type === 'warning') icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
+        if (type === 'success') {
+            icon = '<i class="fa-solid fa-check-circle"></i>';
+        } else if (type === 'error') {
+            icon = '<i class="fa-solid fa-exclamation-circle"></i>';
+        } else if (type === 'warning') {
+            icon = '<i class="fa-solid fa-triangle-exclamation"></i>';
+        }
 
-        notification.innerHTML = '<span class="notification-icon">' + icon + '</span>';
+        notification.innerHTML = `<span class="notification-icon">${  icon  }</span>`;
         const messageSpan = document.createElement('span');
         messageSpan.className = 'notification-message';
         messageSpan.textContent = String(message);
         notification.appendChild(messageSpan);
 
+        // eslint-disable-next-line prefer-const -- affecté après la définition de dismiss
         let hideTimer;
         const dismiss = () => {
             clearTimeout(hideTimer);
@@ -1539,7 +1736,9 @@ class PageManager {
         const buttons = document.querySelectorAll('[data-page]');
         
         buttons.forEach(button => {
-            if (button.dataset.receptionPage === 'true') return;
+            if (button.dataset.receptionPage === 'true') {
+                return;
+            }
             if (!button.dataset.listenerAttached) {
                 button.addEventListener('click', (event) => {
                     event.preventDefault();
@@ -1575,14 +1774,16 @@ class PageManager {
             prets: 'Prêts de matériel'
         };
         const titleEl = document.getElementById('reception-page-title');
-        if (titleEl) titleEl.textContent = titles[pageName] || 'Réception';
+        if (titleEl) {
+            titleEl.textContent = titles[pageName] || 'Réception';
+        }
 
         // Synchroniser l'icône du h2 avec celle du bouton actif de la sidebar
         const mainTitleIcon = document.querySelector('.r-main-title-icon');
         const activeBtn = document.querySelector(`[data-reception-page="true"][data-page="${pageName}"]`);
         const sidebarIcon = activeBtn?.querySelector('.r-nav-icon i');
         if (mainTitleIcon && sidebarIcon) {
-            mainTitleIcon.className = 'r-main-title-icon ' + (sidebarIcon.className || '').trim();
+            mainTitleIcon.className = `r-main-title-icon ${  (sidebarIcon.className || '').trim()}`;
         } else if (mainTitleIcon) {
             mainTitleIcon.className = 'r-main-title-icon fa-solid fa-folder-open';
         }
@@ -1592,7 +1793,7 @@ class PageManager {
         const descriptions = {
             entrer: 'Saisissez les numéros de série et les informations des machines.',
             inventaire: 'Gérez l\'état des PC et assignez les techniciens.',
-            historique: 'Archives des lots, disques, commandes, dons et prêts — détails, édition, PDF et email.',
+            historique: 'Archives des lots, disques, commandes, dons et prêts : détails, édition, PDF et email.',
             disques: 'Saisissez les disques puis enregistrez en traçabilité.',
             commande: 'Constituer une liste de produits et générer le PDF.',
             dons: 'Enregistrez les dons de matériel aux stagiaires et générez le certificat.',
@@ -1600,10 +1801,15 @@ class PageManager {
         };
         const descEl = document.getElementById('reception-page-desc');
         const descTextEl = document.getElementById('reception-page-desc-text');
-        if (!descEl) return;
+        if (!descEl) {
+            return;
+        }
         const text = descriptions[pageName] || '';
-        if (descTextEl) descTextEl.textContent = text;
-        else descEl.textContent = text;
+        if (descTextEl) {
+            descTextEl.textContent = text;
+        } else {
+            descEl.textContent = text;
+        }
         descEl.classList.toggle('is-empty', !text);
     }
 
@@ -1611,7 +1817,9 @@ class PageManager {
         const body = document.body;
         const html = document.documentElement;
         const root = document.querySelector('.r-root');
-        if (!body || !root || !html) return;
+        if (!body || !root || !html) {
+            return;
+        }
         const onlyHistorique = !!isReceptionSubPage && pageName === 'historique';
         body.classList.toggle('reception-single-scroll', onlyHistorique);
         html.classList.toggle('reception-single-scroll', onlyHistorique);

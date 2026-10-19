@@ -27,7 +27,7 @@ module.exports = {
         'semi': ['error', 'always'],
         'quotes': ['error', 'single', { avoidEscape: true }],
         'comma-dangle': ['error', 'never'],
-        'indent': ['error', 2, { SwitchCase: 1 }],
+        'indent': ['error', 4, { SwitchCase: 1 }],
         'max-len': ['warn', { 
             code: 100, 
             ignoreUrls: true,
@@ -36,7 +36,8 @@ module.exports = {
         }],
         
         // Bonnes pratiques
-        'eqeqeq': ['error', 'always'],
+        'eqeqeq': ['error', 'always', { null: 'ignore' }],
+        'no-empty': ['error', { allowEmptyCatch: true }],
         'curly': ['error', 'all'],
         'brace-style': ['error', '1tbs'],
         'no-var': 'error',

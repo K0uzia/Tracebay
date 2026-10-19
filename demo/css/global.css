@@ -29,7 +29,7 @@
 /* Overrides dark réception (après pages + modal pour gagner la cascade) */
 @import url(./modules/receptions/recep-dark.css);
 
-/* Thème clair — après recep-dark pour écraser couleurs hardcodées */
+/* Thème clair : après recep-dark pour écraser couleurs hardcodées */
 @import url(./default/theme-light.css);
 
 /* ---------- Notifications toast ---------- */
@@ -185,7 +185,7 @@ textarea:focus-visible,
     outline-offset: 2px;
 }
 
-/* Thème clair — toasts (après règles .notification du fichier) */
+/* Thème clair : toasts (après règles .notification du fichier) */
 html[data-theme-dark="0"] .notification {
     color: #0d1117 !important;
     box-shadow: 0 8px 24px rgba(13, 17, 23, 0.1) !important;

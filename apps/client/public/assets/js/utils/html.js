@@ -1,6 +1,8 @@
 /** Échappe une valeur pour l'insérer dans un gabarit HTML (innerHTML). */
 export function escapeHtml(value) {
-    if (value == null) return '';
+    if (value == null) {
+        return '';
+    }
     return String(value)
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')

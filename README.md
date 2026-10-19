@@ -63,7 +63,7 @@ Le client communique en HTTP JSON. Les URL sont définies dans `connection.json`
 
 ```mermaid
 flowchart LR
-    subgraph CLIENT["Poste — Electron"]
+    subgraph CLIENT["Poste : Electron"]
         R["Renderer"]
         A["api.js · JWT"]
         M["main.js · preload"]
@@ -88,7 +88,7 @@ flowchart LR
 ├── docs/                 Documentation technique (client / API contrat)
 └── .github/              CI client, modèles d’issues et de PR
 
-# Branche proxmox (backend / serveur) — clone séparé ou checkout de cette branche
+# Branche proxmox (backend / serveur) : clone séparé ou checkout de cette branche
 └── proxmox/              API, Docker, scripts d’install
 ```
 

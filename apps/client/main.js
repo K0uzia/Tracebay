@@ -63,10 +63,10 @@ if (!currentConfig || !currentConfig.url) {
     currentConfig = { url: 'http://localhost:8060', ws: 'ws://localhost:8060' };
 }
 
-let SERVER_URL = currentConfig.url;
-let SERVER_WS_URL = currentConfig.ws;
+const SERVER_URL = currentConfig.url;
+const SERVER_WS_URL = currentConfig.ws;
 const healthEndpoint = serverConfig.endpoints?.health || '/api/health';
-let SERVER_HEALTH_ENDPOINT = `${SERVER_URL}${healthEndpoint}`;
+const SERVER_HEALTH_ENDPOINT = `${SERVER_URL}${healthEndpoint}`;
 const MAX_RETRY_ATTEMPTS = 10;
 const RETRY_INTERVAL = 500;
 
@@ -104,7 +104,9 @@ if (!gotSingleInstanceLock) {
             ? mainWindow
             : ((splashWindow && !splashWindow.isDestroyed()) ? splashWindow : null);
 
-        if (!targetWindow) return;
+        if (!targetWindow) {
+            return;
+        }
         if (targetWindow.isMinimized && targetWindow.isMinimized()) {
             targetWindow.restore();
         }
@@ -117,9 +119,11 @@ if (!gotSingleInstanceLock) {
  * Sous Linux AppImage : crée une copie .bak de l'AppImage actuelle (à appeler dès qu'une MAJ est disponible).
  */
 function linuxAppImageBackup(currentAppPath) {
-    if (process.platform !== 'linux' || !currentAppPath) return;
+    if (process.platform !== 'linux' || !currentAppPath) {
+        return;
+    }
     try {
-        const bakPath = currentAppPath + '.bak';
+        const bakPath = `${currentAppPath  }.bak`;
         if (!fs.existsSync(bakPath)) {
             fs.copyFileSync(currentAppPath, bakPath);
             console.log('[Update] Sauvegarde créée:', bakPath);
@@ -131,17 +135,23 @@ function linuxAppImageBackup(currentAppPath) {
 
 /**
  * Sous Linux AppImage : script détaché qui attend la mort du process, remplace le fichier
- * (avec retries — le mount AppImage peut encore tenir le fichier), puis relance.
+ * (avec retries : le mount AppImage peut encore tenir le fichier), puis relance.
  * À lancer uniquement au clic « Redémarrer », pas au téléchargement.
  */
 function tryLinuxAppImageUpdateHelper(currentAppPath, newAppPath) {
-    if (process.platform !== 'linux' || !currentAppPath || !newAppPath) return false;
-    if (!fs.existsSync(newAppPath)) return false;
+    if (process.platform !== 'linux' || !currentAppPath || !newAppPath) {
+        return false;
+    }
+    if (!fs.existsSync(newAppPath)) {
+        return false;
+    }
     try {
         const dir = path.dirname(currentAppPath);
         const finalPath = currentAppPath;
         const tempDir = path.join(app.getPath('temp'), 'workspace-manual-update');
-        try { fs.mkdirSync(tempDir, { recursive: true }); } catch (_) { /* ignore */ }
+        try {
+            fs.mkdirSync(tempDir, { recursive: true }); 
+        } catch (_) { /* ignore */ }
         const logFile = path.join(tempDir, 'appimage-update.log');
         const scriptPath = path.join(tempDir, 'appimage-update.sh');
 
@@ -157,7 +167,7 @@ while kill -0 "$WS_APPIMAGE_PID" 2>/dev/null; do
   sleep 0.3
   i=$((i + 1))
   if [ "$i" -gt 200 ]; then
-    log "timeout waiting for pid $WS_APPIMAGE_PID — continue anyway"
+    log "timeout waiting for pid $WS_APPIMAGE_PID : continue anyway"
     break
   fi
 done
@@ -218,7 +228,9 @@ log "launch issued, done"
 exit 0
 `;
         fs.writeFileSync(scriptPath, scriptBody, { encoding: 'utf8', mode: 0o755 });
-        try { fs.chmodSync(scriptPath, 0o755); } catch (_) { /* ignore */ }
+        try {
+            fs.chmodSync(scriptPath, 0o755); 
+        } catch (_) { /* ignore */ }
 
         const env = {
             ...process.env,
@@ -231,7 +243,9 @@ exit 0
         const shells = ['/bin/sh', '/usr/bin/sh', '/bin/bash', '/usr/bin/bash'];
         for (const shellPath of shells) {
             try {
-                if (!fs.existsSync(shellPath)) continue;
+                if (!fs.existsSync(shellPath)) {
+                    continue;
+                }
                 const child = spawn(shellPath, [scriptPath], {
                     detached: true,
                     stdio: 'ignore',
@@ -260,11 +274,21 @@ exit 0
 
 function tryLinuxAppImageUpdateHelperDetailed(currentAppPath, newAppPath) {
     try {
-        if (process.platform !== 'linux') return { ok: false, error: 'Plateforme non supportée' };
-        if (!currentAppPath) return { ok: false, error: 'APPIMAGE vide' };
-        if (!fs.existsSync(currentAppPath)) return { ok: false, error: `APPIMAGE introuvable: ${currentAppPath}` };
-        if (!newAppPath) return { ok: false, error: 'Chemin de téléchargement vide' };
-        if (!fs.existsSync(newAppPath)) return { ok: false, error: `Fichier téléchargé introuvable: ${newAppPath}` };
+        if (process.platform !== 'linux') {
+            return { ok: false, error: 'Plateforme non supportée' };
+        }
+        if (!currentAppPath) {
+            return { ok: false, error: 'APPIMAGE vide' };
+        }
+        if (!fs.existsSync(currentAppPath)) {
+            return { ok: false, error: `APPIMAGE introuvable: ${currentAppPath}` };
+        }
+        if (!newAppPath) {
+            return { ok: false, error: 'Chemin de téléchargement vide' };
+        }
+        if (!fs.existsSync(newAppPath)) {
+            return { ok: false, error: `Fichier téléchargé introuvable: ${newAppPath}` };
+        }
         try {
             fs.accessSync(path.dirname(currentAppPath), fs.constants.W_OK);
         } catch (_) {
@@ -289,18 +313,22 @@ function tryLinuxAppImageUpdateHelperDetailed(currentAppPath, newAppPath) {
  * mises à jour remplacent le .deb déjà installé et que les scripts machines
  * (autostart) continuent de fonctionner. Le nom affiché UI reste Tracebay.
  *
- * Important : ne jamais lancer dpkg/pkexec tant que l’app tourne — les binaires
+ * Important : ne jamais lancer dpkg/pkexec tant que l’app tourne : les binaires
  * sous /usr/lib/workspace sont ouverts, et pkexec détaché + quit immédiat
  * tue souvent la session d’auth sans installer.
  */
 function tryLinuxDebUpdateHelper(debPath) {
-    if (process.platform !== 'linux') return { ok: false, error: 'Plateforme non supportée' };
+    if (process.platform !== 'linux') {
+        return { ok: false, error: 'Plateforme non supportée' };
+    }
     if (!debPath || !fs.existsSync(debPath)) {
         return { ok: false, error: `Paquet .deb introuvable: ${debPath || ''}` };
     }
     try {
         const tempDir = path.join(app.getPath('temp'), 'workspace-manual-update');
-        try { fs.mkdirSync(tempDir, { recursive: true }); } catch (_) { /* ignore */ }
+        try {
+            fs.mkdirSync(tempDir, { recursive: true }); 
+        } catch (_) { /* ignore */ }
 
         // Copie stable : le helper doit encore voir le fichier après la fermeture
         const stableDeb = path.join(tempDir, 'workspace-install.deb');
@@ -341,7 +369,9 @@ log "FAIL dpkg -i définitif"
 exit 1
 `;
         fs.writeFileSync(installScriptPath, installRootBody, { encoding: 'utf8', mode: 0o755 });
-        try { fs.chmodSync(installScriptPath, 0o755); } catch (_) { /* ignore */ }
+        try {
+            fs.chmodSync(installScriptPath, 0o755); 
+        } catch (_) { /* ignore */ }
 
         const scriptBody = `#!/bin/sh
 log() { echo "$(date '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || date) $*" >> "$WS_DEB_LOG" 2>/dev/null || true; }
@@ -353,7 +383,7 @@ while kill -0 "$WS_DEB_PID" 2>/dev/null; do
   sleep 0.25
   i=$((i + 1))
   if [ "$i" -gt 240 ]; then
-    log "timeout waiting for pid $WS_DEB_PID — force continue"
+    log "timeout waiting for pid $WS_DEB_PID : force continue"
     break
   fi
 done
@@ -402,7 +432,7 @@ else
 fi
 
 if [ "$install_ok" -ne 1 ]; then
-  log "FAIL installation .deb échouée — ouvrir manuellement: $WS_DEB_PATH"
+  log "FAIL installation .deb échouée : ouvrir manuellement: $WS_DEB_PATH"
   if command -v xdg-open >/dev/null 2>&1; then
     xdg-open "$WS_DEB_PATH" >/dev/null 2>&1 || true
   fi
@@ -438,7 +468,9 @@ log "launch issued, done"
 exit 0
 `;
         fs.writeFileSync(scriptPath, scriptBody, { encoding: 'utf8', mode: 0o755 });
-        try { fs.chmodSync(scriptPath, 0o755); } catch (_) { /* ignore */ }
+        try {
+            fs.chmodSync(scriptPath, 0o755); 
+        } catch (_) { /* ignore */ }
 
         const env = {
             ...process.env,
@@ -451,7 +483,9 @@ exit 0
         const shells = ['/bin/sh', '/usr/bin/sh', '/bin/bash', '/usr/bin/bash'];
         for (const shellPath of shells) {
             try {
-                if (!fs.existsSync(shellPath)) continue;
+                if (!fs.existsSync(shellPath)) {
+                    continue;
+                }
                 const child = spawn(shellPath, [scriptPath], {
                     detached: true,
                     stdio: 'ignore',
@@ -488,8 +522,12 @@ function compareSemver(a, b) {
     for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
         const da = pa[i] || 0;
         const db = pb[i] || 0;
-        if (da > db) return 1;
-        if (da < db) return -1;
+        if (da > db) {
+            return 1;
+        }
+        if (da < db) {
+            return -1;
+        }
     }
     return 0;
 }
@@ -501,11 +539,17 @@ function compareSemver(a, b) {
 function getInstallPackageType() {
     if (process.platform === 'linux') {
         const appImage = process.env.APPIMAGE;
-        if (appImage && fs.existsSync(appImage)) return 'AppImage';
+        if (appImage && fs.existsSync(appImage)) {
+            return 'AppImage';
+        }
         return 'deb';
     }
-    if (process.platform === 'darwin') return 'dmg';
-    if (process.platform === 'win32') return 'nsis';
+    if (process.platform === 'darwin') {
+        return 'dmg';
+    }
+    if (process.platform === 'win32') {
+        return 'nsis';
+    }
     return 'unknown';
 }
 
@@ -524,19 +568,29 @@ function githubLatestDownloadUrl(fileName) {
 }
 
 function latestYmlFileName(packageType = getInstallPackageType()) {
-    if (packageType === 'dmg') return 'latest-mac.yml';
-    if (packageType === 'nsis') return 'latest.yml';
+    if (packageType === 'dmg') {
+        return 'latest-mac.yml';
+    }
+    if (packageType === 'nsis') {
+        return 'latest.yml';
+    }
     return 'latest-linux.yml';
 }
 
 function defaultAssetFileName(packageType = getInstallPackageType()) {
-    if (packageType === 'AppImage') return 'workspace.AppImage';
-    if (packageType === 'deb') return 'workspace.deb';
+    if (packageType === 'AppImage') {
+        return 'workspace.AppImage';
+    }
+    if (packageType === 'deb') {
+        return 'workspace.deb';
+    }
     if (packageType === 'dmg') {
         const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
         return `Tracebay-${app.getVersion?.() || '0.0.0'}-${arch}.dmg`;
     }
-    if (packageType === 'nsis') return 'Tracebay.exe';
+    if (packageType === 'nsis') {
+        return 'Tracebay.exe';
+    }
     return null;
 }
 
@@ -620,12 +674,16 @@ async function fetchLatestUpdateMetaFromApi(packageType = getInstallPackageType(
     if (!res.ok) {
         let detail = `GitHub API HTTP ${res.status}`;
         if (res.status === 403) {
-            detail += ' — User-Agent requis ou rate-limit (60 req/h sans token)';
+            detail += ' : User-Agent requis ou rate-limit (60 req/h sans token)';
             try {
                 const j = JSON.parse(bodyText);
-                if (j?.message) detail += ` (${j.message})`;
+                if (j?.message) {
+                    detail += ` (${j.message})`;
+                }
             } catch (_) {
-                if (bodyText) detail += ` (${bodyText.slice(0, 180)})`;
+                if (bodyText) {
+                    detail += ` (${bodyText.slice(0, 180)})`;
+                }
             }
         }
         throw new Error(detail);
@@ -690,15 +748,21 @@ async function downloadToFile(downloadUrl, destPath, onProgress) {
         redirect: 'follow',
         headers: githubRequestHeaders({ Accept: '*/*' })
     });
-    if (!res.ok) throw new Error(`Téléchargement HTTP ${res.status}`);
+    if (!res.ok) {
+        throw new Error(`Téléchargement HTTP ${res.status}`);
+    }
 
     const total = Number(res.headers.get('content-length') || 0) || null;
     const body = res.body;
     if (!body || typeof body.getReader !== 'function') {
         const buf = Buffer.from(await res.arrayBuffer());
         fs.writeFileSync(destPath, buf);
-        try { fs.chmodSync(destPath, 0o755); } catch (_) { }
-        if (typeof onProgress === 'function') onProgress({ received: buf.length, total, percent: 100 });
+        try {
+            fs.chmodSync(destPath, 0o755); 
+        } catch (_) { }
+        if (typeof onProgress === 'function') {
+            onProgress({ received: buf.length, total, percent: 100 });
+        }
         return { bytes: buf.length };
     }
 
@@ -709,7 +773,9 @@ async function downloadToFile(downloadUrl, destPath, onProgress) {
     try {
         for (;;) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+                break;
+            }
             if (value) {
                 const buf = Buffer.from(value);
                 out.write(buf);
@@ -726,12 +792,18 @@ async function downloadToFile(downloadUrl, destPath, onProgress) {
             out.end(() => resolve());
             out.on('error', reject);
         });
-        try { fs.chmodSync(destPath, 0o755); } catch (_) { }
-        if (typeof onProgress === 'function') onProgress({ received, total, percent: 100 });
+        try {
+            fs.chmodSync(destPath, 0o755); 
+        } catch (_) { }
+        if (typeof onProgress === 'function') {
+            onProgress({ received, total, percent: 100 });
+        }
         return { bytes: received };
     } finally {
         // close() est implicite après end(); éviter de fermer trop tôt.
-        try { reader.releaseLock(); } catch (_) { }
+        try {
+            reader.releaseLock(); 
+        } catch (_) { }
     }
 }
 
@@ -753,7 +825,7 @@ function sendUpdateDone(payload) {
 
 /**
  * Mise à jour AppImage : télécharge uniquement (ne lance PAS le helper).
- * Le remplacement + relaunch se font au clic « Redémarrer » — sinon le helper
+ * Le remplacement + relaunch se font au clic « Redémarrer » : sinon le helper
  * peut mourir avant le redémarrage et l’app se ferme sans se relancer.
  */
 async function downloadAndApplyAppImageUpdate() {
@@ -768,7 +840,9 @@ async function downloadAndApplyAppImageUpdate() {
     }
     const latest = normalizeSemver(meta.latestVersion || '');
     const tempDir = path.join(app.getPath('temp'), 'workspace-manual-update');
-    try { fs.mkdirSync(tempDir, { recursive: true }); } catch (_) { }
+    try {
+        fs.mkdirSync(tempDir, { recursive: true }); 
+    } catch (_) { }
     const downloadedPath = path.join(tempDir, 'workspace.appimage');
 
     const dl = await downloadToFile(meta.downloadUrl, downloadedPath, sendUpdateProgress);
@@ -815,7 +889,9 @@ async function downloadAndApplyDebUpdate() {
     }
     const latest = normalizeSemver(meta.latestVersion || '');
     const tempDir = path.join(app.getPath('temp'), 'workspace-manual-update');
-    try { fs.mkdirSync(tempDir, { recursive: true }); } catch (_) { }
+    try {
+        fs.mkdirSync(tempDir, { recursive: true }); 
+    } catch (_) { }
     const downloadedPath = path.join(tempDir, 'workspace.deb');
 
     const dl = await downloadToFile(meta.downloadUrl, downloadedPath, sendUpdateProgress);
@@ -838,7 +914,7 @@ async function downloadAndApplyDebUpdate() {
 
 /**
  * macOS / Windows : téléchargement via electron-updater.
- * Ne appelle PAS quitAndInstall — l’utilisateur doit confirmer via « Redémarrer ».
+ * Ne appelle PAS quitAndInstall : l’utilisateur doit confirmer via « Redémarrer ».
  */
 async function downloadAndApplyElectronUpdater() {
     const { autoUpdater } = require('electron-updater');
@@ -852,7 +928,9 @@ async function downloadAndApplyElectronUpdater() {
     return await new Promise((resolve) => {
         let settled = false;
         const finish = (result) => {
-            if (settled) return;
+            if (settled) {
+                return;
+            }
             settled = true;
             autoUpdater.removeAllListeners('download-progress');
             autoUpdater.removeAllListeners('update-downloaded');
@@ -916,7 +994,7 @@ async function installPendingAppUpdate() {
             return { success: false, error: 'APPIMAGE actuelle introuvable' };
         }
         if (!downloadedPath || !fs.existsSync(downloadedPath)) {
-            return { success: false, error: 'Fichier AppImage de mise à jour introuvable — retéléchargez la mise à jour' };
+            return { success: false, error: 'Fichier AppImage de mise à jour introuvable : retéléchargez la mise à jour' };
         }
         // Toujours (re)lancer le helper au redémarrage : un helper démarré au download
         // peut être mort depuis longtemps → quit sans remplacement ni relaunch.
@@ -942,7 +1020,9 @@ async function installPendingAppUpdate() {
             try {
                 app.exit(0);
             } catch (_) {
-                try { app.quit(); } catch (__) { /* ignore */ }
+                try {
+                    app.quit(); 
+                } catch (__) { /* ignore */ }
             }
         }, 400);
         return { success: true, message: 'Redémarrage pour appliquer la mise à jour…' };
@@ -951,15 +1031,19 @@ async function installPendingAppUpdate() {
     if (packageType === 'deb') {
         const downloadedPath = pendingAppUpdate.downloadedPath;
         if (!downloadedPath || !fs.existsSync(downloadedPath)) {
-            return { success: false, error: 'Paquet .deb introuvable — retéléchargez la mise à jour' };
+            return { success: false, error: 'Paquet .deb introuvable : retéléchargez la mise à jour' };
         }
 
         // Évite de relancer plusieurs helpers (= spam de boîtes admin) si l’utilisateur reclique
         if (pendingAppUpdate.helperStarted) {
             quittingForUpdate = true;
             setTimeout(() => {
-                try { app.exit(0); } catch (_) {
-                    try { process.exit(0); } catch (__) { /* ignore */ }
+                try {
+                    app.exit(0); 
+                } catch (_) {
+                    try {
+                        process.exit(0); 
+                    } catch (__) { /* ignore */ }
                 }
             }, 100);
             return {
@@ -990,7 +1074,9 @@ async function installPendingAppUpdate() {
             try {
                 app.exit(0);
             } catch (_) {
-                try { process.exit(0); } catch (__) { /* ignore */ }
+                try {
+                    process.exit(0); 
+                } catch (__) { /* ignore */ }
             }
         }, 250);
         return {
@@ -1082,22 +1168,34 @@ ipcMain.handle('get-pending-app-update', async () => {
     };
 });
 
-let pdfWindows = new Map();
+const pdfWindows = new Map();
 let serverConnected = false;
-let discoveredServer = null;
+const discoveredServer = null;
 let lastOpenTime = 0;
 const MIN_OPEN_INTERVAL = 1500; // 1.5s minimum entre chaque ouverture
 
 function isBlacklisted(name, blacklist = [], ignoreSuffixes = [], ignoreExtensions = []) {
-    if (!name) return true;
-    if (blacklist.includes(name)) return true;
-    if (name.startsWith('~$')) return true;
-    if (name.startsWith('.') && name !== '.' && name !== '..') return true;
+    if (!name) {
+        return true;
+    }
+    if (blacklist.includes(name)) {
+        return true;
+    }
+    if (name.startsWith('~$')) {
+        return true;
+    }
+    if (name.startsWith('.') && name !== '.' && name !== '..') {
+        return true;
+    }
     for (const suffix of ignoreSuffixes) {
-        if (name.endsWith(suffix)) return true;
+        if (name.endsWith(suffix)) {
+            return true;
+        }
     }
     for (const ext of ignoreExtensions) {
-        if (name.endsWith(ext)) return true;
+        if (name.endsWith(ext)) {
+            return true;
+        }
     }
     return false;
 }
@@ -1109,7 +1207,9 @@ function checkServerConnection(retries = 0) {
     return new Promise((resolve) => {
         const req = http.get(SERVER_HEALTH_ENDPOINT, { timeout: 3000 }, (res) => {
             if (res.statusCode === 200) {
-                if (!serverConnected) console.log(`✅ Connecté au serveur: ${SERVER_URL}`);
+                if (!serverConnected) {
+                    console.log(`✅ Connecté au serveur: ${SERVER_URL}`);
+                }
                 serverConnected = true;
                 resolve(true);
             } else if (retries < MAX_RETRY_ATTEMPTS) {
@@ -1163,13 +1263,15 @@ function createSplashWindow() {
         show: false,
         alwaysOnTop: true,
         webPreferences: { nodeIntegration: false, contextIsolation: true },
-        icon: getAppIconPath() || undefined,
+        icon: getAppIconPath() || undefined
     });
     win.setMenuBarVisibility(false);
     win.loadFile(path.join(__dirname, 'assets', 'splash.html'));
     win.once('ready-to-show', () => win.show());
     splashWindow = win;
-    win.on('closed', () => { splashWindow = null; });
+    win.on('closed', () => {
+        splashWindow = null; 
+    });
     return win;
 }
 
@@ -1188,7 +1290,9 @@ function setSplashMessage(text) {
  * Afficher ou masquer la barre de progression (percent: 0-100, ou null pour masquer)
  */
 function setSplashProgress(percent) {
-    if (!splashWindow || splashWindow.isDestroyed() || !splashWindow.webContents) return;
+    if (!splashWindow || splashWindow.isDestroyed() || !splashWindow.webContents) {
+        return;
+    }
     const show = typeof percent === 'number';
     const value = Math.min(100, Math.max(0, percent));
     splashWindow.webContents.executeJavaScript(
@@ -1252,7 +1356,9 @@ function getAppIconPath() {
     const bases = [__dirname, process.cwd(), app.getAppPath()].filter(Boolean);
     for (const base of bases) {
         const candidate = path.join(base, relative);
-        if (fs.existsSync(candidate)) return candidate;
+        if (fs.existsSync(candidate)) {
+            return candidate;
+        }
     }
     return null;
 }
@@ -1316,12 +1422,18 @@ function createWindow() {
     };
     // Raccourcis limités à la fenêtre (globalShortcut les capterait dans tout le système)
     mainWindow.webContents.on('before-input-event', (event, input) => {
-        if (input.type !== 'keyDown') return;
+        if (input.type !== 'keyDown') {
+            return;
+        }
         const mod = input.control || input.meta;
         const key = (input.key || '').toLowerCase();
-        if (input.key === 'F11') { toggleFullscreen(); event.preventDefault(); }
-        else if (mod && !input.shift && key === 'r') { reloadApp(); event.preventDefault(); }
-        else if (!isProduction && (input.key === 'F12' || (mod && input.shift && key === 'i'))) { toggleDevTools(); event.preventDefault(); }
+        if (input.key === 'F11') {
+            toggleFullscreen(); event.preventDefault(); 
+        } else if (mod && !input.shift && key === 'r') {
+            reloadApp(); event.preventDefault(); 
+        } else if (!isProduction && (input.key === 'F12' || (mod && input.shift && key === 'i'))) {
+            toggleDevTools(); event.preventDefault(); 
+        }
     });
 
     if (appIconPath && process.platform === 'linux' && windowIcon) {
@@ -1338,12 +1450,19 @@ function createWindow() {
     // Charger l'index.html ; afficher la fenêtre et fermer le splash une fois prêt
     mainWindow.loadURL(`file://${path.join(__dirname, 'public', 'index.html')}`);
     let showMainCalled = false;
+    // eslint-disable-next-line prefer-const -- affecté plus bas, lu avant dans la fermeture
     let showMainFallbackId;
     const showMainAndCloseSplash = () => {
-        if (showMainCalled) return;
+        if (showMainCalled) {
+            return;
+        }
         showMainCalled = true;
-        if (showMainFallbackId) clearTimeout(showMainFallbackId);
-        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show();
+        if (showMainFallbackId) {
+            clearTimeout(showMainFallbackId);
+        }
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.show();
+        }
         const startupMs = startupBegin ? Math.round(Date.now() - startupBegin) : 0;
         if (startupMs > 0) {
             console.log(`⏱️ Démarrage (ready → fenêtre affichée): ${startupMs} ms`);
@@ -1405,8 +1524,12 @@ function createWindow() {
         const message = (payload && typeof payload === 'object' && payload.message != null)
             ? payload.message
             : (args[2] != null ? String(args[2]) : '');
-        if (typeof message !== 'string' || !message) return;
-        if (message.includes('Autofill') || message.includes('atom_cache') || message.includes('privileged')) return;
+        if (typeof message !== 'string' || !message) {
+            return;
+        }
+        if (message.includes('Autofill') || message.includes('atom_cache') || message.includes('privileged')) {
+            return;
+        }
         console.log(`[Renderer] ${message}`);
     });
 
@@ -1420,7 +1543,9 @@ function createWindow() {
 
     // Arrêter le clignotement de la barre des tâches quand l'utilisateur revient sur la fenêtre
     mainWindow.on('focus', () => {
-        if (mainWindow && !mainWindow.isDestroyed()) mainWindow.flashFrame(false);
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.flashFrame(false);
+        }
     });
 }
 
@@ -1433,12 +1558,16 @@ let appLaunched = false;
  * du serveur s'exécute en parallèle (le client gère le mode hors-ligne).
  */
 function launchApp() {
-    if (appLaunched) return;
+    if (appLaunched) {
+        return;
+    }
     appLaunched = true;
     setSplashMessage('Chargement en cours…');
     createWindow();
     checkServerConnection().then(() => {
-        if (!serverConnected) console.log('🔌 Mode hors-ligne: Le client démarre sans connexion serveur');
+        if (!serverConnected) {
+            console.log('🔌 Mode hors-ligne: Le client démarre sans connexion serveur');
+        }
     });
     console.log('✅ Interface graphique lancée');
     console.log('✨ Application prête');
@@ -1468,7 +1597,9 @@ app.on('ready', async () => {
 // IPC: lister les dossiers d'un chemin (restriction aux répertoires autorisés)
 ipcMain.handle('list-folders', async (_event, payload) => {
     const { path: basePath, blacklist = [], ignoreSuffixes = [], ignoreExtensions = [] } = payload || {};
-    if (!basePath) throw new Error('path is required');
+    if (!basePath) {
+        throw new Error('path is required');
+    }
 
     const resolvedPath = path.resolve(basePath);
     if (!isPathAllowed(resolvedPath)) {
@@ -1496,20 +1627,26 @@ async function fetchPdfBufferForOpen(pdfUrl, token) {
     if (net && typeof net.fetch === 'function') {
         try {
             const res = await net.fetch(pdfUrl, { headers });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
             return Buffer.from(await res.arrayBuffer());
         } catch (e) {
             console.warn('[open-pdf] net.fetch, repli fetch Node:', e?.message || e);
         }
     }
     const res = await fetch(pdfUrl, { headers });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+    }
     return Buffer.from(await res.arrayBuffer());
 }
 
 /** Linux : ouvrir un fichier PDF via le bureau (xdg-open / gio) si shell.openPath échoue (souvent sous AppImage). */
 function tryLinuxSpawnOpenFile(filePath) {
-    if (process.platform !== 'linux') return false;
+    if (process.platform !== 'linux') {
+        return false;
+    }
     const candidates = [
         ['/usr/bin/xdg-open', [filePath]],
         ['/bin/xdg-open', [filePath]],
@@ -1521,7 +1658,9 @@ function tryLinuxSpawnOpenFile(filePath) {
         ['/usr/bin/kde-open5', [filePath]]
     ];
     for (const [cmd, args] of candidates) {
-        if (cmd.includes('/') && !fs.existsSync(cmd)) continue;
+        if (cmd.includes('/') && !fs.existsSync(cmd)) {
+            continue;
+        }
         try {
             const child = spawn(cmd, args, { detached: true, stdio: 'ignore', env: process.env });
             if (child && typeof child.pid === 'number' && child.pid > 0) {
@@ -1541,11 +1680,17 @@ async function openPdfFileWithDesktopDefault(filePath) {
             shell.openPath(filePath),
             new Promise((_, reject) => setTimeout(() => reject(new Error('Ouverture expirée')), OPEN_PATH_TIMEOUT_MS))
         ]);
-        if (!err) return { ok: true };
-        if (tryLinuxSpawnOpenFile(filePath)) return { ok: true };
+        if (!err) {
+            return { ok: true };
+        }
+        if (tryLinuxSpawnOpenFile(filePath)) {
+            return { ok: true };
+        }
         return { ok: false, error: typeof err === 'string' ? err : String(err) };
     } catch (e) {
-        if (tryLinuxSpawnOpenFile(filePath)) return { ok: true };
+        if (tryLinuxSpawnOpenFile(filePath)) {
+            return { ok: true };
+        }
         return { ok: false, error: e?.message || String(e) };
     }
 }
@@ -1561,26 +1706,36 @@ ipcMain.handle('open-pdf-with-system-app', async (_event, payload) => {
             const resolvedLocal = path.resolve(localFilePath.trim());
             if (isPathAllowed(resolvedLocal) && fs.existsSync(resolvedLocal) && fs.statSync(resolvedLocal).isFile()) {
                 const opened = await openPdfFileWithDesktopDefault(resolvedLocal);
-                if (opened.ok) return { success: true, path: resolvedLocal, source: 'local' };
+                if (opened.ok) {
+                    return { success: true, path: resolvedLocal, source: 'local' };
+                }
             }
         } catch (e) {
             console.warn('open-pdf-with-system-app: ouverture locale ignorée, fallback URL', e?.message || e);
         }
     }
     let safeName = (suggestedFilename && String(suggestedFilename).replace(/[\\/:*?"<>|]/g, '_')) || 'tracabilite.pdf';
-    if (!safeName.toLowerCase().endsWith('.pdf')) safeName += '.pdf';
+    if (!safeName.toLowerCase().endsWith('.pdf')) {
+        safeName += '.pdf';
+    }
     const tempPath = path.join(os.tmpdir(), `workspace-pdf-${Date.now()}-${safeName}`);
     try {
         const buf = await fetchPdfBufferForOpen(pdfUrl.trim(), token);
         fs.writeFileSync(tempPath, buf);
         const opened = await openPdfFileWithDesktopDefault(tempPath);
         if (!opened.ok) {
-            try { fs.unlinkSync(tempPath); } catch (_) {}
+            try {
+                fs.unlinkSync(tempPath); 
+            } catch (_) {}
             return { success: false, error: opened.error || 'Ouverture impossible' };
         }
         return { success: true, path: tempPath };
     } catch (e) {
-        try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch (_) {}
+        try {
+            if (fs.existsSync(tempPath)) {
+                fs.unlinkSync(tempPath);
+            } 
+        } catch (_) {}
         console.error('❌ open-pdf-with-system-app:', e.message);
         return { success: false, error: e.message };
     }
@@ -1589,7 +1744,9 @@ ipcMain.handle('open-pdf-with-system-app', async (_event, payload) => {
 // IPC: ouvrir un chemin local (fichier ou dossier) avec l'app par défaut (restriction aux répertoires autorisés)
 ipcMain.handle('open-path', async (_event, payload) => {
     const targetPath = typeof payload === 'string' ? payload : payload?.path;
-    if (!targetPath) throw new Error('path is required');
+    if (!targetPath) {
+        throw new Error('path is required');
+    }
 
     try {
         const resolved = path.resolve(targetPath);
@@ -1781,7 +1938,9 @@ function getAllowedPathPrefixes() {
 
 /** Dossier de sortie PDF demandé par le renderer, ramené au défaut s'il sort des répertoires autorisés. */
 function resolvePdfBase(requested, fallback) {
-    if (!requested || typeof requested !== 'string') return fallback;
+    if (!requested || typeof requested !== 'string') {
+        return fallback;
+    }
     const resolved = path.resolve(requested);
     return isPathAllowed(resolved) ? resolved : fallback;
 }
@@ -1796,10 +1955,14 @@ function isPathAllowed(resolvedPath) {
  * Formater une date ISO en "jj/mm/aaaa" pour le PDF (sans heure)
  */
 function formatDateForPdf(iso) {
-    if (!iso || typeof iso !== 'string') return '-';
+    if (!iso || typeof iso !== 'string') {
+        return '-';
+    }
     try {
         const d = new Date(iso);
-        if (isNaN(d.getTime())) return '-';
+        if (isNaN(d.getTime())) {
+            return '-';
+        }
         const day = String(d.getDate()).padStart(2, '0');
         const month = String(d.getMonth() + 1).padStart(2, '0');
         const year = d.getFullYear();
@@ -1822,7 +1985,9 @@ function formatTimeForFilename(d = new Date()) {
 
 /** Échapper pour affichage dans le HTML du template PDF */
 function escapeHtml(s) {
-    if (s == null) return '';
+    if (s == null) {
+        return '';
+    }
     const str = String(s);
     return str
         .replace(/&/g, '&amp;')
@@ -1842,7 +2007,9 @@ function getPdfLinkDisplayLabel(original, href) {
         const u = new URL(href);
         if (u.protocol === 'http:' || u.protocol === 'https:') {
             let host = u.hostname || '';
-            if (host.toLowerCase().startsWith('www.')) host = host.slice(4);
+            if (host.toLowerCase().startsWith('www.')) {
+                host = host.slice(4);
+            }
             return host || o;
         }
         if (u.protocol === 'mailto:') {
@@ -1860,7 +2027,9 @@ function getPdfLinkDisplayLabel(original, href) {
     } catch (_) {
         /* href non standard */
     }
-    if (o.length <= 48) return o;
+    if (o.length <= 48) {
+        return o;
+    }
     return `${o.slice(0, 45)}…`;
 }
 
@@ -1871,9 +2040,13 @@ function getPdfLinkDisplayLabel(original, href) {
  * Affichage : domaine seul pour les URLs longues (ex. alibaba.com au lieu de la query complète).
  */
 function formatPdfClickableLink(raw) {
-    if (raw == null) return escapeHtml('-');
+    if (raw == null) {
+        return escapeHtml('-');
+    }
     const s = String(raw).trim();
-    if (!s || s === '-') return escapeHtml('-');
+    if (!s || s === '-') {
+        return escapeHtml('-');
+    }
 
     const href = buildPdfSafeLinkHref(s);
     const safeHref = escapeHtml(href);
@@ -1884,7 +2057,9 @@ function formatPdfClickableLink(raw) {
 /** Prix / montant pour PDF commande : nombre → format fr-FR avec €, sinon texte échappé. */
 function formatCommandePriceForPdf(raw) {
     const s = String(raw ?? '').trim();
-    if (!s || s === '-') return '-';
+    if (!s || s === '-') {
+        return '-';
+    }
     const compact = s.replace(/\s/g, '');
     const normalized = compact.includes(',') && !compact.includes('.')
         ? compact.replace(',', '.')
@@ -1905,25 +2080,36 @@ function commandeLineHasShipping(line) {
 function buildPdfSafeLinkHref(s) {
     const t = s.trim();
     const lower = t.toLowerCase();
+    // eslint-disable-next-line no-script-url -- détection pour refuser ces liens
     if (lower.startsWith('javascript:') || lower.startsWith('data:') || lower.startsWith('vbscript:')) {
         return 'about:blank';
     }
-    if (/^https?:\/\//i.test(t)) return t;
-    if (/^mailto:/i.test(t) || /^tel:/i.test(t)) return t;
-    if (/^www\./i.test(t)) return 'https://' + t;
-    if (/^\/\//.test(t)) return 'https:' + t;
+    if (/^https?:\/\//i.test(t)) {
+        return t;
+    }
+    if (/^mailto:/i.test(t) || /^tel:/i.test(t)) {
+        return t;
+    }
+    if (/^www\./i.test(t)) {
+        return `https://${  t}`;
+    }
+    if (/^\/\//.test(t)) {
+        return `https:${  t}`;
+    }
     // Sous-domaine.domaine ou domaine.tld[/...] sans espace
     if (!/\s/.test(t) && /^[\w.-]+\.[a-z]{2,}([/:?#].*)?$/i.test(t)) {
-        return 'https://' + t;
+        return `https://${  t}`;
     }
     // Fallback : tout est cliquable (URL souvent invalide mais annotation présente dans le PDF)
-    return 'https://' + t.replace(/\s/g, '%20');
+    return `https://${  t.replace(/\s/g, '%20')}`;
 }
 
 /** Libellés français pour les types (code API -> affichage PDF) */
 const TYPE_LABELS = { portable: 'Portable', fixe: 'Fixe', ecran: 'Écran', autres: 'Autres' };
 function typeLabel(code) {
-    if (!code || typeof code !== 'string') return 'Non défini';
+    if (!code || typeof code !== 'string') {
+        return 'Non défini';
+    }
     const c = code.trim().toLowerCase();
     return TYPE_LABELS[c] || (code.trim() || 'Non défini');
 }
@@ -1933,15 +2119,21 @@ function typeLabel(code) {
  */
 function formatItemDateForPdf(it) {
     const iso = it.created_at || it.createdAt || it.state_changed_at || it.stateChangedAt || it.updated_at || it.updatedAt;
-    if (iso) return formatDateForPdf(iso);
+    if (iso) {
+        return formatDateForPdf(iso);
+    }
     if (it.date && it.time) {
-        const d = it.date + 'T' + (String(it.time).length === 5 ? it.time + ':00' : it.time);
+        const d = `${it.date  }T${  String(it.time).length === 5 ? `${it.time  }:00` : it.time}`;
         return formatDateForPdf(d);
     }
-    if (it.date && /^\d{4}-\d{2}-\d{2}/.test(String(it.date))) return formatDateForPdf(it.date + 'T00:00:00');
+    if (it.date && /^\d{4}-\d{2}-\d{2}/.test(String(it.date))) {
+        return formatDateForPdf(`${it.date  }T00:00:00`);
+    }
     // Chaîne type "YYYY-MM-DD HH:mm:ss" ou "YYYY-MM-DD"
     const dateStr = it.date || it.date_changed;
-    if (dateStr && /^\d{4}-\d{2}-\d{2}/.test(String(dateStr))) return formatDateForPdf(String(dateStr).replace(' ', 'T').slice(0, 19) || dateStr + 'T00:00:00');
+    if (dateStr && /^\d{4}-\d{2}-\d{2}/.test(String(dateStr))) {
+        return formatDateForPdf(String(dateStr).replace(' ', 'T').slice(0, 19) || `${dateStr  }T00:00:00`);
+    }
     return '-';
 }
 
@@ -2001,9 +2193,13 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
             const rawState = (it.state && String(it.state).trim()) || '';
             const stateLower = rawState.toLowerCase();
             let stateDisplay;
-            if (/reconditionn[eé]s?/.test(stateLower)) stateDisplay = 'OK';
-            else if (stateLower === 'pour pièces' || stateLower === 'hs') stateDisplay = 'HS';
-            else stateDisplay = escapeHtml(rawState || '-');
+            if (/reconditionn[eé]s?/.test(stateLower)) {
+                stateDisplay = 'OK';
+            } else if (stateLower === 'pour pièces' || stateLower === 'hs') {
+                stateDisplay = 'HS';
+            } else {
+                stateDisplay = escapeHtml(rawState || '-');
+            }
             const dateHeure = escapeHtml(formatItemDateForPdf(it));
             const tech = escapeHtml(it.technician || it.technicien || '-');
             const osKey = (it.os && String(it.os).toLowerCase().trim()) || 'linux';
@@ -2024,7 +2220,9 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
         [/\{\{\s*summary_block\s*\}\}/g, summaryBlock],
         [/\{\{\s*items_rows\s*\}\}/g, itemsRows]
     ];
-    replacements.forEach(([regex, value]) => { html = html.replace(regex, value); });
+    replacements.forEach(([regex, value]) => {
+        html = html.replace(regex, value); 
+    });
 
     html = html.replace(
         /<link\s+rel="stylesheet"\s+href="lot\.css"\s*\/?>/i,
@@ -2036,17 +2234,22 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
     const fontawesomeFileUrl = fs.existsSync(fontawesomeCssPath) ? url.pathToFileURL(fontawesomeCssPath).href : null;
     const fontawesomeLink = fontawesomeFileUrl ? `<link rel="stylesheet" href="${fontawesomeFileUrl}">` : '';
     if (fontawesomeLink) {
-        if (/<link[^>]+font-awesome[^>]*>/i.test(html))
+        if (/<link[^>]+font-awesome[^>]*>/i.test(html)) {
             html = html.replace(/<link[^>]+font-awesome[^>]*>/i, fontawesomeLink);
-        else if (!html.includes('fontawesome'))
+        } else if (!html.includes('fontawesome')) {
             html = html.replace('</head>', `${fontawesomeLink}\n</head>`);
+        }
     }
 
     // Images (logo, etc.) : réécrire les src relatifs en file:// pour que ça charge depuis /tmp
     html = html.replace(/<img([^>]*)\ssrc="([^"]+)"/gi, (match, attrs, src) => {
-        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) return match;
+        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) {
+            return match;
+        }
         const absolutePath = path.resolve(templateDir, src.trim());
-        if (!fs.existsSync(absolutePath)) return match;
+        if (!fs.existsSync(absolutePath)) {
+            return match;
+        }
         const fileUrl = url.pathToFileURL(absolutePath).href;
         return `<img${attrs} src="${fileUrl}"`;
     });
@@ -2075,7 +2278,9 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
         return { success: true, pdf_path: path.resolve(fullPath) };
     } finally {
         win.close();
-        try { fs.unlinkSync(outputPath); } catch (_) { }
+        try {
+            fs.unlinkSync(outputPath); 
+        } catch (_) { }
     }
 }
 
@@ -2109,10 +2314,12 @@ ipcMain.handle('generate-lot-pdf', async (_event, payload) => {
         fs.mkdirSync(dirPath, { recursive: true });
     } catch (e) {
         console.error('❌ generate-lot-pdf mkdir:', e.message);
-        return { success: false, error: 'Impossible de créer le dossier: ' + e.message };
+        return { success: false, error: `Impossible de créer le dossier: ${  e.message}` };
     }
     let sanitizedName = (lotName || '').replace(/[\s]+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim();
-    if (!sanitizedName) sanitizedName = `Lot_${lotId}`;
+    if (!sanitizedName) {
+        sanitizedName = `Lot_${lotId}`;
+    }
     const fileName = `${sanitizedName}_${dateStr}.pdf`;
     const fullPath = path.join(dirPath, fileName);
 
@@ -2137,7 +2344,9 @@ ipcMain.handle('generate-lot-pdf', async (_event, payload) => {
             typeEntries,
             totalItems
         );
-        if (htmlResult) return htmlResult;
+        if (htmlResult) {
+            return htmlResult;
+        }
     } catch (err) {
         console.error('❌ generate-lot-pdf (template HTML):', err.message);
     }
@@ -2247,30 +2456,48 @@ ipcMain.handle('generate-lot-pdf', async (_event, payload) => {
 const MOIS_TRACABILITE = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 
 function parseSizeToTo(size) {
-    if (!size || typeof size !== 'string') return 0;
+    if (!size || typeof size !== 'string') {
+        return 0;
+    }
     const s = String(size).trim();
-    if (!s) return 0;
+    if (!s) {
+        return 0;
+    }
     // Accepter To/TB/T, Go/GB/G, Mo/MB/M, Ko/KB/K (une ou deux lettres)
     const numMatch = s.match(/^([\d\s,]+(?:\.[\d]+)?)\s*(To|TB|T|Go|GB|G|Mo|MB|M|Ko|KB|K)?$/i);
-    if (!numMatch) return 0;
+    if (!numMatch) {
+        return 0;
+    }
     const num = parseFloat(numMatch[1].replace(/\s/g, '').replace(',', '.')) || 0;
     const unit = (numMatch[2] || '').toLowerCase();
-    if (unit === 'to' || unit === 'tb' || unit === 't') return num;
-    if (unit === 'go' || unit === 'gb' || unit === 'g') return num / 1000;
-    if (unit === 'mo' || unit === 'mb' || unit === 'm') return num / 1e6;
-    if (unit === 'ko' || unit === 'kb' || unit === 'k') return num / 1e9;
+    if (unit === 'to' || unit === 'tb' || unit === 't') {
+        return num;
+    }
+    if (unit === 'go' || unit === 'gb' || unit === 'g') {
+        return num / 1000;
+    }
+    if (unit === 'mo' || unit === 'mb' || unit === 'm') {
+        return num / 1e6;
+    }
+    if (unit === 'ko' || unit === 'kb' || unit === 'k') {
+        return num / 1e9;
+    }
     // Pas d'unité : supposer Go (ex. "500" = 500 Go)
     return num / 1000;
 }
 
 function formatTo(to) {
-    if (to % 1 === 0) return String(Math.round(to));
+    if (to % 1 === 0) {
+        return String(Math.round(to));
+    }
     return to.toFixed(2).replace(/\.?0+$/, '');
 }
 
 /** Affiche une taille en To ou Go : >= 1 To → "X,X To", sinon → "X Go" */
 function formatSizeDisplay(to) {
-    if (to >= 1) return `${formatTo(to)} To`;
+    if (to >= 1) {
+        return `${formatTo(to)} To`;
+    }
     const go = to * 1000;
     return `${formatTo(go)} Go`;
 }
@@ -2304,13 +2531,13 @@ function buildDisquesSizeByInterface(disks) {
 
 function formatDisquesTotalSize(disks) {
     const to = disks.reduce((sum, d) => sum + parseSizeToTo(d.size), 0);
-    return to === 0 ? '—' : formatSizeDisplay(to);
+    return to === 0 ? '-' : formatSizeDisplay(to);
 }
 
 function buildDisquesSummaryBlock(disks) {
     const totalSizeStr = formatDisquesTotalSize(disks);
     const sizeByInterfaceList = buildDisquesSizeByInterface(disks);
-    const totalLine = totalSizeStr !== '—'
+    const totalLine = totalSizeStr !== '-'
         ? `<p class="pdf-summary-total-line"><i class="fa-solid fa-database"></i> <strong>Taille totale : ${escapeHtml(totalSizeStr)}</strong></p>`
         : '';
     const listHtml = sizeByInterfaceList ? `<ul class="pdf-summary-by-interface">${sizeByInterfaceList}</ul>` : '';
@@ -2364,7 +2591,9 @@ async function generateDisquesPdfFromHtmlTemplate(payload, fullPath) {
         [/\{\{\s*summary_block\s*\}\}/g, summaryBlock],
         [/\{\{\s*items_rows\s*\}\}/g, itemsRows]
     ];
-    replacements.forEach(([regex, value]) => { html = html.replace(regex, value); });
+    replacements.forEach(([regex, value]) => {
+        html = html.replace(regex, value); 
+    });
 
     html = html.replace(
         /<link\s+rel="stylesheet"\s+href="disques\.css"\s*\/?>/i,
@@ -2383,9 +2612,13 @@ async function generateDisquesPdfFromHtmlTemplate(payload, fullPath) {
     }
 
     html = html.replace(/<img([^>]*)\ssrc="([^"]+)"/gi, (match, attrs, src) => {
-        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) return match;
+        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) {
+            return match;
+        }
         const absolutePath = path.resolve(templateDir, src.trim());
-        if (!fs.existsSync(absolutePath)) return match;
+        if (!fs.existsSync(absolutePath)) {
+            return match;
+        }
         const fileUrl = url.pathToFileURL(absolutePath).href;
         return `<img${attrs} src="${fileUrl}"`;
     });
@@ -2414,7 +2647,9 @@ async function generateDisquesPdfFromHtmlTemplate(payload, fullPath) {
         return { success: true, pdf_path: path.resolve(fullPath) };
     } finally {
         win.close();
-        try { fs.unlinkSync(outputPath); } catch (_) { }
+        try {
+            fs.unlinkSync(outputPath); 
+        } catch (_) { }
     }
 }
 
@@ -2445,7 +2680,7 @@ ipcMain.handle('generate-disques-pdf', async (_event, payload) => {
         fs.mkdirSync(dirPath, { recursive: true });
     } catch (e) {
         console.error('❌ generate-disques-pdf mkdir:', e.message);
-        return { success: false, error: 'Impossible de créer le dossier: ' + e.message };
+        return { success: false, error: `Impossible de créer le dossier: ${  e.message}` };
     }
     const sanitizedName = (name != null ? String(name).trim() : '')
         .replace(/\s+/g, '_')
@@ -2457,7 +2692,9 @@ ipcMain.handle('generate-disques-pdf', async (_event, payload) => {
 
     try {
         const result = await generateDisquesPdfFromHtmlTemplate({ date: dateStr, disks }, fullPath);
-        if (result) return result;
+        if (result) {
+            return result;
+        }
     } catch (err) {
         console.error('❌ generate-disques-pdf (template HTML):', err.message);
         return { success: false, error: err.message };
@@ -2531,9 +2768,13 @@ async function generateCommandePdfFromHtmlTemplate(payload, fullPath) {
     }
 
     html = html.replace(/<img([^>]*)\ssrc="([^"]+)"/gi, (match, attrs, src) => {
-        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) return match;
+        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) {
+            return match;
+        }
         const absolutePath = path.resolve(templateDir, src.trim());
-        if (!fs.existsSync(absolutePath)) return match;
+        if (!fs.existsSync(absolutePath)) {
+            return match;
+        }
         const fileUrl = url.pathToFileURL(absolutePath).href;
         return `<img${attrs} src="${fileUrl}"`;
     });
@@ -2575,7 +2816,9 @@ async function generateCommandePdfFromHtmlTemplate(payload, fullPath) {
         return { success: true, pdf_path: path.resolve(fullPath) };
     } finally {
         win.close();
-        try { fs.unlinkSync(outputPath); } catch (_) { }
+        try {
+            fs.unlinkSync(outputPath); 
+        } catch (_) { }
     }
 }
 
@@ -2606,7 +2849,7 @@ ipcMain.handle('generate-commande-pdf', async (_event, payload) => {
         fs.mkdirSync(targetBasePath, { recursive: true });
     } catch (e) {
         console.error('❌ generate-commande-pdf mkdir:', e.message);
-        return { success: false, error: 'Impossible de créer le dossier: ' + e.message };
+        return { success: false, error: `Impossible de créer le dossier: ${  e.message}` };
     }
     const sanitizedName = String(commandeName).trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim() || 'commande';
     const fileName = `${sanitizedName}_${dateStr}.pdf`;
@@ -2614,7 +2857,9 @@ ipcMain.handle('generate-commande-pdf', async (_event, payload) => {
 
     try {
         const result = await generateCommandePdfFromHtmlTemplate({ commandeName, date: dateStr, lines }, fullPath);
-        if (result) return result;
+        if (result) {
+            return result;
+        }
     } catch (err) {
         console.error('❌ generate-commande-pdf (template HTML):', err.message);
         return { success: false, error: err.message };
@@ -2681,9 +2926,13 @@ async function generateDonsPdfFromHtmlTemplate(payload, fullPath) {
     }
 
     html = html.replace(/<img([^>]*)\ssrc="([^"]+)"/gi, (match, attrs, src) => {
-        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) return match;
+        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) {
+            return match;
+        }
         const absolutePath = path.resolve(templateDir, src.trim());
-        if (!fs.existsSync(absolutePath)) return match;
+        if (!fs.existsSync(absolutePath)) {
+            return match;
+        }
         const fileUrl = url.pathToFileURL(absolutePath).href;
         return `<img${attrs} src="${fileUrl}"`;
     });
@@ -2712,7 +2961,9 @@ async function generateDonsPdfFromHtmlTemplate(payload, fullPath) {
         return { success: true, pdf_path: path.resolve(fullPath) };
     } finally {
         win.close();
-        try { fs.unlinkSync(outputPath); } catch (_) { }
+        try {
+            fs.unlinkSync(outputPath); 
+        } catch (_) { }
     }
 }
 
@@ -2743,7 +2994,7 @@ ipcMain.handle('generate-don-pdf', async (_event, payload) => {
         fs.mkdirSync(targetBasePath, { recursive: true });
     } catch (e) {
         console.error('❌ generate-don-pdf mkdir:', e.message);
-        return { success: false, error: 'Impossible de créer le dossier: ' + e.message };
+        return { success: false, error: `Impossible de créer le dossier: ${  e.message}` };
     }
     const sanitizedName = (lotName && String(lotName).trim())
         ? String(lotName).trim().replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '').trim()
@@ -2755,7 +3006,9 @@ ipcMain.handle('generate-don-pdf', async (_event, payload) => {
 
     try {
         const result = await generateDonsPdfFromHtmlTemplate({ lotName: isDefaultDonName ? '' : (lotName || '').trim(), date: dateStr, lines }, fullPath);
-        if (result) return result;
+        if (result) {
+            return result;
+        }
     } catch (err) {
         console.error('❌ generate-don-pdf (template HTML):', err.message);
         return { success: false, error: err.message };
@@ -2820,7 +3073,7 @@ async function generatePretMaterielPdfFromHtmlTemplate(payload, fullPath) {
         remunerationBlock = '<p class="pdf-summary-total-line"><span class="label"><i class="fa-solid fa-gift"></i> Rémunération :</span> <span class="value">Prêt gratuit</span></p>';
     } else {
         const m = remuneration_montant != null && Number.isFinite(Number(remuneration_montant)) ? Number(remuneration_montant) : 0;
-        const mStr = escapeHtml(m.toFixed(2).replace('.', ',') + ' €');
+        const mStr = escapeHtml(`${m.toFixed(2).replace('.', ',')  } €`);
         remunerationBlock = `<p class="pdf-summary-total-line"><span class="label"><i class="fa-solid fa-euro-sign"></i> Rémunération :</span> <span class="value">${mStr}</span></p>`;
     }
 
@@ -2828,16 +3081,16 @@ async function generatePretMaterielPdfFromHtmlTemplate(payload, fullPath) {
         .map((line) => {
             const num = line.num != null ? line.num : 0;
             const typeD = escapeHtml((line.typeDisplay || line.type || '-').toString().trim());
-            const marque = escapeHtml((line.marqueName != null ? line.marqueName : (line.marque || '—')).toString().trim() || '—');
-            const modele = escapeHtml((line.modeleName != null ? line.modeleName : (line.modele || '—')).toString().trim() || '—');
-            const sn = escapeHtml((line.serialNumber != null ? line.serialNumber : (line.serial_number || line.serial || '—')).toString().trim() || '—');
+            const marque = escapeHtml((line.marqueName != null ? line.marqueName : (line.marque || '-')).toString().trim() || '-');
+            const modele = escapeHtml((line.modeleName != null ? line.modeleName : (line.modele || '-')).toString().trim() || '-');
+            const sn = escapeHtml((line.serialNumber != null ? line.serialNumber : (line.serial_number || line.serial || '-')).toString().trim() || '-');
             const qty = escapeHtml(String(line.quantite != null ? line.quantite : (line.quantity ?? '-')));
             return `<tr><td class="col-num">${num}</td><td class="col-type">${typeD}</td><td class="col-marque">${marque}</td><td class="col-modele">${modele}</td><td class="col-sn">${sn}</td><td class="col-qty">${qty}</td></tr>`;
         })
         .join('\n');
 
     const lotTitleEscaped = escapeHtml(lotTitleDisplay);
-    const borrowerHeaderEscaped = escapeHtml(String(borrower_name || '').trim() || '—');
+    const borrowerHeaderEscaped = escapeHtml(String(borrower_name || '').trim() || '-');
     html = html.replace(/\{\{\s*lotName\s*\}\}/g, lotTitleEscaped);
     html = html.replace(/\{\{\s*lotname\s*\}\}/g, lotTitleEscaped);
     html = html.replace(/\{\{\s*lot_name\s*\}\}/g, lotTitleEscaped);
@@ -2866,9 +3119,13 @@ async function generatePretMaterielPdfFromHtmlTemplate(payload, fullPath) {
     }
 
     html = html.replace(/<img([^>]*)\ssrc="([^"]+)"/gi, (match, attrs, src) => {
-        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) return match;
+        if (/^(https?:|\/|data:|file:)/i.test(src.trim())) {
+            return match;
+        }
         const absolutePath = path.resolve(templateDir, src.trim());
-        if (!fs.existsSync(absolutePath)) return match;
+        if (!fs.existsSync(absolutePath)) {
+            return match;
+        }
         const fileUrl = url.pathToFileURL(absolutePath).href;
         return `<img${attrs} src="${fileUrl}"`;
     });
@@ -2897,7 +3154,9 @@ async function generatePretMaterielPdfFromHtmlTemplate(payload, fullPath) {
         return { success: true, pdf_path: path.resolve(fullPath) };
     } finally {
         win.close();
-        try { fs.unlinkSync(outputPath); } catch (_) { }
+        try {
+            fs.unlinkSync(outputPath); 
+        } catch (_) { }
     }
 }
 
@@ -2937,13 +3196,17 @@ ipcMain.handle('generate-pret-materiel-pdf', async (_event, payload) => {
         fs.mkdirSync(targetBasePath, { recursive: true });
     } catch (e) {
         console.error('❌ generate-pret-materiel-pdf mkdir:', e.message);
-        return { success: false, error: 'Impossible de créer le dossier: ' + e.message };
+        return { success: false, error: `Impossible de créer le dossier: ${  e.message}` };
     }
     const sanitizePretPdfBaseName = (s) => {
         const t = String(s ?? '').trim();
-        if (!t) return '';
-        let out = t.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '').replace(/[\u0000-\u001f]/g, '');
-        if (out.length > 80) out = out.slice(0, 80);
+        if (!t) {
+            return '';
+        }
+        let out = t.replace(/\s+/g, '_').replace(/[\\/:*?"<>|]/g, '').replace(/[\u0000-\u001f]/g, ''); // eslint-disable-line no-control-regex -- retrait voulu des caractères de contrôle
+        if (out.length > 80) {
+            out = out.slice(0, 80);
+        }
         return out || '';
     };
     const refPart = sanitizePretPdfBaseName(reference);
@@ -2969,7 +3232,9 @@ ipcMain.handle('generate-pret-materiel-pdf', async (_event, payload) => {
             remuneration_montant,
             lines
         }, fullPath);
-        if (result) return result;
+        if (result) {
+            return result;
+        }
     } catch (err) {
         console.error('❌ generate-pret-materiel-pdf (template HTML):', err.message);
         return { success: false, error: err.message };
@@ -3010,10 +3275,10 @@ ipcMain.handle('get-app-config', async () => {
     return {
         serverUrl: SERVER_URL,
         serverWsUrl: SERVER_WS_URL,
-        serverConnected: serverConnected,
+        serverConnected,
         serverMode: MODE,
         nodeEnv: isProduction ? 'production' : 'development',
-        isProduction: isProduction,
+        isProduction,
         appVersion: app.getVersion()
     };
 });
@@ -3038,7 +3303,7 @@ ipcMain.handle('get-server-config', async () => {
     return {
         mode: MODE,
         config: currentConfig,
-        discoveredServer: discoveredServer,
+        discoveredServer,
         serverUrl: SERVER_URL,
         serverWs: SERVER_WS_URL,
         allModes: Object.keys(serverConfig).filter(k => typeof serverConfig[k] === 'object' && serverConfig[k].url),
@@ -3080,7 +3345,9 @@ ipcMain.handle('get-system-info', async () => {
     let connectionType = 'unknown';
 
     for (const [name, list] of Object.entries(interfaces)) {
-        if (!Array.isArray(list)) continue;
+        if (!Array.isArray(list)) {
+            continue;
+        }
         const found = list.find((i) => i.family === 'IPv4' && !i.internal);
         if (found) {
             ifaceName = name;
@@ -3127,11 +3394,13 @@ const LSBLK_KNOWN_VENDORS = ['WESTERN DIGITAL', 'SK HYNIX', 'SANDISK', 'SAMSUNG'
  * Ex. "Intel SSDSC2KB240G8" → vendor="Intel", model="SSDSC2KB240G8"
  */
 function splitVendorModel(vendor, model) {
-    if (vendor || !model) return { vendor: vendor || '', model: model || '' };
+    if (vendor || !model) {
+        return { vendor: vendor || '', model: model || '' };
+    }
     const m = model.trim();
     const mUpper = m.toUpperCase();
     for (const brand of LSBLK_KNOWN_VENDORS) {
-        if (mUpper === brand || mUpper.startsWith(brand + ' ')) {
+        if (mUpper === brand || mUpper.startsWith(`${brand  } `)) {
             const vendorStr = m.slice(0, brand.length);
             const rest = m.slice(brand.length).trim();
             return { vendor: vendorStr, model: rest };
@@ -3157,16 +3426,23 @@ ipcMain.handle('run-lsblk', async () => {
         const data = JSON.parse(stdout);
         const blockdevices = data.blockdevices || [];
         const disks = [];
-        function collectDisks(list) {
-            if (!Array.isArray(list)) return;
+        const collectDisks = (list) => {
+            if (!Array.isArray(list)) {
+                return;
+            }
             for (const dev of list) {
                 if (dev.type === 'disk') {
                     const tran = (dev.tran || '').toUpperCase();
                     let type = 'SATA';
-                    if (tran.includes('SAS')) type = 'SAS';
-                    else if (tran.includes('NVME') || tran === 'NVME') type = 'NVMe';
-                    else if (tran.includes('USB')) type = 'USB';
-                    else if (tran.includes('SATA') || tran === 'ATA') type = 'SATA';
+                    if (tran.includes('SAS')) {
+                        type = 'SAS';
+                    } else if (tran.includes('NVME') || tran === 'NVME') {
+                        type = 'NVMe';
+                    } else if (tran.includes('USB')) {
+                        type = 'USB';
+                    } else if (tran.includes('SATA') || tran === 'ATA') {
+                        type = 'SATA';
+                    }
                     const rota = dev.rota;
                     const diskType = (rota === 0 || rota === '0' || rota === false) ? 'SSD' : 'HDD';
                     let vendor = (dev.vendor || '').trim();
@@ -3184,9 +3460,11 @@ ipcMain.handle('run-lsblk', async () => {
                         vendor
                     });
                 }
-                if (dev.children) collectDisks(dev.children);
+                if (dev.children) {
+                    collectDisks(dev.children);
+                }
             }
-        }
+        };
         collectDisks(blockdevices);
         return { success: true, disks };
     } catch (err) {

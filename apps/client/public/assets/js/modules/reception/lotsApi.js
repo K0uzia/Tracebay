@@ -26,8 +26,12 @@ export async function loadLotsWithItems({ status }) {
             fetch(`${serverUrl}/api/lots?status=active`, { method: 'GET', headers }),
             fetch(`${serverUrl}/api/lots?status=finished`, { method: 'GET', headers })
         ]);
-        if (!activeRes.ok) throw new Error(`HTTP ${activeRes.status}`);
-        if (!finishedRes.ok) throw new Error(`HTTP ${finishedRes.status}`);
+        if (!activeRes.ok) {
+            throw new Error(`HTTP ${activeRes.status}`);
+        }
+        if (!finishedRes.ok) {
+            throw new Error(`HTTP ${finishedRes.status}`);
+        }
         const activeData = await activeRes.json();
         const finishedData = await finishedRes.json();
         const activeList = Array.isArray(activeData) ? activeData : (activeData.items || activeData.lots || []);
@@ -35,7 +39,9 @@ export async function loadLotsWithItems({ status }) {
         const seen = new Set();
         rawLots = [...activeList, ...finishedList].filter(lot => {
             const id = lot.id;
-            if (seen.has(id)) return false;
+            if (seen.has(id)) {
+                return false;
+            }
             seen.add(id);
             return true;
         });
@@ -43,7 +49,9 @@ export async function loadLotsWithItems({ status }) {
     } else {
         const url = `${serverUrl}/api/lots?status=${status}`;
         const response = await fetch(url, { method: 'GET', headers });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
         const data = await response.json();
         rawLots = Array.isArray(data) ? data : (data.items || data.lots || []);
         logger.debug('Lots liste reçus:', { status, count: rawLots.length });

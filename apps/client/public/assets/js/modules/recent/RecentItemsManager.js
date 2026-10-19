@@ -72,7 +72,7 @@ class RecentItemsManager {
         try {
             localStorage.setItem(this.storageKey, JSON.stringify(this.recentItems));
             const userInfo = this.userId ? ` (Profil: ${this.userId})` : ' (Anonyme)';
-            console.log('💾 Éléments récents sauvegardés' + userInfo);
+            console.log(`💾 Éléments récents sauvegardés${  userInfo}`);
         } catch (error) {
             logger.error('❌ Erreur sauvegarde éléments récents:', error);
         }
@@ -103,7 +103,7 @@ class RecentItemsManager {
 
         this.saveRecentItems();
         const userInfo = this.userId ? ` (Profil: ${this.userId})` : ' (Anonyme)';
-        console.log('📌 Élément récent ajouté:' + userInfo, item.name);
+        console.log(`📌 Élément récent ajouté:${  userInfo}`, item.name);
     }
 
     /**
@@ -222,7 +222,7 @@ class RecentItemsManager {
             'historique': { icon: 'fas fa-history', type: 'subpage', action: 'navigate' },
             'tracabilite': { icon: 'fas fa-barcode', type: 'subpage', action: 'navigate' },
             'disques': { icon: 'fas fa-hard-drive', type: 'subpage', action: 'navigate' },
-            'commande': { icon: 'fas fa-file-invoice', type: 'subpage', action: 'navigate' },
+            'commande': { icon: 'fas fa-file-invoice', type: 'subpage', action: 'navigate' }
         };
 
         const pageInfo = pageMap[pageName] || { icon: 'fas fa-file', type: 'page', action: 'navigate' };
@@ -307,7 +307,7 @@ class RecentItemsManager {
             'historique': 'Historique',
             'tracabilite': 'Traçabilité',
             'disques': 'Disques',
-            'commande': 'Commande',
+            'commande': 'Commande'
         };
         return names[pageName] || pageName;
     }
@@ -344,7 +344,7 @@ class RecentItemsManager {
         this.storageKey = this.getStorageKey();
         this.recentItems = this.loadRecentItems();
         this.display();
-        logger.debug('🔄 Récents mis à jour pour nouvel utilisateur (ID: ' + (this.userId || 'anonyme') + ')');
+        logger.debug(`🔄 Récents mis à jour pour nouvel utilisateur (ID: ${  this.userId || 'anonyme'  })`);
     }
 }
 

@@ -104,8 +104,8 @@ export default class SystemInfoManager {
                 const isOnline = navigator.onLine;
                 const parentItem = connectionElement.closest('.footer-info-item');
 
-                let label = isOnline ? 'En ligne' : 'Hors ligne';
-                let color = isOnline ? '#4ade80' : '#ef4444';
+                const label = isOnline ? 'En ligne' : 'Hors ligne';
+                const color = isOnline ? '#4ade80' : '#ef4444';
                 let iconClass = 'fas fa-wifi';
                 let title = 'Connexion Internet active';
 
@@ -182,7 +182,9 @@ export default class SystemInfoManager {
      */
     async copyIPToClipboard() {
         const ipElement = document.getElementById(this.ipElementId);
-        if (!ipElement) return;
+        if (!ipElement) {
+            return;
+        }
         
         const ipText = ipElement.textContent;
         
@@ -336,13 +338,4 @@ export default class SystemInfoManager {
         this.showOffline();
     }
 
-    /**
-     * Détruire le manager et arrêter les mises à jour
-     */
-    destroy() {
-        if (this.intervalId) {
-            clearInterval(this.intervalId);
-            this.intervalId = null;
-        }
-    }
 }

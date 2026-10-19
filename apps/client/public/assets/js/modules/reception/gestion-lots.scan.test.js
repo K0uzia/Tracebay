@@ -76,7 +76,7 @@ function pressEnterOnSerial(input) {
     input.dispatchEvent(event);
 }
 
-describe('GestionLotsManager — Enter sur S/N (scan)', () => {
+describe('GestionLotsManager : Enter sur S/N (scan)', () => {
     let manager;
     let initSpy;
 
@@ -115,7 +115,9 @@ describe('GestionLotsManager — Enter sur S/N (scan)', () => {
         try {
             localStorage.removeItem('workspace_lot_draft_anon');
             const uid = localStorage.getItem('workspace_user_id');
-            if (uid) localStorage.removeItem(`workspace_lot_draft_${uid}`);
+            if (uid) {
+                localStorage.removeItem(`workspace_lot_draft_${uid}`);
+            }
         } catch (_) { /* ignore */ }
         jest.restoreAllMocks();
     });
@@ -145,7 +147,9 @@ describe('GestionLotsManager — Enter sur S/N (scan)', () => {
             }
             // Les lignes précédentes non touchées gardent leur valeur
             previousValues.forEach((prev, i) => {
-                if (prev) expect(values[i]).toBe(prev);
+                if (prev) {
+                    expect(values[i]).toBe(prev);
+                }
             });
             // Dernière ligne vide
             expect(values[values.length - 1]).toBe('');
@@ -185,7 +189,9 @@ describe('GestionLotsManager — Enter sur S/N (scan)', () => {
                 expect(values[i]).toBe(serials[i]);
             }
             previousValues.forEach((prev, i) => {
-                if (prev) expect(values[i]).toBe(prev);
+                if (prev) {
+                    expect(values[i]).toBe(prev);
+                }
             });
             expect(values[values.length - 1]).toBe('');
             expect(values).toHaveLength(index + 2);

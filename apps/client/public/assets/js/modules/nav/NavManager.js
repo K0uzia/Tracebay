@@ -46,7 +46,9 @@ class NavManager {
 
     handleLinkClick(e) {
         // Ne pas fermer le menu si on clique sur Profil ou dans le dropdown (Paramètres, Déconnexion…)
-        if (e.target.closest('.nav-action')) return;
+        if (e.target.closest('.nav-action')) {
+            return;
+        }
         this.closeMenu();
     }
 

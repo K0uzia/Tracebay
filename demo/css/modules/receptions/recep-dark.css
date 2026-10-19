@@ -3,7 +3,7 @@
    Chargé en dernier (global.css) pour surcharger les CSS light legacy des pages.
    ============================================================================= */
 
-/* Appliqué uniquement en thème sombre — le clair est géré par theme-light.css */
+/* Appliqué uniquement en thème sombre : le clair est géré par theme-light.css */
 html[data-theme-dark="1"] {
     .r-root .recep-page {
         --recep-accent: #7c9cff;
@@ -523,7 +523,7 @@ html[data-theme-dark="1"] {
         color: #7c9cff !important;
     }
 
-    /* Traçabilité actions — lisibles sur dark */
+    /* Traçabilité actions : lisibles sur dark */
     .r-root .tracabilite-container .lot-card-actions .btn-action {
         background: rgba(255, 255, 255, 0.04) !important;
         color: var(--recep-text) !important;
@@ -578,7 +578,7 @@ html[data-theme-dark="1"] {
         color: #9db5ff !important;
     }
 
-    /* Inventaire — compteurs compacts */
+    /* Inventaire : compteurs compacts */
     .r-root .inventaire-container .inventaire-stat {
         color: rgba(215, 223, 236, 0.78) !important;
         background: rgba(255, 255, 255, 0.035) !important;

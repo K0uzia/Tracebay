@@ -55,7 +55,7 @@ export const appConfig = {
                     command: 'gedit',
                     icon: 'fa-desktop',
                     args: []
-                },
+                }
             ]
         },
         office: {
@@ -92,7 +92,9 @@ export const appConfig = {
      * Récupère la config d'un preset
      */
     resolvePreset(name) {
-        if (!name) return null;
+        if (!name) {
+            return null;
+        }
         const key = name.toLowerCase();
         return this.appManagers?.[key] || null;
     }
