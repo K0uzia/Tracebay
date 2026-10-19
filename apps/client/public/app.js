@@ -1658,9 +1658,6 @@ class PageManager {
         if (options.onUndo) {
             notification.classList.add('has-action');
         }
-        if (options.position === 'bottom') {
-            notification.classList.add('notification--bottom');
-        }
         notification.setAttribute('role', 'status');
 
         let icon = '<i class="fa-solid fa-circle-info"></i>';
