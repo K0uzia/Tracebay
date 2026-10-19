@@ -2,17 +2,14 @@
  * Tracebay Client - Electron Main Process
  * Gère la fenêtre d'application et la connexion au serveur distant
  */
-const { app, BrowserWindow, ipcMain, shell, Notification, nativeImage, Menu, globalShortcut, crashReporter, net } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, nativeImage, Menu, crashReporter, net } = require('electron');
 const path = require('path');
 const url = require('url');
 const http = require('http');
 const fs = require('fs');
 const os = require('os');
-const { exec, execSync, execFile, spawn } = require('child_process');
+const { execSync, spawn } = require('child_process');
 const PDFDocument = require('pdfkit');
-
-/** Activer les envois de logs debug vers l'endpoint ingest (débug session). Définir WORKSPACE_DEBUG=1 pour activer. */
-const DEBUG_INGEST = process.env.WORKSPACE_DEBUG === '1';
 
 // Crash reporting : dumps locaux par défaut ; pour envoi à Sentry/Bugsnag, définir CRASH_REPORT_URL (ex. https://sentry.io/...)
 try {
@@ -29,200 +26,8 @@ try {
     console.warn('[CrashReporter] init skipped:', e?.message);
 }
 
-// #region agent log (bootstrap debug log pour AppImage sur autres machines)
-function getAppImageDebugLogPath() {
-    try {
-        if (app.isPackaged) {
-            return path.join(app.getPath('userData'), 'debug.log');
-        }
-        return path.join(__dirname, '..', '..', '.cursor', 'debug.log');
-    } catch (_) {
-        return path.join(os.homedir(), '.config', 'workspace-client-debug.log');
-    }
-}
-function writeAppImageDebugLog(payload) {
-    try {
-        const logPath = getAppImageDebugLogPath();
-        const dir = path.dirname(logPath);
-        if (!fs.existsSync(dir)) {
-            try { fs.mkdirSync(dir, { recursive: true }); } catch (_) { }
-        }
-        fs.appendFileSync(logPath, JSON.stringify({ ...payload, timestamp: Date.now() }) + '\n');
-    } catch (_) { }
-}
-try {
-    writeAppImageDebugLog({
-        hypothesisId: 'H4-H5',
-        location: 'main.js:bootstrap',
-        message: 'main_started',
-        data: {
-            platform: process.platform,
-            arch: process.arch,
-            nodeVersion: process.version,
-            packaged: app.isPackaged,
-            execPath: process.execPath ? path.basename(process.execPath) : ''
-        }
-    });
-} catch (_) { }
-process.on('uncaughtException', (err) => {
-    writeAppImageDebugLog({ hypothesisId: 'H4', location: 'uncaughtException', message: String(err && err.message), data: { stack: err && err.stack } });
-});
-process.on('unhandledRejection', (reason) => {
-    writeAppImageDebugLog({ hypothesisId: 'H4', location: 'unhandledRejection', message: String(reason) });
-});
-// #endregion
-
-// #region agent log (session debug - écran redémarrage MAJ)
-const DEBUG_SESSION_LOG = path.join(__dirname, '..', '..', '.cursor', 'debug-3375e0.log');
-const FALLBACK_SESSION_LOG = process.platform === 'linux' && process.env.HOME
-    ? path.join(process.env.HOME, '.config', 'workspace-client', 'debug-3375e0.log')
-    : null;
-function sessionLog(payload) {
-    const line = JSON.stringify({ sessionId: '3375e0', ...payload, timestamp: Date.now() }) + '\n';
-    try {
-        fs.appendFileSync(DEBUG_SESSION_LOG, line);
-    } catch (_) {
-        if (FALLBACK_SESSION_LOG) {
-            try {
-                const d = path.dirname(FALLBACK_SESSION_LOG);
-                if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
-                fs.appendFileSync(FALLBACK_SESSION_LOG, line);
-            } catch (_2) { }
-        }
-    }
-}
-// #endregion
-
-// Import ClientDiscovery et module de mise à jour (désactivé au démarrage : MAJ manuelle)
-const ClientDiscovery = require('./lib/ClientDiscovery.js');
-const { runAutoUpdate } = require('./lib/update.js');
-
 // Détection environnement (production vs développement)
 const isProduction = process.env.NODE_ENV === 'production' || app.isPackaged;
-
-/**
- * Obtenir toutes les IPs locales du réseau
- */
-function getLocalNetworkIPs() {
-    const interfaces = os.networkInterfaces();
-    const ips = [];
-
-    for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-            // IPv4, non-interne
-            if (iface.family === 'IPv4' && !iface.internal) {
-                const parts = iface.address.split('.');
-                const subnet = `${parts[0]}.${parts[1]}.${parts[2]}`;
-                ips.push({ subnet, myIp: iface.address });
-            }
-        }
-    }
-    return ips;
-}
-
-/**
- * Tester la connexion à une IP:PORT spécifique
- */
-function testServerConnection(ip, port = 8060, timeout = 1000) {
-    return new Promise((resolve) => {
-        const req = http.get(`http://${ip}:${port}/api/health`, { timeout }, (res) => {
-            if (res.statusCode === 200) {
-                let data = '';
-                res.on('data', chunk => data += chunk);
-                res.on('end', () => {
-                    try {
-                        const health = JSON.parse(data);
-                        if (health.status === 'ok') {
-                            resolve({ found: true, url: `http://${ip}:${port}` });
-                        } else {
-                            resolve({ found: false });
-                        }
-                    } catch (e) {
-                        resolve({ found: false });
-                    }
-                });
-            } else {
-                resolve({ found: false });
-            }
-        });
-
-        req.on('error', () => resolve({ found: false }));
-        req.on('timeout', () => {
-            req.destroy();
-            resolve({ found: false });
-        });
-    });
-}
-
-/**
- * Scanner le réseau local pour trouver le serveur
- */
-async function discoverServer(port = 8060) {
-    console.log('🔍 Recherche du serveur via beacons UDP...');
-
-    // D'abord, essayer la découverte via beacons UDP
-    const discovery = new ClientDiscovery();
-
-    try {
-        const server = await discovery.findServer(5000);  // Timeout de 5 secondes
-        if (server) {
-            return server;
-        }
-    } catch (err) {
-        console.warn('⚠️  Erreur lors de la découverte UDP:', err.message);
-    }
-
-    console.log('🔍 Fallback: Recherche manuelle du serveur sur le réseau...');
-
-    const networks = getLocalNetworkIPs();
-    if (networks.length === 0) {
-        console.warn('⚠️  Aucune interface réseau détectée');
-        return null;
-    }
-
-    // Tester d'abord localhost
-    console.log('🔍 Test localhost...');
-    const localhostTest = await testServerConnection('localhost', port, 500);
-    if (localhostTest.found) {
-        console.log('✅ Serveur trouvé sur localhost');
-        return { url: localhostTest.url, ws: `ws://localhost:${port}` };
-    }
-
-    // Ensuite tester notre propre IP
-    for (const network of networks) {
-        console.log(`🔍 Test ${network.myIp}...`);
-        const selfTest = await testServerConnection(network.myIp, port, 500);
-        if (selfTest.found) {
-            console.log(`✅ Serveur trouvé sur ${network.myIp}`);
-            return { url: selfTest.url, ws: `ws://${network.myIp}:${port}` };
-        }
-    }
-
-    // Scanner le sous-réseau (en parallèle pour plus de rapidité)
-    for (const network of networks) {
-        console.log(`🔍 Scan du réseau ${network.subnet}.0/24...`);
-        const promises = [];
-
-        for (let i = 1; i <= 254; i++) {
-            const ip = `${network.subnet}.${i}`;
-            if (ip !== network.myIp) {  // Skip notre propre IP déjà testée
-                promises.push(testServerConnection(ip, port, 800));
-            }
-        }
-
-        const results = await Promise.all(promises);
-        for (let i = 0; i < results.length; i++) {
-            if (results[i].found) {
-                const foundIp = results[i].url.replace('http://', '').replace(`:${port}`, '');
-                console.log(`✅ Serveur trouvé sur ${foundIp}`);
-                return { url: results[i].url, ws: `ws://${foundIp}:${port}` };
-            }
-        }
-    }
-
-    console.warn('⚠️  Aucun serveur trouvé sur le réseau');
-    return null;
-}
 
 // Charger la configuration serveur centralisée
 let serverConfig = {};
@@ -1509,16 +1314,15 @@ function createWindow() {
             mainWindow.setFullScreen(!mainWindow.isFullScreen());
         }
     };
-    try {
-        if (!isProduction) {
-            globalShortcut.register('F12', toggleDevTools);
-            globalShortcut.register('CommandOrControl+Shift+I', toggleDevTools);
-        }
-        globalShortcut.register('CommandOrControl+R', reloadApp);
-        globalShortcut.register('F11', toggleFullscreen);
-    } catch (e) {
-        console.warn('Raccourcis globaux non enregistrés:', e?.message);
-    }
+    // Raccourcis limités à la fenêtre (globalShortcut les capterait dans tout le système)
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+        if (input.type !== 'keyDown') return;
+        const mod = input.control || input.meta;
+        const key = (input.key || '').toLowerCase();
+        if (input.key === 'F11') { toggleFullscreen(); event.preventDefault(); }
+        else if (mod && !input.shift && key === 'r') { reloadApp(); event.preventDefault(); }
+        else if (!isProduction && (input.key === 'F12' || (mod && input.shift && key === 'i'))) { toggleDevTools(); event.preventDefault(); }
+    });
 
     if (appIconPath && process.platform === 'linux' && windowIcon) {
         const iconToSet = typeof windowIcon === 'string' ? nativeImage.createFromPath(windowIcon) : windowIcon;
@@ -1551,9 +1355,6 @@ function createWindow() {
         closeSplashWindow();
         const flagPath = path.join(app.getPath('userData'), 'workspace-update-installed.flag');
         if (fs.existsSync(flagPath)) {
-            // #region agent log
-            sessionLog({ hypothesisId: 'H4', location: 'main.js:showMainAndCloseSplash', message: 'flag found post-restart', data: {} });
-            // #endregion
             try {
                 fs.unlinkSync(flagPath);
             } catch (_) { }
@@ -1614,54 +1415,12 @@ function createWindow() {
     });
 
     mainWindow.on('closed', () => {
-        try {
-            globalShortcut.unregister('F12');
-            globalShortcut.unregister('CommandOrControl+Shift+I');
-            globalShortcut.unregister('CommandOrControl+R');
-            globalShortcut.unregister('F11');
-        } catch (_) { /* ignore */ }
         mainWindow = null;
     });
 
     // Arrêter le clignotement de la barre des tâches quand l'utilisateur revient sur la fenêtre
     mainWindow.on('focus', () => {
         if (mainWindow && !mainWindow.isDestroyed()) mainWindow.flashFrame(false);
-    });
-}
-
-/**
- * Notifications chat : clignotement barre des tâches + notification OS (nouveau message non vu)
- */
-function setupChatNotifications() {
-    ipcMain.on('chat-new-message', (_event, payload) => {
-        const pseudo = (payload && payload.pseudo) ? String(payload.pseudo) : 'Quelqu\'un';
-        const win = mainWindow;
-        if (!win || win.isDestroyed()) return;
-        // Ne pas notifier si la fenêtre a le focus (utilisateur déjà sur l'app)
-        if (win.isFocused()) return;
-        // Faire clignoter l'icône dans la barre des tâches (Linux/Windows) ou bounce dock (macOS)
-        try {
-            if (process.platform === 'darwin' && app.dock) {
-                app.dock.bounce('informational');
-            } else {
-                win.flashFrame(true);
-            }
-        } catch (_) { }
-        // Notification système (popup à droite sur la plupart des OS)
-        if (Notification.isSupported()) {
-            const iconPath = path.join(__dirname, 'assets', 'linux', 'icons', '256x256.png');
-            const opts = { body: `${pseudo} a envoyé un message` };
-            if (fs.existsSync(iconPath)) opts.icon = iconPath;
-            const n = new Notification('Tracebay - Chat', opts);
-            n.on('click', () => {
-                if (win && !win.isDestroyed()) {
-                    win.show();
-                    win.focus();
-                    win.flashFrame(false);
-                }
-            });
-            n.show();
-        }
     });
 }
 
@@ -1674,9 +1433,6 @@ let appLaunched = false;
  * du serveur s'exécute en parallèle (le client gère le mode hors-ligne).
  */
 function launchApp() {
-    // #region agent log
-    sessionLog({ hypothesisId: 'H4', location: 'main.js:launchApp', message: 'launchApp called', data: { appLaunched } });
-    // #endregion
     if (appLaunched) return;
     appLaunched = true;
     setSplashMessage('Chargement en cours…');
@@ -1700,7 +1456,6 @@ app.on('ready', async () => {
     console.log(`🌍 Environnement: ${isProduction ? 'PRODUCTION' : 'DÉVELOPPEMENT'}`);
     console.log('ℹ️  La config réelle sera chargée par le client web');
     
-    setupChatNotifications();
     // Démarrage optimisé : plus de vérification MAJ au lancement.
     await launchApp();
 });
@@ -1793,9 +1548,6 @@ async function openPdfFileWithDesktopDefault(filePath) {
 // IPC: télécharger un PDF depuis une URL et l'ouvrir avec l'application système (traçabilité)
 ipcMain.handle('open-pdf-with-system-app', async (_event, payload) => {
     const { url: pdfUrl, token, suggestedFilename, localFilePath } = payload || {};
-    // #region agent log
-    if (DEBUG_INGEST) { fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'main.js:open-pdf-with-system-app',message:'handler entry',data:{urlStart:(pdfUrl||'').slice(0,100),hasToken:!!(token&&String(token).trim())},hypothesisId:'H3',timestamp:Date.now()})}).catch(()=>{}); }
-    // #endregion
     if (!pdfUrl || typeof pdfUrl !== 'string') {
         return { success: false, error: 'URL requise' };
     }
@@ -1815,9 +1567,6 @@ ipcMain.handle('open-pdf-with-system-app', async (_event, payload) => {
     const tempPath = path.join(os.tmpdir(), `workspace-pdf-${Date.now()}-${safeName}`);
     try {
         const buf = await fetchPdfBufferForOpen(pdfUrl.trim(), token);
-        // #region agent log
-        if (DEBUG_INGEST) { fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'main.js:open-pdf-with-system-app',message:'after fetch',data:{bytes:buf?.length},hypothesisId:'H4',timestamp:Date.now()})}).catch(()=>{}); }
-        // #endregion
         fs.writeFileSync(tempPath, buf);
         const opened = await openPdfFileWithDesktopDefault(tempPath);
         if (!opened.ok) {
@@ -1826,9 +1575,6 @@ ipcMain.handle('open-pdf-with-system-app', async (_event, payload) => {
         }
         return { success: true, path: tempPath };
     } catch (e) {
-        // #region agent log
-        if (DEBUG_INGEST) { fetch('http://127.0.0.1:7769/ingest/5680a22c-9f00-42fe-8dff-e51f17df8a04',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'da2875'},body:JSON.stringify({sessionId:'da2875',location:'main.js:open-pdf-with-system-app',message:'handler catch',data:{message:e?.message,name:e?.constructor?.name},hypothesisId:'H5',timestamp:Date.now()})}).catch(()=>{}); }
-        // #endregion
         try { if (fs.existsSync(tempPath)) fs.unlinkSync(tempPath); } catch (_) {}
         console.error('❌ open-pdf-with-system-app:', e.message);
         return { success: false, error: e.message };
@@ -1868,209 +1614,14 @@ ipcMain.handle('open-path', async (_event, payload) => {
             return { success: true, path: resolved };
         }
 
-        const platform = process.platform;
-        let cmd;
-        if (platform === 'win32') {
-            cmd = `explorer "${resolved}"`;
-        } else if (platform === 'darwin') {
-            cmd = `open "${resolved}"`;
-        } else {
-            cmd = `xdg-open "${resolved}" || nautilus "${resolved}" || dolphin "${resolved}"`;
+        const err = await shell.openPath(resolved);
+        if (err && !tryLinuxSpawnOpenFile(resolved)) {
+            console.error('❌ open-path (dossier):', err);
+            return { success: false, error: err };
         }
-        exec(cmd, (error) => {
-            if (error) console.error('❌ Erreur ouverture dossier:', error.message);
-        });
         return { success: true, path: resolved };
     } catch (error) {
         console.error('❌ Erreur open-path:', error);
-        return { success: false, error: error.message };
-    }
-});
-
-// IPC: récupérer l'icône d'une application
-ipcMain.handle('get-app-icon', async (_event, payload) => {
-    const { command, appName } = payload || {};
-    if (!command) return { success: false, icon: null };
-
-    try {
-        // Extraire la commande de base (avant les flags)
-        const baseCommand = command.split(' ')[0];
-
-        // D'abord chercher dans /usr/share/applications avec la commande
-        let desktopFiles = [
-            `/usr/share/applications/${command}.desktop`,
-            `/usr/share/applications/${baseCommand}.desktop`,
-            `/usr/local/share/applications/${command}.desktop`,
-            `/usr/local/share/applications/${baseCommand}.desktop`,
-            `${os.homedir()}/.local/share/applications/${command}.desktop`,
-            `${os.homedir()}/.local/share/applications/${baseCommand}.desktop`
-        ];
-
-        // Pour LibreOffice, détecter le type spécifique depuis la commande
-        if (baseCommand === 'libreoffice' && command.includes('--')) {
-            const flag = command.match(/--(\w+)/)?.[1];
-            if (flag) {
-                desktopFiles.unshift(`/usr/share/applications/libreoffice-${flag}.desktop`);
-            }
-        }
-
-        // Ajouter des variantes courantes basées sur le nom de l'app
-        if (appName) {
-            const nameLower = appName.toLowerCase().replace(/\s+/g, '');
-            desktopFiles.push(
-                `/usr/share/applications/${nameLower}.desktop`,
-                `/usr/share/applications/${baseCommand}-${nameLower}.desktop`,
-                `/usr/share/applications/org.${nameLower}.${appName}.desktop`,
-                `/usr/share/applications/org.gnome.${appName}.desktop`,  // GNOME apps (majuscule)
-                `/usr/share/applications/org.gnome.${nameLower}.desktop`  // GNOME apps (minuscule)
-            );
-            // Ajouter aussi la variante complète (org.gnome.GNOME)
-            desktopFiles.push(
-                `/usr/share/applications/org.${nameLower}.${nameLower}.desktop`
-            );
-        }
-
-        // Chercher aussi les .desktop contenant la commande (grep)
-        try {
-            const result = execSync(`grep -l "Exec=.*${baseCommand}" /usr/share/applications/*.desktop 2>/dev/null | head -5`, {
-                encoding: 'utf8',
-                stdio: ['pipe', 'pipe', 'ignore']
-            }).trim().split('\n').filter(Boolean);
-            if (result[0]) desktopFiles.push(...result);
-        } catch (e) {
-            // Pas d'erreur si rien trouvé
-        }
-
-        // Pour les apps Flatpak, extraire l'ID
-        let flatpakId = null;
-        if (command.startsWith('flatpak') || command.includes('com.') || command.includes('io.')) {
-            const parts = command.split(' ');
-            flatpakId = parts[parts.length - 1];
-            desktopFiles.push(
-                `/var/lib/flatpak/app/${flatpakId}/current/active/files/share/applications/${flatpakId}.desktop`,
-                `${os.homedir()}/.local/share/flatpak/app/${flatpakId}/current/active/files/share/applications/${flatpakId}.desktop`
-            );
-        }
-
-        // Déduplicatif et filtre
-        desktopFiles = [...new Set(desktopFiles)].filter(f => f && f.includes('.desktop'));
-
-        for (const desktopFile of desktopFiles) {
-            if (fs.existsSync(desktopFile)) {
-                try {
-                    const content = fs.readFileSync(desktopFile, 'utf8');
-                    const iconMatch = content.match(/Icon=(.+)/);
-
-                    if (iconMatch) {
-                        const iconName = iconMatch[1].trim();
-
-                        // Chercher l'icône - augmenter la couverture de recherche
-                        const iconPaths = [
-                            // Hicolor (standard)
-                            `/usr/share/icons/hicolor/256x256/apps/${iconName}.png`,
-                            `/usr/share/icons/hicolor/256x256/apps/${iconName}.svg`,
-                            `/usr/share/icons/hicolor/128x128/apps/${iconName}.png`,
-                            `/usr/share/icons/hicolor/128x128/apps/${iconName}.svg`,
-                            `/usr/share/icons/hicolor/48x48/apps/${iconName}.png`,
-                            `/usr/share/icons/hicolor/48x48/apps/${iconName}.svg`,
-                            `/usr/share/icons/hicolor/scalable/apps/${iconName}.svg`,
-                            // Pixmaps
-                            `/usr/share/pixmaps/${iconName}.png`,
-                            `/usr/share/pixmaps/${iconName}.svg`,
-                            `/usr/share/pixmaps/${iconName}`,
-                            // Adwaita (GNOME)
-                            `/usr/share/icons/Adwaita/256x256/apps/${iconName}.png`,
-                            `/usr/share/icons/Adwaita/256x256/apps/${iconName}.svg`,
-                            `/usr/share/icons/Adwaita/scalable/apps/${iconName}.svg`,
-                            // HighContrast
-                            `/usr/share/icons/HighContrast/256x256/apps/${iconName}.png`,
-                            `/usr/share/icons/HighContrast/256x256/apps/${iconName}.svg`,
-                            // Mint-Y (popular Linux theme)
-                            `/usr/share/icons/Mint-Y/apps/256/${iconName}.png`,
-                            `/usr/share/icons/Mint-Y/apps/48/${iconName}.png`,
-                            `/usr/share/icons/Mint-L/apps/256/${iconName}.png`,
-                            `/usr/share/icons/Mint-L/apps/48/${iconName}.png`,
-                            // Papirus (SVG icons)
-                            `/usr/share/icons/Papirus/64x64/apps/${iconName}.svg`,
-                            `/usr/share/icons/Papirus/48x48/apps/${iconName}.svg`,
-                            `/usr/share/icons/Papirus/32x32/apps/${iconName}.svg`,
-                            // Humanity
-                            `/usr/share/icons/Humanity/apps/128/${iconName}.svg`,
-                            `/usr/share/icons/Humanity/apps/64/${iconName}.svg`,
-                            // Yaru
-                            `/usr/share/icons/Yaru/256x256/apps/${iconName}.png`,
-                            `/usr/share/icons/Yaru/48x48/apps/${iconName}.png`,
-                            // GNOME
-                            `/usr/share/icons/gnome/256x256/apps/${iconName}.png`,
-                            `/usr/share/icons/gnome/48x48/apps/${iconName}.png`,
-                            // Variantes avec traits d'union/underscore
-                            `/usr/share/icons/hicolor/256x256/apps/${iconName.replace(/_/g, '-')}.png`,
-                            `/usr/share/icons/hicolor/256x256/apps/${iconName.replace(/_/g, '-')}.svg`,
-                            `/usr/share/icons/Adwaita/256x256/apps/${iconName.replace(/_/g, '-')}.png`,
-                            `/usr/share/icons/Adwaita/256x256/apps/${iconName.replace(/_/g, '-')}.svg`,
-                            `/usr/share/icons/Mint-Y/apps/256/${iconName.replace(/_/g, '-')}.png`
-                        ];
-
-                        // Pour Flatpak
-                        if (flatpakId) {
-                            iconPaths.push(
-                                `/var/lib/flatpak/app/${flatpakId}/current/active/files/share/icons/hicolor/256x256/apps/${iconName}.png`,
-                                `/var/lib/flatpak/app/${flatpakId}/current/active/files/share/pixmaps/${iconName}.png`,
-                                `${os.homedir()}/.local/share/flatpak/app/${flatpakId}/current/active/files/share/icons/hicolor/256x256/apps/${iconName}.png`
-                            );
-                        }
-
-                        for (const iconPath of iconPaths) {
-                            if (fs.existsSync(iconPath)) {
-                                console.log('✅ Icône trouvée:', iconPath);
-                                return { success: true, icon: iconPath };
-                            }
-                        }
-                    }
-                } catch (err) {
-                    console.warn('⚠️ Erreur lecture .desktop:', desktopFile, err.message);
-                }
-            }
-        }
-
-        console.warn('⚠️ Icône non trouvée pour:', command, 'avec appName:', appName);
-        return { success: false, icon: null };
-    } catch (error) {
-        console.error('❌ Erreur get-app-icon:', error);
-        return { success: false, icon: null };
-    }
-});
-
-// IPC: lancer une application (sécurisé : whitelist + execFile, pas de shell)
-const LAUNCH_APP_SAFE_PATTERN = /^[a-zA-Z0-9_.-]+$/;
-const LAUNCH_PATH_SAFE_PATTERN = /^[a-zA-Z0-9_./#+\- ]+$/;
-const LAUNCH_APP_MAX_LEN = 128;
-
-ipcMain.handle('launch-app', async (_event, payload) => {
-    const { command, args = [] } = payload || {};
-    if (!command || typeof command !== 'string') throw new Error('command is required');
-
-    const cmd = command.trim();
-    const isSimpleCommand = LAUNCH_APP_SAFE_PATTERN.test(cmd);
-    const isPathLikeCommand = (cmd.includes('/') || cmd.startsWith('.')) && LAUNCH_PATH_SAFE_PATTERN.test(cmd);
-    if (cmd.length > LAUNCH_APP_MAX_LEN || (!isSimpleCommand && !isPathLikeCommand)) {
-        console.error('❌ launch-app: commande refusée (caractères ou longueur non autorisés)');
-        return { success: false, error: 'Commande non autorisée' };
-    }
-    const safeArgs = Array.isArray(args) ? args.map(a => (typeof a === 'string' ? a : String(a))) : [];
-
-    try {
-        execFile(cmd, safeArgs, { shell: false }, (error, stdout, stderr) => {
-            if (error) {
-                console.error('❌ Erreur lancement app:', error.message);
-                return;
-            }
-            if (stderr) console.warn('⚠️ App stderr:', stderr);
-            console.log('✅ Application lancée:', cmd);
-        });
-        return { success: true, command: cmd };
-    } catch (error) {
-        console.error('❌ Erreur launch-app:', error);
         return { success: false, error: error.message };
     }
 });
@@ -2221,6 +1772,13 @@ function getAllowedPathPrefixes() {
         PRETS_PDF_BASE
     ].filter(Boolean);
     return bases.map(p => path.normalize(p));
+}
+
+/** Dossier de sortie PDF demandé par le renderer, ramené au défaut s'il sort des répertoires autorisés. */
+function resolvePdfBase(requested, fallback) {
+    if (!requested || typeof requested !== 'string') return fallback;
+    const resolved = path.resolve(requested);
+    return isPathAllowed(resolved) ? resolved : fallback;
 }
 
 function isPathAllowed(resolvedPath) {
@@ -2529,8 +2087,9 @@ ipcMain.handle('generate-lot-pdf', async (_event, payload) => {
         created_at,
         finished_at,
         recovered_at,
-        basePath = TRACABILITE_PDF_BASE
+        basePath: requestedBasePath
     } = payload || {};
+    const basePath = resolvePdfBase(requestedBasePath, TRACABILITE_PDF_BASE);
     if (!lotId) {
         return { success: false, error: 'lotId requis' };
     }
@@ -2864,8 +2423,9 @@ ipcMain.handle('generate-disques-pdf', async (_event, payload) => {
         date,
         name,
         disks = [],
-        basePath = TRACABILITE_PDF_BASE
+        basePath: requestedBasePath
     } = payload || {};
+    const basePath = resolvePdfBase(requestedBasePath, TRACABILITE_PDF_BASE);
     if (!sessionId) {
         return { success: false, error: 'sessionId requis' };
     }
@@ -3024,8 +2584,9 @@ ipcMain.handle('generate-commande-pdf', async (_event, payload) => {
         category,
         date,
         lines = [],
-        basePath = COMMANDES_PDF_BASE
+        basePath: requestedBasePath
     } = payload || {};
+    const basePath = resolvePdfBase(requestedBasePath, COMMANDES_PDF_BASE);
     if (!commandeName || !String(commandeName).trim()) {
         return { success: false, error: 'Nom de la commande requis' };
     }
@@ -3159,8 +2720,9 @@ ipcMain.handle('generate-don-pdf', async (_event, payload) => {
         lotName,
         date,
         lines = [],
-        basePath = DONS_PDF_BASE
+        basePath: requestedBasePath
     } = payload || {};
+    const basePath = resolvePdfBase(requestedBasePath, DONS_PDF_BASE);
     const rawDate = (date && String(date).trim()) ? String(date).trim() : new Date().toISOString().slice(0, 10);
     const dateStr = /^\d{4}-\d{2}-\d{2}/.test(rawDate) ? rawDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
     const [yearPart, monthPart] = dateStr.split('-');
@@ -3352,8 +2914,9 @@ ipcMain.handle('generate-pret-materiel-pdf', async (_event, payload) => {
         remuneration_gratuit,
         remuneration_montant,
         lines = [],
-        basePath = PRETS_PDF_BASE
+        basePath: requestedBasePath
     } = payload || {};
+    const basePath = resolvePdfBase(requestedBasePath, PRETS_PDF_BASE);
     const rawDate = (date && String(date).trim()) ? String(date).trim() : (date_debut && String(date_debut).trim()) ? String(date_debut).trim() : new Date().toISOString().slice(0, 10);
     const dateStr = /^\d{4}-\d{2}-\d{2}/.test(rawDate) ? rawDate.slice(0, 10) : new Date().toISOString().slice(0, 10);
     const [yearPart, monthPart] = dateStr.split('-');
@@ -3419,7 +2982,7 @@ ipcMain.handle('read-file-as-base64', async (_event, payload) => {
     }
     try {
         const resolved = path.resolve(filePath);
-        if (!isPathAllowed(resolved)) {
+        if (!isPathAllowed(resolved) || path.extname(resolved).toLowerCase() !== '.pdf') {
             console.error('❌ read-file-as-base64: chemin non autorisé:', resolved);
             return { success: false, error: 'Chemin non autorisé' };
         }
@@ -3435,15 +2998,6 @@ ipcMain.handle('read-file-as-base64', async (_event, payload) => {
     }
 });
 
-/** Clé Giphy lue uniquement depuis l'environnement d'exécution. */
-const DEFAULT_GIPHY_API_KEY = 'mvekVgYYTsuZWKdfbyHDgUvtCEfUt4IR';
-
-function getGiphyApiKey() {
-    const fromEnv = process.env.GIPHY_API_KEY && String(process.env.GIPHY_API_KEY).trim();
-    if (fromEnv) return fromEnv;
-    return DEFAULT_GIPHY_API_KEY;
-}
-
 /**
  * Obtenir la configuration de l'application
  */
@@ -3455,8 +3009,7 @@ ipcMain.handle('get-app-config', async () => {
         serverMode: MODE,
         nodeEnv: isProduction ? 'production' : 'development',
         isProduction: isProduction,
-        appVersion: app.getVersion(),
-        giphyApiKey: getGiphyApiKey()
+        appVersion: app.getVersion()
     };
 });
 

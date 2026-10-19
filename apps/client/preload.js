@@ -1,7 +1,7 @@
 const { contextBridge, ipcRenderer } = require('electron');
 
 const ALLOWED_CHANNELS = {
-    send: ['open-pdf', 'chat-new-message'],
+    send: [],
     invoke: [
         'open-external',
         'open-pdf-window',
@@ -13,8 +13,6 @@ const ALLOWED_CHANNELS = {
         'get-system-info',
         'list-folders',
         'open-path',
-        'launch-app',
-        'get-app-icon',
         'generate-lot-pdf',
         'generate-disques-pdf',
         'generate-commande-pdf',
@@ -73,10 +71,6 @@ contextBridge.exposeInMainWorld('electron', {
             throw new Error('URL invalide');
         }
         return ipcRenderer.invoke('open-external', url);
-    },
-
-    openPDF: () => {
-        ipcRenderer.send('open-pdf');
     }
 });
 

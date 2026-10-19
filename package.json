@@ -1,7 +1,7 @@
 {
   "name": "Tracebay",
   "version": "3.4.0",
-  "description": "Tracebay — traçabilité de matériel (lots, disques, archives) et agenda",
+  "description": "Tracebay : traçabilité de matériel (lots, disques, archives) et agenda",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "workspaces": [
@@ -11,7 +11,6 @@
     "dev": "npm start --workspace=apps/client",
     "build": "npm run build --workspace=apps/client",
     "build:client": "npm run build --workspace=apps/client",
-    "build:production": "node build-production.js",
     "build:prod": "node scripts/run-with-env.js npm run build:prod -w apps/client",
     "build:prod:linux": "node scripts/run-with-env.js npm run build:prod:linux -w apps/client",
     "build:prod:win": "node scripts/run-with-env.js npm run build:prod:win -w apps/client",
@@ -19,37 +18,28 @@
     "start": "npm start --workspace=apps/client",
     "start:client": "npm start --workspace=apps/client",
     "start:with-update": "node scripts/auto-update-and-launch.js",
-    "start:prod": "NODE_ENV=production electron apps/client",
-    "start:dev": "NODE_ENV=development electron apps/client",
-    "lint": "eslint \"apps/**/*.{ts,js}\" --fix",
-    "lint:check": "eslint \"apps/**/*.{ts,js}\"",
+    "lint": "eslint \"apps/**/*.js\" --fix",
+    "lint:check": "eslint \"apps/**/*.js\"",
     "format": "prettier --write \"apps/**/*.{ts,js,css,json}\"",
     "format:check": "prettier --check \"apps/**/*.{ts,js,css,json}\"",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "audit": "npm audit",
-    "audit:fix": "npm audit --fix"
+    "audit:fix": "npm audit --fix",
+    "start:dev": "npm run start:dev --workspace=apps/client"
   },
   "devDependencies": {
     "dotenv": "^16.4.5",
     "@babel/core": "^7.29.0",
     "@babel/preset-env": "^7.29.0",
-    "@types/node": "^18.19.0",
-    "@typescript-eslint/eslint-plugin": "^6.21.0",
-    "@typescript-eslint/parser": "^6.21.0",
     "babel-jest": "^29.7.0",
-    "concurrently": "^8.2.2",
     "eslint": "^8.57.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
-    "prettier": "^3.2.5",
-    "typescript": "^5.3.3"
+    "prettier": "^3.2.5"
   },
   "engines": {
     "node": ">=18.0.0"
-  },
-  "dependencies": {
-    "emoji-picker-element": "^1.29.0"
   }
 }
