@@ -20,7 +20,8 @@ class PageManager {
         this._updateDownloaded = false;
         
         // Pages et leur configuration de layout (sous-pages réception = même layout que reception)
-        const receptionLayout = { showHeader: true, showFooter: false };
+        // Pied de page (version, crédit Kouzia, état du poste) sur toutes les pages, comme sur l'agenda
+        const receptionLayout = { showHeader: true, showFooter: true };
         this.pagesConfig = {
             'agenda': { showHeader: true, showFooter: true },
             'reception': receptionLayout,

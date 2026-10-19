@@ -27,11 +27,13 @@
     font-size: 0.9rem;
 }
 .footer-copyright a {
+    font-weight: 600;
     text-decoration: none;
-    color: var(--text);
+    color: var(--text-primary);
 }
 
-.footer-copyright a:hover {
+.footer-copyright a:hover,
+.footer-copyright a:focus-visible {
     text-decoration: underline;
     color: var(--jaune);
 }
