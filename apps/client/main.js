@@ -1388,8 +1388,11 @@ function createWindow() {
         windowIcon = (img && !img.isEmpty()) ? img : appIconPath;
     }
     mainWindow = new BrowserWindow({
-        width: 1200,
+        width: 1280,
         height: 800,
+        // Taille minimale sous laquelle les vues (tableaux de réception) restent entières
+        minWidth: 960,
+        minHeight: 600,
         show: false,
         autoHideMenuBar: true,
         icon: windowIcon,

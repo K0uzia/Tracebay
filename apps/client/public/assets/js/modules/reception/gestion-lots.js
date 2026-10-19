@@ -176,7 +176,7 @@ export default class GestionLotsManager {
         const filteredModeles = this.modeles.filter(m => String(m.marque_id) === String(marqueId));
         logger.debug('Modèles filtrés:', { count: filteredModeles.length, modeles: filteredModeles });
         
-        selectElement.innerHTML = '<option value="">Modèle...</option>';
+        selectElement.innerHTML = '<option value="">Modèle</option>';
         filteredModeles.forEach(modele => {
             const option = document.createElement('option');
             option.value = modele.id;
@@ -255,6 +255,13 @@ export default class GestionLotsManager {
 
             const tbody = document.getElementById('lot-table-body');
             if (tbody) {
+                // Saisie manuelle d'un S/N : compteur et numérotation à jour sans attendre un autre événement
+                this.addListener(tbody, 'input', (e) => {
+                    if (e.target?.name === 'serial_number') {
+                        this.renumberRows();
+                        this.updateLineCount();
+                    }
+                });
                 this._onRowCheckboxChange = (e) => {
                     if (!e.target.classList?.contains('row-checkbox')) {
                         return;
@@ -311,7 +318,7 @@ export default class GestionLotsManager {
             if (selectedMarqueId) {
                 this.updateModeleSelect(selectedMarqueId, modeleSelect);
             } else {
-                modeleSelect.innerHTML = '<option value="">Modèle...</option>';
+                modeleSelect.innerHTML = '<option value="">Modèle</option>';
                 modeleSelect.value = '';
             }
         };
@@ -544,7 +551,7 @@ export default class GestionLotsManager {
             <td data-label="Type">
                 <div class="type-cell-wrapper">
                     <select name="type" required>
-                        <option value="">Type...</option>
+                        <option value="">Type</option>
                         <option value="portable">Portable</option>
                         <option value="fixe">Fixe</option>
                         <option value="ecran">Écran</option>
@@ -555,13 +562,13 @@ export default class GestionLotsManager {
             </td>
             <td data-label="Marque">
                 <select name="marque" required>
-                    <option value="">Marque...</option>
+                    <option value="">Marque</option>
                     ${this.marques.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}</option>`).join('')}
                 </select>
             </td>
             <td data-label="Modèle">
                 <select name="modele" required>
-                    <option value="">Modèle...</option>
+                    <option value="">Modèle</option>
                 </select>
             </td>
             <td data-label="Date / Heure">
@@ -571,11 +578,9 @@ export default class GestionLotsManager {
                 <span class="entry-badge ${escapeHtml(entryType)}">${entryType === 'scan' ? 'SCAN' : 'MANUEL'}</span>
             </td>
             <td data-label="Action">
-                <button type="button" class="btn-delete-row" title="Supprimer cette ligne">
-                    <i class="fa-solid fa-trash"></i>
+                <button type="button" class="btn-delete-row" title="Supprimer cette ligne" aria-label="Supprimer cette ligne">
+                    <i class="fa-solid fa-trash" aria-hidden="true"></i>
                 </button>
-            </td>
-            <td class="lot-table__meta" hidden aria-hidden="true">
                 <input type="hidden" name="date" value="${escapeHtml(dateVal)}">
                 <input type="hidden" name="time" value="${escapeHtml(timeVal)}">
             </td>
@@ -611,7 +616,7 @@ export default class GestionLotsManager {
                     this.updateModeleSelect(selectedMarqueId, modeleSelect);
                 } else {
                     // Aucune marque sélectionnée, vider le select de modèles
-                    modeleSelect.innerHTML = '<option value="">Modèle...</option>';
+                    modeleSelect.innerHTML = '<option value="">Modèle</option>';
                     modeleSelect.value = '';
                 }
             });
@@ -1007,12 +1012,27 @@ export default class GestionLotsManager {
             `;
         }
         
-        if (modalMassModele) {
-            modalMassModele.innerHTML = `
-                <option value="">-- Non modifier --</option>
-                ${this.modeles.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}</option>`).join('')}
-            `;
+        this.fillMassModeleSelect();
+        if (modalMassMarque && !modalMassMarque.dataset.ready) {
+            modalMassMarque.dataset.ready = '1';
+            modalMassMarque.addEventListener('change', () => this.fillMassModeleSelect());
         }
+    }
+
+    /** Modèles proposés dans la modale : ceux de la marque choisie, sinon tous (libellé avec la marque). */
+    fillMassModeleSelect() {
+        const modalMassMarque = document.getElementById('modal-mass-marque');
+        const modalMassModele = document.getElementById('modal-mass-modele');
+        if (!modalMassModele) {
+            return;
+        }
+        const marqueId = modalMassMarque?.value || '';
+        const marqueName = (id) => this.marques.find((m) => String(m.id) === String(id))?.name || '';
+        const list = marqueId ? this.modeles.filter((m) => String(m.marque_id) === String(marqueId)) : this.modeles;
+        modalMassModele.innerHTML = `
+            <option value="">-- Non modifier --</option>
+            ${list.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(marqueId ? m.name : `${marqueName(m.marque_id)} ${m.name}`.trim())}</option>`).join('')}
+        `;
     }
     
     /**
@@ -1278,40 +1298,48 @@ export default class GestionLotsManager {
             return;
         }
         
+        // Un modèle choisi seul impose sa marque : sinon il serait absent de la liste filtrée de la ligne
+        const modeleRef = massModele ? this.modeles.find((m) => String(m.id) === String(massModele)) : null;
+        const marqueToApply = massMarque || (modeleRef ? String(modeleRef.marque_id) : '');
+
         selectedRows.forEach(checkbox => {
             const row = checkbox.closest('tr');
             if (!row) {
                 return;
             }
-            
+
             if (massType) {
                 const typeSelect = row.querySelector('[name="type"]');
                 const typeOtherInput = row.querySelector('[name="type_other"]');
                 if (typeSelect) {
                     typeSelect.value = massType;
-                    if (massType === 'autres' && typeOtherInput) {
-                        typeOtherInput.value = massTypeOther;
-                        typeOtherInput.style.display = 'inline-block';
-                        typeOtherInput.required = true;
-                    }
+                }
+                if (typeOtherInput) {
+                    const isAutres = massType === 'autres';
+                    typeOtherInput.value = isAutres ? massTypeOther : '';
+                    typeOtherInput.style.display = isAutres ? 'inline-block' : 'none';
+                    typeOtherInput.required = isAutres;
                 }
             }
-            
-            if (massMarque) {
-                const marqueSelect = row.querySelector('[name="marque"]');
-                if (marqueSelect) {
-                    marqueSelect.value = massMarque;
-                }
-            }
-            
-            if (massModele) {
-                const modeleSelect = row.querySelector('[name="modele"]');
+
+            const marqueSelect = row.querySelector('[name="marque"]');
+            const modeleSelect = row.querySelector('[name="modele"]');
+            if (marqueToApply && marqueSelect) {
+                const marqueChanged = String(marqueSelect.value) !== String(marqueToApply);
+                marqueSelect.value = marqueToApply;
+                // La liste des modèles de la ligne dépend de la marque : la recharger avant d'appliquer le modèle
                 if (modeleSelect) {
-                    modeleSelect.value = massModele;
+                    if (marqueChanged) {
+                        modeleSelect.value = '';
+                    }
+                    this.updateModeleSelect(marqueToApply, modeleSelect);
                 }
+            }
+            if (massModele && modeleSelect) {
+                modeleSelect.value = massModele;
             }
         });
-        
+
         this.showNotification(`Valeurs appliquées à ${selectedRows.length} ligne(s)`, 'success');
         this.modalManager.close('modal-mass-apply');
         
@@ -1323,7 +1351,7 @@ export default class GestionLotsManager {
             modalTypeOther.style.display = 'none';
         }
         document.getElementById('modal-mass-marque').value = '';
-        document.getElementById('modal-mass-modele').value = '';
+        this.fillMassModeleSelect();
         document.querySelectorAll('.row-checkbox').forEach(cb => cb.checked = false);
         document.getElementById('select-all').checked = false;
         this.updateSelectionBar();
@@ -1345,7 +1373,7 @@ export default class GestionLotsManager {
         }
         // Ne compter que les lignes avec S/N (exclure le placeholder SCAN vide)
         const filled = [...tbody.querySelectorAll('tr')].filter((row) => !this.isEmptySerialRow(row)).length;
-        countEl.textContent = String(filled);
+        countEl.textContent = filled > 1 ? `${filled} lignes` : `${filled} ligne`;
     }
 
     updateSelectionBar() {

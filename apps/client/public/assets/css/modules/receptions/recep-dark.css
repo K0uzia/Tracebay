@@ -188,7 +188,7 @@ html[data-theme-dark="1"] {
         color: var(--recep-danger);
     }
 
-    .r-root .recep-page .lot-table tbody:empty::after {
+    .r-root .recep-page .lot-table-wrap:has(tbody:empty)::after {
         background: transparent !important;
         color: var(--recep-text-muted) !important;
     }
@@ -842,7 +842,7 @@ html[data-theme-dark="1"] {
         justify-content: flex-end;
     }
 
-    .r-root .lots-saisie-page #disques-session-tbody:empty::after {
+    .r-root .lots-saisie-page .lot-table-wrap:has(#disques-session-tbody:empty)::after {
         content: "Scannez, ajoutez une ligne ou lancez la détection auto.";
         display: block;
         padding: var(--unit-8) var(--unit-4);

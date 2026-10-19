@@ -296,12 +296,19 @@ body.reception-single-scroll main {
     background: var(--orange);
 }
 
-/* ----- Responsive : sidebar à gauche, icônes seules (title = tooltip) ----- */
-@media (max-width: 900px) {
+/* ----- Responsive : sidebar plus étroite, puis icônes seules (title = infobulle) ----- */
+@media (max-width: 1200px) {
+    .r-header {
+        width: 232px;
+    }
+}
+
+@media (max-width: 1024px) {
     .r-root {
         grid-template-columns: auto minmax(0, 1fr);
         grid-template-rows: 1fr;
-        min-height: 100vh;
+        /* 100 % de <main> (sous l'en-tête) : 100vh faisait déborder la page de la hauteur de l'en-tête */
+        min-height: 100%;
     }
 
     .r-header {
@@ -313,19 +320,7 @@ body.reception-single-scroll main {
     }
 
     .r-brand {
-        border-top: 1px solid rgba(124, 156, 255, 0.3);
-        border-right: none;
-        border-bottom: none;
-        padding: var(--unit-1) var(--unit-1);
-        font-size: 0.625rem;
-        line-height: 1.2;
-        text-align: center;
-        word-break: break-all;
-        writing-mode: vertical-rl;
-        text-orientation: mixed;
-        transform: rotate(180deg);
-        min-height: 3rem;
-        justify-content: center;
+        display: none;
     }
 
     .r-brand-kicker,

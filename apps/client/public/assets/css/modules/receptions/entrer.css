@@ -296,7 +296,7 @@
 }
 
 /* État vide du tableau */
-.entrer-page .lot-table tbody#lot-table-body:empty::after {
+.entrer-page .lot-table-wrap:has(#lot-table-body:empty)::after {
     content: "Aucune ligne. Utilisez « Ligne » ou scannez des numéros de série.";
     display: block;
     padding: var(--unit-6) var(--unit-4);
@@ -306,7 +306,7 @@
     background: rgba(255, 255, 255, 0.03);
 }
 
-.entrer-page .lot-table tbody#disques-session-tbody:empty::after {
+.entrer-page .lot-table-wrap:has(#disques-session-tbody:empty)::after {
     content: "Aucune ligne. Utilisez « ligne », scannez ou la détection auto.";
     display: block;
     padding: var(--unit-6) var(--unit-4);
@@ -488,7 +488,6 @@
     display: flex;
     flex-direction: column;
     gap: 0;
-    min-height: calc(100vh - 140px);
     min-width: 0;
 }
 
@@ -509,56 +508,54 @@
 }
 
 .lots-saisie-page .lot-toolbar__name {
-    flex: 1 1 200px;
-    min-width: 160px;
-    max-width: 360px;
-    min-height: 34px;
-    padding: 0 var(--unit-2);
-    border: none;
-    border-bottom: 1px solid var(--lot-border);
-    border-radius: 0;
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: 520px;
+    height: 36px;
+    padding: 0 var(--unit-3);
+    border: 1px solid var(--lot-border);
+    border-radius: 8px;
+    font: inherit;
     font-size: 0.875rem;
-    background: transparent;
+    background: var(--lot-input-bg);
     color: var(--lot-text);
-    transition: border-color 0.15s ease;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .lots-saisie-page .lot-toolbar__name::placeholder {
     color: var(--lot-text-muted);
 }
 
-.lots-saisie-page .lot-toolbar__name:focus {
+.lots-saisie-page .lot-toolbar__name:focus-visible {
     outline: none;
-    border-bottom-color: var(--lot-accent);
+    border-color: var(--lot-accent);
+    box-shadow: 0 0 0 2px rgba(124, 156, 255, 0.18);
 }
 
 .lots-saisie-page .lot-toolbar__actions {
     display: flex;
+    flex: 1 1 100%;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--unit-2);
-    margin-left: auto;
 }
 
 .lots-saisie-page .lot-toolbar__sep {
     width: 1px;
     height: 20px;
     background: var(--lot-border);
-    margin: 0 var(--unit-1);
+    margin: 0 var(--unit-1) 0 auto;
 }
 
 .lots-saisie-page .lot-toolbar__count {
-    min-width: 28px;
+    min-width: 64px;
+    white-space: nowrap;
     padding: 0 var(--unit-1);
     font-size: 0.75rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--lot-text-muted);
     text-align: center;
-}
-
-.lots-saisie-page .lot-toolbar__count::after {
-    content: " lignes";
 }
 
 /* ---------- Boutons ---------- */
@@ -689,10 +686,23 @@
 }
 
 .lots-saisie-page .lot-table {
+    width: 100%;
+    min-width: 820px;
+    table-layout: fixed;
     color: var(--lot-text-muted);
     font-size: 0.875rem;
     line-height: 1.5;
 }
+
+.lots-saisie-page .lot-table .lot-table__th--select,
+.lots-saisie-page .lot-table .lot-table__th--num { width: 44px; min-width: 0; }
+.lots-saisie-page .lot-table .lot-table__th--sn { width: 22%; min-width: 0; }
+.lots-saisie-page .lot-table .lot-table__th--type { width: 15%; min-width: 0; }
+.lots-saisie-page .lot-table .lot-table__th--marque,
+.lots-saisie-page .lot-table .lot-table__th--modele { width: 18%; min-width: 0; }
+.lots-saisie-page .lot-table .lot-table__th--date { width: 132px; min-width: 0; }
+.lots-saisie-page .lot-table .lot-table__th--entree { width: 80px; min-width: 0; }
+.lots-saisie-page .lot-table .lot-table__th--action { width: 52px; min-width: 0; }
 
 .lots-saisie-page .lot-table th {
     background: rgba(255, 255, 255, 0.03);
@@ -702,8 +712,18 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.05em;
-    padding: var(--unit-2) var(--unit-3);
+    padding: var(--unit-2) 6px;
     vertical-align: middle;
+    text-align: left;
+}
+
+.lots-saisie-page .lot-table .lot-table__th--select,
+.lots-saisie-page .lot-table .lot-table__th--num,
+.lots-saisie-page .lot-table .lot-table__th--action,
+.lots-saisie-page .lot-table td:nth-child(1),
+.lots-saisie-page .lot-table td:nth-child(2),
+.lots-saisie-page .lot-table td:nth-child(9) {
+    text-align: center;
 }
 
 .lots-saisie-page .lot-table thead th:not(:last-child) {
@@ -725,8 +745,9 @@
 
 .lots-saisie-page .lot-table td {
     border-bottom: 1px solid var(--lot-border);
-    padding: var(--unit-2) var(--unit-3);
+    padding: var(--unit-2) 6px;
     vertical-align: middle;
+    overflow: hidden;
 }
 
 .lots-saisie-page .lot-table tbody tr:nth-child(even) {
@@ -758,6 +779,11 @@
     border-radius: 6px;
     font-size: 0.875rem;
     line-height: 1.3;
+}
+
+/* Liste sans choix : même teinte qu'un placeholder */
+.lots-saisie-page .lot-table td select:has(option[value=""]:checked) {
+    color: var(--lot-text-muted);
 }
 
 .lots-saisie-page .lot-table td input[type="text"]::placeholder {
@@ -821,12 +847,13 @@
     color: var(--lot-warn);
 }
 
-.lots-saisie-page .lot-table tbody#lot-table-body:empty::after {
-    content: "Scannez ou ajoutez une ligne.";
-    color: var(--lot-text-muted);
-    background: transparent;
+.lots-saisie-page .lot-table-wrap:has(#lot-table-body:empty)::after {
+    content: "Scannez un numéro de série ou ajoutez une ligne.";
+    display: block;
     padding: var(--unit-8) var(--unit-4);
     font-size: 0.875rem;
+    text-align: center;
+    color: var(--lot-text-muted);
 }
 
 /* Surcharge entrer-page générique quand les deux classes coexistent */
@@ -848,30 +875,7 @@
     background: rgba(124, 156, 255, 0.06);
 }
 
-@media (max-width: 980px) {
-    .lots-saisie-page.entrer-page .lot-table th,
-    .lots-saisie-page.entrer-page .lot-table td {
-        padding: var(--unit-2) var(--unit-3);
-    }
-}
-
 /* ---------- Responsive ---------- */
-@media (max-width: 900px) {
-    .lots-saisie-page .lot-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .lots-saisie-page .lot-toolbar__name {
-        max-width: none;
-    }
-
-    .lots-saisie-page .lot-toolbar__actions {
-        margin-left: 0;
-        justify-content: flex-start;
-    }
-}
-
 @media (max-width: 768px) {
     .lots-saisie-page {
         padding: var(--unit-2);
@@ -898,6 +902,11 @@
 
     .lots-saisie-page .lot-selection-bar {
         flex-wrap: wrap;
+    }
+
+    .lots-saisie-page .lot-table {
+        min-width: 0;
+        table-layout: auto;
     }
 
     .lots-saisie-page .lot-table tbody tr {

@@ -299,7 +299,7 @@
 }
 
 /* État vide */
-.prets-container .lot-table tbody#prets-tbody:empty::after {
+.prets-container .lot-table-wrap:has(#prets-tbody:empty)::after {
     content: "Aucune ligne. Cliquez sur « Ajouter une ligne » pour commencer.";
     display: block;
     padding: var(--unit-6) var(--unit-4);
