@@ -694,15 +694,17 @@
     line-height: 1.5;
 }
 
-.lots-saisie-page .lot-table .lot-table__th--select,
-.lots-saisie-page .lot-table .lot-table__th--num { width: 44px; min-width: 0; }
-.lots-saisie-page .lot-table .lot-table__th--sn { width: 22%; min-width: 0; }
-.lots-saisie-page .lot-table .lot-table__th--type { width: 15%; min-width: 0; }
-.lots-saisie-page .lot-table .lot-table__th--marque,
-.lots-saisie-page .lot-table .lot-table__th--modele { width: 18%; min-width: 0; }
-.lots-saisie-page .lot-table .lot-table__th--date { width: 132px; min-width: 0; }
-.lots-saisie-page .lot-table .lot-table__th--entree { width: 80px; min-width: 0; }
-.lots-saisie-page .lot-table .lot-table__th--action { width: 52px; min-width: 0; }
+/* Colonnes du tableau des lots (9 colonnes) */
+#lot-table .lot-table__th--select,
+#lot-table .lot-table__th--num { width: 44px; min-width: 0; }
+#lot-table .lot-table__th--sn { width: 22%; min-width: 0; }
+#lot-table .lot-table__th--type { width: 15%; min-width: 0; }
+#lot-table .lot-table__th--marque,
+#lot-table .lot-table__th--modele { width: 18%; min-width: 0; }
+#lot-table .lot-table__th--date { width: 132px; min-width: 0; }
+#lot-table .lot-table__th--entree { width: 80px; min-width: 0; }
+#lot-table .lot-table__th--action { width: 52px; min-width: 0; }
+
 
 .lots-saisie-page .lot-table th {
     background: rgba(255, 255, 255, 0.03);
@@ -720,9 +722,9 @@
 .lots-saisie-page .lot-table .lot-table__th--select,
 .lots-saisie-page .lot-table .lot-table__th--num,
 .lots-saisie-page .lot-table .lot-table__th--action,
-.lots-saisie-page .lot-table td:nth-child(1),
-.lots-saisie-page .lot-table td:nth-child(2),
-.lots-saisie-page .lot-table td:nth-child(9) {
+#lot-table td:nth-child(1),
+#lot-table td:nth-child(2),
+#lot-table td:nth-child(9) {
     text-align: center;
 }
 

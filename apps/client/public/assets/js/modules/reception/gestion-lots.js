@@ -770,7 +770,7 @@ export default class GestionLotsManager {
             if (lotNameInput) {
                 lotNameInput.value = '';
             }
-            this.showNotification(`Lot #${lotId || ''} enregistré (${lotData.length} articles)`, 'success');
+            this.showNotification(`Lot #${lotId || ''} enregistré (${lotData.length} article${lotData.length > 1 ? 's' : ''})`, 'success');
             
             // Générer le PDF du lot (body attendu par le backend pour nommage et rangement)
             const dateIso = new Date().toISOString().slice(0, 10);
