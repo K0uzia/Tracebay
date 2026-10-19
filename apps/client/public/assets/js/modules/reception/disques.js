@@ -870,7 +870,8 @@ export default class DisquesManager {
 function escapeHtml(s) {
     const div = document.createElement('div');
     div.textContent = s == null ? '' : String(s);
-    return div.innerHTML;
+    // innerHTML n'échappe pas les guillemets : nécessaire pour les attributs (value="", title="")
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 function escapeAttr(s) {

@@ -871,7 +871,8 @@ export default class TracabiliteManager {
     escapeHtml(s) {
         const div = document.createElement('div');
         div.textContent = s;
-        return div.innerHTML;
+        // innerHTML n'échappe pas les guillemets : nécessaire pour les attributs (value="", title="")
+        return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     /**

@@ -572,7 +572,6 @@ Utile si fichier supprimé, déplacé ou corrompu : relit les données en base, 
 | Détection disques (`lsblk`) | Oui (Linux) | — |
 | Génération PDF réception | Oui (templates locaux) | Parfois complément serveur |
 | Auth, lots, inventaire, historique | — | Oui |
-| Chat WebSocket | — | Config encore présente, **pas d’UI** |
 | Agenda (prod) | — | Oui |
 | Mises à jour auto | Oui | GitHub Releases |
 | Référentiels marques/modèles | — | Oui |
@@ -589,10 +588,10 @@ En **navigateur web** (sans Electron), l'interface s'affiche mais les fonctions 
 | **Accueil** | Retiré de la nav ; redirect → Agenda |
 | **Dossier** | Retiré de la nav ; redirect → Agenda |
 | **Traçabilité** (page séparée) | Redirect → Historique |
-| **Chat** | Absent de `index.html` / du header |
-| **Mes raccourcis** | Retiré de la navigation |
-| **Application** (lanceurs logiciels) | Retiré de la navigation |
-| **Options** | Pas de page HTML → non accessible |
+| **Chat** | Code supprimé côté client (19/10/2026) ; routes encore présentes sur le serveur |
+| **Mes raccourcis** | Code supprimé côté client (19/10/2026) |
+| **Application** (lanceurs logiciels) | Code supprimé côté client (19/10/2026) |
+| **Options** | Page redirigée vers Agenda, non accessible |
 | **Sortie** | Mentionné dans le routeur, pas de page → non accessible |
 | **Login / Signup** | Pages et modale non branchées ; JWT silencieux seulement |
 

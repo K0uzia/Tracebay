@@ -2,7 +2,7 @@
  * Tracebay Client - Electron Main Process
  * Gère la fenêtre d'application et la connexion au serveur distant
  */
-const { app, BrowserWindow, ipcMain, shell, nativeImage, Menu, crashReporter, net } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, nativeImage, Menu, crashReporter, net, session } = require('electron');
 const path = require('path');
 const url = require('url');
 const http = require('http');
@@ -1448,6 +1448,11 @@ function launchApp() {
  * Événement de démarrage Electron
  */
 app.on('ready', async () => {
+    // Permissions web refusées par défaut (caméra, micro, géolocalisation, notifications...)
+    const ALLOWED_PERMISSIONS = new Set(['clipboard-sanitized-write']);
+    session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => callback(ALLOWED_PERMISSIONS.has(permission)));
+    session.defaultSession.setPermissionCheckHandler((_wc, permission) => ALLOWED_PERMISSIONS.has(permission));
+
     startupBegin = Date.now();
     app.setName('Tracebay');
     console.log('🚀 Démarrage Tracebay Client...');

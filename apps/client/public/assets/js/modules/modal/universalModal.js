@@ -156,7 +156,10 @@ class UniversalModal {
     if (body) {
       const errorDiv = document.createElement('div');
       errorDiv.className = 'modal-error-message';
-      errorDiv.innerHTML = `<p>${message}</p>`;
+      // textContent : le message peut provenir du serveur
+      const errorDivP = document.createElement('p');
+      errorDivP.textContent = String(message ?? '');
+      errorDiv.appendChild(errorDivP);
       
       // Supprimer les anciens messages d'erreur
       body.querySelectorAll('.modal-error-message').forEach(el => el.remove());
@@ -174,7 +177,10 @@ class UniversalModal {
     if (body) {
       const successDiv = document.createElement('div');
       successDiv.className = 'modal-success-message';
-      successDiv.innerHTML = `<p>${message}</p>`;
+      // textContent : le message peut provenir du serveur
+      const successDivP = document.createElement('p');
+      successDivP.textContent = String(message ?? '');
+      successDiv.appendChild(successDivP);
       
       // Supprimer les anciens messages
       body.querySelectorAll('.modal-success-message').forEach(el => el.remove());

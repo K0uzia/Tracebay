@@ -1,3 +1,5 @@
+import { escapeHtml } from '../../utils/html.js';
+
 export default class CalendarRenderer {
     constructor(config) {
         this.calendarGrid = config.calendarGrid;
@@ -272,9 +274,9 @@ export default class CalendarRenderer {
 
         this.detailsPanel.innerHTML = `
         <div class="detail-content">
-            <h3>${ev.title}</h3>
+            <h3>${escapeHtml(ev.title)}</h3>
             <p><strong>Période: </strong>${dateTimeLabel}</p>
-            ${ev.description ? `<p><strong>Lieux:</strong> ${ev.description}</p>` : ''}
+            ${ev.description ? `<p><strong>Lieux:</strong> ${escapeHtml(ev.description)}</p>` : ''}
             ${isLocked ? `<p class="text-mute small"><strong>Info :</strong> jour férié / fête (verrouillé)</p>` : ''}
         </div>
             ${isLocked ? '' : `<button type="button" class="btn btn-primary" id="detail-edit-btn">Éditer</button>`}

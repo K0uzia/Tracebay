@@ -7,6 +7,7 @@
 import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
 import { showAppNotification } from '../../config/notifications.js';
+import { escapeHtml } from '../../utils/html.js';
 const logger = getLogger();
 
 const LOT_DRAFT_STORAGE_PREFIX = 'workspace_lot_draft';
@@ -511,7 +512,7 @@ export default class GestionLotsManager {
             <td data-label="Marque">
                 <select name="marque" required>
                     <option value="">Marque...</option>
-                    ${this.marques.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
+                    ${this.marques.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}</option>`).join('')}
                 </select>
             </td>
             <td data-label="Modèle">
@@ -520,10 +521,10 @@ export default class GestionLotsManager {
                 </select>
             </td>
             <td data-label="Date / Heure">
-                <span class="row-date-display">${dateDisplay}</span>
+                <span class="row-date-display">${escapeHtml(dateDisplay)}</span>
             </td>
             <td data-label="Entrée">
-                <span class="entry-badge ${entryType}">${entryType === 'scan' ? 'SCAN' : 'MANUEL'}</span>
+                <span class="entry-badge ${escapeHtml(entryType)}">${entryType === 'scan' ? 'SCAN' : 'MANUEL'}</span>
             </td>
             <td data-label="Action">
                 <button type="button" class="btn-delete-row" title="Supprimer cette ligne">
@@ -531,8 +532,8 @@ export default class GestionLotsManager {
                 </button>
             </td>
             <td class="lot-table__meta" hidden aria-hidden="true">
-                <input type="hidden" name="date" value="${dateVal}">
-                <input type="hidden" name="time" value="${timeVal}">
+                <input type="hidden" name="date" value="${escapeHtml(dateVal)}">
+                <input type="hidden" name="time" value="${escapeHtml(timeVal)}">
             </td>
         `;
         
@@ -925,7 +926,7 @@ export default class GestionLotsManager {
 
         select.innerHTML = `
             <option value="">-- Sélectionner une marque --</option>
-            ${this.marques.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
+            ${this.marques.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}</option>`).join('')}
         `;
     }
     
@@ -939,14 +940,14 @@ export default class GestionLotsManager {
         if (modalMassMarque) {
             modalMassMarque.innerHTML = `
                 <option value="">-- Non modifier --</option>
-                ${this.marques.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
+                ${this.marques.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}</option>`).join('')}
             `;
         }
         
         if (modalMassModele) {
             modalMassModele.innerHTML = `
                 <option value="">-- Non modifier --</option>
-                ${this.modeles.map(m => `<option value="${m.id}">${m.name}</option>`).join('')}
+                ${this.modeles.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}</option>`).join('')}
             `;
         }
     }

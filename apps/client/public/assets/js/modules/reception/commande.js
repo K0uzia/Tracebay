@@ -14,7 +14,8 @@ function escapeHtml(s) {
     if (s == null) return '';
     const div = document.createElement('div');
     div.textContent = String(s);
-    return div.innerHTML;
+    // innerHTML n'échappe pas les guillemets : nécessaire pour les attributs (value="", title="")
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 /** Évite les doublons dans les listes produit si l'API renvoie des entrées répétées. */

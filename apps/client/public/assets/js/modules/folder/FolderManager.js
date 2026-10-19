@@ -3,6 +3,7 @@
  */
 
 import folderConfig from '../../config/FolderConfig.js';
+import { escapeHtml } from '../../utils/html.js';
 
 export default class FolderManager {
     constructor(options = {}) {
@@ -183,7 +184,7 @@ export default class FolderManager {
             const btn = document.createElement('button');
             btn.className = 'folder-open-btn folder-item-btn';
             btn.dataset.folderPath = this.buildPath(name);
-            btn.innerHTML = `<i class="fa-solid fa-folder"></i> ${name}`;
+            btn.innerHTML = `<i class="fa-solid fa-folder"></i> ${escapeHtml(name)}`;
             btn.addEventListener('click', async (e) => {
                 e.preventDefault();
                 await this.openFolder(btn, btn.dataset.folderPath);

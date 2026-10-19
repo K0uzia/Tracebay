@@ -17,7 +17,6 @@ L’application stocke le **token JWT** et les données de session dans le **loc
 
 - **AuthManager** (`public/assets/js/modules/auth/AuthManager.js`) : connexion, déconnexion, vérification de session, `setSession` / `clearSession`.
 - **api.js** : `getAuthToken()` et `createHeaders()` pour les requêtes HTTP.
-- **ChatWebSocket** : auth WebSocket avec `workspace_jwt`.
 - **ShortcutManager**, **AgendaStore**, **RecentItemsManager**, modules réception (inventaire, traçabilité, historique, etc.) : lecture du token pour les appels API.
 
 ### Risques et limites

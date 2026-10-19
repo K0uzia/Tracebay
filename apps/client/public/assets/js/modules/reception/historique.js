@@ -773,7 +773,8 @@ export default class HistoriqueManager {
     escapeHtml(s) {
         const div = document.createElement('div');
         div.textContent = s;
-        return div.innerHTML;
+        // innerHTML n'échappe pas les guillemets : nécessaire pour les attributs (value="", title="")
+        return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     escapeAttr(s) {
@@ -978,6 +979,8 @@ export default class HistoriqueManager {
         }
         try {
             const u = new URL(href);
+            // Refuser javascript:, data:, file:... (lien saisi par l'utilisateur)
+            if (!/^(https?|tel):$/i.test(u.protocol)) throw new Error('protocole refusé');
             const label = (u.hostname || '').replace(/^www\./i, '') || u.hostname || '—';
             return `<a href="${this.escapeAttr(u.href)}" target="_blank" rel="noopener noreferrer" class="hist-cmd-link-modal" title="${this.escapeAttr(s)}">${this.escapeHtml(label)}</a>`;
         } catch {
@@ -2103,18 +2106,18 @@ export default class HistoriqueManager {
         itemsContainer.innerHTML = items.map((item, idx) => `
             <tr>
                 <td>${idx + 1}</td>
-                <td>${item.serial_number || '-'}</td>
-                <td>${item.type || '-'}</td>
-                <td>${item.marque_name || '-'}</td>
-                <td>${item.modele_name || '-'}</td>
+                <td>${this.escapeHtml(item.serial_number || '-')}</td>
+                <td>${this.escapeHtml(item.type || '-')}</td>
+                <td>${this.escapeHtml(item.marque_name || '-')}</td>
+                <td>${this.escapeHtml(item.modele_name || '-')}</td>
                 <td class="col-os"><i class="fa-brands fa-${getOsIcon(item.os)}" title="${getOsLabel(item.os)}"></i></td>
                 <td>
-                    <span class="state-badge state-${item.state?.replace(/\s+/g, '-')}">
-                        ${item.state || '-'}
+                    <span class="state-badge state-${this.escapeHtml(item.state?.replace(/\s+/g, '-'))}">
+                        ${this.escapeHtml(item.state || '-')}
                     </span>
                 </td>
-                <td>${item.technician || '-'}</td>
-                <td>${formatItemDateTime(item)}</td>
+                <td>${this.escapeHtml(item.technician || '-')}</td>
+                <td>${this.escapeHtml(formatItemDateTime(item))}</td>
             </tr>
         `).join('');
 
@@ -2460,9 +2463,9 @@ export default class HistoriqueManager {
                         >
                     </td>
                     <td>
-                        <input type="text" class="item-technician-input" data-item-id="${item.id}" value="${item.technician || ''}" placeholder="Technicien">
+                        <input type="text" class="item-technician-input" data-item-id="${item.id}" value="${this.escapeAttr(item.technician || '')}" placeholder="Technicien">
                     </td>
-                    <td><span class="item-text">${formatItemDateTime(item)}</span></td>
+                    <td><span class="item-text">${this.escapeHtml(formatItemDateTime(item))}</span></td>
                 </tr>
             `;
             }).join('');

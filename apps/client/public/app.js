@@ -1412,18 +1412,20 @@ class PageManager {
                 if (todayEvents.length === 0) {
                     calendarContent.innerHTML = '<p class="home-event-item-empty">Aucun événement pour aujourd\'hui</p>';
                 } else {
+                    // Échappement des champs saisis par l'utilisateur (titre, description, couleur)
+                    const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
                     calendarContent.innerHTML = todayEvents.map(event => {
                         const startTime = event.start.substring(11, 16);
                         const endTime = event.end.substring(11, 16);
                         const eventColor = event.color || '#3788d8';
                         const backgroundColor = eventColor + '20';
                         return `
-                            <div class="home-event-item" data-bg-color="${backgroundColor}">
-                                <div class="home-event-item-title">${event.title}</div>
+                            <div class="home-event-item" data-bg-color="${esc(backgroundColor)}">
+                                <div class="home-event-item-title">${esc(event.title)}</div>
                                 <div class="home-event-item-time">
-                                    ${startTime} à ${endTime}
+                                    ${esc(startTime)} à ${esc(endTime)}
                                 </div>
-                                ${event.description ? `<div class="home-event-item-description">${event.description}</div>` : ''}
+                                ${event.description ? `<div class="home-event-item-description">${esc(event.description)}</div>` : ''}
                             </div>
                         `;
                     }).join('');

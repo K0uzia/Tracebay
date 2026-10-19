@@ -124,10 +124,10 @@ class RecentItemsManager {
         }
 
         return recent.map((item, index) => `
-            <div class="recent-item" data-type="${item.type}" data-action="${item.action || ''}" data-path="${item.path || ''}" data-url="${item.url || ''}" title="${item.name}" style="cursor: pointer;">
-                <i class="${item.icon}"></i>
+            <div class="recent-item" data-type="${this.escapeHtml(item.type)}" data-action="${this.escapeHtml(item.action || '')}" data-path="${this.escapeHtml(item.path || '')}" data-url="${this.escapeHtml(item.url || '')}" title="${this.escapeHtml(item.name)}" style="cursor: pointer;">
+                <i class="${this.escapeHtml(item.icon)}"></i>
                 <span class="recent-item-name">${this.escapeHtml(item.name)}</span>
-                ${item.url ? `<a href="${this.escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="recent-item-link" title="Ouvrir ${item.name}" onclick="event.stopPropagation();"><i class="fas fa-external-link-alt"></i></a>` : ''}
+                ${item.url ? `<a href="${this.escapeHtml(item.url)}" target="_blank" rel="noopener noreferrer" class="recent-item-link" title="Ouvrir ${this.escapeHtml(item.name)}" onclick="event.stopPropagation();"><i class="fas fa-external-link-alt"></i></a>` : ''}
             </div>
         `).join('');
     }
@@ -323,7 +323,7 @@ class RecentItemsManager {
             '"': '&quot;',
             "'": '&#039;'
         };
-        return text.replace(/[&<>"']/g, m => map[m]);
+        return String(text ?? '').replace(/[&<>"']/g, m => map[m]);
     }
 
     /**

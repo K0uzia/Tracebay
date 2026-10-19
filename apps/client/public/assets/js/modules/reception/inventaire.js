@@ -110,7 +110,7 @@ export default class InventaireManager {
             <div class="empty-state error-state">
                 <i class="fa-solid fa-triangle-exclamation"></i>
                 <p>Erreur de chargement</p>
-                <small>${String(message).replace(/</g, '&lt;')}</small>
+                <small>${this.escapeHtml(message)}</small>
                 <button type="button" class="btn-retry-lots" id="btn-retry-lots-inventaire" title="Recharger la liste des lots">
                     <i class="fa-solid fa-sync" aria-hidden="true"></i> Réessayer
                 </button>
@@ -309,20 +309,20 @@ export default class InventaireManager {
                             </thead>
                             <tbody>
                                 ${items.map((item, idx) => `
-                                    <tr class="item-row item-${(item.state && item.state.trim() !== '') ? item.state.replace(/\s+/g, '-') : 'non-defini'}">
+                                    <tr class="item-row item-${(item.state && item.state.trim() !== '') ? this.escapeHtml(item.state.replace(/\s+/g, '-')) : 'non-defini'}">
                                         <td class="col-num">${idx + 1}</td>
-                                        <td class="col-sn" title="${String(item.serial_number || '').replace(/"/g, '&quot;')}">${item.serial_number || '-'}</td>
-                                        <td class="col-type">${item.type || '-'}</td>
-                                        <td class="col-marque">${item.marque_name || '-'}</td>
-                                        <td class="col-modele">${item.modele_name || '-'}</td>
+                                        <td class="col-sn" title="${this.escapeHtml(item.serial_number || '')}">${this.escapeHtml(item.serial_number || '-')}</td>
+                                        <td class="col-type">${this.escapeHtml(item.type || '-')}</td>
+                                        <td class="col-marque">${this.escapeHtml(item.marque_name || '-')}</td>
+                                        <td class="col-modele">${this.escapeHtml(item.modele_name || '-')}</td>
                                         <td class="col-os"><i class="fa-brands fa-${getOsIcon(item.os)}" title="${getOsLabel(item.os)}"></i></td>
                                         <td class="col-state">
-                                            <span class="state-badge state-${item.state ? item.state.replace(/\s+/g, '-') : 'non-defini'}">
-                                                ${item.state || 'Non défini'}
+                                            <span class="state-badge state-${item.state ? this.escapeHtml(item.state.replace(/\s+/g, '-')) : 'non-defini'}">
+                                                ${this.escapeHtml(item.state || 'Non défini')}
                                             </span>
                                         </td>
                                         <td class="col-date">${this.formatDateTime(item.state_changed_at) || '-'}</td>
-                                        <td class="col-tech">${item.technician || '-'}</td>
+                                        <td class="col-tech">${this.escapeHtml(item.technician || '-')}</td>
                                         <td class="col-action">
                                             <div class="inventaire-row-actions">
                                                 <button type="button" class="btn-edit-pc" data-item-id="${item.id}" title="Éditer ce matériel">
@@ -525,7 +525,7 @@ export default class InventaireManager {
         const marqueMatch = this.marques.find(m => (m.name || '').trim() === itemMarque);
         const marqueSelVal = marqueMatch ? String(marqueMatch.id) : (itemMarque ? VALUE_AUTRE : '');
         marqueSelect.innerHTML = '<option value="">-- Marque --</option>'
-            + this.marques.map(m => `<option value="${m.id}" ${marqueSelVal === String(m.id) ? 'selected' : ''}>${m.name}</option>`).join('')
+            + this.marques.map(m => `<option value="${this.escapeHtml(m.id)}" ${marqueSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')
             + `<option value="${VALUE_AUTRE}" ${marqueSelVal === VALUE_AUTRE ? 'selected' : ''}>Autre</option>`;
         const marqueOther = document.getElementById('modal-pc-marque-other');
         if (marqueOther) {
@@ -545,7 +545,7 @@ export default class InventaireManager {
         const modeleMatch = modelesForMarque.find(m => (m.name || '').trim() === itemModele);
         const modeleSelVal = modeleMatch ? String(modeleMatch.id) : (itemModele ? VALUE_AUTRE : '');
         modeleSelect.innerHTML = '<option value="">-- Modèle --</option>'
-            + modelesForMarque.map(m => `<option value="${m.id}" ${modeleSelVal === String(m.id) ? 'selected' : ''}>${m.name}</option>`).join('')
+            + modelesForMarque.map(m => `<option value="${this.escapeHtml(m.id)}" ${modeleSelVal === String(m.id) ? 'selected' : ''}>${this.escapeHtml(m.name)}</option>`).join('')
             + `<option value="${VALUE_AUTRE}" ${modeleSelVal === VALUE_AUTRE ? 'selected' : ''}>Autre</option>`;
         const modeleOther = document.getElementById('modal-pc-modele-other');
         if (modeleOther) {
@@ -583,7 +583,7 @@ export default class InventaireManager {
                         ? this.modeles.filter(m => String(m.marque_id) === String(marqueSelect.value))
                         : [];
                     modeleSelect.innerHTML = '<option value="">-- Modèle --</option>'
-                        + filtered.map(m => `<option value="${m.id}">${m.name}</option>`).join('')
+                        + filtered.map(m => `<option value="${this.escapeHtml(m.id)}">${this.escapeHtml(m.name)}</option>`).join('')
                         + `<option value="${VALUE_AUTRE}">Autre</option>`;
                 }
                 if (modeleOther) {
@@ -920,7 +920,7 @@ export default class InventaireManager {
             textEl.innerHTML =
                 `Voulez-vous vraiment supprimer ${this.escapeHtml(label)}&nbsp;? ` +
                 `Cette action est <strong>irréversible</strong> et retirera ` +
-                `${itemCount} matériel(s) associé(s).`;
+                `${this.escapeHtml(itemCount)} matériel(s) associé(s).`;
         }
         if (this.modalManager) {
             this.modalManager.open('modal-confirm-delete-lot');

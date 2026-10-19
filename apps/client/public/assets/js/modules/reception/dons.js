@@ -14,7 +14,8 @@ function escapeHtml(s) {
     if (s == null) return '';
     const div = document.createElement('div');
     div.textContent = String(s);
-    return div.innerHTML;
+    // innerHTML n'échappe pas les guillemets : nécessaire pour les attributs (value="", title="")
+    return div.innerHTML.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 
 /** Convertit YYYY-MM-DD en DD/MM/AAAA */
@@ -190,7 +191,7 @@ export default class DonsManager {
             <td class="col-marque" data-label="Marque">
                 <select class="dons-select-marque" name="marque">
                     <option value="">Marque...</option>
-                    ${this.marques.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('')}
+                    ${this.marques.map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name)}</option>`).join('')}
                 </select>
             </td>
             <td class="col-modele" data-label="Modèle">
