@@ -60,6 +60,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "config/**/*",
       "assets/**/*",
       "public/**/*",
       "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
