@@ -44,12 +44,29 @@
   margin: 0;
 }
 
-/* Même disposition dans les deux thèmes : filet sous les champs, boutons à droite
-   (le thème sombre de l'app le faisait, pas le thème clair) */
+/* En-tête du prêt (champs du lot) : même zone que la barre d'outils des autres pages
+   (Lots, Commande, Dons) : pas de fond ni de cadre, un filet dessous, boutons à droite.
+   Le thème clair de l'app impose fond et bordure des cartes en !important. */
+.r-root .prets-container:not(#tb) .lot-card--config {
+  border: 0 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html[data-theme-dark="0"] .r-root .prets-container:not(#tb) .lot-card--config {
+  border-bottom-color: rgba(13, 17, 23, 0.1) !important;
+}
+
+.r-root .prets-container:not(#tb) .lot-card--config .lot-card__inner {
+  padding: var(--unit-3) 0;
+}
+
 .r-root .prets-container:not(#tb) .prets-config-grid {
   margin-bottom: var(--ui-gap);
-  padding-bottom: var(--ui-gap);
-  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+  border-bottom: 0 !important;
 }
 
 .r-root .prets-container:not(#tb) .lot-config__actions {
