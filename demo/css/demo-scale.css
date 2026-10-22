@@ -1,0 +1,113 @@
+/**
+ * Échelle fluide unique de la démo, chargée après le CSS de l'application.
+ * Texte, hauteur des champs, marges et largeur du contenu suivent la largeur de la fenêtre
+ * (clamp), avec les mêmes tokens pour les champs du haut, les boutons et les tableaux
+ * (css/demo-tables.css). Les écarts corrigés ici existent aussi dans le CSS de l'application.
+ */
+
+:root {
+  /* 13 px au téléphone, 15 px au-delà de 1920 px */
+  --ui-font: clamp(0.8125rem, 0.75rem + 0.16vw, 0.9375rem);
+  --ui-font-label: calc(var(--ui-font) * 0.87);
+  --ui-font-head: calc(var(--ui-font) * 0.8);
+  /* 34 px au téléphone, 40 px sur grand écran */
+  --ui-field-h: clamp(2.125rem, 1.95rem + 0.24vw, 2.5rem);
+  --ui-field-px: clamp(0.5rem, 0.42rem + 0.12vw, 0.75rem);
+  --ui-select-arrow: calc(var(--ui-field-px) + 1.125rem);
+  --ui-gap: clamp(0.5rem, 0.4rem + 0.3vw, 1rem);
+  --ui-radius: 8px;
+  /* Contenu centré qui grandit avec l'écran sans tout agrandir */
+  --ui-content-max: min(100%, calc(36vw + 720px));
+}
+
+/* ---------- Largeur du contenu des sous-pages ---------- */
+.recep-section > .recep-page.lot-page,
+.recep-section > .recep-page.lots-saisie-page {
+  max-width: var(--ui-content-max);
+  margin-inline: auto;
+}
+
+/* ---------- Champs du haut (Nom du lot, Nom, Catégorie, filtres) ---------- */
+.r-root .recep-page .lot-config__label {
+  font-size: var(--ui-font-label);
+}
+
+.r-root .recep-page:not(#ui) :is(.lot-config__input, .lot-toolbar__name) {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--ui-field-h);
+  min-height: var(--ui-field-h);
+  padding: 0 var(--ui-field-px);
+  border-radius: var(--ui-radius);
+  font-size: var(--ui-font);
+  line-height: normal;
+}
+
+.r-root .recep-page:not(#ui) select.lot-config__input {
+  padding-right: var(--ui-select-arrow);
+  background-position: right var(--ui-field-px) center;
+}
+
+/* Largeur selon le contenu attendu, jamais une largeur fixe qui tronque */
+.r-root .recep-page:not(#ui) .lot-config__field {
+  min-width: 0;
+  max-width: none;
+}
+
+.r-root .recep-page:not(#ui) .lot-config__field:is(:has(> #cmd-name, > #don-name, > #pr-name, > #pr-who, > #filter-search-inventaire, > #filter-search-historique), .lot-toolbar__field) {
+  flex: 2 1 calc(var(--ui-font) * 22);
+  min-width: min(100%, calc(var(--ui-font) * 16));
+  max-width: calc(var(--ui-font) * 36);
+}
+
+.r-root .recep-page:not(#ui) .lot-config__field:has(> #cmd-cat, > #filter-state, > #filter-type-historique, > #pr-type) {
+  flex: 1 1 calc(var(--ui-font) * 13);
+  min-width: min(100%, calc(var(--ui-font) * 11));
+  max-width: calc(var(--ui-font) * 18);
+}
+
+.r-root .recep-page:not(#ui) .lot-config__field:has(> #filter-year-historique, > #filter-month-historique, > #pr-start, > #pr-end) {
+  flex: 0 1 calc(var(--ui-font) * 10);
+  min-width: min(100%, calc(var(--ui-font) * 8.5));
+  max-width: calc(var(--ui-font) * 12);
+}
+
+.r-root .recep-page:not(#ui) .recep-toolbar-compact,
+.r-root .recep-page:not(#ui) .lot-toolbar {
+  gap: var(--ui-gap);
+}
+
+/* Prêts : grille du formulaire du haut à la même échelle */
+.r-root .prets-container:not(#ui) .prets-config-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--ui-font) * 13)), 1fr));
+  gap: var(--ui-gap);
+}
+
+.r-root .prets-container:not(#ui) .prets-config-grid .lot-config__field {
+  max-width: none;
+}
+
+/* ---------- Boutons ---------- */
+.r-root .recep-page:not(#ui) :is(.lot-btn, .historique-lot-actions button) {
+  box-sizing: border-box;
+  height: var(--ui-field-h);
+  min-height: var(--ui-field-h);
+  padding: 0 calc(var(--ui-field-px) * 1.5);
+  border-radius: var(--ui-radius);
+  font-size: var(--ui-font);
+  line-height: 1;
+}
+
+/* L'historique impose 40 px en !important sous 980 px : on le ramène au token commun */
+.r-root .historique-container:not(#ui) .lot-btn {
+  min-height: var(--ui-field-h) !important;
+}
+
+/* Téléphone : barres d'outils en colonne, la base flex deviendrait une hauteur
+   (deux :not(#) pour passer devant les règles de largeur ci-dessus, qui visent des id) */
+@media (max-width: 768px) {
+  .r-root .recep-page:not(#ui) .lot-config__field:not(#ui-a):not(#ui-b) {
+    flex: 0 0 auto;
+    max-width: none;
+  }
+}
