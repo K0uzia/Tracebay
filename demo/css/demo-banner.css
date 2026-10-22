@@ -12,11 +12,11 @@
   z-index: 200;
 }
 
-.demo-banner i {
+.demo-banner > i {
   color: #f5c542;
 }
 
-.demo-banner span {
+.demo-banner > span {
   flex: 1;
   min-width: 0;
 }
@@ -35,4 +35,56 @@
 
 .demo-banner button:hover {
   background: rgba(255, 255, 255, 0.18);
+}
+
+/* Lien de retour vers la fiche Tracebay sur kouzia.com */
+.demo-banner__back {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  color: #f4f7fb;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  white-space: nowrap;
+}
+
+.demo-banner__back:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.demo-banner__back:focus-visible {
+  outline: 2px solid #f4f7fb;
+  outline-offset: 2px;
+}
+
+.demo-banner__back i {
+  font-size: 0.75rem;
+}
+
+.demo-banner__back-short {
+  display: none;
+}
+
+@media (max-width: 420px) {
+  .demo-banner {
+    gap: 8px;
+    padding: 8px 12px;
+  }
+
+  .demo-banner__back {
+    padding: 4px 6px;
+  }
+
+  .demo-banner__back-long {
+    display: none;
+  }
+
+  .demo-banner__back-short {
+    display: inline;
+  }
 }

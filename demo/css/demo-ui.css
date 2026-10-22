@@ -259,3 +259,108 @@ html[data-theme-dark="0"] .r-root .lot-table .btn-remove-line {
   border-color: rgba(13, 17, 23, 0.14);
   color: #4b5563;
 }
+
+/* =============================================================================
+   Tableaux de réception (démo) : mêmes largeurs de page, défilement horizontal
+   dans le cadre du tableau, champs lisibles. Ces écarts existent aussi dans le
+   CSS de l'application (voir le rapport) ; ici on ne corrige que la démo.
+   ============================================================================= */
+
+/* Une seule largeur de page pour toutes les sous-pages (1200 ou 1400 px selon la page dans l'app),
+   qui grandit avec l'écran jusqu'à 2560 px */
+.recep-section > .recep-page.lot-page,
+.recep-section > .recep-page.lots-saisie-page {
+  max-width: min(1760px, 100%);
+}
+
+/* Le tableau défile dans son cadre, jamais la page */
+.r-root .recep-page .lot-table-wrap {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+/* Largeur minimale par tableau : en dessous, défilement plutôt que colonnes écrasées */
+.r-root .recep-page #lot-table { min-width: 950px; }
+.r-root .recep-page #disques-session-table { min-width: 955px; }
+.r-root .recep-page.commande-container .lot-table { min-width: 860px; }
+.r-root .recep-page.dons-container .lot-table { min-width: 960px; }
+.r-root .recep-page.prets-container .lot-table { min-width: 880px; }
+
+/* Colonne d'action trop étroite (1rem) pour le bouton de 32 px : il débordait du tableau */
+.r-root .recep-page:is(.dons-container, .prets-container) .lot-table .lot-table__th--action { width: 48px; }
+
+/* Inventaire : l'app masque Type, Modèle, OS, Date et Technicien sous 1100 px et, sous 720 px,
+   les colonnes restantes tombent à 0 px (largeurs fixes de la 1re et de la dernière colonne).
+   La démo garde toutes les colonnes et fait défiler le tableau. */
+.r-root .inventaire-container .lot-content .lot-table { min-width: 860px; }
+.r-root .inventaire-container .lot-content .lot-table :is(th, td) { display: table-cell; }
+
+/* Cellules et champs plus compacts : la flèche des listes prenait 34 px sur des colonnes de 80 px */
+.r-root .recep-page:is(.entrer-page, .commande-container, .dons-container, .prets-container) .lot-table th,
+.r-root .recep-page:is(.entrer-page, .commande-container, .dons-container, .prets-container) .lot-table td {
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+.r-root .recep-page .lot-table td select {
+  padding-left: 8px;
+  padding-right: 26px;
+  background-position: right 8px center;
+}
+
+.r-root .recep-page .lot-table td input[type="text"],
+.r-root .recep-page .lot-table td input[type="number"],
+.r-root .recep-page .lot-table td input[type="date"] {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+/* Téléphone : l'app passe les lignes en cartes à 2 ou 3 colonnes, illisibles sous 400 px
+   (listes de 12 px de large). La démo garde le tableau, qui défile horizontalement. */
+@media (max-width: 768px) {
+  .r-root .recep-page:is(.entrer-page, .commande-container, .dons-container, .prets-container) .lot-table-wrap {
+    overflow-x: auto;
+  }
+
+  .r-root .recep-page:is(.entrer-page, .commande-container, .dons-container, .prets-container) .lot-table {
+    display: table;
+    table-layout: fixed;
+  }
+
+  .r-root .recep-page:is(.entrer-page, .commande-container, .dons-container, .prets-container) .lot-table thead {
+    position: static;
+    display: table-header-group;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  .r-root .recep-page:is(.entrer-page, .commande-container, .dons-container, .prets-container) .lot-table tbody tr {
+    display: table-row;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  .r-root .recep-page:is(.entrer-page, .commande-container, .dons-container, .prets-container) .lot-table tbody td {
+    display: table-cell;
+    padding-top: var(--unit-1);
+    padding-bottom: var(--unit-1);
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  .r-root .recep-page:is(.entrer-page, .commande-container, .dons-container, .prets-container) .lot-table tbody td::before {
+    content: none;
+    display: none;
+  }
+
+  /* Cellules plus larges au téléphone dans l'inventaire (marges de 16 px) */
+  .r-root .inventaire-container .lot-content .lot-table { min-width: 1020px; }
+}
