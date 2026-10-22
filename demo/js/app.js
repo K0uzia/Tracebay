@@ -569,7 +569,7 @@
           "<th class=\"lot-table__th--select\"><input type=\"checkbox\" id=\"lot-all\" class=\"lot-checkbox\" title=\"Tout sélectionner\"></th>" +
           "<th class=\"lot-table__th--num\">#</th><th class=\"lot-table__th--sn\">S/N</th><th class=\"lot-table__th--type\">Type</th>" +
           "<th class=\"lot-table__th--marque\">Marque</th><th class=\"lot-table__th--modele\">Modèle</th>" +
-          "<th class=\"lot-table__th--date\">Date</th><th class=\"lot-table__th--entree\">Entrée</th><th class=\"lot-table__th--action\"></th>" +
+          "<th class=\"lot-table__th--date\">Date</th><th class=\"lot-table__th--entree\">Entrée</th><th class=\"lot-table__th--fill\" aria-hidden=\"true\"></th><th class=\"lot-table__th--action\"></th>" +
         "</tr></thead><tbody id=\"lot-table-body\">" +
         d.rows.map(function (r, i) {
           const entry = (r.mode || "MANUEL").toLowerCase() === "scan" ? "scan" : "manuel";
@@ -585,7 +585,7 @@
             "<td data-label=\"Modèle\"><select name=\"modele\" class=\"lot-model\" required>" + modelOptions(cat.pcModels, r.brand, cat.pcBrands, r.model) + "</select></td>" +
             "<td data-label=\"Date / Heure\"><span class=\"row-date-display\">" + fmtDateTime(r.enteredAt) + "</span></td>" +
             "<td data-label=\"Entrée\"><span class=\"entry-badge " + entry + "\">" + esc(r.mode) + "</span></td>" +
-            "<td data-label=\"Action\"><button type=\"button\" class=\"btn-delete-row lot-del\" title=\"Supprimer cette ligne\"><i class=\"fa-solid fa-trash\"></i></button></td></tr>";
+            "<td class=\"lot-table__fill\" aria-hidden=\"true\"></td><td data-label=\"Action\"><button type=\"button\" class=\"btn-delete-row lot-del\" title=\"Supprimer cette ligne\"><i class=\"fa-solid fa-trash\"></i></button></td></tr>";
         }).join("") +
         "</tbody></table></div></div></div></section>";
 
@@ -717,9 +717,9 @@
           "<th class=\"lot-table__th--select\"><input type=\"checkbox\" id=\"disques-select-all\" class=\"lot-checkbox\" title=\"Tout sélectionner\"></th>" +
           "<th class=\"lot-table__th--num\">#</th><th class=\"lot-table__th--sn\">S/N</th><th class=\"lot-table__th--type\">Type</th>" +
           "<th class=\"lot-table__th--marque\">Marque</th><th class=\"lot-table__th--modele\">Modèle</th>" +
-          "<th class=\"lot-table__th--date\">Taille</th><th class=\"lot-table__th--entree\">Interface</th>" +
+          "<th class=\"lot-table__th--taille\">Taille</th><th class=\"lot-table__th--interface\">Interface</th>" +
           "<th class=\"lot-table__th--destroy\" title=\"Destruction physique\">D.phy</th><th class=\"lot-table__th--shred\">Shred</th>" +
-          "<th class=\"lot-table__th--action\"></th>" +
+          "<th class=\"lot-table__th--fill\" aria-hidden=\"true\"></th><th class=\"lot-table__th--action\"></th>" +
         "</tr></thead><tbody id=\"disques-session-tbody\">" +
         d.rows.map(function (r, i) {
           const shred = r.destroy ? "Destruction physique" : r.type === "SSD" ? "Secure E. + Sanitize" : "DoD";
@@ -734,7 +734,7 @@
             "<td data-label=\"Interface\"><div class=\"type-cell-wrapper\"><select class=\"ds-iface\" name=\"disques_interface\"><option>SATA</option><option" + (r.iface === "NVMe" ? " selected" : "") + ">NVMe</option><option" + (r.iface === "USB" ? " selected" : "") + ">USB</option></select></div></td>" +
             "<td data-label=\"Destr. phy.\"><label class=\"disques-row-dest-label\" title=\"Destruction physique\"><input type=\"checkbox\" class=\"ds-des js-disques-destruction\"" + (r.destroy ? " checked" : "") + "></label></td>" +
             "<td data-label=\"Shred\"><span class=\"js-disques-shred-label disques-shred-text\">" + esc(shred) + "</span></td>" +
-            "<td data-label=\"Action\"><button type=\"button\" class=\"btn-delete-row ds-del\" title=\"Supprimer la ligne\"><i class=\"fa-solid fa-trash\"></i></button></td></tr>";
+            "<td class=\"lot-table__fill\" aria-hidden=\"true\"></td><td data-label=\"Action\"><button type=\"button\" class=\"btn-delete-row ds-del\" title=\"Supprimer la ligne\"><i class=\"fa-solid fa-trash\"></i></button></td></tr>";
         }).join("") + "</tbody></table></div></div></div></section>";
 
     function sync(tr) {
@@ -886,7 +886,7 @@
         "<div class=\"lot-card lot-card--table\"><div class=\"lot-card__inner lot-card__inner--scroll\"><div class=\"lot-table-wrap\"><table class=\"lot-table\"><thead><tr>" +
           "<th class=\"lot-table__th--num\">#</th><th class=\"lot-table__th--type\">Type</th><th class=\"lot-table__th--marque\">Marque</th>" +
           "<th class=\"lot-table__th--modele\">Modèle</th><th class=\"lot-table__th--sn\">S/N</th><th class=\"lot-table__th--date\">Date</th>" +
-          "<th class=\"lot-table__th--stagiaire\">Bénéficiaire</th><th class=\"lot-table__th--action\"></th></tr></thead><tbody>" +
+          "<th class=\"lot-table__th--stagiaire\">Bénéficiaire</th><th class=\"lot-table__th--fill\" aria-hidden=\"true\"></th><th class=\"lot-table__th--action\"></th></tr></thead><tbody>" +
         d.rows.map(function (r, i) {
           return "<tr class=\"dons-line\" data-i=\"" + i + "\">" +
             "<td class=\"col-num\" data-label=\"N°\">" + (i + 1) + "</td>" +
@@ -898,7 +898,7 @@
             "<td class=\"col-sn\" data-label=\"S/N\"><input type=\"text\" class=\"don-sn dons-input-sn\" value=\"" + esc(r.sn) + "\" placeholder=\"S/N\"></td>" +
             "<td class=\"col-date\" data-label=\"Date\"><input type=\"date\" class=\"don-date dons-input-date\" value=\"" + esc(r.date) + "\"></td>" +
             "<td class=\"col-stagiaire\" data-label=\"Bénéficiaire\"><input type=\"text\" class=\"don-st dons-input-stagiaire\" value=\"" + esc(r.stagiaire) + "\" placeholder=\"Nom\"></td>" +
-            "<td class=\"col-actions\" data-label=\"Action\"><button type=\"button\" class=\"btn-remove-line don-del\" title=\"Supprimer\"" + (d.rows.length <= 1 ? " disabled" : "") + "><i class=\"fas fa-trash\"></i></button></td></tr>";
+            "<td class=\"lot-table__fill\" aria-hidden=\"true\"></td><td class=\"col-actions\" data-label=\"Action\"><button type=\"button\" class=\"btn-remove-line don-del\" title=\"Supprimer\"" + (d.rows.length <= 1 ? " disabled" : "") + "><i class=\"fas fa-trash\"></i></button></td></tr>";
         }).join("") + "</tbody></table></div></div></div></div></section>";
 
     function sync(tr) {
@@ -947,7 +947,7 @@
         "<div class=\"lot-card lot-card--table\"><div class=\"lot-card__inner lot-card__inner--scroll\"><div class=\"lot-table-wrap\"><table class=\"lot-table\"><thead><tr>" +
           "<th class=\"lot-table__th--num\">#</th><th class=\"lot-table__th--type\">Type</th><th class=\"lot-table__th--marque\">Marque</th>" +
           "<th class=\"lot-table__th--modele\">Modèle</th><th class=\"lot-table__th--sn\">S/N</th><th class=\"lot-table__th--quantite\">Qté</th>" +
-          "<th class=\"lot-table__th--action\"></th></tr></thead><tbody>" +
+          "<th class=\"lot-table__th--fill\" aria-hidden=\"true\"></th><th class=\"lot-table__th--action\"></th></tr></thead><tbody>" +
         d.rows.map(function (r, i) {
           return "<tr class=\"prets-line\" data-i=\"" + i + "\">" +
             "<td class=\"col-num\" data-label=\"N°\">" + (i + 1) + "</td>" +
@@ -958,7 +958,7 @@
             "<td class=\"col-modele\" data-label=\"Modèle\"><select class=\"pr-m\">" + modelOptions(cat.pcModels, r.brand, cat.pcBrands, r.model) + "</select></td>" +
             "<td class=\"col-sn\" data-label=\"S/N\"><input type=\"text\" class=\"pr-sn prets-in-sn lot-config__input\" value=\"" + esc(r.sn) + "\" placeholder=\"N° série\"></td>" +
             "<td class=\"col-quantite\" data-label=\"Qté\"><input type=\"number\" min=\"1\" class=\"pr-q prets-input-qty\" value=\"" + esc(r.qty) + "\"></td>" +
-            "<td class=\"col-action\" data-label=\"\"><button type=\"button\" class=\"btn-remove-line pr-del\" title=\"Supprimer la ligne\"" + (d.rows.length <= 1 ? " disabled" : "") + "><i class=\"fa-solid fa-trash\"></i></button></td></tr>";
+            "<td class=\"lot-table__fill\" aria-hidden=\"true\"></td><td class=\"col-action\" data-label=\"\"><button type=\"button\" class=\"btn-remove-line pr-del\" title=\"Supprimer la ligne\"" + (d.rows.length <= 1 ? " disabled" : "") + "><i class=\"fa-solid fa-trash\"></i></button></td></tr>";
         }).join("") + "</tbody></table></div></div></div></div></section>";
 
     const map = { "pr-name": "name", "pr-start": "startDate", "pr-end": "endDate", "pr-who": "borrowerName", "pr-type": "borrowerType", "pr-amount": "amount" };
@@ -1110,7 +1110,7 @@
               "<th class=\"lot-table__th--state\"><i class=\"fa-solid fa-circle-check\"></i> État</th>" +
               "<th class=\"lot-table__th--date\"><i class=\"fa-solid fa-calendar-days\"></i> Date</th>" +
               "<th class=\"lot-table__th--technicien\"><i class=\"fa-solid fa-user\"></i> Tech.</th>" +
-              "<th class=\"lot-table__th--action\"><i class=\"fa-solid fa-screwdriver-wrench\"></i></th>" +
+              "<th class=\"lot-table__th--fill\" aria-hidden=\"true\"></th><th class=\"lot-table__th--action\"><i class=\"fa-solid fa-screwdriver-wrench\"></i></th>" +
             "</tr></thead><tbody>" +
             items.map(function (it, idx) {
               const os = osMeta(it.os);
@@ -1125,7 +1125,7 @@
                 "<td class=\"col-state\"><span class=\"state-badge state-" + stKey + "\">" + esc(it.state || "Non défini") + "</span></td>" +
                 "<td class=\"col-date\">" + fmtDate(it.enteredAt) + "</td>" +
                 "<td class=\"col-tech\">" + esc(it.technician || "-") + "</td>" +
-                "<td class=\"col-action\"><div class=\"inventaire-row-actions\">" +
+                "<td class=\"lot-table__fill\" aria-hidden=\"true\"></td><td class=\"col-action\"><div class=\"inventaire-row-actions\">" +
                   "<button type=\"button\" class=\"btn-edit-pc\" data-lot=\"" + lot.id + "\" data-pc=\"" + it.id + "\" title=\"Éditer ce matériel\"><i class=\"fa-solid fa-edit\"></i></button>" +
                 "</div></td></tr>";
             }).join("") +
@@ -1434,7 +1434,7 @@
     const entity = API.getEntity(kind, id);
     if (!entity) return;
     const items = entity.items || [];
-    let head = "<th>S/N</th><th>Détail</th>";
+    let head = "<th class=\"details-table__th--sn\">S/N</th><th>Détail</th>";
     let body = items.map(function (it) {
       if (kind === "commande") return "<tr><td>" + esc(it.product) + "</td><td>" + esc(it.qty) + " × " + esc(it.price) + " €</td></tr>";
       if (kind === "don") return "<tr><td>" + esc(it.sn) + "</td><td>" + esc(recipientOf(it)) + " : " + esc(it.brand) + " " + esc(it.model) + "</td></tr>";

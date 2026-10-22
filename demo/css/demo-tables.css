@@ -1,0 +1,261 @@
+/**
+ * Gabarit unique des tableaux de la démo (Lots, Disques, Commande, Dons, Prêts,
+ * Inventaire, détails de l'historique). Chargé après le CSS de l'application.
+ *
+ * - Mêmes tokens partout : hauteurs de ligne, d'en-tête et de champ, marges, en-têtes, rayon.
+ * - Une colonne a la même largeur sur toutes les pages pour un même rôle (S/N, Type, ...).
+ * - Les colonnes de texte libre (Produit, Lien, Détail) prennent le reste ; sans texte libre,
+ *   une colonne vide (lot-table__th--fill, avant l'action) le prend, pour que les autres
+ *   gardent leur largeur exacte et que le tableau remplisse son cadre.
+ * - Largeur minimale d'un tableau = somme de ses colonnes : il ne peut pas être plus étroit
+ *   sans écraser une colonne. En dessous, il défile dans son cadre (même comportement partout).
+ *
+ * Les écarts corrigés ici existent aussi dans le CSS de l'application.
+ * Le :not(#tb) donne aux règles le poids d'un id, nécessaire face à #lot-table et
+ * #disques-session-table th:nth-child(n) de l'application.
+ */
+
+:root {
+  --tb-head-h: 40px;
+  --tb-row-h: 52px;
+  --tb-field-h: 36px;
+  --tb-cell-px: 8px;
+  --tb-font: 0.875rem;
+  --tb-head-size: 0.75rem;
+  --tb-head-weight: 600;
+  --tb-head-tracking: 0.05em;
+  --tb-radius: 8px;
+  --tb-field-px: 8px;
+  --tb-select-arrow: 26px;
+  --tb-frame-radius: 10px;
+
+  --col-select: 44px;
+  --col-num: 44px;
+  --col-action: 56px;
+  --col-sn: 150px;
+  --col-type: 120px;
+  --col-marque: 130px;
+  --col-modele: 150px;
+  --col-etat: 140px;
+  --col-date: 130px;
+  --col-qte: 80px;
+  --col-nom: 150px;
+  --col-prix: 100px;
+  --col-entree: 96px;
+  --col-taille: 96px;
+  --col-interface: 104px;
+  --col-dphy: 64px;
+  --col-shred: 150px;
+  --col-os: 72px;
+  --col-tech: 140px;
+  --col-free-min: 160px;
+}
+
+/* ---------- Cadre : même largeur de page, le tableau défile dans son cadre ---------- */
+.recep-section > .recep-page.lot-page,
+.recep-section > .recep-page.lots-saisie-page {
+  max-width: min(1760px, 100%);
+}
+
+.r-root .lot-table-wrap:not(#tb) {
+  box-sizing: border-box;
+  padding: 0;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--tb-frame-radius);
+  scrollbar-width: thin;
+}
+
+.r-root .lot-card--table {
+  border-radius: var(--tb-frame-radius);
+}
+
+/* ---------- Tableau ---------- */
+:is(.r-root .lot-table, .details-table):not(#tb) {
+  display: table;
+  width: 100%;
+  max-width: none;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--tb-font);
+}
+
+:is(.r-root .lot-table, .details-table):not(#tb) thead {
+  position: static;
+  display: table-header-group;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+:is(.r-root .lot-table, .details-table):not(#tb) thead th {
+  display: table-cell;
+  box-sizing: border-box;
+  height: var(--tb-head-h);
+  min-width: 0;
+  max-width: none;
+  padding: 0 var(--tb-cell-px);
+  font-size: var(--tb-head-size);
+  font-weight: var(--tb-head-weight);
+  letter-spacing: var(--tb-head-tracking);
+  line-height: 1.2;
+  text-transform: uppercase;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:is(.r-root .lot-table, .details-table):not(#tb) tbody tr {
+  display: table-row;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:is(.r-root .lot-table, .details-table):not(#tb) tbody td {
+  display: table-cell;
+  box-sizing: border-box;
+  height: var(--tb-row-h);
+  min-width: 0;
+  padding: 0 var(--tb-cell-px);
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:is(.r-root .lot-table, .details-table):not(#tb) tbody td::before {
+  content: none;
+  display: none;
+}
+
+/* ---------- Champs et listes dans les cellules ---------- */
+.r-root .lot-table:not(#tb) td :is(input[type="text"], input[type="number"], input[type="date"], input[type="search"], input:not([type]), select) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: var(--tb-field-h);
+  min-height: var(--tb-field-h);
+  margin: 0;
+  padding: 0 var(--tb-field-px);
+  border-radius: var(--tb-radius);
+  font-size: var(--tb-font);
+  line-height: normal;
+}
+
+.r-root .lot-table:not(#tb) td select {
+  padding-right: var(--tb-select-arrow);
+  background-position: right var(--tb-field-px) center;
+}
+
+.r-root .lot-table:not(#tb) td .type-cell-wrapper {
+  min-width: 0;
+}
+
+/* ---------- Colonnes centrées : sélection, numéro, destruction, action ---------- */
+.r-root .lot-table:not(#tb) :is(.lot-table__th--select, .lot-table__th--num, .lot-table__th--destroy, .lot-table__th--action),
+.r-root .lot-table:not(#tb) td:is([data-label="Sélection"], [data-label="N°"], [data-label="Destr. phy."], .col-num, .col-action, .col-actions, :last-child) {
+  text-align: center;
+}
+
+/* ---------- Largeur par rôle (identique sur toutes les pages) ---------- */
+.r-root .lot-table:not(#tb) th.lot-table__th--select { width: var(--col-select); }
+.r-root .lot-table:not(#tb) th.lot-table__th--num { width: var(--col-num); }
+.r-root .lot-table:not(#tb) th.lot-table__th--action { width: var(--col-action); }
+:is(.r-root .lot-table, .details-table):not(#tb) th:is(.lot-table__th--sn, .details-table__th--sn) { width: var(--col-sn); }
+.r-root .lot-table:not(#tb) th.lot-table__th--type { width: var(--col-type); }
+.r-root .lot-table:not(#tb) th.lot-table__th--marque { width: var(--col-marque); }
+.r-root .lot-table:not(#tb) th.lot-table__th--modele { width: var(--col-modele); }
+.r-root .lot-table:not(#tb) th.lot-table__th--state { width: var(--col-etat); }
+.r-root .lot-table:not(#tb) th.lot-table__th--date { width: var(--col-date); }
+.r-root .lot-table:not(#tb) th.lot-table__th--quantite { width: var(--col-qte); }
+.r-root .lot-table:not(#tb) th.lot-table__th--stagiaire { width: var(--col-nom); }
+.r-root .lot-table:not(#tb) th:is(.lot-table__th--prix, .lot-table__th--frais-port) { width: var(--col-prix); }
+.r-root .lot-table:not(#tb) th.lot-table__th--entree { width: var(--col-entree); }
+.r-root .lot-table:not(#tb) th.lot-table__th--taille { width: var(--col-taille); }
+.r-root .lot-table:not(#tb) th.lot-table__th--interface { width: var(--col-interface); }
+.r-root .lot-table:not(#tb) th.lot-table__th--destroy { width: var(--col-dphy); }
+.r-root .lot-table:not(#tb) th.lot-table__th--shred { width: var(--col-shred); }
+.r-root .lot-table:not(#tb) th.lot-table__th--os { width: var(--col-os); }
+.r-root .lot-table:not(#tb) th.lot-table__th--technicien { width: var(--col-tech); }
+/* Texte libre et colonne de remplissage : pas de largeur, ils prennent le reste */
+.r-root .lot-table:not(#tb) th:is(.lot-table__th--produit, .lot-table__th--liens, .lot-table__th--fill) { width: auto; }
+
+/* ---------- Largeur minimale = somme des colonnes du tableau ---------- */
+.r-root .lot-table#lot-table {
+  min-width: calc(var(--col-select) + var(--col-num) + var(--col-sn) + var(--col-type) + var(--col-marque) + var(--col-modele) + var(--col-date) + var(--col-entree) + var(--col-action));
+}
+.r-root .lot-table#disques-session-table {
+  min-width: calc(var(--col-select) + var(--col-num) + var(--col-sn) + var(--col-type) + var(--col-marque) + var(--col-modele) + var(--col-taille) + var(--col-interface) + var(--col-dphy) + var(--col-shred) + var(--col-action));
+}
+.r-root .commande-container .lot-table:not(#tb) {
+  min-width: calc(var(--col-num) + var(--col-qte) + var(--col-prix) * 2 + var(--col-action) + var(--col-free-min) * 2);
+}
+.r-root .dons-container .lot-table:not(#tb) {
+  min-width: calc(var(--col-num) + var(--col-type) + var(--col-marque) + var(--col-modele) + var(--col-sn) + var(--col-date) + var(--col-nom) + var(--col-action));
+}
+.r-root .prets-container .lot-table:not(#tb) {
+  min-width: calc(var(--col-num) + var(--col-type) + var(--col-marque) + var(--col-modele) + var(--col-sn) + var(--col-qte) + var(--col-action));
+}
+.r-root .inventaire-container .lot-content .lot-table:not(#tb) {
+  min-width: calc(var(--col-num) + var(--col-sn) + var(--col-type) + var(--col-marque) + var(--col-modele) + var(--col-os) + var(--col-etat) + var(--col-date) + var(--col-tech) + var(--col-action));
+}
+.details-table:not(#tb) {
+  min-width: calc(var(--col-sn) + var(--col-free-min));
+}
+
+/* Inventaire : l'app masque des colonnes sous 1100 px (et les restantes tombaient à 0 px sous 720 px) ;
+   la démo garde toutes les colonnes, le tableau défile */
+.r-root .inventaire-container .lot-content .lot-table:not(#tb) :is(th, td) {
+  display: table-cell;
+}
+
+/* Colonne d'action : le bouton de 32 px tient dans --col-action */
+.r-root .lot-table:not(#tb) td :is(.btn-delete-row, .btn-remove-line, .btn-edit-pc) {
+  margin: 0 auto;
+}
+
+/* Téléphone : l'app passe les lignes en cartes à 2 ou 3 colonnes, illisibles sous 400 px.
+   La démo garde le tableau (règles d'affichage ci-dessus) et neutralise le style de carte. */
+@media (max-width: 768px) {
+  .r-root .recep-page:is(.entrer-page, .commande-container, .dons-container, .prets-container) .lot-table-wrap {
+    overflow-x: auto;
+  }
+
+  :is(.r-root .lot-table, .details-table):not(#tb) tbody tr {
+    border: 0;
+    background: transparent;
+  }
+
+  :is(.r-root .lot-table, .details-table):not(#tb) tbody td {
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+/* ---------- Couleurs (thème sombre) : celles de Commande, Dons, Prêts et Inventaire,
+   aussi pour Lots et Disques. Le thème clair est déjà commun à toutes les pages. ---------- */
+html[data-theme-dark="1"] {
+  --tb-head-color: #9db5ff;
+  --tb-head-bg: #182131;
+  --tb-head-border: rgba(255, 255, 255, 0.08);
+  --tb-cell-color: rgba(232, 236, 244, 0.88);
+  --tb-cell-border: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme-dark="1"] :is(.r-root .lot-table, .details-table):not(#tb) thead th {
+  color: var(--tb-head-color);
+  background: var(--tb-head-bg);
+  border-bottom: 1px solid var(--tb-head-border);
+}
+
+html[data-theme-dark="1"] :is(.r-root .lot-table, .details-table):not(#tb) tbody td {
+  color: var(--tb-cell-color);
+  border-bottom: 1px solid var(--tb-cell-border);
+}
