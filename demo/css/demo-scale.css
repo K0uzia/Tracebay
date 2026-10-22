@@ -132,3 +132,30 @@
 .r-root .recep-page:not(#ui) .lot-toolbar__count {
   font-size: var(--ui-font-label);
 }
+
+/* ---------- Listes de cartes (Inventaire, Historique) : pas de boîte dans la boîte ----------
+   Le conteneur derrière les cartes perd son fond, sa bordure et ses marges : seules les cartes
+   restent, avec le même espacement sur les deux pages. Le thème clair de l'app impose ces fonds
+   en !important, d'où les !important ci-dessous. */
+.r-root .recep-page:is(.inventaire-container, .historique-container):not(#ui) .lot-card--list {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.r-root .recep-page:is(.inventaire-container, .historique-container):not(#ui) .lot-card__inner--list {
+  padding: 0 !important;
+}
+
+.r-root .recep-page:is(.inventaire-container, .historique-container):not(#ui) :is(.lots-list-inv, #historique-list) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-gap);
+  padding: 0 !important;
+}
+
+/* En-tête d'une carte : même fond que la carte (un en-tête teinté seul dans sa carte
+   faisait une seconde boîte, notamment dans l'Historique et pour un lot replié) */
+.r-root .recep-page:not(#ui) :is(.historique-lot-header, .inventaire-lot-header) {
+  background: transparent !important;
+}

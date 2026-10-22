@@ -33,23 +33,7 @@
 
 /* ---------- Cartes de lot : densité et tailles de l'Historique (référence) ---------- */
 
-/* Pas de boîte dans la boîte : le conteneur derrière les cartes disparaît, les cartes restent */
-.r-root .inventaire-container:not(#tb) .lot-card--list {
-  border: 0;
-  background: transparent;
-  box-shadow: none;
-}
-
-.r-root .inventaire-container:not(#tb) .lot-card__inner--list {
-  padding: 0;
-}
-
-.r-root .inventaire-container:not(#tb) .lots-list-inv {
-  display: flex;
-  flex-direction: column;
-  gap: var(--ui-gap);
-  padding: 0;
-}
+/* Conteneur derrière les cartes : voir « Listes de cartes » dans css/demo-scale.css */
 
 .r-root .inventaire-container:not(#tb) .inventaire-lot-header {
   gap: calc(var(--ui-gap) * 0.75);

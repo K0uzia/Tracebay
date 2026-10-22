@@ -43,3 +43,16 @@
   min-height: 0;
   margin: 0;
 }
+
+/* Même disposition dans les deux thèmes : filet sous les champs, boutons à droite
+   (le thème sombre de l'app le faisait, pas le thème clair) */
+.r-root .prets-container:not(#tb) .prets-config-grid {
+  margin-bottom: var(--ui-gap);
+  padding-bottom: var(--ui-gap);
+  border-bottom: 1px solid var(--border);
+}
+
+.r-root .prets-container:not(#tb) .lot-config__actions {
+  justify-content: flex-end;
+  margin-top: 0;
+}
