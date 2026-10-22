@@ -190,7 +190,6 @@
     document.body.classList.toggle("page-reception", reception);
     document.body.classList.toggle("reception-single-scroll", hist);
     document.documentElement.classList.toggle("reception-single-scroll", hist);
-    document.getElementById("footer").style.display = reception ? "none" : "";
     document.querySelectorAll(".nav-btn[data-page]").forEach(function (btn) {
       const p = btn.getAttribute("data-page");
       btn.classList.toggle("active", p === App.page || (p === "reception" && App.page === "reception"));
@@ -214,6 +213,7 @@
   }
 
   async function render() {
+    App.renderSeq = (App.renderSeq || 0) + 1;
     parseHash();
     setShell();
     if (App.page === "reception") await renderReception();
@@ -234,13 +234,76 @@
     return events.filter(function (e) { return API.dateStr(e.start) <= key && API.dateStr(e.end) >= key; });
   }
 
+  /* Fond doux de la couleur de l'événement (même calcul que CalendarRenderer.softEventBg) */
+  function softEventBg(hex) {
+    const raw = String(hex || "").replace("#", "");
+    const alpha = App.themeDark ? 0.18 : 0.32;
+    if (!/^[0-9a-fA-F]{6}$/.test(raw)) return "rgba(91, 124, 250, " + alpha + ")";
+    return "rgba(" + parseInt(raw.slice(0, 2), 16) + ", " + parseInt(raw.slice(2, 4), 16) + ", " + parseInt(raw.slice(4, 6), 16) + ", " + alpha + ")";
+  }
+
   function chip(ev) {
-    return "<button type=\"button\" class=\"calendar-event-chip\" data-event=\"" + ev.id + "\" style=\"background:" + esc(ev.color) + "22;color:#fff;border:0;border-radius:8px;padding:4px 8px;text-align:left;cursor:pointer\">" +
-      "<span>" + esc(ev.title) + "</span></button>";
+    const time = ev.allDay ? "Journée" : API.timeStr(new Date(ev.start));
+    const color = /^#[0-9a-f]{6}$/i.test(ev.color || "") ? ev.color : "";
+    const style = color ? " style=\"--event-color:" + color + ";--event-bg:" + softEventBg(color) + "\"" : "";
+    const selected = App.selectedEvent === ev.id ? " is-selected" : "";
+    return "<button type=\"button\" class=\"calendar-event-chip" + selected + "\" data-event=\"" + esc(ev.id) + "\" title=\"" + esc(ev.title) + "\"" + style + ">" +
+      "<span class=\"calendar-event-chip-time\">" + esc(time) + "</span>" +
+      "<span class=\"calendar-event-chip-title\">" + esc(ev.title) + "</span></button>";
+  }
+
+  function holidayChip(day, name) {
+    const id = "holiday:" + day;
+    return "<button type=\"button\" class=\"calendar-event-chip is-holiday" + (App.selectedEvent === id ? " is-selected" : "") + "\" data-event=\"" + id + "\" title=\"" + esc(name) + "\">" +
+      "<span class=\"calendar-event-chip-time\">Journée</span>" +
+      "<span class=\"calendar-event-chip-title\">" + esc(name) + "</span></button>";
+  }
+
+  function dayClasses(d, extra) {
+    const wd = d.getDay();
+    return "calendar-day" + (extra || "") + (API.dateStr(d) === todayISO() ? " today" : "") + (wd === 0 || wd === 6 ? " weekend" : "");
+  }
+
+  function dayCell(d, events, extra) {
+    const key = API.dateStr(d);
+    const hol = API.holidays[key];
+    return "<div class=\"" + dayClasses(d, extra) + "\" data-cal-day=\"" + key + "\">" +
+      "<div class=\"calendar-day-header\"><span class=\"calendar-day-name\">" + d.toLocaleDateString("fr-FR", { weekday: "short" }) +
+      "</span><span class=\"calendar-day-number\">" + d.getDate() + "</span></div>" +
+      "<div class=\"calendar-events\">" + (hol ? holidayChip(key, hol) : "") + eventsOnDay(events, d).map(chip).join("") + "</div></div>";
+  }
+
+  function eventDetails(events) {
+    const id = App.selectedEvent;
+    if (id && id.indexOf("holiday:") === 0) {
+      const day = id.slice(8);
+      const name = API.holidays[day];
+      if (name) {
+        return "<div class=\"detail-content\"><h3>" + esc(name) + "</h3><p><strong>Période&nbsp;: </strong>" + esc(fmtDateLong(day + "T00:00:00")) + "</p>" +
+          "<p class=\"text-mute small\"><strong>Info&nbsp;:</strong> jour férié (verrouillé)</p></div>";
+      }
+    }
+    const sel = id ? events.find(function (e) { return e.id === id; }) : null;
+    if (!sel) return "<p class=\"calendar-details-empty\">Sélectionner un événement pour voir les détails</p>";
+    const sameDay = API.dateStr(sel.start) === API.dateStr(sel.end);
+    let period;
+    if (sel.allDay) {
+      period = esc(fmtDateLong(sel.start)) + (sameDay ? "" : " au " + esc(fmtDateLong(sel.end)));
+    } else if (sameDay) {
+      period = esc(fmtDateLong(sel.start)) + "<br><strong>Heure&nbsp;: </strong>" + esc(API.timeStr(new Date(sel.start))) + " à " + esc(API.timeStr(new Date(sel.end)));
+    } else {
+      period = esc(fmtDateTime(sel.start)) + " à " + esc(fmtDateTime(sel.end));
+    }
+    return "<div class=\"detail-content\"><h3>" + esc(sel.title) + "</h3><p><strong>Période&nbsp;: </strong>" + period + "</p>" +
+      (sel.description ? "<p><strong>Lieu&nbsp;:</strong> " + esc(sel.description) + "</p>" : "") + "</div>" +
+      "<button type=\"button\" class=\"btn btn-primary\" data-edit-event=\"" + esc(sel.id) + "\">Éditer</button>";
   }
 
   async function renderAgenda() {
+    const seq = App.renderSeq;
     const events = await API.listEvents();
+    // Rendu dépassé (navigation ou changement de thème entre-temps) : ne pas écraser la page affichée
+    if (seq !== App.renderSeq) return;
     const view = App.calView;
     const cursor = App.calCursor;
     let label = "";
@@ -249,22 +312,14 @@
     if (view === "week") {
       const start = startOfWeek(cursor);
       const end = new Date(start); end.setDate(end.getDate() + 6);
-      label = start.toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) + " - " +
-        end.toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+      label = "Semaine du " + start.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" }) + " au " +
+        end.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", year: "2-digit" });
       const days = [];
       for (let i = 0; i < 7; i++) {
         const d = new Date(start); d.setDate(d.getDate() + i);
-        const hol = API.holidays[API.dateStr(d)];
-        const list = eventsOnDay(events, d);
-        days.push(
-          "<div class=\"calendar-day" + (API.dateStr(d) === todayISO() ? " is-today" : "") + "\" data-cal-day=\"" + API.dateStr(d) + "\">" +
-            "<div class=\"calendar-day-header\"><span class=\"calendar-day-name\">" + d.toLocaleDateString("fr-FR", { weekday: "short" }) +
-            "</span><span class=\"calendar-day-number\">" + d.getDate() + "</span></div>" +
-            (hol ? "<span class=\"text-mute\" style=\"font-size:0.75rem\">" + esc(hol) + "</span>" : "") +
-            "<div class=\"calendar-events\">" + list.map(chip).join("") + "</div></div>"
-        );
+        days.push(dayCell(d, events, ""));
       }
-      grid = "<div class=\"calendar-grid calendar-grid--week\">" + days.join("") + "</div>";
+      grid = "<div id=\"dashboard-calendar-grid\" class=\"calendar-grid calendar-grid--week\" aria-label=\"Calendrier\">" + days.join("") + "</div>";
     } else if (view === "month") {
       label = cursor.toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
       const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
@@ -272,57 +327,52 @@
       const cells = [];
       for (let i = 0; i < 42; i++) {
         const d = new Date(start); d.setDate(d.getDate() + i);
-        const other = d.getMonth() !== cursor.getMonth();
-        const list = eventsOnDay(events, d);
-        cells.push(
-          "<div class=\"calendar-day" + (other ? " other-month" : "") + (API.dateStr(d) === todayISO() ? " is-today" : "") + "\" data-cal-day=\"" + API.dateStr(d) + "\">" +
-            "<div class=\"calendar-day-header\"><span class=\"calendar-day-name\">" + d.toLocaleDateString("fr-FR", { weekday: "short" }) +
-            "</span><span class=\"calendar-day-number\">" + d.getDate() + "</span></div>" +
-            "<div class=\"calendar-events\">" + list.map(chip).join("") + "</div></div>"
-        );
+        cells.push(dayCell(d, events, d.getMonth() !== cursor.getMonth() ? " other-month" : ""));
       }
-      grid = "<div class=\"calendar-grid calendar-grid--month\">" + cells.join("") + "</div>";
+      grid = "<div id=\"dashboard-calendar-grid\" class=\"calendar-grid calendar-grid--month\" aria-label=\"Calendrier\">" + cells.join("") + "</div>";
     } else {
       label = String(cursor.getFullYear());
       const months = [];
       for (let m = 0; m < 12; m++) {
         const monthDate = new Date(cursor.getFullYear(), m, 1);
         const list = events.filter(function (e) { return new Date(e.start).getFullYear() === cursor.getFullYear() && new Date(e.start).getMonth() === m; });
+        const count = list.length ? list.length + " événement" + (list.length > 1 ? "s" : "") : "Aucun événement";
         months.push(
-          "<div class=\"calendar-day\"><div class=\"calendar-day-header\"><span class=\"calendar-day-name\">" +
-          monthDate.toLocaleDateString("fr-FR", { month: "long" }) + "</span></div>" +
-          "<div class=\"calendar-events\">" + list.slice(0, 4).map(chip).join("") +
-          (list.length > 4 ? "<span class=\"text-mute\">+" + (list.length - 4) + "</span>" : "") + "</div></div>"
+          "<div class=\"calendar-month\"><div class=\"calendar-day-header\"><span class=\"calendar-day-name\">" +
+          monthDate.toLocaleDateString("fr-FR", { month: "long" }) + "</span><span class=\"calendar-month-number\">" + count + "</span></div>" +
+          "<div class=\"calendar-events\">" + list.slice(0, 4).map(chip).join("") + "</div></div>"
         );
       }
-      grid = "<div class=\"calendar-grid calendar-grid--year\">" + months.join("") + "</div>";
+      grid = "<div id=\"dashboard-calendar-grid\" class=\"calendar-grid calendar-grid--year\" aria-label=\"Calendrier\">" + months.join("") + "</div>";
     }
 
-    const sel = App.selectedEvent ? events.find(function (e) { return e.id === App.selectedEvent; }) : null;
+    function viewBtn(id, text) {
+      const on = view === id;
+      return "<button type=\"button\" class=\"calendar-view-btn" + (on ? " is-active" : "") + "\" data-calendar-view=\"" + id + "\" aria-pressed=\"" + on + "\">" + text + "</button>";
+    }
+
     content.innerHTML =
-      "<section class=\"evenement section dash-section-page\" id=\"dashboard-calendar\">" +
+      "<section class=\"evenement section dash-section-page agenda-page\" id=\"dashboard-calendar\">" +
         "<div class=\"agenda-contain\">" +
-          "<div class=\"title\"><header class=\"section-title\"><h2>Mon Agenda</h2>" +
-            "<div class=\"agenda-action\"><button type=\"button\" id=\"addEventBtn\" class=\"btn btn-primary\">+ Nouvel événement</button></div></header></div>" +
+          "<header class=\"agenda-header\"><div class=\"agenda-header__text\">" +
+            "<p class=\"agenda-kicker\">Planning</p>" +
+            "<h2 class=\"agenda-title\"><i class=\"fa-solid fa-calendar-days\" aria-hidden=\"true\"></i> Agenda</h2>" +
+            "<p class=\"agenda-desc\">Événements de l'atelier et jours fériés. Cliquez sur un jour pour y ajouter un événement.</p>" +
+          "</div>" +
+          "<button type=\"button\" id=\"addEventBtn\" class=\"agenda-btn agenda-btn--primary\"><i class=\"fa-solid fa-plus\" aria-hidden=\"true\"></i> Nouvel événement</button>" +
+          "</header>" +
           "<div class=\"calendar-controls\">" +
-            "<div class=\"calendar-view-switch\">" +
-              "<button type=\"button\" class=\"calendar-view-btn" + (view === "week" ? " is-active" : "") + "\" data-calendar-view=\"week\">Semaine</button>" +
-              "<button type=\"button\" class=\"calendar-view-btn" + (view === "month" ? " is-active" : "") + "\" data-calendar-view=\"month\">Mois</button>" +
-              "<button type=\"button\" class=\"calendar-view-btn" + (view === "year" ? " is-active" : "") + "\" data-calendar-view=\"year\">Année</button>" +
+            "<div class=\"calendar-view-switch\" role=\"group\" aria-label=\"Vue du calendrier\">" +
+              viewBtn("week", "Semaine") + viewBtn("month", "Mois") + viewBtn("year", "Année") +
             "</div>" +
             "<div class=\"calendar-nav\">" +
-              "<button type=\"button\" class=\"calendar-nav-btn\" data-calendar-nav=\"-1\" aria-label=\"Précédent\"><i class=\"fas fa-chevron-left\"></i></button>" +
-              "<div id=\"dashboard-calendar-label\">" + esc(label) + "</div>" +
-              "<button type=\"button\" class=\"calendar-nav-btn\" data-calendar-nav=\"1\" aria-label=\"Suivant\"><i class=\"fas fa-chevron-right\"></i></button>" +
+              "<button type=\"button\" class=\"agenda-btn agenda-btn--ghost calendar-today-btn\" data-calendar-today>Aujourd'hui</button>" +
+              "<button type=\"button\" class=\"calendar-nav-btn\" data-calendar-nav=\"-1\" aria-label=\"Période précédente\"><i class=\"fa-solid fa-chevron-left\" aria-hidden=\"true\"></i></button>" +
+              "<div id=\"dashboard-calendar-label\" aria-live=\"polite\">" + esc(label) + "</div>" +
+              "<button type=\"button\" class=\"calendar-nav-btn\" data-calendar-nav=\"1\" aria-label=\"Période suivante\"><i class=\"fa-solid fa-chevron-right\" aria-hidden=\"true\"></i></button>" +
             "</div></div>" +
-          "<div id=\"public-calendar-details\" class=\"calendar-details\">" +
-            (sel
-              ? "<div><h3>" + esc(sel.title) + "</h3><p>" + (sel.allDay ? "Toute la journée" : fmtDateTime(sel.start) + " → " + fmtDateTime(sel.end)) + "</p>" +
-                (sel.description ? "<p>" + esc(sel.description) + "</p>" : "") + "</div>" +
-                "<div class=\"agenda-action\"><button type=\"button\" class=\"btn btn-primary\" data-edit-event=\"" + sel.id + "\">Modifier</button>" +
-                "<button type=\"button\" class=\"btn btn-danger\" data-del-event=\"" + sel.id + "\">Supprimer</button></div>"
-              : "<p class=\"calendar-details-empty\">Sélectionner un événement pour voir les détails</p>") +
-          "</div>" + grid +
+          "<div id=\"public-calendar-details\" class=\"calendar-details\">" + eventDetails(events) + "</div>" +
+          grid +
         "</div></section>";
   }
 
@@ -503,23 +553,24 @@
     el.innerHTML =
       "<section class=\"recep-page lot-page entrer-page lots-saisie-page\"><div class=\"lot-page__body\">" +
         "<div class=\"lot-toolbar\">" +
-          "<input class=\"lot-toolbar__name\" type=\"text\" id=\"lot-name\" placeholder=\"Nom du lot (optionnel)\" value=\"" + esc(d.name) + "\">" +
+          "<div class=\"lot-config__field lot-toolbar__field\"><label class=\"lot-config__label\" for=\"lot-name\"><i class=\"fa-solid fa-tag\" aria-hidden=\"true\"></i> Nom du lot</label>" +
+            "<input class=\"lot-toolbar__name\" type=\"text\" id=\"lot-name\" placeholder=\"Nom du lot (optionnel)\" maxlength=\"255\" value=\"" + esc(d.name) + "\"></div>" +
           "<div class=\"lot-toolbar__actions\">" +
             "<button type=\"button\" class=\"lot-btn lot-btn--ghost\" id=\"lot-add\"><i class=\"fa-solid fa-plus\"></i> Ligne</button>" +
             "<button type=\"button\" class=\"lot-btn lot-btn--secondary\" id=\"lot-brand\"><i class=\"fa-solid fa-plus\"></i> Marque</button>" +
             "<button type=\"button\" class=\"lot-btn lot-btn--secondary\" id=\"lot-model\"><i class=\"fa-solid fa-plus\"></i> Modèle</button>" +
             "<span class=\"lot-toolbar__sep\"></span>" +
-            "<span class=\"lot-toolbar__count\"><span>" + d.rows.length + "</span></span>" +
+            "<span class=\"lot-toolbar__count\" aria-live=\"polite\"><span id=\"lot-line-count-value\">" + d.rows.length + (d.rows.length > 1 ? " lignes" : " ligne") + "</span></span>" +
             "<button type=\"button\" class=\"lot-btn lot-btn--muted\" id=\"lot-reset\"><i class=\"fa-solid fa-arrow-rotate-right\"></i> Nouveau</button>" +
             "<button type=\"button\" class=\"lot-btn lot-btn--primary\" id=\"lot-save\"><i class=\"fa-solid fa-floppy-disk\"></i> Enregistrer</button>" +
           "</div></div>" +
         (selected ? "<div class=\"lot-selection-bar\"><span>" + selected + " sélectionnée(s)</span><button type=\"button\" class=\"lot-btn lot-btn--primary\" id=\"lot-mass\"><i class=\"fa-solid fa-check-double\"></i> Appliquer</button></div>" : "") +
-        "<div class=\"lot-table-area\"><div class=\"lot-table-wrap\"><table class=\"lot-table\"><thead><tr>" +
+        "<div class=\"lot-table-area\"><div class=\"lot-table-wrap\"><table class=\"lot-table\" id=\"lot-table\"><thead><tr>" +
           "<th class=\"lot-table__th--select\"><input type=\"checkbox\" id=\"lot-all\" class=\"lot-checkbox\" title=\"Tout sélectionner\"></th>" +
           "<th class=\"lot-table__th--num\">#</th><th class=\"lot-table__th--sn\">S/N</th><th class=\"lot-table__th--type\">Type</th>" +
           "<th class=\"lot-table__th--marque\">Marque</th><th class=\"lot-table__th--modele\">Modèle</th>" +
           "<th class=\"lot-table__th--date\">Date</th><th class=\"lot-table__th--entree\">Entrée</th><th class=\"lot-table__th--action\"></th>" +
-        "</tr></thead><tbody>" +
+        "</tr></thead><tbody id=\"lot-table-body\">" +
         d.rows.map(function (r, i) {
           const entry = (r.mode || "MANUEL").toLowerCase() === "scan" ? "scan" : "manuel";
           return "<tr data-i=\"" + i + "\">" +
@@ -651,7 +702,8 @@
     el.innerHTML =
       "<section class=\"recep-page lot-page entrer-page lots-saisie-page\"><div class=\"lot-page__body\">" +
         "<div class=\"lot-toolbar\" role=\"toolbar\" aria-label=\"Actions session disques\">" +
-          "<input class=\"lot-toolbar__name\" type=\"text\" id=\"ds-name\" value=\"" + esc(d.name) + "\" placeholder=\"Nom du lot (optionnel)\" maxlength=\"255\" autocomplete=\"off\">" +
+          "<div class=\"lot-config__field lot-toolbar__field\"><label class=\"lot-config__label\" for=\"ds-name\"><i class=\"fa-solid fa-tag\" aria-hidden=\"true\"></i> Nom du lot</label>" +
+            "<input class=\"lot-toolbar__name\" type=\"text\" id=\"ds-name\" value=\"" + esc(d.name) + "\" placeholder=\"Nom du lot (optionnel)\" maxlength=\"255\" autocomplete=\"off\"></div>" +
           "<div class=\"lot-toolbar__actions\">" +
             "<button type=\"button\" class=\"lot-btn lot-btn--ghost\" id=\"ds-add\"><i class=\"fa-solid fa-plus\"></i> Ligne</button>" +
             "<button type=\"button\" class=\"lot-btn lot-btn--secondary\" id=\"ds-brand\"><i class=\"fa-solid fa-plus\"></i> Marque</button>" +
@@ -668,7 +720,7 @@
           "<th class=\"lot-table__th--date\">Taille</th><th class=\"lot-table__th--entree\">Interface</th>" +
           "<th class=\"lot-table__th--destroy\" title=\"Destruction physique\">D.phy</th><th class=\"lot-table__th--shred\">Shred</th>" +
           "<th class=\"lot-table__th--action\"></th>" +
-        "</tr></thead><tbody>" +
+        "</tr></thead><tbody id=\"disques-session-tbody\">" +
         d.rows.map(function (r, i) {
           const shred = r.destroy ? "Destruction physique" : r.type === "SSD" ? "Secure E. + Sanitize" : "DoD";
           return "<tr data-i=\"" + i + "\">" +
@@ -1265,10 +1317,10 @@
               }).join("") +
             "</select></div>" +
           "<div class=\"lot-config__actions\"><button type=\"button\" class=\"lot-btn lot-btn--secondary\" id=\"btn-refresh-historique\"><i class=\"fa-solid fa-sync\"></i> Rafraîchir</button></div>" +
-        "</div><div class=\"historique-list-wrap\"><div class=\"recep-list lots-list\" id=\"historique-list\">" +
+        "</div><div class=\"lot-card lot-card--list\"><div class=\"lot-card__inner lot-card__inner--list\"><div class=\"recep-list lots-list\" id=\"historique-list\">" +
         (rows.length ? rows.map(histCard).join("") : "") +
         "<p class=\"text-mute historique-empty\" style=\"padding:16px" + (rows.length ? ";display:none" : "") + "\">Aucun enregistrement.</p>" +
-        "</div></div></div></section>";
+        "</div></div></div></div></section>";
     el.querySelector("#filter-search-historique").addEventListener("input", function () { applyHistoriqueFilters(el); });
     ["filter-year-historique", "filter-month-historique", "filter-type-historique"].forEach(function (id) {
       el.querySelector("#" + id).addEventListener("change", function () { applyHistoriqueFilters(el); });
@@ -1523,26 +1575,74 @@
 
   /* ---------- Paramètres ---------- */
   function injectSettings() {
+    function tab(id, icon, label, selected, extra) {
+      return "<button type=\"button\" class=\"settings-nav__item\" role=\"tab\" id=\"settingsTab" + id + "\" aria-controls=\"settingsPanel" + id + "\" aria-selected=\"" + selected + "\"" + (selected ? "" : " tabindex=\"-1\"") + ">" +
+        "<i class=\"fa-solid " + icon + "\" aria-hidden=\"true\"></i><span>" + label + "</span>" + (extra || "") + "</button>";
+    }
+    function panel(id, title, desc, body, hidden) {
+      return "<section class=\"settings-panel\" role=\"tabpanel\" id=\"settingsPanel" + id + "\" aria-labelledby=\"settingsTab" + id + "\"" + (hidden ? " hidden" : "") + ">" +
+        "<header class=\"settings-panel__header\"><h3>" + title + "</h3><p>" + desc + "</p></header>" + body + "</section>";
+    }
     document.getElementById("settingsModalContainer").innerHTML =
       "<div class=\"settings-modal hidden\" id=\"settingsModal\">" +
         "<div class=\"settings-modal-overlay\" id=\"settingsModalOverlay\"></div>" +
-        "<div class=\"settings-modal-container\">" +
-          "<div class=\"settings-modal-header\">" +
-            "<button class=\"settings-modal-close\" id=\"settingsModalClose\" type=\"button\" aria-label=\"Fermer\"><i class=\"fas fa-times\"></i></button>" +
-            "<h2 class=\"settings-modal-title\"><i class=\"fas fa-gear\"></i> Paramètres</h2></div>" +
-          "<div class=\"settings-modal-body\"><section class=\"settings-update-card\">" +
-            "<header class=\"settings-update-card__header\"><div class=\"settings-update-card__icon\"><i class=\"fa-solid fa-cloud-arrow-down\"></i></div>" +
-            "<div class=\"settings-update-card__titles\"><h3>Mise à jour</h3><p class=\"settings-update-card__subtitle\">Vérifiez et installez la dernière version de Tracebay.</p></div></header>" +
-            "<div class=\"settings-update-status-block\"><span class=\"settings-update-status-label\">État</span><div class=\"settings-update-status\" id=\"settingsUpdateStatus\">Tracebay démo 3.5.0, à jour</div></div>" +
-            "<div class=\"settings-update-actions\">" +
-              "<button type=\"button\" id=\"settingsBtnCheckUpdate\" class=\"settings-btn settings-btn--ghost\"><i class=\"fa-solid fa-arrows-rotate\"></i> Vérifier</button>" +
-              "<button type=\"button\" id=\"settingsBtnDownloadUpdate\" class=\"settings-btn settings-btn--primary hidden\" disabled><i class=\"fa-solid fa-download\"></i> Télécharger &amp; préparer</button>" +
-              "<button type=\"button\" id=\"settingsBtnRestartUpdate\" class=\"settings-btn settings-btn--restart hidden\" disabled><i class=\"fa-solid fa-power-off\"></i> Redémarrer pour appliquer</button>" +
+        "<div class=\"settings-modal-container\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"settingsModalTitle\" tabindex=\"-1\">" +
+          "<header class=\"settings-modal-header\">" +
+            "<h2 class=\"settings-modal-title\" id=\"settingsModalTitle\"><i class=\"fa-solid fa-gear\" aria-hidden=\"true\"></i> Paramètres</h2>" +
+            "<button class=\"settings-modal-close\" id=\"settingsModalClose\" type=\"button\" aria-label=\"Fermer les paramètres\"><i class=\"fa-solid fa-xmark\" aria-hidden=\"true\"></i></button>" +
+          "</header>" +
+          "<div class=\"settings-layout\">" +
+            "<nav class=\"settings-nav\" role=\"tablist\" aria-orientation=\"vertical\" aria-label=\"Sections des paramètres\">" +
+              tab("Update", "fa-cloud-arrow-down", "Mise à jour", true, "<span class=\"settings-nav__dot\" id=\"settingsNavUpdateDot\" hidden aria-label=\"Mise à jour disponible\"></span>") +
+              tab("Appearance", "fa-circle-half-stroke", "Apparence", false) +
+              tab("About", "fa-circle-info", "À propos", false) +
+            "</nav>" +
+            "<div class=\"settings-panels\">" +
+              panel("Update", "Mise à jour", "Vérifiez et installez la dernière version de Tracebay.",
+                "<div class=\"settings-status\"><span class=\"settings-status__label\">État</span>" +
+                  "<div class=\"settings-status__value settings-update-status\" id=\"settingsUpdateStatus\">Tracebay démo 3.5.0, à jour</div></div>" +
+                "<div class=\"settings-actions\">" +
+                  "<button type=\"button\" id=\"settingsBtnCheckUpdate\" class=\"settings-btn settings-btn--ghost\"><i class=\"fa-solid fa-arrows-rotate\" aria-hidden=\"true\"></i> Vérifier</button>" +
+                  "<button type=\"button\" id=\"settingsBtnDownloadUpdate\" class=\"settings-btn settings-btn--primary hidden\" disabled><i class=\"fa-solid fa-download\" aria-hidden=\"true\"></i> Télécharger et préparer</button>" +
+                  "<button type=\"button\" id=\"settingsBtnRestartUpdate\" class=\"settings-btn settings-btn--restart hidden\" disabled><i class=\"fa-solid fa-power-off\" aria-hidden=\"true\"></i> Redémarrer pour appliquer</button>" +
+                "</div>" +
+                "<div class=\"settings-update-progress hidden\" id=\"settingsUpdateProgress\"><div class=\"settings-update-progress-bar\"><div class=\"settings-update-progress-fill\" id=\"settingsUpdateProgressFill\" style=\"width:0%\"></div></div>" +
+                  "<div class=\"settings-update-progress-text\" id=\"settingsUpdateProgressText\">0%</div></div>" +
+                "<div class=\"settings-update-hint hidden\" id=\"settingsUpdateHint\"><i class=\"fa-solid fa-circle-check\" aria-hidden=\"true\"></i> <span>Mise à jour prête. Cliquez sur <strong>Redémarrer pour appliquer</strong>.</span></div>",
+                false) +
+              panel("Appearance", "Apparence", "Le choix est mémorisé dans ce navigateur.",
+                "<div class=\"settings-row\"><div class=\"settings-row__text\">" +
+                  "<span class=\"settings-row__title\" id=\"settingsThemeLabel\">Thème sombre</span>" +
+                  "<span class=\"settings-row__hint\">Désactivé, l'interface passe en thème clair.</span></div>" +
+                  "<button type=\"button\" class=\"settings-switch\" id=\"settingsThemeDarkToggle\" role=\"switch\" aria-checked=\"" + App.themeDark + "\" aria-labelledby=\"settingsThemeLabel\"><span class=\"settings-switch__thumb\" aria-hidden=\"true\"></span></button>" +
+                "</div>",
+                true) +
+              panel("About", "À propos", "Traçabilité de matériel informatique et agenda d'atelier.",
+                "<dl class=\"settings-facts\">" +
+                  "<div class=\"settings-facts__row\"><dt>Logiciel</dt><dd>Tracebay</dd></div>" +
+                  "<div class=\"settings-facts__row\"><dt>Version</dt><dd>3.5.0 (démo)</dd></div>" +
+                  "<div class=\"settings-facts__row\"><dt>Éditeur</dt><dd>K0uzia</dd></div>" +
+                  "<div class=\"settings-facts__row\"><dt>Licence</dt><dd>Tracebay Source-Available License</dd></div>" +
+                  "<div class=\"settings-facts__row\"><dt>Données</dt><dd>Fictives, enregistrées dans ce navigateur (bouton «&nbsp;Réinitialiser&nbsp;» du bandeau pour les effacer)</dd></div>" +
+                "</dl>",
+                true) +
             "</div>" +
-            "<div class=\"settings-update-progress hidden\" id=\"settingsUpdateProgress\"><div class=\"settings-update-progress-bar\"><div class=\"settings-update-progress-fill\" id=\"settingsUpdateProgressFill\" style=\"width:0%\"></div></div>" +
-            "<div class=\"settings-update-progress-text\" id=\"settingsUpdateProgressText\">0%</div></div>" +
-            "<div class=\"settings-update-hint hidden\" id=\"settingsUpdateHint\"><i class=\"fa-solid fa-circle-check\"></i> <span>Mise à jour prête. Cliquez sur <strong>Redémarrer pour appliquer</strong>.</span></div>" +
-          "</section></div></div></div>";
+          "</div>" +
+        "</div>" +
+      "</div>";
+  }
+
+  /* Onglets des paramètres : clic, flèches, Début / Fin (motif ARIA tablist, comme l'application) */
+  function selectSettingsTab(tab, focus) {
+    const tabs = Array.prototype.slice.call(document.querySelectorAll("#settingsModal [role=\"tab\"]"));
+    tabs.forEach(function (t) {
+      const active = t === tab;
+      t.setAttribute("aria-selected", active ? "true" : "false");
+      t.tabIndex = active ? 0 : -1;
+      const p = document.getElementById(t.getAttribute("aria-controls"));
+      if (p) p.hidden = !active;
+    });
+    if (focus) tab.focus();
   }
 
   function openSettings() {
@@ -1554,10 +1654,25 @@
     document.getElementById("settingsUpdateProgress").classList.add("hidden");
     document.getElementById("settingsUpdateHint").classList.add("hidden");
     document.getElementById("profileUpdatePing").classList.add("hidden");
+    document.getElementById("settingsNavUpdateDot").hidden = true;
+    App.settingsOpener = document.activeElement;
+    modal.querySelector(".settings-modal-container").focus();
   }
 
   function closeSettings() {
-    document.getElementById("settingsModal").classList.add("hidden");
+    const modal = document.getElementById("settingsModal");
+    if (modal.classList.contains("hidden")) return;
+    modal.classList.add("hidden");
+    if (App.settingsOpener && App.settingsOpener.focus) App.settingsOpener.focus();
+    App.settingsOpener = null;
+  }
+
+  function setTheme(dark) {
+    App.themeDark = dark;
+    applyTheme();
+    const sw = document.getElementById("settingsThemeDarkToggle");
+    if (sw) sw.setAttribute("aria-checked", dark ? "true" : "false");
+    if (App.page === "agenda") render();
   }
 
   async function resetDemo() {
@@ -1574,7 +1689,7 @@
 
   /* ---------- events ---------- */
   document.getElementById("navThemeToggle").addEventListener("click", function () {
-    App.themeDark = !App.themeDark; applyTheme();
+    setTheme(!App.themeDark);
   });
   document.getElementById("navSettings").addEventListener("click", openSettings);
   document.getElementById("navBurger").addEventListener("click", function () {
@@ -1599,6 +1714,7 @@
     if (rec) { e.preventDefault(); go("#/reception/" + rec.getAttribute("data-page")); return; }
     const view = e.target.closest("[data-calendar-view]");
     if (view) { App.calView = view.getAttribute("data-calendar-view"); render(); return; }
+    if (e.target.closest("[data-calendar-today]")) { App.calCursor = new Date(); render(); return; }
     const nav = e.target.closest("[data-calendar-nav]");
     if (nav) {
       const dir = Number(nav.getAttribute("data-calendar-nav"));
@@ -1630,7 +1746,7 @@
     if (e.target === dialog || e.target.closest("[data-close-modal]")) closeModal();
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") closeModal();
+    if (e.key === "Escape") { closeModal(); closeSettings(); }
     if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F") && App.page === "reception" && App.recep === "inventaire") {
       const search = document.getElementById("filter-search-inventaire");
       if (search) { e.preventDefault(); search.focus(); search.select(); }
@@ -1639,11 +1755,15 @@
 
   document.getElementById("settingsModalContainer").addEventListener("click", function (e) {
     if (e.target.id === "settingsModalOverlay" || e.target.closest("#settingsModalClose")) closeSettings();
+    const tab = e.target.closest("#settingsModal [role=\"tab\"]");
+    if (tab) selectSettingsTab(tab, false);
+    if (e.target.closest("#settingsThemeDarkToggle")) setTheme(!App.themeDark);
     if (e.target.closest("#settingsBtnCheckUpdate")) {
       document.getElementById("settingsUpdateStatus").textContent = "Nouvelle version 3.5.0 disponible (simulé)";
       const dl = document.getElementById("settingsBtnDownloadUpdate");
       dl.classList.remove("hidden"); dl.disabled = false;
       document.getElementById("profileUpdatePing").classList.remove("hidden");
+      document.getElementById("settingsNavUpdateDot").hidden = false;
       notify("Mise à jour disponible", "info");
     }
     if (e.target.closest("#settingsBtnDownloadUpdate")) {
@@ -1667,6 +1787,16 @@
       notify("Redémarrage simulé, vous restez sur la démo 3.5.0", "success");
       closeSettings();
     }
+  });
+
+  document.getElementById("settingsModalContainer").addEventListener("keydown", function (e) {
+    const tabs = Array.prototype.slice.call(document.querySelectorAll("#settingsModal [role=\"tab\"]"));
+    const i = tabs.indexOf(document.activeElement);
+    if (i < 0) return;
+    const moves = { ArrowDown: i + 1, ArrowRight: i + 1, ArrowUp: i - 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 };
+    if (!(e.key in moves)) return;
+    e.preventDefault();
+    selectSettingsTab(tabs[(moves[e.key] + tabs.length) % tabs.length], true);
   });
 
   setInterval(function () {

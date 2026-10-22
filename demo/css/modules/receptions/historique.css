@@ -54,6 +54,17 @@
 
 .historique-container .lot-card__inner { padding: var(--unit-4); }
 
+/* Carte de la liste alignée sur l'inventaire : bordure et padding identiques, même à vide. */
+.historique-container .lot-card--list {
+    border: 1px solid var(--recep-panel-border, rgba(255, 255, 255, 0.08));
+}
+
+.historique-container .lot-card__inner--list {
+    padding: var(--unit-3);
+    overflow: visible;
+    display: block;
+}
+
 .historique-container .historique-list-wrap {
     overflow: visible;
     min-width: 0;

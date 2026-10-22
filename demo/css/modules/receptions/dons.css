@@ -268,7 +268,7 @@
 }
 
 /* État vide */
-.dons-container .lot-table tbody#dons-tbody:empty::after {
+.dons-container .lot-table-wrap:has(#dons-tbody:empty)::after {
     content: "Aucune ligne. Cliquez sur « Ajouter une ligne » pour commencer.";
     display: block;
     padding: var(--unit-6) var(--unit-4);

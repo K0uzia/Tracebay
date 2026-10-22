@@ -4,7 +4,9 @@ Copie navigable de **l’application actuelle** (pas de l’ancienne doc) : uniq
 
 ## En ligne
 
-https://k0uzia.github.io/Tracebay/
+Démo officielle (indexée) : https://tracebay.kouzia.com/
+
+La copie GitHub Pages (https://k0uzia.github.io/Tracebay/) renvoie vers la démo officielle : le workflow `deploy-demo-pages.yml` y ajoute `noindex`, une redirection immédiate et un lien visible, et retire `robots.txt` et `sitemap.xml`. Le dossier `demo/` tel quel (avec les logos de `apps/client/assets` copiés à la place du lien symbolique `demo/apps/client/assets`) est ce qui se publie sur tracebay.kouzia.com.
 
 ## Lancer en local
 

@@ -35,6 +35,16 @@ jobs:
           sed -i "s/[?]v=dev/?v=${V}/g" _site/index.html
           # Invalide aussi les @import CSS (sinon le navigateur garde l’ancien thème)
           find _site/css -name '*.css' -print0 | xargs -0 sed -i "s|url(\\./\\([^)]*\\))|url(./\\1?v=${V})|g"
+          # Copie GitHub Pages seulement : la démo officielle est https://tracebay.kouzia.com/.
+          # Pas de 301 possible ici : noindex, redirection immédiate (route # conservée) et lien visible.
+          # La version publiée sur tracebay.kouzia.com (dossier demo/ tel quel) n'a ni l'un ni l'autre.
+          DEST="https://tracebay.kouzia.com/"
+          sed -i "s|<meta charset=\"UTF-8\">|<meta charset=\"UTF-8\">\n  <meta name=\"robots\" content=\"noindex\">\n  <meta http-equiv=\"refresh\" content=\"0; url=${DEST}\">\n  <script>location.replace(\"${DEST}\" + location.hash);</script>|" _site/index.html
+          sed -i "s|<body>|<body>\n  <p style=\"margin:0;padding:12px 16px;text-align:center\">La démo Tracebay est maintenant sur <a href=\"${DEST}\">tracebay.kouzia.com</a>.</p>|" _site/index.html
+          grep -q 'name="robots" content="noindex"' _site/index.html
+          grep -q "http-equiv=\"refresh\"" _site/index.html
+          # robots.txt et sitemap.xml ne servent que sur tracebay.kouzia.com
+          rm -f _site/robots.txt _site/sitemap.xml
       - name: Publish to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
