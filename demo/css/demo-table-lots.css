@@ -1,0 +1,35 @@
+/**
+ * Tableau Lots (réception de lots). Largeurs en multiples de --ui-font, réglées sur le contenu réel.
+ * Colonnes étroites : 9.75 ; colonnes de contenu : 55.5.
+ * Tableau minimal : 65.25 x --ui-font, soit 914 px à 1280 px.
+ */
+
+.r-root #lot-table:not(#tb) {
+  --tb-fixed-u: 9.75;
+  --tb-flex: 55.5;
+}
+
+/* case à cocher */
+.r-root #lot-table:not(#tb) th.lot-table__th--select { --w: 3; }
+/* numéro de ligne */
+.r-root #lot-table:not(#tb) th.lot-table__th--num { --w: 3; }
+/* bouton supprimer */
+.r-root #lot-table:not(#tb) th.lot-table__th--action { --w: 3.75; }
+
+/* S/N saisi ou scanné, 12 à 14 caractères (NX-SCAN-4410) */
+.r-root #lot-table:not(#tb) th.lot-table__th--sn { --w: 11; }
+/* liste : Portable, Fixe, Écran, Autres */
+.r-root #lot-table:not(#tb) th.lot-table__th--type { --w: 8.5; }
+/* liste : Lenovo, Dell, Marque... */
+.r-root #lot-table:not(#tb) th.lot-table__th--marque { --w: 9.5; }
+/* liste : Latitude 5410, ThinkPad T14 */
+.r-root #lot-table:not(#tb) th.lot-table__th--modele { --w: 12; }
+/* texte : 22 oct., 22:16 */
+.r-root #lot-table:not(#tb) th.lot-table__th--date { --w: 8.5; }
+/* badge SCAN ou MANUEL */
+.r-root #lot-table:not(#tb) th.lot-table__th--entree { --w: 6; }
+
+/* Date d'entrée à la taille du texte des cellules (l'app la mettait en petit) */
+.r-root #lot-table:not(#tb) .row-date-display {
+  font-size: var(--ui-font);
+}

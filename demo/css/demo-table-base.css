@@ -1,0 +1,173 @@
+/**
+ * Socle commun des tableaux de la démo : structure, tokens (texte, hauteur de champ,
+ * couleurs, rayons), cadre. Les largeurs de colonnes sont réglées tableau par tableau dans
+ * css/demo-table-<page>.css, selon le contenu réel de chaque colonne.
+ *
+ * Mécanique des largeurs : chaque colonne a une largeur --w en multiples de --ui-font, réglée
+ * sur son contenu. Le tableau fait au moins la somme (--tb-fixed-u + --tb-flex) ; plus large,
+ * le navigateur répartit le surplus au prorata de ces largeurs (table-layout: fixed), donc les
+ * proportions restent celles du contenu. En dessous de la somme, le tableau défile.
+ * (Chrome ignore les calc() qui mêlent % et longueur dans une colonne : d'où des longueurs.)
+ *
+ * Le :not(#tb) donne aux règles le poids d'un id, nécessaire face à #lot-table et
+ * #disques-session-table th:nth-child(n) de l'application.
+ * Les écarts corrigés ici existent aussi dans le CSS de l'application.
+ */
+
+:root {
+  --tb-head-h: calc(var(--ui-field-h) + 4px);
+  --tb-row-h: calc(var(--ui-field-h) + var(--ui-gap) * 1.25);
+  --tb-cell-px: calc(var(--ui-gap) * 0.75);
+  --tb-frame-radius: 10px;
+
+}
+
+/* ---------- Cadre ---------- */
+.r-root .lot-table-wrap:not(#tb) {
+  box-sizing: border-box;
+  padding: 0;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--tb-frame-radius);
+  scrollbar-width: thin;
+}
+
+.r-root .lot-card--table {
+  border-radius: var(--tb-frame-radius);
+}
+
+/* ---------- Tableau ---------- */
+:is(.r-root .lot-table, .details-table):not(#tb) {
+  display: table;
+  width: 100%;
+  max-width: none;
+  min-width: calc(var(--ui-font) * (var(--tb-fixed-u) + var(--tb-flex)));
+  table-layout: fixed;
+  --tb-fixed-u: 0;
+  --tb-flex: 1;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--ui-font);
+}
+
+:is(.r-root .lot-table, .details-table):not(#tb) thead {
+  position: static;
+  display: table-header-group;
+  width: auto;
+  height: auto;
+  margin: 0;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+:is(.r-root .lot-table, .details-table):not(#tb) thead th {
+  display: table-cell;
+  box-sizing: border-box;
+  height: var(--tb-head-h);
+  min-width: 0;
+  max-width: none;
+  padding: 0 var(--tb-cell-px);
+  font-size: var(--ui-font-head);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+  text-transform: uppercase;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:is(.r-root .lot-table, .details-table):not(#tb) tbody tr {
+  display: table-row;
+  margin: 0;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+:is(.r-root .lot-table, .details-table):not(#tb) tbody td {
+  display: table-cell;
+  box-sizing: border-box;
+  height: var(--tb-row-h);
+  min-width: 0;
+  padding: 0 var(--tb-cell-px);
+  font-size: var(--ui-font);
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+:is(.r-root .lot-table, .details-table):not(#tb) tbody td::before {
+  content: none;
+  display: none;
+}
+
+/* ---------- Champs et listes dans les cellules : mêmes tokens que les champs du haut ---------- */
+.r-root .lot-table:not(#tb) td :is(input[type="text"], input[type="number"], input[type="date"], input[type="search"], input:not([type]), select) {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: var(--ui-field-h);
+  min-height: var(--ui-field-h);
+  margin: 0;
+  padding: 0 var(--ui-field-px);
+  border-radius: var(--ui-radius);
+  font-size: var(--ui-font);
+  line-height: normal;
+}
+
+.r-root .lot-table:not(#tb) td select {
+  padding-right: var(--ui-select-arrow);
+  background-position: right var(--ui-field-px) center;
+}
+
+.r-root .lot-table:not(#tb) td .type-cell-wrapper {
+  min-width: 0;
+}
+
+/* ---------- Largeurs : réglées par tableau (--tb-fixed-u, --tb-flex, --w) ---------- */
+:is(.r-root .lot-table, .details-table):not(#tb) th {
+  --w: 1;
+  width: calc(var(--ui-font) * var(--w));
+}
+
+/* ---------- Colonnes centrées : sélection, numéro, destruction, action ---------- */
+.r-root .lot-table:not(#tb) :is(.lot-table__th--select, .lot-table__th--num, .lot-table__th--destroy, .lot-table__th--action),
+.r-root .lot-table:not(#tb) td:is([data-label="Sélection"], [data-label="N°"], [data-label="Destr. phy."], .col-num, .col-action, .col-actions, :last-child) {
+  text-align: center;
+}
+
+.r-root .lot-table:not(#tb) td :is(.btn-delete-row, .btn-remove-line, .btn-edit-pc) {
+  margin: 0 auto;
+}
+
+/* ---------- Couleurs (thème sombre) : celles de Commande, Dons, Prêts et Inventaire,
+   aussi pour Lots et Disques. Le thème clair est déjà commun à toutes les pages. ---------- */
+html[data-theme-dark="1"] {
+  --tb-head-color: #9db5ff;
+  --tb-head-bg: #182131;
+  --tb-head-border: rgba(255, 255, 255, 0.08);
+  --tb-cell-color: rgba(232, 236, 244, 0.88);
+  --tb-cell-border: rgba(255, 255, 255, 0.06);
+}
+
+html[data-theme-dark="1"] :is(.r-root .lot-table, .details-table):not(#tb) thead th {
+  color: var(--tb-head-color);
+  background: var(--tb-head-bg);
+  border-bottom: 1px solid var(--tb-head-border);
+}
+
+html[data-theme-dark="1"] :is(.r-root .lot-table, .details-table):not(#tb) tbody td {
+  color: var(--tb-cell-color);
+  border-bottom: 1px solid var(--tb-cell-border);
+}
+
+/* Cases et boutons : jamais de points de suspension à côté d'un contrôle */
+.r-root .lot-table:not(#tb) td:is(:last-child, [data-label="Sélection"]) {
+  overflow: visible;
+  text-overflow: clip;
+}

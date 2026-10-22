@@ -1,0 +1,14 @@
+/**
+ * Tableau des détails de l'historique (fenêtre « Voir détails »), texte seul.
+ * S/N (NX-SCAN-4410) puis un détail libre (état, technicien, système).
+ */
+
+.details-table:not(#tb) {
+  --tb-fixed-u: 0;
+  --tb-flex: 28;
+}
+
+/* S/N */
+.details-table:not(#tb) th.details-table__th--sn { --w: 10; }
+/* Détail libre */
+.details-table:not(#tb) th:not(.details-table__th--sn) { --w: 18; }

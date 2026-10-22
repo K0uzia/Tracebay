@@ -1,20 +1,21 @@
 /**
  * Échelle fluide unique de la démo, chargée après le CSS de l'application.
+ * Démo pensée pour le bureau (contrôle de 1280 à 2560 px ; en dessous, les tableaux défilent).
  * Texte, hauteur des champs, marges et largeur du contenu suivent la largeur de la fenêtre
  * (clamp), avec les mêmes tokens pour les champs du haut, les boutons et les tableaux
  * (css/demo-tables.css). Les écarts corrigés ici existent aussi dans le CSS de l'application.
  */
 
 :root {
-  /* 13 px au téléphone, 15 px au-delà de 1920 px */
-  --ui-font: clamp(0.8125rem, 0.75rem + 0.16vw, 0.9375rem);
+  /* Bureau : 14 px à 1280 px, 16 px à 2560 px */
+  --ui-font: clamp(0.875rem, 0.75rem + 0.15625vw, 1rem);
   --ui-font-label: calc(var(--ui-font) * 0.87);
   --ui-font-head: calc(var(--ui-font) * 0.8);
-  /* 34 px au téléphone, 40 px sur grand écran */
-  --ui-field-h: clamp(2.125rem, 1.95rem + 0.24vw, 2.5rem);
-  --ui-field-px: clamp(0.5rem, 0.42rem + 0.12vw, 0.75rem);
+  /* 36 px à 1280 px, 40 px à 2560 px */
+  --ui-field-h: clamp(2.25rem, 2rem + 0.3125vw, 2.5rem);
+  --ui-field-px: clamp(0.625rem, 0.5rem + 0.15625vw, 0.75rem);
   --ui-select-arrow: calc(var(--ui-field-px) + 1.125rem);
-  --ui-gap: clamp(0.5rem, 0.4rem + 0.3vw, 1rem);
+  --ui-gap: clamp(0.75rem, 0.375rem + 0.47vw, 1.125rem);
   --ui-radius: 8px;
   /* Contenu centré qui grandit avec l'écran sans tout agrandir */
   --ui-content-max: min(100%, calc(36vw + 720px));
@@ -61,9 +62,9 @@
 }
 
 .r-root .recep-page:not(#ui) .lot-config__field:has(> #cmd-cat, > #filter-state, > #filter-type-historique, > #pr-type) {
-  flex: 1 1 calc(var(--ui-font) * 13);
-  min-width: min(100%, calc(var(--ui-font) * 11));
-  max-width: calc(var(--ui-font) * 18);
+  flex: 1 1 calc(var(--ui-font) * 12);
+  min-width: min(100%, calc(var(--ui-font) * 10));
+  max-width: calc(var(--ui-font) * 15);
 }
 
 .r-root .recep-page:not(#ui) .lot-config__field:has(> #filter-year-historique, > #filter-month-historique, > #pr-start, > #pr-end) {
@@ -77,13 +78,16 @@
   gap: var(--ui-gap);
 }
 
-/* Prêts : grille du formulaire du haut à la même échelle */
+/* Prêts : formulaire du haut sur une ligne, chaque champ remplit sa colonne
+   (deux :not(#) pour passer devant les largeurs par champ ci-dessus, qui visent des id) */
 .r-root .prets-container:not(#ui) .prets-config-grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, calc(var(--ui-font) * 13)), 1fr));
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1.3fr) minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.4fr);
   gap: var(--ui-gap);
 }
 
-.r-root .prets-container:not(#ui) .prets-config-grid .lot-config__field {
+.r-root .prets-container:not(#ui) .prets-config-grid .lot-config__field:not(#ui-a):not(#ui-b) {
+  flex: none;
+  min-width: 0;
   max-width: none;
 }
 
@@ -103,11 +107,28 @@
   min-height: var(--ui-field-h) !important;
 }
 
-/* Téléphone : barres d'outils en colonne, la base flex deviendrait une hauteur
-   (deux :not(#) pour passer devant les règles de largeur ci-dessus, qui visent des id) */
-@media (max-width: 768px) {
-  .r-root .recep-page:not(#ui) .lot-config__field:not(#ui-a):not(#ui-b) {
-    flex: 0 0 auto;
-    max-width: none;
-  }
+
+/* ---------- Rythme vertical et marges de page : les mêmes sur toutes les sous-pages ---------- */
+.recep-section > .recep-page:is(.lot-page, .lots-saisie-page):not(#ui) {
+  padding: var(--ui-gap) calc(var(--ui-gap) * 1.5);
+}
+
+.r-root .recep-page:not(#ui) .lot-page__body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--ui-gap) * 2.25);
+}
+
+.r-root .recep-page:not(#ui) .lot-table-area {
+  padding-top: 0;
+}
+
+.r-root .recep-page:not(#ui) .lot-page__body > :is(.recep-toolbar-compact, .lot-toolbar, .lot-card) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Compteur « N lignes » des Lots à la taille des libellés */
+.r-root .recep-page:not(#ui) .lot-toolbar__count {
+  font-size: var(--ui-font-label);
 }
