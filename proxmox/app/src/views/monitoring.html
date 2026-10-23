@@ -54,6 +54,7 @@
       <div class="nav-item" data-page="logs"><span class="icon"><i class="fa-solid fa-list"></i></span> Logs</div>
       <div class="nav-item" data-page="config-smtp"><span class="icon"><i class="fa-solid fa-envelope-open-text"></i></span> Email</div>
       <div class="nav-item" data-page="config-branding"><span class="icon"><i class="fa-solid fa-building"></i></span> Atelier</div>
+      <div class="nav-item" data-page="config-licence"><span class="icon"><i class="fa-solid fa-key"></i></span> Licence</div>
     </nav>
     <div class="sidebar-footer">
       <button class="btn-logout" onclick="doLogout()">Déconnexion</button>
@@ -364,6 +365,29 @@
             <button class="btn btn-primary" onclick="saveBrandingConfig()"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
             <button class="btn btn-secondary" onclick="removeBrandingLogo()"><i class="fa-solid fa-trash"></i> Retirer le logo</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Licence de l'atelier ── -->
+    <div class="page" id="page-config-licence">
+      <div class="page-header">
+        <h1>Licence</h1>
+        <p>Clé de licence Tracebay de l'atelier, valable pour tous les postes</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>État</h2></div>
+        <div class="card-body" id="licence-etat">Chargement…</div>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <div class="card-header"><h2>Saisir une clé</h2></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label" for="licence-cle">Clé (TB1.…), fournie par Kouzia</label>
+            <textarea class="form-input" id="licence-cle" rows="3" spellcheck="false" autocomplete="off" style="font-family:monospace"></textarea>
+          </div>
+          <p style="margin:0 0 0.75rem">Le nom de l'entreprise écrit dans la clé remplace celui du réglage d'atelier sur les PDF.</p>
+          <button class="btn btn-primary" onclick="saveLicence()"><i class="fa-solid fa-floppy-disk"></i> Enregistrer la clé</button>
         </div>
       </div>
     </div>
@@ -1062,7 +1086,7 @@ document.querySelectorAll('.nav-item').forEach(el => {
 function navigateTo(page) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
   document.querySelectorAll('.page').forEach(el => el.classList.toggle('active', el.id === 'page-' + page));
-  const loaders = { dashboard: loadDashboard, users: loadUsers, agenda: loadAgenda, reception: loadReception, 'config-smtp': loadSmtpConfig, 'config-branding': loadBrandingConfig, errors: loadLogErrors, db: loadLogDb, logs: () => loadLogAuth() };
+  const loaders = { dashboard: loadDashboard, users: loadUsers, agenda: loadAgenda, reception: loadReception, 'config-smtp': loadSmtpConfig, 'config-branding': loadBrandingConfig, 'config-licence': loadLicence, errors: loadLogErrors, db: loadLogDb, logs: () => loadLogAuth() };
   if (loaders[page]) loaders[page]();
 }
 
@@ -2652,6 +2676,56 @@ async function removeBrandingLogo() {
   if (data.error) { toast(data.error, 'error'); return; }
   toast('Logo retiré');
   renderBrandingPreview(null, data.company_name);
+}
+
+// ── Licence de l'atelier ──────────────────────────────────────────────────────
+const LICENCE_LIBELLES = {
+  active: 'Active',
+  expire_bientot: 'Expire bientôt',
+  grace: 'Expirée, écriture encore possible (délai de grâce)',
+  expiree: 'Expirée : lecture seule',
+  horloge: 'Horloge du serveur reculée : lecture seule',
+  invalide: 'Clé invalide : lecture seule',
+  absente: 'Aucune licence : lecture seule',
+  non_activee: 'Licence non activée (installation antérieure à la 3.7.0, écriture permise)',
+};
+
+function jourFr(j) { return j ? j.slice(8, 10) + '/' + j.slice(5, 7) + '/' + j.slice(0, 4) : '-'; }
+
+function renderLicence(data) {
+  const box = document.getElementById('licence-etat');
+  box.textContent = '';
+  const lignes = [
+    ['État', LICENCE_LIBELLES[data.etat] || data.etat],
+    ['Titulaire', data.entreprise || '-'],
+    ['Expiration', jourFr(data.expire)],
+  ];
+  if (data.etat === 'grace') lignes.push(['Lecture seule à partir du lendemain du', jourFr(data.fin_grace)]);
+  for (const [k, v] of lignes) {
+    const p = document.createElement('p');
+    p.style.margin = '0 0 0.4rem';
+    const b = document.createElement('strong');
+    b.textContent = k + ' : ';
+    p.appendChild(b);
+    p.appendChild(document.createTextNode(v));
+    box.appendChild(p);
+  }
+}
+
+async function loadLicence() {
+  const data = await api('GET', '/api/licence');
+  if (data.error) { toast(data.error, 'error'); return; }
+  renderLicence(data);
+}
+
+async function saveLicence() {
+  const cle = document.getElementById('licence-cle').value.trim();
+  if (!cle) { toast('Collez la clé de licence', 'error'); return; }
+  const data = await api('PUT', '/api/admin/licence', { cle });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Licence enregistrée : ' + (data.entreprise || ''));
+  document.getElementById('licence-cle').value = '';
+  loadLicence();
 }
 
 function showSmtpTestModal() {

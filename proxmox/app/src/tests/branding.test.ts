@@ -63,7 +63,7 @@ describe('routes', () => {
     const { f } = await app();
     const res = await f.inject({ method: 'GET', url: '/api/branding' });
     assert.equal(res.statusCode, 200);
-    assert.deepEqual(res.json(), { success: true, company_name: 'Tracebay', logo: null });
+    assert.deepEqual(res.json(), { success: true, company_name: 'Tracebay', logo: null, nom_impose: false });
     await f.close();
   });
 

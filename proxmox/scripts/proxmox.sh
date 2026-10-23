@@ -1174,6 +1174,27 @@ cmd_update() {
   ok "Mise à jour terminée. Sauvegardes : $DOCKER_DIR/backups/ — vérifier : proxmox status"
 }
 
+# Clé de licence de l'atelier. Passe par l'API (signature vérifiée par le serveur), jamais par la base.
+cmd_set_licence() {
+  require_root
+  local cle="${1:-}"
+  [[ "$cle" == TB1.* ]] || err "Usage : $0 set-licence \"TB1.…\" (clé fournie par Kouzia, entre guillemets)"
+  local token
+  token="$(env_get ADMIN_TOKEN)"
+  [[ -n "$token" ]] || err "ADMIN_TOKEN absent de $ENV_FILE."
+  local body reponse code
+  body=$(printf '{"cle":"%s"}' "$cle")
+  reponse=$(curl -s -w '\n%{http_code}' -X PUT "http://localhost:${API_PORT_DEFAULT}/api/admin/licence" \
+    -H "Content-Type: application/json" -H "x-admin-token: $token" --data "$body") || err "API injoignable : le serveur est-il démarré (proxmox status) ?"
+  code="${reponse##*$'\n'}"
+  reponse="${reponse%$'\n'*}"
+  if [[ "$code" == "200" ]]; then
+    ok "Licence enregistrée : $reponse"
+  else
+    err "Clé refusée (HTTP $code) : $reponse"
+  fi
+}
+
 # Nom et logo imprimés sur les PDF : réglage d'atelier partagé par tous les postes (table app_settings).
 cmd_set_branding() {
   require_root
@@ -1325,14 +1346,16 @@ case "$COMMAND" in
   update) cmd_update ;;
   rotate-secrets) cmd_rotate_secrets ;;
   set-branding) cmd_set_branding "$@" ;;
+  set-licence) cmd_set_licence "$@" ;;
   restore-backup) cmd_restore_backup "$@" ;;
   help|--help|-h)
-    echo "Usage: $0 [menu|update|rotate-secrets|set-branding|restore-backup|purge|install|destroy-db-volume|start|stop|restart|status|test-api|help]"
+    echo "Usage: $0 [menu|update|rotate-secrets|set-branding|set-licence|restore-backup|purge|install|destroy-db-volume|start|stop|restart|status|test-api|help]"
     echo ""
     echo "  (sans argument, en terminal)  menu interactif — mise à jour ou purge légère, sans toucher au volume PostgreSQL."
     echo "  update              Backup pg_dump, Git + build, contrôle des secrets, compose up --build, migrations."
     echo "  rotate-secrets      Nouveaux JWT_SECRET, ADMIN_TOKEN et mot de passe PostgreSQL (.env sauvegardé avant)."
     echo "  set-branding NOM [LOGO]  Nom et logo (PNG, JPEG ou WebP, 512 Ko max) imprimés sur les PDF de tous les postes."
+    echo "  set-licence \"TB1.…\"     Clé de licence de l'atelier (vérifiée par le serveur, qui doit être démarré)."
     echo "  purge               Nettoie caches/images Docker orphelins (ne supprime pas la DB)."
     echo "  install             Installation ou réparation complète (volume DB inchangé)."
     echo "  destroy-db-volume   SUPPRIME le volume PostgreSQL (données perdues). Nécessite :"
@@ -1345,5 +1368,5 @@ case "$COMMAND" in
     echo "Backups récentes (avec --clean dans pg_dump) : un simple gunzip|psql peut suffire sur une base déjà remplie."
     echo "  cd proxmox/docker && gunzip -c backups/pre_update_DATE.sql.gz | docker compose exec -T db psql -U Admin -d workspace_db -v ON_ERROR_STOP=1"
     ;;
-  *) echo "Usage: $0 [menu|update|rotate-secrets|set-branding|restore-backup|purge|install|start|stop|restart|status|test-api|help]" >&2; exit 1 ;;
+  *) echo "Usage: $0 [menu|update|rotate-secrets|set-branding|set-licence|restore-backup|purge|install|start|stop|restart|status|test-api|help]" >&2; exit 1 ;;
 esac

@@ -12,6 +12,8 @@ import { registerMonitoringRoutes, incrementMessageCount } from './api/monitorin
 import { registerClientErrorsRoutes } from './api/client-errors';
 import { registerAdminRoutes } from './api/admin';
 import { registerBrandingRoutes, pgBrandingStore } from './api/branding';
+import { LicenceService, pgLicenceStore, registerLicenceGuard, registerLicenceRoutes } from './api/licence';
+import { registerRgpdRoutes } from './api/rgpd';
 import { registerCompression } from './middleware/compression';
 import { registerRateLimit, registerAuthRateLimit } from './middleware/rate-limit';
 import { registerAdminGuard, registrationAllowed } from './middleware/admin-guard';
@@ -145,6 +147,11 @@ function broadcastUserCount() {
     registerAuthRateLimit(fastify);
     await registerRateLimit(fastify);
     registerAdminGuard(fastify);
+
+    // Licence de l'atelier : exemption figée au premier démarrage, lecture seule si elle ne permet plus d'écrire
+    const licence = new LicenceService(pgLicenceStore(query));
+    await licence.init();
+    registerLicenceGuard(fastify, licence);
     await registerMonitoring(fastify);
 
     // Security
@@ -176,7 +183,9 @@ function broadcastUserCount() {
     await registerAdminRoutes(fastify);
 
     // Réglage d'atelier (nom et logo des PDF)
-    await registerBrandingRoutes(fastify, pgBrandingStore(query));
+    await registerBrandingRoutes(fastify, pgBrandingStore(query), () => licence.nomImpose());
+    await registerLicenceRoutes(fastify, licence);
+    await registerRgpdRoutes(fastify, query);
 
     // Health check endpoint
     fastify.get('/api/health', async (request: FastifyRequest, reply: FastifyReply) => {

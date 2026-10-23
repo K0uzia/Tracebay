@@ -33,10 +33,21 @@ export function pgBrandingStore(query: QueryFn): BrandingStore {
  * GET /api/branding : public (les postes en ont besoin pour imprimer).
  * PUT /api/admin/branding et DELETE /api/admin/branding/logo : protégés par le garde admin global.
  */
-export async function registerBrandingRoutes(fastify: FastifyInstance, store: BrandingStore): Promise<void> {
+export async function registerBrandingRoutes(
+  fastify: FastifyInstance,
+  store: BrandingStore,
+  nomImpose: () => Promise<string | null> = async () => null
+): Promise<void> {
+  // Avec une licence valide, le nom signé remplace celui du réglage (dissuade le prêt de clé).
+  const lire = async () => {
+    const branding = await readBranding(store);
+    const impose = await nomImpose();
+    return impose ? { ...branding, company_name: impose, nom_impose: true } : { ...branding, nom_impose: false };
+  };
+
   fastify.get('/api/branding', async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
-      return { success: true, ...(await readBranding(store)) };
+      return { success: true, ...(await lire()) };
     } catch (err: any) {
       fastify.log.error({ code: err?.code }, 'GET /api/branding');
       reply.statusCode = 500;
@@ -55,7 +66,7 @@ export async function registerBrandingRoutes(fastify: FastifyInstance, store: Br
       if (name !== undefined) await store.set(BRANDING_KEYS.name, name);
       if (logo !== undefined) await store.set(BRANDING_KEYS.logo, logo);
       if (body.logo === null) await store.remove(BRANDING_KEYS.logo);
-      return { success: true, ...(await readBranding(store)) };
+      return { success: true, ...(await lire()) };
     } catch (err: any) {
       if (err instanceof BrandingError) {
         reply.statusCode = 400;
@@ -70,7 +81,7 @@ export async function registerBrandingRoutes(fastify: FastifyInstance, store: Br
   fastify.delete('/api/admin/branding/logo', async (_request: FastifyRequest, reply: FastifyReply) => {
     try {
       await store.remove(BRANDING_KEYS.logo);
-      return { success: true, ...(await readBranding(store)) };
+      return { success: true, ...(await lire()) };
     } catch (err: any) {
       fastify.log.error({ code: err?.code }, 'DELETE /api/admin/branding/logo');
       reply.statusCode = 500;

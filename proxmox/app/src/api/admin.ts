@@ -357,11 +357,20 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     if (!checkAdminAuth(request, reply)) return;
     const { id } = request.params as { id: string };
     try {
-      const result = await query('DELETE FROM users WHERE id = $1', [id]);
-      if (result.rowCount === 0) { reply.statusCode = 404; return { error: 'Utilisateur introuvable' }; }
+      // Effacement complet (RGPD) : sessions et messages partent par cascade ; le journal ne garde
+      // que l'action et la date, sans rien qui identifie la personne.
+      const deleted = await transaction(async (client: PoolClient) => {
+        await client.query(
+          'UPDATE activity_logs SET user_id = NULL, ip_address = NULL, user_agent = NULL, details = NULL, metadata = NULL WHERE user_id = $1',
+          [id]
+        );
+        const result = await client.query('DELETE FROM users WHERE id = $1', [id]);
+        return result.rowCount ?? 0;
+      });
+      if (deleted === 0) { reply.statusCode = 404; return { error: 'Utilisateur introuvable' }; }
       return { success: true };
     } catch (err: any) {
-      fastify.log.error({ err }, 'admin DELETE /users/:id');
+      fastify.log.error({ code: err?.code }, 'admin DELETE /users/:id');
       reply.statusCode = 500;
       return { error: 'Database error' };
     }
