@@ -1,17 +1,15 @@
-## Tracebay 3.6.0
+## Tracebay 3.6.1
 
-### Interface
-- Tableaux de saisie (Lots, Disques, Commande, Dons, Prêts, Inventaire) : chaque colonne est réglée sur ce qu'elle contient ; sur une fenêtre étroite, le tableau défile dans son cadre au lieu de tronquer les champs.
-- Une seule échelle de texte, de champs et de marges sur toutes les pages, de 1280 à 2560 px de large.
-- Champs du haut à la largeur de leur contenu (noms larges, catégories moyennes, années et mois étroits), « Nom du lot » avec son libellé sur Lots et Disques.
-- Prêts : l'en-tête suit la même présentation que Lots, Commande et Dons, boutons sur la ligne des champs quand la place le permet.
-- Inventaire et Historique : plus de cadre autour de la liste des cartes ; Inventaire aussi dense que l'Historique.
-- Titre de la fenêtre : « Tracebay ».
+### Historique
+- Prêts : nouveau bouton « Modifier » (référence, emprunteur, type, contact, dates, rémunération). Le PDF du prêt est régénéré avec les nouvelles informations et l'ancien PDF est supprimé.
+- Prêts et dons : nouveau bouton « Supprimer ». Une fenêtre de confirmation nomme l'enregistrement ; la suppression est définitive et efface aussi le PDF associé quand le serveur a accès au dossier partagé. Sinon, l'application indique l'emplacement du PDF à supprimer à la main.
 
 ### Paramètres
-- Nouvel onglet Confidentialité : données traitées, lieu de stockage (serveur de l'atelier), responsable du traitement, connexions (aucune télémétrie, mises à jour sur GitHub), conservation et droits des personnes.
-- À propos : éditeur (Alexandre Kouziaeff, entrepreneur individuel, Kouzia), SIRET, contact, licence complète et licences des composants tiers.
-- Mise à jour : la recherche au démarrage peut être désactivée.
+- Confidentialité : les demandes de rectification et d'effacement concernant un prêt ou un don se traitent désormais depuis l'Historique.
+
+### Linux
+- La version Linux (AppImage) est de nouveau publiée ; elle manquait à la 3.6.0.
 
 ### À savoir
-- Aucune migration de données, aucune action requise sur le serveur.
+- Le serveur de l'atelier doit être mis à jour avant les postes : sans sa nouvelle version, la suppression d'un prêt ou d'un don échoue avec un message d'erreur, sans rien effacer.
+- Aucune migration de données.
