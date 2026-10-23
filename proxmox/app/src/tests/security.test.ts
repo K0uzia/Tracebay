@@ -5,6 +5,9 @@ import { findSecretProblems } from '../config/secrets';
 import { signAdminJwt, verifyAdminJwt } from '../lib/admin-auth';
 import { isAdminProtected, registerAdminGuard, registrationAllowed } from '../middleware/admin-guard';
 import { registerAuthRateLimit, registerRateLimit } from '../middleware/rate-limit';
+import { registerCompression } from '../middleware/compression';
+import { performanceConfig } from '../config/performance.config';
+import { brotliCompressSync, gzipSync } from 'node:zlib';
 
 const STRONG = {
   JWT_SECRET: 'a'.repeat(64),
@@ -122,5 +125,30 @@ describe('limite de connexion', () => {
       assert.equal((await app.inject({ method: 'GET', url: '/api/lots', remoteAddress: '10.0.0.5' })).statusCode, 200);
     }
     await app.close();
+  });
+});
+
+describe('corps de requête compressés', () => {
+  test('Brotli refusé en 415, gzip accepté, même compression activée', async () => {
+    const avant = performanceConfig.compression.enabled;
+    performanceConfig.compression.enabled = true;
+    const app = Fastify();
+    try {
+      await registerCompression(app);
+      app.post('/api/echo', async (req) => req.body);
+      await app.ready();
+      const corps = JSON.stringify({ a: 1 });
+      const entetes = (encodage: string) => ({ 'content-type': 'application/json', 'content-encoding': encodage });
+      const br = await app.inject({
+        method: 'POST', url: '/api/echo', headers: entetes('br'), payload: brotliCompressSync(corps),
+      });
+      assert.equal(br.statusCode, 415);
+      const gz = await app.inject({ method: 'POST', url: '/api/echo', headers: entetes('gzip'), payload: gzipSync(corps) });
+      assert.equal(gz.statusCode, 200);
+      assert.deepEqual(gz.json(), { a: 1 });
+    } finally {
+      performanceConfig.compression.enabled = avant;
+      await app.close();
+    }
   });
 });

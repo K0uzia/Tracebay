@@ -1,4 +1,5 @@
-FROM node:20-bookworm
+# Étiquette figée (jamais flottante) : 22.23.4 corrige la faille Brotli CVE-2026-111497.
+FROM node:22.23.4-bookworm-slim
 
 # Set workdir
 WORKDIR /app
@@ -21,6 +22,7 @@ COPY proxmox/app/src ./src
 # Install dependencies and build
 RUN echo "Cache buster: ${CACHE_BUSTER}" \
     && npm ci \
+    && npm rebuild \
     && npm run build \
     && test -f dist/main.js || (echo "ERROR: dist/main.js not produced by npm run build" && exit 1) \
     && mkdir -p dist/db dist/views dist/config \

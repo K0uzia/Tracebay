@@ -21,6 +21,8 @@ export async function registerCompression(fastify: FastifyInstance) {
     encodingPriority: compression.encodingPriority,
     brotliOptions: compression.brotli,
     zlibOptions: compression.gzip,
+    // Corps de requête compressés : gzip et deflate seulement, Brotli refusé (415).
+    requestEncodings: ['gzip', 'deflate'],
   } as any);
 
   fastify.log.info({ threshold: compression.threshold, encodings: compression.encodingPriority }, 'Compression middleware registered');
