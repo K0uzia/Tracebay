@@ -1,0 +1,26 @@
+/**
+ * Tableau Commande (liste de produits). Largeurs en multiples de --ui-font, réglées sur le contenu réel.
+ * Colonnes étroites : 6.75 ; colonnes de contenu : 53.
+ * Tableau minimal : 59.75 x --ui-font, soit 837 px à 1280 px.
+ */
+
+.r-root .commande-container .lot-table:not(#tb) {
+  --tb-fixed-u: 6.75;
+  --tb-flex: 53;
+}
+
+/* numéro de ligne */
+.r-root .commande-container .lot-table:not(#tb) th.lot-table__th--num { --w: 3; }
+/* bouton supprimer */
+.r-root .commande-container .lot-table:not(#tb) th.lot-table__th--action { --w: 3.75; }
+
+/* texte libre : Câble HDMI 2 m */
+.r-root .commande-container .lot-table:not(#tb) th.lot-table__th--produit { --w: 13; }
+/* nombre, 1 à 3 chiffres */
+.r-root .commande-container .lot-table:not(#tb) th.lot-table__th--quantite { --w: 5; }
+/* montant : 6,90 */
+.r-root .commande-container .lot-table:not(#tb) th.lot-table__th--prix { --w: 6.5; }
+/* montant : 4,90 */
+.r-root .commande-container .lot-table:not(#tb) th.lot-table__th--frais-port { --w: 6.5; }
+/* URL complète (https://boutique.nexa.demo/souris) */
+.r-root .commande-container .lot-table:not(#tb) th.lot-table__th--liens { --w: 22; }

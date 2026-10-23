@@ -1,0 +1,161 @@
+/**
+ * Échelle fluide unique de la démo, chargée après le CSS de l'application.
+ * Démo pensée pour le bureau (contrôle de 1280 à 2560 px ; en dessous, les tableaux défilent).
+ * Texte, hauteur des champs, marges et largeur du contenu suivent la largeur de la fenêtre
+ * (clamp), avec les mêmes tokens pour les champs du haut, les boutons et les tableaux
+ * (css/demo-tables.css). Les écarts corrigés ici existent aussi dans le CSS de l'application.
+ */
+
+:root {
+  /* Bureau : 14 px à 1280 px, 16 px à 2560 px */
+  --ui-font: clamp(0.875rem, 0.75rem + 0.15625vw, 1rem);
+  --ui-font-label: calc(var(--ui-font) * 0.87);
+  --ui-font-head: calc(var(--ui-font) * 0.8);
+  /* 36 px à 1280 px, 40 px à 2560 px */
+  --ui-field-h: clamp(2.25rem, 2rem + 0.3125vw, 2.5rem);
+  --ui-field-px: clamp(0.625rem, 0.5rem + 0.15625vw, 0.75rem);
+  --ui-select-arrow: calc(var(--ui-field-px) + 1.125rem);
+  --ui-gap: clamp(0.75rem, 0.375rem + 0.47vw, 1.125rem);
+  --ui-radius: 8px;
+  /* Contenu centré qui grandit avec l'écran sans tout agrandir */
+  --ui-content-max: min(100%, calc(36vw + 720px));
+}
+
+/* ---------- Largeur du contenu des sous-pages ---------- */
+.recep-section > .recep-page.lot-page,
+.recep-section > .recep-page.lots-saisie-page {
+  max-width: var(--ui-content-max);
+  margin-inline: auto;
+}
+
+/* ---------- Champs du haut (Nom du lot, Nom, Catégorie, filtres) ---------- */
+.r-root .recep-page .lot-config__label {
+  font-size: var(--ui-font-label);
+}
+
+.r-root .recep-page:not(#ui) :is(.lot-config__input, .lot-toolbar__name) {
+  box-sizing: border-box;
+  width: 100%;
+  height: var(--ui-field-h);
+  min-height: var(--ui-field-h);
+  padding: 0 var(--ui-field-px);
+  border-radius: var(--ui-radius);
+  font-size: var(--ui-font);
+  line-height: normal;
+}
+
+.r-root .recep-page:not(#ui) select.lot-config__input {
+  padding-right: var(--ui-select-arrow);
+  background-position: right var(--ui-field-px) center;
+}
+
+/* Largeur selon le contenu attendu, jamais une largeur fixe qui tronque */
+.r-root .recep-page:not(#ui) .lot-config__field {
+  min-width: 0;
+  max-width: none;
+}
+
+.r-root .recep-page:not(#ui) .lot-config__field:is(:has(> #cmd-name, > #don-name, > #pr-name, > #pr-who, > #filter-search-inventaire, > #filter-search-historique), .lot-toolbar__field) {
+  flex: 2 1 calc(var(--ui-font) * 22);
+  min-width: min(100%, calc(var(--ui-font) * 16));
+  max-width: calc(var(--ui-font) * 36);
+}
+
+.r-root .recep-page:not(#ui) .lot-config__field:has(> #cmd-cat, > #filter-state, > #filter-type-historique, > #pr-type) {
+  flex: 1 1 calc(var(--ui-font) * 12);
+  min-width: min(100%, calc(var(--ui-font) * 10));
+  max-width: calc(var(--ui-font) * 15);
+}
+
+.r-root .recep-page:not(#ui) .lot-config__field:has(> #filter-year-historique, > #filter-month-historique, > #pr-start, > #pr-end) {
+  flex: 0 1 calc(var(--ui-font) * 10);
+  min-width: min(100%, calc(var(--ui-font) * 8.5));
+  max-width: calc(var(--ui-font) * 12);
+}
+
+.r-root .recep-page:not(#ui) .recep-toolbar-compact,
+.r-root .recep-page:not(#ui) .lot-toolbar {
+  gap: var(--ui-gap);
+}
+
+/* Prêts : formulaire du haut sur une ligne, chaque champ remplit sa colonne
+   (deux :not(#) pour passer devant les largeurs par champ ci-dessus, qui visent des id) */
+.r-root .prets-container:not(#ui) .prets-config-grid {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1.3fr) minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.4fr);
+  gap: var(--ui-gap);
+}
+
+.r-root .prets-container:not(#ui) .prets-config-grid .lot-config__field:not(#ui-a):not(#ui-b) {
+  flex: none;
+  min-width: 0;
+  max-width: none;
+}
+
+/* ---------- Boutons ---------- */
+.r-root .recep-page:not(#ui) :is(.lot-btn, .historique-lot-actions button) {
+  box-sizing: border-box;
+  height: var(--ui-field-h);
+  min-height: var(--ui-field-h);
+  padding: 0 calc(var(--ui-field-px) * 1.5);
+  border-radius: var(--ui-radius);
+  font-size: var(--ui-font);
+  line-height: 1;
+}
+
+/* L'historique impose 40 px en !important sous 980 px : on le ramène au token commun */
+.r-root .historique-container:not(#ui) .lot-btn {
+  min-height: var(--ui-field-h) !important;
+}
+
+
+/* ---------- Rythme vertical et marges de page : les mêmes sur toutes les sous-pages ---------- */
+.recep-section > .recep-page:is(.lot-page, .lots-saisie-page):not(#ui) {
+  padding: var(--ui-gap) calc(var(--ui-gap) * 1.5);
+}
+
+.r-root .recep-page:not(#ui) .lot-page__body {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--ui-gap) * 2.25);
+}
+
+.r-root .recep-page:not(#ui) .lot-table-area {
+  padding-top: 0;
+}
+
+.r-root .recep-page:not(#ui) .lot-page__body > :is(.recep-toolbar-compact, .lot-toolbar, .lot-card) {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Compteur « N lignes » des Lots à la taille des libellés */
+.r-root .recep-page:not(#ui) .lot-toolbar__count {
+  font-size: var(--ui-font-label);
+}
+
+/* ---------- Listes de cartes (Inventaire, Historique) : pas de boîte dans la boîte ----------
+   Le conteneur derrière les cartes perd son fond, sa bordure et ses marges : seules les cartes
+   restent, avec le même espacement sur les deux pages. Le thème clair de l'app impose ces fonds
+   en !important, d'où les !important ci-dessous. */
+.r-root .recep-page:is(.inventaire-container, .historique-container):not(#ui) .lot-card--list {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.r-root .recep-page:is(.inventaire-container, .historique-container):not(#ui) .lot-card__inner--list {
+  padding: 0 !important;
+}
+
+.r-root .recep-page:is(.inventaire-container, .historique-container):not(#ui) :is(.lots-list-inv, #historique-list) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ui-gap);
+  padding: 0 !important;
+}
+
+/* En-tête d'une carte : même fond que la carte (un en-tête teinté seul dans sa carte
+   faisait une seconde boîte, notamment dans l'Historique et pour un lot replié) */
+.r-root .recep-page:not(#ui) :is(.historique-lot-header, .inventaire-lot-header) {
+  background: transparent !important;
+}
