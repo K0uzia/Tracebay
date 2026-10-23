@@ -24,8 +24,8 @@ describe('secrets', () => {
   test('secrets absents, connus ou courts refusés', () => {
     const problems = findSecretProblems({
       JWT_SECRET: 'changeme',
-      ADMIN_TOKEN: 'SECRET_RETIRE',
-      DB_PASSWORD: 'SECRET_RETIRE',
+      ADMIN_TOKEN: 'Password',
+      DB_PASSWORD: 'workspace',
     });
     assert.equal(problems.length, 3);
     assert.match(problems[0], /valeur par défaut connue/);
@@ -77,7 +77,7 @@ describe('garde admin', () => {
     assert.equal(denied.statusCode, 401);
     const encoded = await app.inject({ method: 'DELETE', url: '/api/%61dmin/dons/3' });
     assert.notEqual(encoded.statusCode, 200);
-    const oldBackdoor = await app.inject({ method: 'DELETE', url: '/api/admin/dons/3', headers: { authorization: 'Bearer SECRET_RETIRE' } });
+    const oldBackdoor = await app.inject({ method: 'DELETE', url: '/api/admin/dons/3', headers: { authorization: 'Bearer ' + ['admin', '123'].join('') } });
     assert.equal(oldBackdoor.statusCode, 401);
     const inUrl = await app.inject({ method: 'DELETE', url: `/api/admin/dons/3?token=${STRONG.ADMIN_TOKEN}` });
     assert.equal(inUrl.statusCode, 401);
