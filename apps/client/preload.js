@@ -12,6 +12,7 @@ const ALLOWED_CHANNELS = {
         'get-local-ip',
         'get-system-info',
         'get-license',
+        'verify-licence',
         'get-third-party-licenses',
         'list-folders',
         'open-path',

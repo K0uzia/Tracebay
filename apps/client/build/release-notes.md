@@ -1,10 +1,13 @@
-## Tracebay 3.6.3
+## Tracebay 3.7.0
 
-### Sécurité
-- L'application installée ne charge plus que son propre code, vérifié à chaque démarrage : une archive de l'application modifiée après installation est refusée (Windows et macOS).
-- Les options qui permettaient de détourner l'exécutable (exécution comme Node.js, variables NODE_OPTIONS, débogueur `--inspect`) sont désactivées dans la version installée.
-- Les cookies enregistrés sur le poste sont chiffrés par le système.
+### Licence de l'atelier
+- Tracebay s'utilise avec une clé de licence fournie par Kouzia. Elle vaut pour tout l'atelier et se saisit une fois sur le serveur (page de monitoring, onglet Licence), pas sur les postes.
+- La clé est vérifiée hors ligne : ni le serveur ni les postes ne contactent Kouzia.
+- Avec une licence valide, le nom de l'entreprise écrit dans la clé figure sur les PDF.
+- Un bandeau prévient 30 jours avant l'expiration. Après l'expiration, l'écriture reste possible 15 jours (bandeau rouge), puis Tracebay passe en lecture seule : consultation, PDF, export et suppression des données personnelles restent possibles.
+- Paramètres > À propos : état de la licence, titulaire et date d'expiration.
 
 ### À savoir
-- Aucun changement visible dans l'utilisation, aucune migration de données, aucune action sur le serveur.
-- Sous Linux, le contrôle d'intégrité de l'archive n'existe pas (limite d'Electron) ; les autres protections s'appliquent.
+- Un atelier déjà équipé avant cette version continue sans changement tant qu'aucune clé n'est saisie (mention « Licence non activée » dans À propos).
+- Mettre à jour le serveur avant les postes (procédure dans la documentation de déploiement du serveur).
+- Aucune migration de données.

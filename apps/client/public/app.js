@@ -72,6 +72,11 @@ class PageManager {
 
         // Capture automatique des erreurs JS non gérées → monitoring admin
         this.setupClientErrorReporting();
+
+        // Licence de l'atelier : bandeau et lecture seule (sans bloquer le démarrage)
+        import('./assets/js/modules/licence/LicenceStatus.js')
+            .then((m) => m.demarrerLicence())
+            .catch(() => {});
         this.initializeThemePreference();
 
         // Toast "Mise à jour installée" après redémarrage post-update
@@ -587,9 +592,33 @@ class PageManager {
         this.wireLazyLegalText('settingsThirdPartyDetails', 'settingsThirdPartyText', 'get-third-party-licenses', 'Licences tierces introuvables.');
         this.wireUpdateAutoToggle();
         this.refreshBrandingInfo();
+        this.refreshLicenceInfo();
         modal.classList.remove('hidden');
         // Focus dans la fenêtre (lecteurs d'écran, Échap) sans contour visible au clic
         modal.querySelector('.settings-modal-container')?.focus({ preventScroll: true });
+    }
+
+    /** Licence de l'atelier, saisie sur le serveur : affichage seulement. */
+    async refreshLicenceInfo() {
+        const etatEl = document.getElementById('settingsLicenceEtat');
+        const titulaireEl = document.getElementById('settingsLicenceTitulaire');
+        const expireEl = document.getElementById('settingsLicenceExpire');
+        if (!etatEl || !titulaireEl || !expireEl) {
+            return;
+        }
+        etatEl.textContent = 'Chargement…';
+        try {
+            const { lireLicence, libelleEtat } = await import('./assets/js/modules/licence/LicenceStatus.js');
+            const etat = await lireLicence();
+            etatEl.textContent = libelleEtat(etat);
+            titulaireEl.textContent = etat?.entreprise || '-';
+            const j = etat?.expire;
+            expireEl.textContent = j ? `${j.slice(8, 10)}/${j.slice(5, 7)}/${j.slice(0, 4)}` : '-';
+        } catch (_) {
+            etatEl.textContent = 'Serveur injoignable';
+            titulaireEl.textContent = '-';
+            expireEl.textContent = '-';
+        }
     }
 
     /** Atelier (nom et logo des PDF), réglage du serveur affiché en lecture seule. */

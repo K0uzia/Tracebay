@@ -229,6 +229,25 @@
 }
 
 /* Liste « libellé : valeur » */
+.licence-banner {
+    margin: var(--unit-1) var(--unit-2) 0;
+    padding: var(--unit-1) var(--unit-2);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-medium);
+    background: color-mix(in srgb, var(--accent) 14%, var(--bg-elevated));
+    color: var(--text-primary);
+    font: var(--font-text2);
+}
+
+.licence-banner--alerte {
+    border-color: var(--error);
+    background: color-mix(in srgb, var(--error) 18%, var(--bg-elevated));
+}
+
+.licence-banner[hidden] {
+    display: none;
+}
+
 .settings-branding-logo {
     display: block;
     max-height: var(--unit-6);

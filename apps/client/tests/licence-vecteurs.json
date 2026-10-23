@@ -1,0 +1,353 @@
+{
+  "description": "Vecteurs de test TB1 communs au client (Jest) et au serveur (node:test). Paire de test, jamais la clé de production. Fichier identique dans les deux arbres : ne pas le modifier d'un seul côté.",
+  "clePubliqueTest": "MCowBQYDK2VwAyEAIBaenjlr/x1tHtiGouTIJk7sTSnpOALk7eiN6u2fKY0=",
+  "vecteurs": [
+    {
+      "nom": "valide, nom avec guillemets, barre oblique inverse et accent",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy12YWxpZGUiLCJlbnRyZXByaXNlIjoiQXRlbGllciDCqyBOb3JkIMK7IFwidGVzdFwiIFxcIMOpIiwiZW1pc2UiOiIyMDI2LTEwLTIyIiwiZXhwaXJlIjoiMjAyNy0xMC0yMiJ9.6_LCxvKsKw7NBl0s8pVreYccRwMvHj1TXaI5Su_73cFvu3aoA-903oRaOAqWSR8p7kBmE-mQRPl7ntCVTtE7Dw",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": true,
+        "ecriture": true,
+        "etat": "active",
+        "raison": null,
+        "entreprise": "Atelier « Nord » \"test\" \\ é",
+        "expire": "2027-10-22",
+        "finGrace": "2027-11-06",
+        "joursRestants": 355
+      }
+    },
+    {
+      "nom": "bientôt expirée (30 jours ou moins)",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy1iaWVudG90IiwiZW50cmVwcmlzZSI6IkF0ZWxpZXIiLCJlbWlzZSI6IjIwMjYtMDEtMDEiLCJleHBpcmUiOiIyMDI2LTEyLTAxIn0.90ai1vDc_d5X9ZCVaIF8HFuTFqirdJ8aAhZPJKDc6FKUqz2Z5ukGa68aIO7irFDdgjX8KiFwdVZbx9o6rDbcAA",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": true,
+        "ecriture": true,
+        "etat": "expire_bientot",
+        "raison": null,
+        "entreprise": "Atelier",
+        "expire": "2026-12-01",
+        "joursRestants": 30
+      }
+    },
+    {
+      "nom": "jour d'expiration inclus",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy1qb3VyLWoiLCJlbnRyZXByaXNlIjoiQXRlbGllciIsImVtaXNlIjoiMjAyNi0wMS0wMSIsImV4cGlyZSI6IjIwMjYtMTEtMDEifQ.aPy44doOUTEDE9YskvkSKzdp0YjTtsLtCBTIjEN2rIWawOqP_r97JnP2HnOGjFbL7woAzMBKlJHglI4dyfvNAg",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": true,
+        "ecriture": true,
+        "etat": "expire_bientot",
+        "raison": null,
+        "entreprise": "Atelier",
+        "expire": "2026-11-01",
+        "joursRestants": 0
+      }
+    },
+    {
+      "nom": "grâce : lendemain de l'expiration",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy1ncmFjZS0xIiwiZW50cmVwcmlzZSI6IkF0ZWxpZXIiLCJlbWlzZSI6IjIwMjYtMDEtMDEiLCJleHBpcmUiOiIyMDI2LTEwLTMxIn0.5YPPE3VsUeN50sahFo-F4ucon_REwjpS_KBeLkfQVa61UN50NZ9b7-CqMgnIx2Wwdgq-P0k1UvFZS4-Uz1QoCw",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": true,
+        "etat": "grace",
+        "raison": "expiree",
+        "entreprise": "Atelier",
+        "expire": "2026-10-31",
+        "finGrace": "2026-11-15"
+      }
+    },
+    {
+      "nom": "grâce : dernier jour (expiration + 15)",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy1ncmFjZS0xNSIsImVudHJlcHJpc2UiOiJBdGVsaWVyIiwiZW1pc2UiOiIyMDI2LTAxLTAxIiwiZXhwaXJlIjoiMjAyNi0xMC0xNyJ9.2eqF-ESUf9Nmk9plpl4Il4Afy373yjh-KjSkiXCOXV-oVnGd8QV1J6n_-F3BqhL5TH7SEmN_DnE1IiJcAhyyBg",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": true,
+        "etat": "grace",
+        "raison": "expiree",
+        "entreprise": "Atelier",
+        "expire": "2026-10-17",
+        "finGrace": "2026-11-01"
+      }
+    },
+    {
+      "nom": "expirée : lendemain de la fin de grâce",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy1leHBpcmVlIiwiZW50cmVwcmlzZSI6IkF0ZWxpZXIiLCJlbWlzZSI6IjIwMjYtMDEtMDEiLCJleHBpcmUiOiIyMDI2LTEwLTE2In0.NFjozRSTypH-KA3rii6pF4fMmDR-JCiNzd-tdIidoWhn0kQIwPBKgUt3U71qOSsVMh6k8fFUt3fmgOTfjlbFAg",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "expiree",
+        "raison": "expiree",
+        "entreprise": "Atelier",
+        "expire": "2026-10-16",
+        "finGrace": "2026-10-31"
+      }
+    },
+    {
+      "nom": "horloge reculée",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy12YWxpZGUiLCJlbnRyZXByaXNlIjoiQXRlbGllciDCqyBOb3JkIMK7IFwidGVzdFwiIFxcIMOpIiwiZW1pc2UiOiIyMDI2LTEwLTIyIiwiZXhwaXJlIjoiMjAyNy0xMC0yMiJ9.6_LCxvKsKw7NBl0s8pVreYccRwMvHj1TXaI5Su_73cFvu3aoA-903oRaOAqWSR8p7kBmE-mQRPl7ntCVTtE7Dw",
+      "aujourdhui": "2026-11-01",
+      "derniereDateVue": "2026-11-05",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "horloge",
+        "raison": "horloge",
+        "entreprise": "Atelier « Nord » \"test\" \\ é",
+        "expire": "2027-10-22"
+      }
+    },
+    {
+      "nom": "même jour que la dernière date vue",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy12YWxpZGUiLCJlbnRyZXByaXNlIjoiQXRlbGllciDCqyBOb3JkIMK7IFwidGVzdFwiIFxcIMOpIiwiZW1pc2UiOiIyMDI2LTEwLTIyIiwiZXhwaXJlIjoiMjAyNy0xMC0yMiJ9.6_LCxvKsKw7NBl0s8pVreYccRwMvHj1TXaI5Su_73cFvu3aoA-903oRaOAqWSR8p7kBmE-mQRPl7ntCVTtE7Dw",
+      "aujourdhui": "2026-11-01",
+      "derniereDateVue": "2026-11-01",
+      "attendu": {
+        "valide": true,
+        "ecriture": true,
+        "etat": "active",
+        "raison": null,
+        "entreprise": "Atelier « Nord » \"test\" \\ é",
+        "expire": "2027-10-22"
+      }
+    },
+    {
+      "nom": "absente",
+      "cle": "",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "absente",
+        "raison": "absente",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "signature falsifiée",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy12YWxpZGUiLCJlbnRyZXByaXNlIjoiQXRlbGllciDCqyBOb3JkIMK7IFwidGVzdFwiIFxcIMOpIiwiZW1pc2UiOiIyMDI2LTEwLTIyIiwiZXhwaXJlIjoiMjAyNy0xMC0yMiJ9.6vLCxvKsKw7NBl0s8pVreYccRwMvHj1TXaI5Su_73cFvu3aoA-903oRaOAqWSR8p7kBmE-mQRPl7ntCVTtE7Dw",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "signature",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "données modifiées après signature",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy12YWxpZGUiLCJlbnRyZXByaXNlIjoiQXRlbGllciDCqyBTdWQhIMK7IFwidGVzdFwiIFxcIMOpIiwiZW1pc2UiOiIyMDI2LTEwLTIyIiwiZXhwaXJlIjoiMjAyNy0xMC0yMiJ9.6_LCxvKsKw7NBl0s8pVreYccRwMvHj1TXaI5Su_73cFvu3aoA-903oRaOAqWSR8p7kBmE-mQRPl7ntCVTtE7Dw",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "signature",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "v = 2",
+      "cle": "TB1.eyJ2IjoyLCJpZCI6InZlYy12MiIsImVudHJlcHJpc2UiOiJBdGVsaWVyIiwiZW1pc2UiOiIyMDI2LTAxLTAxIiwiZXhwaXJlIjoiMjAyNy0wMS0wMSJ9.d4Q0nPvDnu49YZWuZlGYKmLoznfWqggqeQy6zMxMIpfFrTaKkNNptVMJICtyhSSZFuDua6qMpRZsFpfqRE8XCw",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "clés JSON dans un autre ordre",
+      "cle": "TB1.eyJpZCI6InZlYy1vcmRyZSIsInYiOjEsImVudHJlcHJpc2UiOiJBdGVsaWVyIiwiZW1pc2UiOiIyMDI2LTAxLTAxIiwiZXhwaXJlIjoiMjAyNy0wMS0wMSJ9.Yn89KrT1M-oU48yuVB2YXBTdXUxLhTtX-GnfiZdPN4ihPUE1oYWWPJp8XEWQYmn7bGUh85o8eIDOeKxneAzQDw",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "JSON avec espaces",
+      "cle": "TB1.eyJ2IjogMSwiaWQiOiJ2ZWMtZXNwIiwiZW50cmVwcmlzZSI6IkF0ZWxpZXIiLCJlbWlzZSI6IjIwMjYtMDEtMDEiLCJleHBpcmUiOiIyMDI3LTAxLTAxIn0.-EmGPEXSGs1McHk_U4nC9ON2-NjAlmg2x6TnYyg8qB5JT3MaOWg5tuXvchW5GBtoW7R4WO4vl1JvIfTi3ekeBQ",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "clé en trop",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy1wbHVzIiwiZW50cmVwcmlzZSI6IkF0ZWxpZXIiLCJlbWlzZSI6IjIwMjYtMDEtMDEiLCJleHBpcmUiOiIyMDI3LTAxLTAxIiwieCI6MX0.QNiH_pEQe22xpsgZhwazPLrh-B2C8z8GcdBeSvlSUt5QogqbBi7nWR5e1wKupuub5h4IH1dpMVUESzT2cD3iCw",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "quatre segments",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy12YWxpZGUiLCJlbnRyZXByaXNlIjoiQXRlbGllciDCqyBOb3JkIMK7IFwidGVzdFwiIFxcIMOpIiwiZW1pc2UiOiIyMDI2LTEwLTIyIiwiZXhwaXJlIjoiMjAyNy0xMC0yMiJ9.6_LCxvKsKw7NBl0s8pVreYccRwMvHj1TXaI5Su_73cFvu3aoA-903oRaOAqWSR8p7kBmE-mQRPl7ntCVTtE7Dw.AA",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "préfixe inconnu",
+      "cle": "TB2.eyJ2IjoxLCJpZCI6InZlYy12YWxpZGUiLCJlbnRyZXByaXNlIjoiQXRlbGllciDCqyBOb3JkIMK7IFwidGVzdFwiIFxcIMOpIiwiZW1pc2UiOiIyMDI2LTEwLTIyIiwiZXhwaXJlIjoiMjAyNy0xMC0yMiJ9.6_LCxvKsKw7NBl0s8pVreYccRwMvHj1TXaI5Su_73cFvu3aoA-903oRaOAqWSR8p7kBmE-mQRPl7ntCVTtE7Dw",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "base64 classique (+ / =)",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy12YWxpZGUiLCJlbnRyZXByaXNlIjoiQXRlbGllciDCqyBOb3JkIMK7IFwidGVzdFwiIFxcIMOpIiwiZW1pc2UiOiIyMDI2LTEwLTIyIiwiZXhwaXJlIjoiMjAyNy0xMC0yMiJ9.6/LCxvKsKw7NBl0s8pVreYccRwMvHj1TXaI5Su/73cFvu3aoA+903oRaOAqWSR8p7kBmE+mQRPl7ntCVTtE7Dw==",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "expiration avant émission",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy1hdmFudCIsImVudHJlcHJpc2UiOiJBdGVsaWVyIiwiZW1pc2UiOiIyMDI2LTA2LTAxIiwiZXhwaXJlIjoiMjAyNi0wNS0zMSJ9.nDDFHYyegjfgC6xPiysBAPUO_SfAnbdibJqMHCXMpq8imAN1keXdJG-1JF_WeFyF05vlDnOPrxc5rAvAMnDwDg",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "plus de dix ans",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy1kaXgiLCJlbnRyZXByaXNlIjoiQXRlbGllciIsImVtaXNlIjoiMjAyNi0wMS0wMSIsImV4cGlyZSI6IjIwMzYtMDEtMDIifQ.XWhb6IaNk2exT2Y2zstfkJ72sLhtlewnsmQ4-grV2kzMUQRuHW5WKkPWK5OOLp0M2hgLAH97dt4s7ujHGH9ODw",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "exactement dix ans",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy1kaXgtb2siLCJlbnRyZXByaXNlIjoiQXRlbGllciIsImVtaXNlIjoiMjAyNi0wMS0wMSIsImV4cGlyZSI6IjIwMzYtMDEtMDEifQ.5yvbXUrN_i_BG68-k6wyR1DZQTAsEOpwGE3OJkCmmbnns_dR997XWNZw69vruKNSAtPGvHXWm9eSG2MOpUSlCA",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": true,
+        "ecriture": true,
+        "etat": "active",
+        "raison": null,
+        "entreprise": "Atelier",
+        "expire": "2036-01-01"
+      }
+    },
+    {
+      "nom": "date impossible (30 février)",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy1mZXYiLCJlbnRyZXByaXNlIjoiQXRlbGllciIsImVtaXNlIjoiMjAyNi0wMS0wMSIsImV4cGlyZSI6IjIwMjctMDItMzAifQ.v8KUeCcWCYHlwJyNWGzCLB8Fq1XFYn7Yzr-IaeUBZxofr5ZMHe4kCX177a38eEXkvul5zdxy0dQXxtgx6QWDBA",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "entreprise non normalisée NFC",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy1uZmQiLCJlbnRyZXByaXNlIjoiU29jaWXMgXRlzIEiLCJlbWlzZSI6IjIwMjYtMDEtMDEiLCJleHBpcmUiOiIyMDI3LTAxLTAxIn0.y7IXIfSS7gjt0mR2cssnVJoU7ZgAnLanCicUNVirOnHV9slb60eZdQ7jKBKDeTKBr_ASVFa7ZWGxNKFIpatVDQ",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "entreprise avec caractère de contrôle",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy1jYyIsImVudHJlcHJpc2UiOiJBdGVsaWVyXHUwMDA3IiwiZW1pc2UiOiIyMDI2LTAxLTAxIiwiZXhwaXJlIjoiMjAyNy0wMS0wMSJ9.730EJpnCzId0BvhkAki-SmH9aVZ8goWMxrHzMrT7DNX96sb7fIK259mMuTLLi2WTDM9-nyi8aOTEBG_Y2y5VCQ",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "entreprise avec espace de tête",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy1lc3AyIiwiZW50cmVwcmlzZSI6IiBBdGVsaWVyIiwiZW1pc2UiOiIyMDI2LTAxLTAxIiwiZXhwaXJlIjoiMjAyNy0wMS0wMSJ9.iiaWY-dbJjXfjEcHbPM_INo8m9v7zDTP5Dxfv_aaG9REdhGQPj6MufpRTrwavRCpSysjJH1ejvVmYdDfAa7kDA",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    },
+    {
+      "nom": "identifiant invalide",
+      "cle": "TB1.eyJ2IjoxLCJpZCI6InZlYy94IiwiZW50cmVwcmlzZSI6IkF0ZWxpZXIiLCJlbWlzZSI6IjIwMjYtMDEtMDEiLCJleHBpcmUiOiIyMDI3LTAxLTAxIn0.OkyKM_X3pFrjB5NToSqnqWBkQVtm0rBoMKgQaRx5ACNmvx72dnFcfyHefmPlcsJaLiQZV8lYWLZc36nZ1Rm1DQ",
+      "aujourdhui": "2026-11-01",
+      "attendu": {
+        "valide": false,
+        "ecriture": false,
+        "etat": "invalide",
+        "raison": "format",
+        "entreprise": null,
+        "expire": null
+      }
+    }
+  ]
+}

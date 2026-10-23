@@ -5,6 +5,8 @@
 const { app, BrowserWindow, ipcMain, shell, nativeImage, Menu, crashReporter, net, session } = require('electron');
 const path = require('path');
 const { applyBranding, createBrandingCache } = require('./branding');
+const { verifierLicence, jourParis } = require('./licence');
+const CLE_PUBLIQUE_LICENCE = require('./licence-cle-publique');
 const url = require('url');
 const http = require('http');
 const fs = require('fs');
@@ -3383,6 +3385,12 @@ function readBundledText(fileName) {
     }
     return null;
 }
+
+// Revérifie la clé lue sur le serveur avec la clé publique embarquée dans le poste.
+ipcMain.handle('verify-licence', async (_event, payload) => {
+    const cle = typeof payload?.cle === 'string' ? payload.cle.slice(0, 4000) : '';
+    return verifierLicence({ cle, clePublique: CLE_PUBLIQUE_LICENCE, aujourdhui: jourParis() });
+});
 
 ipcMain.handle('get-license', async () => readBundledText('LICENSE') || { success: false, error: 'Fichier de licence introuvable.' });
 

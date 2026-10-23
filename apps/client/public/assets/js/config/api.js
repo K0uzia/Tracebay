@@ -5,6 +5,7 @@
  */
 
 import getLogger from './Logger.js';
+import { ecriturePermiseEnLectureSeule } from './licenceEcriture.js';
 import getApiCache from './ApiCache.js';
 
 const logger = getLogger();
@@ -247,8 +248,29 @@ async function request(method, endpointPath, data = null, options = {}) {
     if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
         fetchOptions.body = JSON.stringify(data);
     }
-    
+
+    // Licence en lecture seule : le serveur refuserait l'écriture, inutile de l'envoyer.
+    const lectureSeule = window.TRACEBAY_LICENCE?.ecriture === false;
+    if (lectureSeule && !ecriturePermiseEnLectureSeule(method, url, data)) {
+        const message = "Tracebay est en lecture seule\u00a0: la licence de l'atelier ne permet plus d'enregistrer. "
+            + 'Consultation, PDF et suppression de données personnelles restent possibles.';
+        window.dispatchEvent(new CustomEvent('licence-lecture-seule', { detail: { message } }));
+        return new Response(JSON.stringify({ error: message, code: 'licence_lecture_seule' }), {
+            status: 423,
+            headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
     const response = await fetch(url, fetchOptions);
+
+    if (response.status === 423) {
+        response.clone().json()
+            .catch(() => ({}))
+            .then((body) => {
+                const detail = { message: body?.error };
+                window.dispatchEvent(new CustomEvent('licence-lecture-seule', { detail }));
+            });
+    }
 
     if (response.status === 401 && endpointPath !== 'auth.login' && endpointPath !== 'auth.register') {
         window.dispatchEvent(new CustomEvent('session-expired', { detail: { status: 401 } }));

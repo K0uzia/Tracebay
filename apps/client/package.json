@@ -1,6 +1,6 @@
 {
   "name": "Tracebay",
-  "version": "3.6.3",
+  "version": "3.7.0",
   "main": "main.js",
   "homepage": "https://github.com/K0uzia/Tracebay#readme",
   "description": "Tracebay : traçabilité de matériel (lots, disques, archives) et agenda",
@@ -61,6 +61,8 @@
       "main.js",
       "preload.js",
       "branding.js",
+      "licence.js",
+      "licence-cle-publique.js",
       "config/**/*",
       "assets/**/*",
       "public/**/*",
