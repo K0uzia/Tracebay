@@ -61,7 +61,8 @@ describe('bandeaux', () => {
 
     test('aucun tiret cadratin ni demi-cadratin dans les textes', () => {
         for (const etat of ['expire_bientot', 'grace', 'expiree', 'absente', 'invalide', 'horloge']) {
-            expect(bandeauPour(combinerEtat(serveur(etat), null)).texte).not.toMatch(/[\u2013\u2014]/);
+            const { texte } = bandeauPour(combinerEtat(serveur(etat), null));
+            expect(texte).not.toMatch(/[\u2013\u2014]/);
         }
     });
 });
@@ -93,6 +94,8 @@ describe('écritures permises en lecture seule', () => {
         ['POST', `${S}/api/auth/login`, {}, true],
         ['PUT', `${S}/api/dons/4`, { pdf_path: '/a.pdf' }, true],
         ['PUT', `${S}/api/dons/4`, { pdf_path: '/a.pdf', lot_name: 'x' }, false],
+        ['PUT', `${S}/api/commandes/7`, { pdf_path: '/c.pdf' }, true],
+        ['PUT', `${S}/api/commandes/7`, { pdf_path: '/c.pdf', name: 'x' }, false],
         ['POST', `${S}/api/lots`, {}, false],
         ['DELETE', `${S}/api/lots/3`, null, false],
         ['POST', `${S}/api/dons`, {}, false]

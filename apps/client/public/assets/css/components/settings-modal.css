@@ -244,6 +244,11 @@
     background: color-mix(in srgb, var(--error) 18%, var(--bg-elevated));
 }
 
+/* Les boutons ont un display propre : [hidden] doit rester prioritaire (même règle que la portable) */
+.post-settings [hidden] {
+    display: none !important;
+}
+
 .licence-banner[hidden] {
     display: none;
 }

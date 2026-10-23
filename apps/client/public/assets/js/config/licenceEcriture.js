@@ -21,7 +21,8 @@ const PDF_PATH_SEUL = [
     /^\/api\/lots\/[^/]+$/,
     /^\/api\/disques\/sessions\/[^/]+$/,
     /^\/api\/dons\/[^/]+$/,
-    /^\/api\/prets-materiel\/[^/]+$/
+    /^\/api\/prets-materiel\/[^/]+$/,
+    /^\/api\/commandes\/[^/]+$/
 ];
 
 function cheminDe(url) {

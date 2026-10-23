@@ -593,9 +593,21 @@ class PageManager {
         this.wireUpdateAutoToggle();
         this.refreshBrandingInfo();
         this.refreshLicenceInfo();
+        this.refreshTechnicianErasure();
         modal.classList.remove('hidden');
         // Focus dans la fenêtre (lecteurs d'écran, Échap) sans contour visible au clic
         modal.querySelector('.settings-modal-container')?.focus({ preventScroll: true });
+    }
+
+    /** Paramètres > Confidentialité : effacer le nom d'un technicien (écran de la portable). */
+    async refreshTechnicianErasure() {
+        const container = document.getElementById('settingsTechnicienEffacement');
+        if (!container) {
+            return;
+        }
+        const { afficherEffacementTechnicien } = await import('./assets/js/modules/settings/EffacementTechnicien.js');
+        const notifier = (m, t) => this.showNotification(m, t);
+        await afficherEffacementTechnicien(container, { notifier });
     }
 
     /** Licence de l'atelier, saisie sur le serveur : affichage seulement. */
