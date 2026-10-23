@@ -6,23 +6,6 @@ load helpers
 setup() { setup_tb; }
 teardown() { rendre_verrou; }
 
-# Publie sur l'origin une nouvelle version : scripts marqués « version 2 », et les fichiers $@ ajoutés
-# dans proxmox/docker (CASSE : compose invalide, CASSE_SANTE : API qui ne démarre pas).
-nouvelle_version() {
-  local clone="$BATS_TEST_TMPDIR/clone" f
-  git clone -q -b proxmox "$BATS_TEST_TMPDIR/origin.git" "$clone"
-  git -C "$clone" config core.autocrlf false
-  copier_scripts "$clone"
-  echo 'info "Scripts de la version 2."' >> "$clone/proxmox/scripts/tracebayctl/lib.sh"
-  echo "ALTER TABLE lots ADD COLUMN IF NOT EXISTS v2 INT;" >> "$clone/proxmox/app/src/db/schema.sql"
-  for f in "$@"; do touch "$clone/proxmox/docker/$f"; done
-  git -C "$clone" add -A
-  git -C "$clone" -c user.name=test -c user.email=test@example.invalid commit -q -m "version 2"
-  git -C "$clone" push -q origin proxmox
-  NOUVEAU="$(git -C "$clone" rev-parse --short HEAD)"
-  ANCIEN="$(git -C "$TB_REPO" rev-parse --short HEAD)"
-}
-
 head_court() { git -C "$TB_REPO" rev-parse --short HEAD; }
 sauvegardes_maj() { find "$TB_REPO/proxmox/docker/backups" -maxdepth 1 -name '*-avant-maj' 2>/dev/null; }
 

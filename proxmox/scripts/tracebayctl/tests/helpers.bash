@@ -66,6 +66,8 @@ setup_tb() {
   export TB_CRON_FILE="$BATS_TEST_TMPDIR/cron.d/tracebay-backup"
   export TB_SYSTEMD_DIR="$BATS_TEST_TMPDIR/systemd"
   export TB_STATE_DIR="$BATS_TEST_TMPDIR/state"
+  export TB_CRON_LOG="$BATS_TEST_TMPDIR/tracebay-backup.log"
+  export TB_OLD_CLI_LIB="$BATS_TEST_TMPDIR/lib/proxmox-cli.sh"
   export TB_SKIP_ROOT_CHECK=1 TB_SLEEP=0 TB_DB_WAIT=3 TB_API_WAIT=3
   export NO_COLOR=1
   unset TB_YES TB_LOCK_HELD TB_BACKUPS
@@ -114,4 +116,23 @@ refuter_secrets() {
       return 1
     fi
   done
+}
+
+# Publie sur l'origin une nouvelle version : scripts marqués « version 2 », et les fichiers $@ ajoutés
+# dans proxmox/docker (CASSE : compose invalide, CASSE_SANTE : API qui ne démarre pas).
+nouvelle_version() {
+  local clone="$BATS_TEST_TMPDIR/clone" f
+  git clone -q -b proxmox "$BATS_TEST_TMPDIR/origin.git" "$clone"
+  git -C "$clone" config core.autocrlf false
+  copier_scripts "$clone"
+  echo 'info "Scripts de la version 2."' >> "$clone/proxmox/scripts/tracebayctl/lib.sh"
+  echo "ALTER TABLE lots ADD COLUMN IF NOT EXISTS v2 INT;" >> "$clone/proxmox/app/src/db/schema.sql"
+  for f in "$@"; do touch "$clone/proxmox/docker/$f"; done
+  git -C "$clone" add -A
+  git -C "$clone" -c user.name=test -c user.email=test@example.invalid commit -q -m "version 2"
+  git -C "$clone" push -q origin proxmox
+  # shellcheck disable=SC2034 # NOUVEAU et ANCIEN : utilisés par les fichiers .bats
+  NOUVEAU="$(git -C "$clone" rev-parse --short HEAD)"
+  # shellcheck disable=SC2034
+  ANCIEN="$(git -C "$TB_REPO" rev-parse --short HEAD)"
 }

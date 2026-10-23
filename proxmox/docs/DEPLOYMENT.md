@@ -1,33 +1,33 @@
 # Déploiement du serveur Tracebay (API Proxmox)
 
-Le serveur tourne dans un conteneur LXC Debian 13 sur Proxmox, avec Docker Compose : `workspace-proxmox` (API Fastify, port 4000) et `workspace-db` (PostgreSQL 16). Tout se pilote par `proxmox/scripts/proxmox.sh`, lancé en root depuis le clone du dépôt sur le conteneur. Le serveur ne déploie que la branche `origin/proxmox` (`git reset --hard origin/proxmox` à chaque mise à jour).
+Le serveur tourne dans un conteneur LXC Debian 13 sur Proxmox, avec Docker Compose : `workspace-proxmox` (API Fastify, port 4000) et `workspace-db` (PostgreSQL 16). Tout se pilote par `tracebayctl`, lancé en root (`tracebayctl help`, ou `tracebayctl` seul pour le menu). Le serveur ne déploie que la branche `origin/proxmox`. L'ancien `proxmox/scripts/proxmox.sh` et l'ancienne commande `proxmox` restent utilisables : ils mènent à `tracebayctl` avec les mêmes noms de commandes.
 
 ## Prérequis (une fois)
 
 ```bash
-sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin curl git openssl nodejs npm
+sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin curl git openssl util-linux
 sudo systemctl enable --now docker
 git clone https://github.com/K0uzia/Tracebay.git /root/workspace && cd /root/workspace && git checkout proxmox
-sudo bash proxmox/scripts/proxmox.sh install
+sudo bash proxmox/scripts/tracebayctl/tracebayctl install
 ```
 
-`install` génère `proxmox/docker/.env` (droits 600) avec des secrets aléatoires, construit les images, crée le schéma, installe le service systemd `proxmox-backend` et la commande `proxmox`.
+`install` génère `proxmox/docker/.env` (droits 600) avec des secrets aléatoires, construit l'image de l'API (Node et dépendances sont dans l'image : Node n'est pas nécessaire sur l'hôte), crée le schéma, installe le service systemd `proxmox-backend`, puis la commande `tracebayctl` (`install-cli`) avec la sauvegarde quotidienne.
 
 ## Secrets
 
 `JWT_SECRET`, `ADMIN_TOKEN` et `DB_PASSWORD` n'ont aucune valeur par défaut :
 
 - ils sont générés dans `proxmox/docker/.env` au premier déploiement (`openssl rand -hex`) ;
-- l'API refuse de démarrer si l'un d'eux est absent, trop court ou vaut une ancienne valeur publiée dans le dépôt, et son journal (`proxmox logs`) dit quoi faire ;
-- `update` et `install` s'arrêtent avant le build dans le même cas.
+- l'API refuse de démarrer si l'un d'eux est absent, trop court ou vaut une ancienne valeur publiée dans le dépôt, et son journal (`tracebayctl logs`) dit quoi faire ;
+- `tracebayctl check` les contrôle (sans jamais afficher leur valeur), et `update`, `install`, `backup` s'arrêtent avant toute modification dans le même cas.
 
 Renouveler les secrets (après une fuite, ou pour quitter les anciens défauts) :
 
 ```bash
-sudo bash proxmox/scripts/proxmox.sh rotate-secrets
+sudo tracebayctl rotate-secrets
 ```
 
-La commande sauvegarde `.env` en `.env.bak-DATE`, génère de nouvelles valeurs, change le mot de passe du rôle PostgreSQL (connexion locale au conteneur, l'ancien mot de passe n'est pas requis) et redémarre les conteneurs. Tous les utilisateurs doivent se reconnecter. Supprimer la sauvegarde `.env.bak-*` une fois le service vérifié.
+Ordre suivi : copie de `.env` (`.env.avant-rotation`), nouveau mot de passe du rôle PostgreSQL (connexion locale au conteneur, l'ancien n'est pas requis), nouveau `.env` écrit d'un bloc, redémarrage, contrôle de l'API et de son accès à la base. Si une étape échoue, ou en cas d'interruption, l'ancien `.env` et l'ancien mot de passe sont remis et les conteneurs relancés : rien n'a changé. Tous les utilisateurs doivent se reconnecter. Les anciennes copies `.env.bak-*` laissées par `proxmox.sh` peuvent être supprimées.
 
 `ADMIN_TOKEN` donne accès à `/api/admin/*`, `/api/monitoring/*` et `/api/metrics` (en-tête `x-admin-token` ou `Authorization: Bearer`, jamais en paramètre d'URL). La page `/monitoring` s'ouvre avec un compte de rôle `admin`.
 
@@ -49,29 +49,36 @@ Vérifier : `docker inspect workspace-proxmox --format '{{json .Mounts}}'` doit 
 ## Mise à jour
 
 ```bash
-sudo bash proxmox/scripts/proxmox.sh update
+sudo tracebayctl update
 ```
 
-Étapes : sauvegarde `pg_dump` dans `proxmox/docker/backups/`, `git reset --hard origin/proxmox`, contrôle des secrets, build, alignement du mot de passe PostgreSQL sur `.env`, `docker compose up -d --build`, schéma et migrations. Aucune donnée n'est injectée : `import.sql` n'est plus appliqué.
+1. Contrôles (Docker, `docker compose config`, secrets), liste des nouveautés de `origin/proxmox`, confirmation (`--yes` pour s'en passer).
+2. Sauvegarde obligatoire de la base : si elle échoue, arrêt, rien n'a changé. `--skip-backup` s'en passe après une seconde confirmation.
+3. Nouveau code (`git reset --hard origin/proxmox`), puis la suite tourne avec les scripts de la nouvelle version.
+4. Compose de la nouvelle version validé et image construite pendant que l'ancienne tourne : en cas d'échec, le code revient à la version d'avant et rien n'a changé.
+5. Mot de passe PostgreSQL réaligné, `schema.sql` puis migrations embarquées (`proxmox/app/src/db/migrations-embarquees.sql`), redémarrage, contrôle de la santé et de l'accès à la base. En cas d'échec : retour automatique à la version d'avant, et la commande indique la sauvegarde à restaurer si la base a déjà changé.
 
-### Première mise à jour vers le lot sécurité (une seule fois)
+Une erreur de schéma reste un avertissement (comme avant) : elle est notée dans `/var/lib/tracebay/schema-erreurs.log` et sur la ligne « Dernière mise à jour » de `tracebayctl status`. Aucune donnée n'est injectée.
 
-Le script en cours d'exécution est celui déjà présent sur le conteneur, qui ignore encore `rotate-secrets` et appliquait `import.sql`. Ordre à suivre :
+### Premier passage à tracebayctl (une seule fois, depuis un serveur sous proxmox.sh)
+
+Ne pas lancer l'ancien `proxmox.sh update` pour ce passage : il construisait l'API sur l'hôte. Ordre :
 
 ```bash
 cd /root/workspace
-git fetch --all && git reset --hard origin/proxmox        # récupère le nouveau script
-sudo bash proxmox/scripts/proxmox.sh rotate-secrets         # quitte les anciens défauts (DB_PASSWORD publié)
-SKIP_IMPORT_SQL=1 sudo -E bash proxmox/scripts/proxmox.sh update
+git fetch origin proxmox
+git status --short --untracked-files=no        # doit être vide ; sinon, noter les fichiers modifiés à la main
+git reset --hard origin/proxmox                 # code de tracebayctl (le .env, les sauvegardes et l'override sont conservés)
+sudo bash proxmox/scripts/tracebayctl/tracebayctl install-cli
+sudo tracebayctl check
+sudo tracebayctl update --force                 # sauvegarde, image reconstruite, schémas, redémarrage, contrôles
+sudo tracebayctl status
+rm -rf proxmox/app/node_modules proxmox/app/dist   # restes de l'ancien build sur l'hôte, inutiles
 ```
 
-`SKIP_IMPORT_SQL=1` ne sert qu'à un ancien script : tant qu'un `proxmox.sh` d'avant ce lot peut tourner, le garder, sinon il réinjecte les dons et prêts d'`import.sql` (doublons, et retour d'enregistrements supprimés).
-
-Puis :
-
-1. ajouter le `docker-compose.override.yml` ci-dessus s'il n'existe pas, et `docker compose up -d` dans `proxmox/docker` ;
-2. contrôler : `curl -s -o /dev/null -w '%{http_code}\n' http://localhost:4000/api/monitoring/users` doit afficher `401` ; `curl -s http://localhost:4000/api/health` doit répondre ;
-3. seulement ensuite, publier la version des postes qui s'appuie sur ce serveur.
+- `install-cli` installe `/usr/local/bin/tracebayctl` (et fait mener l'ancienne commande `proxmox` à tracebayctl), écrit `/etc/tracebay/tracebayctl.conf`, propose de remplacer l'ancien `origin` (`SandersonnDev/workspace`) par `https://github.com/K0uzia/Tracebay.git` et active la sauvegarde quotidienne.
+- `status` doit montrer : santé 200, accès à la base, Node de l'API en v22.23.4 ou plus, `docker compose config` valide, secrets « renseigné », dernière sauvegarde du jour, sauvegarde quotidienne active, aucun compte de test ni mot de passe publié.
+- Node sur l'hôte n'est plus utilisé (`status` le signale) : il peut être désinstallé (`apt-get remove nodejs npm`).
 
 ## Atelier : nom et logo des PDF
 
@@ -83,7 +90,7 @@ Le nom et le logo imprimés en en-tête des PDF (lots, disques, commandes, dons,
 - Modification réservée à l'administrateur : page `/monitoring`, onglet « Atelier », ou `PUT /api/admin/branding` et `DELETE /api/admin/branding/logo` avec `ADMIN_TOKEN`. En ligne de commande :
 
 ```bash
-sudo bash proxmox/scripts/proxmox.sh set-branding "NOM DE L'ATELIER" /chemin/logo.png
+sudo tracebayctl set-branding --nom "NOM DE L'ATELIER" --logo /chemin/logo.png
 ```
 
 ### Passage à la version 3.7.0 des postes (logo par réglage)
@@ -92,10 +99,10 @@ Jusqu'à la 3.6.1, le logo de La Capsule était écrit en dur dans les gabarits 
 
 ```bash
 cd /root/workspace
-sudo bash proxmox/scripts/proxmox.sh update
+sudo tracebayctl update
 git fetch origin refs/tags/v3.6.0:refs/tags/v3.6.0
 git show v3.6.0:apps/client/public/src/icons/capsule.png > /tmp/capsule.png
-sudo bash proxmox/scripts/proxmox.sh set-branding "LA CAPSULE" /tmp/capsule.png
+sudo tracebayctl set-branding --nom "LA CAPSULE" --logo /tmp/capsule.png
 curl -s http://localhost:4000/api/branding | head -c 120; echo   # doit afficher "company_name":"LA CAPSULE"
 ```
 
@@ -106,7 +113,7 @@ Tant que le réglage n'est pas fait, les PDF des postes en 3.7.0 portent le nom 
 Une clé de licence `TB1.…`, émise par Kouzia, vaut pour tout l'atelier. Elle se saisit une fois sur le serveur, jamais sur les postes. Le serveur la vérifie hors ligne (signature Ed25519, clé publique embarquée) et ne contacte personne.
 
 ```bash
-sudo bash proxmox/scripts/proxmox.sh set-licence "TB1.…"     # ou /monitoring, onglet Licence
+sudo tracebayctl set-licence "TB1.…"     # ou /monitoring, onglet Licence
 curl -s http://localhost:4000/api/licence; echo                 # état, titulaire, expiration
 ```
 
@@ -141,7 +148,7 @@ Les destinataires des envois de PDF par e-mail ne sont pas enregistrés en base.
 
 ### Passage à la 3.7.0
 
-1. `update` du serveur : la 3.7.0 du serveur fige l'exemption à son premier démarrage.
+1. `tracebayctl update` : la 3.7.0 du serveur fige l'exemption à son premier démarrage.
 2. `set-licence` avec la clé de l'atelier, émise dans Kouzia Hub.
 3. Publier les postes en 3.7.0.
 
@@ -156,14 +163,24 @@ cd proxmox/docker && docker compose exec -T db psql -U Admin -d workspace_db -v 
 ## Exploitation
 
 ```bash
-proxmox status | proxmox logs | proxmox restart        # CLI installée par install
-cd proxmox/docker && docker compose ps
-docker compose exec db psql -U Admin -d workspace_db    # PostgreSQL n'est pas publié sur le réseau
+sudo tracebayctl status                   # état complet, alertes en jaune
+sudo tracebayctl logs [api|db] [-f]       # journaux
+sudo tracebayctl start | stop | restart
+sudo tracebayctl test-api                 # contrôles sans écriture
+sudo tracebayctl users                    # comptes (jamais les hachages)
+sudo tracebayctl admin-password NOM       # nouveau mot de passe, saisie masquée
+sudo tracebayctl user-delete NOM          # suppression d'un compte, journal anonymisé
+cd proxmox/docker && docker compose exec db psql -U Admin -d workspace_db    # PostgreSQL n'est pas publié sur le réseau
 ```
 
-Restaurer une sauvegarde : `sudo bash proxmox/scripts/proxmox.sh restore-backup proxmox/docker/backups/pre_update_DATE.sql.gz`.
+Une seule opération à la fois : une commande qui modifie le serveur pendant qu'une autre tourne s'arrête avec le code 75 et dit laquelle est en cours (`tracebayctl status` l'affiche aussi).
 
-Le port 5432 n'est plus publié : la base n'est joignable que depuis le réseau Docker. Pour un outil d'administration sur le poste, passer par un tunnel SSH vers le conteneur plutôt que de republier le port.
+### Sauvegardes
+
+- `tracebayctl backup` : sauvegarde vérifiée de la base dans `proxmox/docker/backups/AAAAMMJJ-HHMMSS[-étiquette]/` (`db.sql.gz` et `manifest.txt`). Les 14 plus récentes sont gardées.
+- Sauvegarde quotidienne à 3 h 17 (`/etc/cron.d/tracebay-backup`, journal `/var/log/tracebay-backup.log`), activée par `install-cli` ; `tracebayctl cron off` la désactive.
+- `tracebayctl restore` : liste numérotée des dernières sauvegardes (anciens `pre_update_*.sql.gz` compris), confirmation, sauvegarde de sécurité de l'état actuel, puis restauration. Si l'import échoue, la base revient à son état d'avant. `tracebayctl restore --check NOM` vérifie une sauvegarde sans rien toucher.
+- Les sauvegardes contiennent des données personnelles : `proxmox/docker/backups/` est ignoré par git. Une copie hors du serveur reste à la charge de l'administrateur.
 
 ## Validation PDF disques (traçabilité)
 

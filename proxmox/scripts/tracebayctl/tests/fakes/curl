@@ -47,6 +47,7 @@ case "$methode $chemin" in
       corps='{"success":true,"company_name":"LA CAPSULE","logo":"data:image/png;base64,iVBORw0K","nom_impose":false}'
     fi
     ;;
+  "GET /api/monitoring/users" | "GET /api/admin/users") code=401 corps='{"error":"Non autorisé"}' ;;
   "GET /api/licence") corps="${FAKE_LICENCE:-{\"success\":true,\"etat\":\"non_activee\",\"ecriture\":true,\"entreprise\":null}}" ;;
   "PUT /api/admin/users/"* | "DELETE /api/admin/users/"* | "DELETE /api/admin/branding/logo") code="${FAKE_PUT_CODE:-200}" corps="${FAKE_PUT_BODY:-{\"success\":true}}" ;;
   "PUT /api/admin/branding") code="${FAKE_PUT_CODE:-200}" corps="${FAKE_PUT_BODY:-{\"success\":true}}" ;;

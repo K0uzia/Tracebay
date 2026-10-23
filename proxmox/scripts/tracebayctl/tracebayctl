@@ -20,6 +20,8 @@ TB_SELF_DIR="$(dirname "$TB_SELF")"
 . "$TB_SELF_DIR/secrets.sh"
 # shellcheck source=atelier.sh
 . "$TB_SELF_DIR/atelier.sh"
+# shellcheck source=install.sh
+. "$TB_SELF_DIR/install.sh"
 
 usage() {
   cat <<'EOF'
@@ -54,6 +56,21 @@ Atelier et comptes
   admin-password NOM     Nouveau mot de passe d'un compte, saisi deux fois sans affichage.
   user-delete [--yes] NOM
                          Supprime un compte après confirmation ; journal d'activité anonymisé.
+
+Installation et maintenance
+  install [--sans-cron]  Première installation ou réparation : .env aux secrets aléatoires s'il manque,
+                         image, base et schémas, service systemd, commande tracebayctl (volume conservé).
+  install-cli [--sans-cron]
+                         Installe ou rafraîchit la commande (/usr/local/bin/tracebayctl et proxmox),
+                         propose de corriger l'origin, active la sauvegarde quotidienne (3 h 17).
+  cron on|off|status     Sauvegarde quotidienne.
+  start | stop | restart Marche et arrêt (service systemd s'il existe, sinon docker compose).
+  rebuild                Reconstruit l'image et redémarre l'API, code inchangé.
+  test-api               Contrôles sans écriture : santé, base, licence, routes protégées refusées.
+  diag                   status puis derniers journaux de l'API et de PostgreSQL.
+  purge                  Caches Docker et images pendantes ; volume PostgreSQL jamais touché.
+  destroy-db-volume      Supprime la base (variable I_ACCEPT_DESTROY_ALL_DATABASE_DATA obligatoire).
+  uninstall-cli          Retire la commande installée (dépôt, base et sauvegardes intacts).
 
 Aide
   help                   Cette aide.
@@ -166,6 +183,32 @@ tracebayctl restore --check [SAUVEGARDE]
   dans son état d'avant. --check vérifie la sauvegarde sans rien toucher.
 EOF
       ;;
+    install)
+      cat <<'EOF'
+tracebayctl install [--yes] [--sans-cron]
+  Installation ou réparation sur un dépôt déjà cloné (le code n'est pas mis à jour : tracebayctl update).
+  Crée proxmox/docker/.env s'il manque (secrets aléatoires, e-mail proposé dans un terminal), construit
+  l'image, démarre PostgreSQL, aligne son mot de passe, applique les schémas, installe le service
+  systemd, démarre l'API, puis install-cli. Le volume PostgreSQL existant est conservé.
+EOF
+      ;;
+    install-cli)
+      cat <<'EOF'
+tracebayctl install-cli [--yes] [--sans-cron]
+  Copie les scripts dans /usr/local/lib/tracebay (dossier neuf puis échange), pose les commandes
+  /usr/local/bin/tracebayctl et /usr/local/bin/proxmox (ancien nom, mène à tracebayctl), écrit
+  /etc/tracebay/tracebayctl.conf (dossier du dépôt), propose de corriger l'origin du dépôt et active
+  la sauvegarde quotidienne (/etc/cron.d/tracebay-backup) sauf avec --sans-cron.
+  update rafraîchit la copie installée tout seul.
+EOF
+      ;;
+    cron)
+      cat <<'EOF'
+tracebayctl cron on|off|status
+  Sauvegarde quotidienne à 3 h 17 (tracebayctl backup --tag quotidien --attendre), 14 gardées,
+  journal /var/log/tracebay-backup.log.
+EOF
+      ;;
     *) usage ;;
   esac
 }
@@ -177,33 +220,55 @@ menu() {
 
 Tracebay : que faire ?
   1  État du serveur
-  2  Vérifier la configuration
-  5  Mettre à jour
-  6  Renouveler les secrets
-  7  Journaux de l'API
-  8  Comptes
+  2  Mettre à jour
   3  Sauvegarder la base
   4  Restaurer une sauvegarde
+  5  Journaux de l'API
+  6  Comptes
+  7  Renouveler les secrets
+  8  Vérifier la configuration
+  9  Purge légère (caches Docker, base intacte)
+  10 Installation ou réparation
   q  Quitter
 EOF
     read -r -p "Choix : " choix || exit 0
     case "$choix" in
       1) ("$TB_SELF" status) || true ;;
-      2) ("$TB_SELF" check) || true ;;
-      3) ("$TB_SELF" backup >/dev/null) || true ;;
+      2) ("$TB_SELF" update) || true ;;
+      3) ("$TB_SELF" backup > /dev/null) || true ;;
       4) ("$TB_SELF" restore) || true ;;
-      5) ("$TB_SELF" update) || true ;;
-      6) ("$TB_SELF" rotate-secrets) || true ;;
-      7) ("$TB_SELF" logs) || true ;;
-      8) ("$TB_SELF" users) || true ;;
+      5) ("$TB_SELF" logs) || true ;;
+      6) ("$TB_SELF" users) || true ;;
+      7) ("$TB_SELF" rotate-secrets) || true ;;
+      8) ("$TB_SELF" check) || true ;;
+      9) ("$TB_SELF" purge) || true ;;
+      10) ("$TB_SELF" install) || true ;;
       q | Q) exit 0 ;;
       *) warn "Choix inconnu : $choix" ;;
     esac
   done
 }
 
+# Ancienne commande « proxmox » (relais posé par install-cli) : mêmes noms qu'avant, menés à tracebayctl.
+traduire_ancien_cli() {
+  [[ -n "${TB_LOCK_HELD:-}" ]] || info "La commande proxmox est remplacée par tracebayctl (tracebayctl help)."
+  case "${1:-status}" in
+    endpoints)
+      info "Liste des routes retirée : voir docs/API.md dans le dépôt."
+      exit 0
+      ;;
+    debug | diag) TB_ARGS=(diag "${@:2}") ;;
+    api-test) TB_ARGS=(test-api) ;;
+    *) TB_ARGS=("${1:-status}" "${@:2}") ;;
+  esac
+}
+
 main() {
   trap_signals
+  if [[ "${TB_APPEL:-}" == "proxmox" ]]; then
+    traduire_ancien_cli "$@"
+    set -- "${TB_ARGS[@]}"
+  fi
   if [[ $# -eq 0 ]]; then
     if [[ -t 0 ]]; then
       tb_resolve_repo
@@ -234,6 +299,22 @@ main() {
     users) cmd_users "$@" ;;
     admin-password) cmd_admin_password "$@" ;;
     user-delete) cmd_user_delete "$@" ;;
+    install) cmd_install "$@" ;;
+    install-cli) cmd_install_cli "$@" ;;
+    uninstall-cli) cmd_uninstall_cli "$@" ;;
+    cron) cmd_cron "$@" ;;
+    start) cmd_start "$@" ;;
+    stop) cmd_stop "$@" ;;
+    restart) cmd_restart "$@" ;;
+    rebuild) cmd_rebuild "$@" ;;
+    purge | purge-safe) cmd_purge "$@" ;;
+    destroy-db-volume) cmd_destroy_db_volume "$@" ;;
+    test-api | api-test) cmd_test_api "$@" ;;
+    diag | debug) cmd_diag "$@" ;;
+    restore-backup) cmd_restore "$@" ;;
+    menu)
+      menu
+      ;;
     *)
       usage >&2
       die "Commande inconnue : $commande" 2
