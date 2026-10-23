@@ -105,13 +105,14 @@
 /* ---------- Boutons ---------- */
 
 /* ---------- En-tête du prêt : même zone que la barre des autres pages (recep-toolbar-compact),
-   sans fond ni cadre, champs sur une ligne, boutons à droite en dessous ---------- */
+   sans fond ni cadre ; champs sur une ligne, boutons à droite sur la même ligne quand la place
+   le permet (champs d'au moins 58 x --ui-font), sinon dessous ---------- */
 .prets-container .prets-config-grid {
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(0, 1.3fr) minmax(0, 1.3fr) minmax(0, 2fr) minmax(0, 1.4fr) minmax(0, 1.4fr);
     gap: var(--ui-gap);
-    flex: 1 1 100%;
-    width: 100%;
+    flex: 1 1 calc(var(--ui-font) * 58);
+    min-width: 0;
 }
 
 .r-root .prets-container .prets-config-grid .lot-config__field {

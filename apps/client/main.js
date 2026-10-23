@@ -3351,6 +3351,35 @@ ipcMain.handle('get-local-ip', async () => {
 /**
  * Obtenir les infos système locales (RAM, réseau)
  */
+/**
+ * Textes légaux livrés avec l'application (lecture seule, pour Paramètres > À propos).
+ * En paquet : resources/ (extraResources) ; en développement : racine du dépôt ou apps/client.
+ * THIRD_PARTY_LICENSES.txt est généré au build (apps/client/scripts/third-party-licenses.js).
+ */
+function readBundledText(fileName) {
+    const candidates = [
+        process.resourcesPath ? path.join(process.resourcesPath, fileName) : null,
+        path.join(__dirname, fileName),
+        path.join(__dirname, '..', '..', fileName)
+    ].filter(Boolean);
+    for (const file of candidates) {
+        try {
+            if (fs.existsSync(file)) {
+                const text = fs.readFileSync(file, 'utf8');
+                if (text && text.trim()) {
+                    return { success: true, text };
+                }
+            }
+        } catch (_) { /* essai suivant */ }
+    }
+    return null;
+}
+
+ipcMain.handle('get-license', async () => readBundledText('LICENSE') || { success: false, error: 'Fichier de licence introuvable.' });
+
+ipcMain.handle('get-third-party-licenses', async () => readBundledText('THIRD_PARTY_LICENSES.txt')
+    || { success: false, error: 'Liste des licences tierces introuvable dans cette installation.' });
+
 ipcMain.handle('get-system-info', async () => {
     const total = os.totalmem();
     const free = os.freemem();

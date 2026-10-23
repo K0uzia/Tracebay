@@ -11,6 +11,8 @@ const ALLOWED_CHANNELS = {
         'get-server-config',
         'get-local-ip',
         'get-system-info',
+        'get-license',
+        'get-third-party-licenses',
         'list-folders',
         'open-path',
         'generate-lot-pdf',

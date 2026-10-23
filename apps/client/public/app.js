@@ -532,8 +532,8 @@ class PageManager {
             if (!window.electron?.invoke) {
                 return;
             }
-            // Éviter de spammer GitHub si init est rappelé
-            if (this._updateCheckedOnce) {
+            // Éviter de spammer GitHub si init est rappelé ; recherche au démarrage désactivable (Paramètres > Mise à jour)
+            if (this._updateCheckedOnce || !this.isUpdateAutoCheckEnabled()) {
                 return;
             }
             this._updateCheckedOnce = true;
@@ -579,8 +579,122 @@ class PageManager {
         this.syncThemeToggleUI();
         // Ne pas reset _updateDownloaded : le bouton Redémarrer doit rester disponible
         this.syncPendingUpdateFromMain().then(() => this.refreshUpdateUI());
+        const versionEl = document.getElementById('settingsAboutVersion');
+        if (versionEl) {
+            versionEl.textContent = window.APP_CONFIG?.appVersion ? `v${window.APP_CONFIG.appVersion}` : '-';
+        }
+        this.wireLazyLegalText('settingsLicenseDetails', 'settingsLicenseText', 'get-license', 'Licence introuvable.');
+        this.wireLazyLegalText('settingsThirdPartyDetails', 'settingsThirdPartyText', 'get-third-party-licenses', 'Licences tierces introuvables.');
+        this.wireUpdateAutoToggle();
         modal.classList.remove('hidden');
+        // Focus dans la fenêtre (lecteurs d'écran, Échap) sans contour visible au clic
+        modal.querySelector('.settings-modal-container')?.focus({ preventScroll: true });
     }
+
+    /** Préférence du poste « Rechercher les mises à jour au démarrage » (activée par défaut). */
+    isUpdateAutoCheckEnabled() {
+        try {
+            return localStorage.getItem('Tracebay_update_autocheck') !== '0';
+        } catch (_) {
+            return true;
+        }
+    }
+
+    /** Interrupteur de la recherche de mises à jour au démarrage : câblé une seule fois. */
+    wireUpdateAutoToggle() {
+        const toggle = document.getElementById('settingsUpdateAutoToggle');
+        if (!toggle) {
+            return;
+        }
+        toggle.setAttribute('aria-checked', this.isUpdateAutoCheckEnabled() ? 'true' : 'false');
+        if (toggle.dataset.wired === '1') {
+            return;
+        }
+        toggle.dataset.wired = '1';
+        toggle.addEventListener('click', () => {
+            const next = toggle.getAttribute('aria-checked') !== 'true';
+            toggle.setAttribute('aria-checked', next ? 'true' : 'false');
+            try {
+                localStorage.setItem('Tracebay_update_autocheck', next ? '1' : '0');
+            } catch (_) {
+                window.app?.showNotification?.('Préférence non mémorisée sur ce poste', 'error');
+            }
+        });
+    }
+
+    /** Texte légal livré avec l'application (licence, licences tierces), chargé à la première ouverture de son dépliant. */
+    wireLazyLegalText(detailsId, preId, channel, missingText) {
+        const details = document.getElementById(detailsId);
+        const pre = document.getElementById(preId);
+        if (!details || !pre || details.dataset.wired === '1') {
+            return;
+        }
+        details.dataset.wired = '1';
+        details.addEventListener('toggle', async () => {
+            if (!details.open || pre.dataset.loaded === '1') {
+                return;
+            }
+            if (!window.electron?.invoke) {
+                pre.textContent = 'Texte disponible dans l\'application installée.';
+                return;
+            }
+            try {
+                const res = await window.electron.invoke(channel, {});
+                if (res?.success && res.text) {
+                    pre.textContent = res.text;
+                    pre.dataset.loaded = '1';
+                } else {
+                    pre.textContent = res?.error || missingText;
+                }
+            } catch (_) {
+                pre.textContent = missingText;
+            }
+        });
+    }
+
+    attachSettingsTabs(modal) {
+        const tabs = [...modal.querySelectorAll('[role="tab"]')];
+        const select = (tab, focus = false) => {
+            tabs.forEach((t) => {
+                const active = t === tab;
+                t.setAttribute('aria-selected', active ? 'true' : 'false');
+                t.tabIndex = active ? 0 : -1;
+                const panel = document.getElementById(t.getAttribute('aria-controls'));
+                if (panel) {
+                    panel.hidden = !active;
+                }
+            });
+            if (focus) {
+                tab.focus();
+            }
+        };
+        const nav = modal.querySelector('[role="tablist"]');
+        nav?.addEventListener('click', (e) => {
+            const tab = e.target.closest('[role="tab"]');
+            if (tab) {
+                select(tab);
+            }
+        });
+        nav?.addEventListener('keydown', (e) => {
+            const i = tabs.indexOf(document.activeElement);
+            if (i < 0) {
+                return;
+            }
+            const moves = { ArrowDown: i + 1, ArrowRight: i + 1, ArrowUp: i - 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 };
+            if (!(e.key in moves)) {
+                return;
+            }
+            e.preventDefault();
+            select(tabs[(moves[e.key] + tabs.length) % tabs.length], true);
+        });
+        this.selectSettingsTab = (id) => {
+            const tab = document.getElementById(id);
+            if (tab) {
+                select(tab);
+            }
+        };
+    }
+
 
     async syncPendingUpdateFromMain() {
         try {
@@ -622,6 +736,13 @@ class PageManager {
         }
 
         const hideModal = () => modal.classList.add('hidden');
+
+        this.attachSettingsTabs(modal);
+        modal.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                hideModal();
+            }
+        });
 
         if (closeBtn) {
             closeBtn.addEventListener('click', hideModal);

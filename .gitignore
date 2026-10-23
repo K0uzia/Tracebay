@@ -68,3 +68,6 @@ coverage/
 # Misc
 *.pem
 *.key
+
+# Généré au build (licences des composants tiers)
+apps/client/THIRD_PARTY_LICENSES.txt

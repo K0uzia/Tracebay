@@ -1,54 +1,160 @@
 <div class="settings-modal hidden" id="settingsModal">
     <div class="settings-modal-overlay" id="settingsModalOverlay"></div>
-    <div class="settings-modal-container">
-        <div class="settings-modal-header">
-            <button class="settings-modal-close" id="settingsModalClose" type="button" aria-label="Fermer">
-                <i class="fas fa-times"></i>
+    <div class="settings-modal-container" role="dialog" aria-modal="true" aria-labelledby="settingsModalTitle" tabindex="-1">
+        <header class="settings-modal-header">
+            <h2 class="settings-modal-title" id="settingsModalTitle"><i class="fa-solid fa-gear" aria-hidden="true"></i> Paramètres</h2>
+            <button class="settings-modal-close" id="settingsModalClose" type="button" aria-label="Fermer les paramètres">
+                <i class="fa-solid fa-xmark" aria-hidden="true"></i>
             </button>
-            <h2 class="settings-modal-title"><i class="fas fa-gear"></i> Paramètres</h2>
-        </div>
-        <div class="settings-modal-body">
-            <section class="settings-update-card" aria-labelledby="settingsUpdateHeading">
-                <header class="settings-update-card__header">
-                    <div class="settings-update-card__icon" aria-hidden="true">
-                        <i class="fa-solid fa-cloud-arrow-down"></i>
+        </header>
+
+        <div class="settings-layout">
+            <nav class="settings-nav" role="tablist" aria-orientation="vertical" aria-label="Sections des paramètres">
+                <button type="button" class="settings-nav__item" role="tab" id="settingsTabUpdate" aria-controls="settingsPanelUpdate" aria-selected="true">
+                    <i class="fa-solid fa-cloud-arrow-down" aria-hidden="true"></i><span>Mise à jour</span>
+                    <span class="settings-nav__dot" id="settingsNavUpdateDot" hidden aria-label="Mise à jour disponible"></span>
+                </button>
+                <button type="button" class="settings-nav__item" role="tab" id="settingsTabPrivacy" aria-controls="settingsPanelPrivacy" aria-selected="false" tabindex="-1">
+                    <i class="fa-solid fa-user-shield" aria-hidden="true"></i><span>Confidentialité</span>
+                </button>
+                <button type="button" class="settings-nav__item" role="tab" id="settingsTabAbout" aria-controls="settingsPanelAbout" aria-selected="false" tabindex="-1">
+                    <i class="fa-solid fa-circle-info" aria-hidden="true"></i><span>À propos</span>
+                </button>
+            </nav>
+
+            <div class="settings-panels">
+                <section class="settings-panel" role="tabpanel" id="settingsPanelUpdate" aria-labelledby="settingsTabUpdate">
+                    <header class="settings-panel__header">
+                        <h3>Mise à jour</h3>
+                        <p>Vérifiez et installez la dernière version de Tracebay. Les versions sont publiées sur GitHub, qui ne reçoit que l'adresse IP du poste et la version installée.</p>
+                    </header>
+                    <div class="settings-row">
+                        <div class="settings-row__text">
+                            <span class="settings-row__title" id="settingsUpdateAutoLabel">Rechercher au démarrage</span>
+                            <span class="settings-row__hint">Désactivé, Tracebay ne contacte GitHub que lorsque vous cliquez sur Vérifier.</span>
+                        </div>
+                        <button type="button" class="settings-switch" id="settingsUpdateAutoToggle" role="switch" aria-checked="true" aria-labelledby="settingsUpdateAutoLabel">
+                            <span class="settings-switch__thumb" aria-hidden="true"></span>
+                        </button>
                     </div>
-                    <div class="settings-update-card__titles">
-                        <h3 id="settingsUpdateHeading">Mise à jour</h3>
-                        <p class="settings-update-card__subtitle">Vérifiez et installez la dernière version de Tracebay.</p>
+                    <div class="settings-status">
+                        <span class="settings-status__label">État</span>
+                        <div class="settings-status__value settings-update-status" id="settingsUpdateStatus">Vérification…</div>
                     </div>
-                </header>
-
-                <div class="settings-update-status-block">
-                    <span class="settings-update-status-label">État</span>
-                    <div class="settings-update-status" id="settingsUpdateStatus">Vérification…</div>
-                </div>
-
-                <div class="settings-update-actions">
-                    <button type="button" id="settingsBtnCheckUpdate" class="settings-btn settings-btn--ghost">
-                        <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Vérifier
-                    </button>
-                    <button type="button" id="settingsBtnDownloadUpdate" class="settings-btn settings-btn--primary hidden" disabled>
-                        <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger &amp; préparer
-                    </button>
-                    <button type="button" id="settingsBtnRestartUpdate" class="settings-btn settings-btn--restart hidden" disabled>
-                        <i class="fa-solid fa-power-off" aria-hidden="true"></i> Redémarrer pour appliquer
-                    </button>
-                </div>
-
-                <div class="settings-update-progress hidden" id="settingsUpdateProgress">
-                    <div class="settings-update-progress-bar">
-                        <div class="settings-update-progress-fill" id="settingsUpdateProgressFill" style="width:0%"></div>
+                    <div class="settings-actions">
+                        <button type="button" id="settingsBtnCheckUpdate" class="settings-btn settings-btn--ghost">
+                            <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i> Vérifier
+                        </button>
+                        <button type="button" id="settingsBtnDownloadUpdate" class="settings-btn settings-btn--primary hidden" disabled>
+                            <i class="fa-solid fa-download" aria-hidden="true"></i> Télécharger et préparer
+                        </button>
+                        <button type="button" id="settingsBtnRestartUpdate" class="settings-btn settings-btn--restart hidden" disabled>
+                            <i class="fa-solid fa-power-off" aria-hidden="true"></i> Redémarrer pour appliquer
+                        </button>
                     </div>
-                    <div class="settings-update-progress-text" id="settingsUpdateProgressText">0%</div>
-                </div>
+                    <div class="settings-update-progress hidden" id="settingsUpdateProgress">
+                        <div class="settings-update-progress-bar">
+                            <div class="settings-update-progress-fill" id="settingsUpdateProgressFill" style="width:0%"></div>
+                        </div>
+                        <div class="settings-update-progress-text" id="settingsUpdateProgressText">0%</div>
+                    </div>
+                    <div class="settings-update-hint hidden" id="settingsUpdateHint">
+                        <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+                        <span>Mise à jour prête. Cliquez sur <strong>Redémarrer pour appliquer</strong> (une demande administrateur peut apparaître).</span>
+                    </div>
+                    <div class="settings-error hidden" id="settingsUpdateError" role="alert"></div>
+                </section>
 
-                <div class="settings-update-hint hidden" id="settingsUpdateHint">
-                    <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-                    <span>Mise à jour prête. Cliquez sur <strong>Redémarrer pour appliquer</strong> (une demande admin peut apparaître).</span>
-                </div>
-                <div class="settings-error hidden" id="settingsUpdateError"></div>
-            </section>
+                <section class="settings-panel" role="tabpanel" id="settingsPanelPrivacy" aria-labelledby="settingsTabPrivacy" hidden>
+                    <header class="settings-panel__header">
+                        <h3>Données et confidentialité</h3>
+                        <p>Ce que Tracebay enregistre, où, et qui en est responsable.</p>
+                    </header>
+                    <div class="settings-block">
+                        <h4>Données traitées</h4>
+                        <ul class="settings-list">
+                            <li>Lots et matériel : numéros de série, marques, modèles, état, système, prénom ou nom du technicien.</li>
+                            <li>Disques : numéros de série, caractéristiques, méthode d'effacement.</li>
+                            <li>Commandes : produits, quantités, prix, liens.</li>
+                            <li>Dons : nom des bénéficiaires, matériel donné, dates.</li>
+                            <li>Prêts : nom de l'emprunteur (personne ou structure), contact s'il est saisi, dates, montant.</li>
+                            <li>Agenda : titre, lieu et description des événements.</li>
+                            <li>E-mails : adresses des destinataires quand un PDF est envoyé par e-mail.</li>
+                            <li>Comptes : identifiant de connexion des utilisateurs du serveur.</li>
+                        </ul>
+                    </div>
+                    <div class="settings-block">
+                        <h4>Lieu de stockage</h4>
+                        <p class="settings-block__hint">Sur le serveur de l'atelier (base de données et dossiers partagés des PDF), qui envoie aussi les e-mails. Sur ce poste, Tracebay ne garde que des préférences d'interface, la session de connexion et les derniers éléments consultés.</p>
+                    </div>
+                    <div class="settings-block">
+                        <h4>Responsable du traitement</h4>
+                        <p class="settings-block__hint">L'atelier ou l'organisation qui utilise Tracebay et héberge son serveur est responsable des données qu'il y saisit et de l'information des personnes concernées (bénéficiaires, emprunteurs, techniciens, destinataires des e-mails). Kouzia est l'éditeur du logiciel : il n'a pas accès à ces données et ne les reçoit pas.</p>
+                    </div>
+                    <div class="settings-block">
+                        <h4>Connexions et envois</h4>
+                        <ul class="settings-list">
+                            <li>Aucune mesure d'audience, aucune télémétrie, aucun envoi de données à Kouzia.</li>
+                            <li>Le poste échange uniquement avec le serveur de l'atelier pour les données métier.</li>
+                            <li>Mises à jour : Tracebay interroge GitHub (dépôt K0uzia/Tracebay) pour savoir si une nouvelle version existe et la télécharger. Comme pour tout téléchargement, GitHub voit l'adresse IP du poste ; aucune donnée de l'atelier n'est transmise. La recherche au démarrage peut être désactivée dans l'onglet Mise à jour.</li>
+                            <li>Erreurs de l'application : le message d'erreur, la version et un identifiant aléatoire du poste sont envoyés au serveur de l'atelier, pour son administrateur. Les rapports de plantage restent sur le poste et ne sont jamais envoyés.</li>
+                        </ul>
+                    </div>
+                    <div class="settings-block">
+                        <h4>Durée de conservation et droits des personnes</h4>
+                        <p class="settings-block__hint">L'atelier fixe la durée de conservation. Pour répondre à une demande d'accès, de rectification ou d'effacement : un lot, une ligne de matériel ou un événement d'agenda se modifie ou se supprime depuis sa page ; le nom d'un bénéficiaire de don se modifie depuis l'Historique (Éditer matériel). Un prêt enregistré ne se modifie pas encore depuis l'application : écrivez à contact@kouzia.com pour la marche à suivre. L'export complet et la suppression définitive se font sur le serveur, par son administrateur (sauvegarde de la base).</p>
+                    </div>
+                </section>
+
+                <section class="settings-panel" role="tabpanel" id="settingsPanelAbout" aria-labelledby="settingsTabAbout" hidden>
+                    <header class="settings-panel__header">
+                        <h3>À propos</h3>
+                        <p>Traçabilité de matériel informatique, avec le serveur de l'atelier.</p>
+                    </header>
+                    <dl class="settings-facts">
+                        <div class="settings-facts__row">
+                            <dt>Logiciel</dt>
+                            <dd>Tracebay</dd>
+                        </div>
+                        <div class="settings-facts__row">
+                            <dt>Version</dt>
+                            <dd id="settingsAboutVersion">-</dd>
+                        </div>
+                        <div class="settings-facts__row">
+                            <dt>Éditeur</dt>
+                            <dd>Alexandre Kouziaeff, entrepreneur individuel (Kouzia)</dd>
+                        </div>
+                        <div class="settings-facts__row">
+                            <dt>SIRET</dt>
+                            <dd>108 580 028 00018</dd>
+                        </div>
+                        <div class="settings-facts__row">
+                            <dt>Adresse</dt>
+                            <dd>Huelgoat (29690), France</dd>
+                        </div>
+                        <div class="settings-facts__row">
+                            <dt>Contact</dt>
+                            <dd>contact@kouzia.com</dd>
+                        </div>
+                        <div class="settings-facts__row">
+                            <dt>Site</dt>
+                            <dd><a href="https://kouzia.com" target="_blank" rel="noopener noreferrer">kouzia.com</a></dd>
+                        </div>
+                        <div class="settings-facts__row">
+                            <dt>Licence</dt>
+                            <dd>Tracebay Source-Available License 1.0 : usage interne libre, redistribution commerciale soumise à l'accord du titulaire</dd>
+                        </div>
+                    </dl>
+                    <details class="settings-license" id="settingsLicenseDetails">
+                        <summary>Lire la licence complète</summary>
+                        <pre class="settings-license__text" id="settingsLicenseText">Chargement de la licence…</pre>
+                    </details>
+                    <details class="settings-license" id="settingsThirdPartyDetails">
+                        <summary>Licences des composants tiers</summary>
+                        <pre class="settings-license__text" id="settingsThirdPartyText">Chargement des licences…</pre>
+                    </details>
+                </section>
+            </div>
         </div>
     </div>
 </div>

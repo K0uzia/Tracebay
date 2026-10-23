@@ -45,7 +45,7 @@
   "build": {
     "appId": "com.Tracebay.client",
     "productName": "Tracebay",
-    "copyright": "Copyright © 2026 Kouzia",
+    "copyright": "Copyright © 2026 Alexandre Kouziaeff, entrepreneur individuel (Kouzia)",
     "electronVersion": "39.2.4",
     "npmRebuild": false,
     "toolsets": {
@@ -74,6 +74,17 @@
       "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
       "!**/{appveyor.yml,.travis.yml,circle.yml}",
       "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],
+    "beforePack": "./scripts/third-party-licenses.js",
+    "extraResources": [
+      {
+        "from": "../../LICENSE",
+        "to": "LICENSE"
+      },
+      {
+        "from": "THIRD_PARTY_LICENSES.txt",
+        "to": "THIRD_PARTY_LICENSES.txt"
+      }
     ],
     "directories": {
       "output": "dist",
