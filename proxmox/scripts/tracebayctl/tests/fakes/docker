@@ -27,7 +27,8 @@ if [[ "${1:-}" == "compose" ]]; then
         printf 'postgres:16-bookworm\nworkspace-proxmox:latest\n'
         exit 0
       fi
-      if [[ -n "${FAKE_CONFIG_FAIL:-}" ]]; then
+      # CASSE dans le dossier docker : compose invalide dans une version donnée du dépôt.
+      if [[ -n "${FAKE_CONFIG_FAIL:-}" || -f "$PWD/CASSE" ]]; then
         echo "yaml: line 9: mapping values are not allowed in this context" >&2
         exit 1
       fi

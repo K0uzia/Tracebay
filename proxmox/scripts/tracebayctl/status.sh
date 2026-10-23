@@ -74,6 +74,13 @@ status_depot() {
   else
     ligne "Retard sur origin" "$distant commit(s) (au dernier fetch) : tracebayctl update"
   fi
+  if [[ -r "$TB_STATE_DIR/derniere-maj" ]]; then
+    local f="$TB_STATE_DIR/derniere-maj" texte resultat schema
+    resultat="$(sed -n 's/^resultat=//p' "$f")"
+    schema="$(sed -n 's/^schema=//p' "$f")"
+    texte="$(sed -n 's/^date=//p' "$f"), $(sed -n 's/^depuis=//p' "$f") vers $(sed -n 's/^vers=//p' "$f"), $resultat, schéma : $schema"
+    if [[ "$resultat" == "réussie" && "$schema" == "ok" ]]; then ligne "Dernière mise à jour" "$texte"; else alerte "Dernière mise à jour" "$texte"; fi
+  fi
   origine="$(git -C "$TB_REPO" remote get-url origin 2>/dev/null || echo "absent")"
   if [[ "$origine" == "$TB_EXPECTED_ORIGIN" ]]; then
     ligne "Origin" "$origine"

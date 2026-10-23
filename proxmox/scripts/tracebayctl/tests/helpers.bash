@@ -65,6 +65,7 @@ setup_tb() {
   export TB_BIN_DIR="$BATS_TEST_TMPDIR/bin"
   export TB_CRON_FILE="$BATS_TEST_TMPDIR/cron.d/tracebay-backup"
   export TB_SYSTEMD_DIR="$BATS_TEST_TMPDIR/systemd"
+  export TB_STATE_DIR="$BATS_TEST_TMPDIR/state"
   export TB_SKIP_ROOT_CHECK=1 TB_SLEEP=0 TB_DB_WAIT=3 TB_API_WAIT=3
   export NO_COLOR=1
   unset TB_YES TB_LOCK_HELD TB_BACKUPS

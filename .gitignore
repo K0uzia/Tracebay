@@ -1,6 +1,8 @@
 # Dependencies
 node_modules/
 package-lock.json
+# Lock de l'API suivi : npm ci dans l'image Docker, mêmes versions à chaque construction
+!proxmox/app/package-lock.json
 yarn.lock
 
 # Build outputs

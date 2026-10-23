@@ -33,7 +33,11 @@ fi
 chemin="/${url#http*://*/}"
 code=200 corps='{"success":true}'
 case "$methode $chemin" in
-  "GET /api/health") code="${FAKE_HEALTH:-200}" corps='{"status":"ok"}' ;;
+  "GET /api/health")
+    code="${FAKE_HEALTH:-200}" corps='{"status":"ok"}'
+    # CASSE_SANTE dans le dossier docker : version du dépôt dont l'API ne démarre pas.
+    [[ -f "$TB_REPO/proxmox/docker/CASSE_SANTE" ]] && code=500
+    ;;
   "GET /api/branding")
     attendu="$(sed -n 's/^DB_PASSWORD=//p' "$TB_REPO/proxmox/docker/.env" | tail -n 1)"
     if [[ -f "$FAKE_DIR/db.password" && "$(cat "$FAKE_DIR/db.password")" != "$attendu" ]]; then

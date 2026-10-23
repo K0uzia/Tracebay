@@ -14,6 +14,8 @@ TB_SELF_DIR="$(dirname "$TB_SELF")"
 . "$TB_SELF_DIR/status.sh"
 # shellcheck source=backup.sh
 . "$TB_SELF_DIR/backup.sh"
+# shellcheck source=update.sh
+. "$TB_SELF_DIR/update.sh"
 
 usage() {
   cat <<'EOF'
@@ -23,6 +25,11 @@ Usage : tracebayctl <commande> [options]
 Consultation
   status                 État complet : conteneurs, version, API, licence, atelier, Node, disque, sauvegardes.
   check                  Valide Docker, docker-compose.yml et les secrets du .env, sans rien modifier.
+
+Mise à jour
+  update [--yes] [--skip-backup] [--force]
+                         Sauvegarde obligatoire, nouvelle version de la branche proxmox, image construite
+                         avant de toucher aux conteneurs ; retour automatique à la version d'avant si échec.
 
 Sauvegardes
   backup [--tag X]       Sauvegarde vérifiée de la base (pg_dump), 14 gardées ; affiche son chemin.
@@ -51,6 +58,22 @@ EOF
 tracebayctl check
   docker compose config -q, secrets du .env (vides, connus ou trop courts) et droits 600 du .env.
   Lancé aussi avant chaque opération qui utilise compose ou le .env.
+EOF
+      ;;
+    update)
+      cat <<'EOF'
+tracebayctl update [--yes] [--skip-backup] [--force]
+  1. Contrôles (Docker, compose, secrets), git fetch et liste des nouveautés, confirmation.
+  2. Sauvegarde obligatoire (étiquette avant-maj) : si elle échoue, arrêt, rien n'a changé.
+     --skip-backup s'en passe, après une seconde confirmation.
+  3. Code de la nouvelle version (git reset --hard origin/proxmox), puis suite avec ses propres scripts.
+  4. Compose de la nouvelle version validé, image construite pendant que l'ancienne tourne :
+     en cas d'échec, retour au code d'avant, rien n'a changé.
+  5. Mot de passe PostgreSQL réaligné, schema.sql et migrations embarquées (erreur : avertissement
+     noté dans status), redémarrage, santé de l'API et accès à la base.
+     En cas d'échec : retour à la version d'avant, et la sauvegarde à restaurer est indiquée.
+  --force : reconstruit et redémarre même sans nouveau commit.
+  L'API n'est jamais laissée arrêtée, même après une interruption.
 EOF
       ;;
     backup)
@@ -84,6 +107,7 @@ menu() {
 Tracebay : que faire ?
   1  État du serveur
   2  Vérifier la configuration
+  5  Mettre à jour
   3  Sauvegarder la base
   4  Restaurer une sauvegarde
   q  Quitter
@@ -94,6 +118,7 @@ EOF
       2) ("$TB_SELF" check) || true ;;
       3) ("$TB_SELF" backup >/dev/null) || true ;;
       4) ("$TB_SELF" restore) || true ;;
+      5) ("$TB_SELF" update) || true ;;
       q | Q) exit 0 ;;
       *) warn "Choix inconnu : $choix" ;;
     esac
@@ -124,6 +149,7 @@ main() {
     check) cmd_check "$@" ;;
     backup) cmd_backup "$@" ;;
     restore) cmd_restore "$@" ;;
+    update) cmd_update "$@" ;;
     *)
       usage >&2
       die "Commande inconnue : $commande" 2

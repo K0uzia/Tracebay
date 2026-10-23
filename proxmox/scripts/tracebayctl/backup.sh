@@ -11,7 +11,7 @@ tag_valide() { [[ "$1" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]]; }
 
 # gzip lisible, non vide, et fin de dump écrite par pg_dump (absente si le dump a été coupé).
 dump_valide() {
-  [[ -s "$1" ]] && gzip -t "$1" 2>/dev/null && gzip -dc "$1" | tail -n 3 | grep -qF -e "$TB_DUMP_FIN"
+  [[ -s "$1" ]] && gzip -t "$1" 2>/dev/null && gzip -dc "$1" | tail -n 3 | grep -F -e "$TB_DUMP_FIN" >/dev/null
 }
 
 taille_base_mo() {

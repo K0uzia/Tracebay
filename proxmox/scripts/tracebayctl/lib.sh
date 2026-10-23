@@ -10,6 +10,7 @@ TB_BIN_DIR="${TB_BIN_DIR:-/usr/local/bin}"
 TB_CRON_FILE="${TB_CRON_FILE:-/etc/cron.d/tracebay-backup}"
 TB_SYSTEMD_DIR="${TB_SYSTEMD_DIR:-/etc/systemd/system}"
 TB_SERVICE="${TB_SERVICE:-proxmox-backend}"
+TB_STATE_DIR="${TB_STATE_DIR:-/var/lib/tracebay}"
 TB_BACKUP_KEEP="${TB_BACKUP_KEEP:-14}"
 TB_BACKUP_MAX_AGE_DAYS="${TB_BACKUP_MAX_AGE_DAYS:-2}"
 TB_DISK_MIN_PCT="${TB_DISK_MIN_PCT:-10}"
@@ -155,8 +156,9 @@ rand_hex() {
 # Depuis le dossier docker : le fichier docker-compose.override.yml local (montage du partage) est pris en compte.
 dc() { (cd "$TB_DOCKER" && docker compose "$@"); }
 
-db_running() { dc ps --status running --services 2>/dev/null | grep -qx db; }
-api_running() { dc ps --status running --services 2>/dev/null | grep -qx proxmox; }
+# grep sans -q dans les tubes : avec pipefail, -q coupe le tube et le producteur meurt de SIGPIPE.
+db_running() { dc ps --status running --services 2>/dev/null | grep -x db >/dev/null; }
+api_running() { dc ps --status running --services 2>/dev/null | grep -x proxmox >/dev/null; }
 
 wait_db() {
   local i
