@@ -16,6 +16,8 @@ TB_SELF_DIR="$(dirname "$TB_SELF")"
 . "$TB_SELF_DIR/backup.sh"
 # shellcheck source=update.sh
 . "$TB_SELF_DIR/update.sh"
+# shellcheck source=secrets.sh
+. "$TB_SELF_DIR/secrets.sh"
 
 usage() {
   cat <<'EOF'
@@ -35,6 +37,10 @@ Sauvegardes
   backup [--tag X]       Sauvegarde vérifiée de la base (pg_dump), 14 gardées ; affiche son chemin.
   restore [SAUVEGARDE]   Remplace la base par une sauvegarde (choix dans la liste sans argument),
                          après une sauvegarde de sécurité de l'état actuel. --check : vérifier seulement.
+
+Secrets
+  rotate-secrets [--yes] Nouveaux JWT_SECRET, ADMIN_TOKEN et mot de passe PostgreSQL ; tout est remis
+                         comme avant si une étape échoue.
 
 Aide
   help                   Cette aide.
@@ -76,6 +82,17 @@ tracebayctl update [--yes] [--skip-backup] [--force]
   L'API n'est jamais laissée arrêtée, même après une interruption.
 EOF
       ;;
+    rotate-secrets)
+      cat <<'EOF'
+tracebayctl rotate-secrets [--yes]
+  Génère JWT_SECRET, ADMIN_TOKEN (32 octets) et DB_PASSWORD (24 octets). Ordre : copie du .env
+  (.env.avant-rotation), mot de passe du rôle PostgreSQL changé, nouveau .env écrit d'un bloc,
+  redémarrage, contrôle de l'API et de l'accès à la base. Si une étape échoue ou en cas
+  d'interruption : ancien .env et ancien mot de passe PostgreSQL remis, conteneurs relancés.
+  Fonctionne aussi quand les secrets actuels sont absents ou faibles (c'est le remède).
+  Tous les utilisateurs devront se reconnecter.
+EOF
+      ;;
     backup)
       cat <<'EOF'
 tracebayctl backup [--tag ETIQUETTE] [--attendre]
@@ -108,6 +125,7 @@ Tracebay : que faire ?
   1  État du serveur
   2  Vérifier la configuration
   5  Mettre à jour
+  6  Renouveler les secrets
   3  Sauvegarder la base
   4  Restaurer une sauvegarde
   q  Quitter
@@ -119,6 +137,7 @@ EOF
       3) ("$TB_SELF" backup >/dev/null) || true ;;
       4) ("$TB_SELF" restore) || true ;;
       5) ("$TB_SELF" update) || true ;;
+      6) ("$TB_SELF" rotate-secrets) || true ;;
       q | Q) exit 0 ;;
       *) warn "Choix inconnu : $choix" ;;
     esac
@@ -150,6 +169,7 @@ main() {
     backup) cmd_backup "$@" ;;
     restore) cmd_restore "$@" ;;
     update) cmd_update "$@" ;;
+    rotate-secrets) cmd_rotate_secrets "$@" ;;
     *)
       usage >&2
       die "Commande inconnue : $commande" 2
