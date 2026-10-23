@@ -6,7 +6,7 @@ services:
     environment:
       POSTGRES_DB: ${DB_NAME:-workspace}
       POSTGRES_USER: ${DB_USER:-workspace}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD absent de proxmox/docker/.env : lancer proxmox.sh rotate-secrets}
+      POSTGRES_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD absent de proxmox/docker/.env, lancer proxmox.sh rotate-secrets}"
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=en_US.UTF-8"
     # Port 5432 non publié : la base n'est joignable que depuis le réseau Docker (API, docker compose exec).
     volumes:
@@ -43,14 +43,14 @@ services:
       SERVER_HOST: ${SERVER_HOST:-0.0.0.0}
       WS_PORT: ${WS_PORT:-4000}
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3000}
-      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET absent de proxmox/docker/.env : lancer proxmox.sh rotate-secrets}
-      ADMIN_TOKEN: ${ADMIN_TOKEN:?ADMIN_TOKEN absent de proxmox/docker/.env : lancer proxmox.sh rotate-secrets}
+      JWT_SECRET: "${JWT_SECRET:?JWT_SECRET absent de proxmox/docker/.env, lancer proxmox.sh rotate-secrets}"
+      ADMIN_TOKEN: "${ADMIN_TOKEN:?ADMIN_TOKEN absent de proxmox/docker/.env, lancer proxmox.sh rotate-secrets}"
       ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-false}
       DB_HOST: db
       DB_PORT: ${DB_PORT:-5432}
       DB_NAME: ${DB_NAME:-workspace_db}
       DB_USER: ${DB_USER:-Admin}
-      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD absent de proxmox/docker/.env : lancer proxmox.sh rotate-secrets}
+      DB_PASSWORD: "${DB_PASSWORD:?DB_PASSWORD absent de proxmox/docker/.env, lancer proxmox.sh rotate-secrets}"
       DB_POOL_MIN: ${DB_POOL_MIN:-2}
       DB_POOL_MAX: ${DB_POOL_MAX:-10}
       DB_IDLE_TIMEOUT: ${DB_IDLE_TIMEOUT:-30000}
