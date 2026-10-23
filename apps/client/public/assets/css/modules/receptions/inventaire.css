@@ -605,9 +605,9 @@
 /* EliteBook 840 G7 */
 .inventaire-container .lot-content .lot-table .lot-table__th--modele { --w: 10; }
 /* icône du système */
-.inventaire-container .lot-content .lot-table .lot-table__th--os { --w: 3.5; }
+.inventaire-container .lot-content .lot-table .lot-table__th--os { --w: 4; }
 /* badge : Reconditionnés, Non défini */
-.inventaire-container .lot-content .lot-table .lot-table__th--state { --w: 8.5; }
+.inventaire-container .lot-content .lot-table .lot-table__th--state { --w: 8; }
 /* 20/10/2026 */
 .inventaire-container .lot-content .lot-table .lot-table__th--date { --w: 7; }
 /* nom du technicien */
