@@ -22,6 +22,9 @@ apps/server/dist/
 proxmox/docker/email.env
 proxmox/docker/docker-compose.override.yml
 proxmox/docker/.env.bak-*
+proxmox/docker/.env.avant-rotation
+# Sauvegardes de la base : données personnelles, jamais dans le dépôt
+proxmox/docker/backups/
 import.sql
 __pycache__/
 *.pyc

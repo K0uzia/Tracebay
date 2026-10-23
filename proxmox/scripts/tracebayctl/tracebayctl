@@ -12,6 +12,8 @@ TB_SELF_DIR="$(dirname "$TB_SELF")"
 . "$TB_SELF_DIR/lib.sh"
 # shellcheck source=status.sh
 . "$TB_SELF_DIR/status.sh"
+# shellcheck source=backup.sh
+. "$TB_SELF_DIR/backup.sh"
 
 usage() {
   cat <<'EOF'
@@ -21,6 +23,11 @@ Usage : tracebayctl <commande> [options]
 Consultation
   status                 État complet : conteneurs, version, API, licence, atelier, Node, disque, sauvegardes.
   check                  Valide Docker, docker-compose.yml et les secrets du .env, sans rien modifier.
+
+Sauvegardes
+  backup [--tag X]       Sauvegarde vérifiée de la base (pg_dump), 14 gardées ; affiche son chemin.
+  restore [SAUVEGARDE]   Remplace la base par une sauvegarde (choix dans la liste sans argument),
+                         après une sauvegarde de sécurité de l'état actuel. --check : vérifier seulement.
 
 Aide
   help                   Cette aide.
@@ -46,6 +53,25 @@ tracebayctl check
   Lancé aussi avant chaque opération qui utilise compose ou le .env.
 EOF
       ;;
+    backup)
+      cat <<'EOF'
+tracebayctl backup [--tag ETIQUETTE] [--attendre]
+  Sauvegarde de la base dans proxmox/docker/backups/AAAAMMJJ-HHMMSS[-ETIQUETTE]/ (db.sql.gz et
+  manifest.txt), vérifiée (gzip, fin de dump) avant d'être gardée. Les 14 plus récentes sont gardées
+  (TB_BACKUP_KEEP). Sortie standard : le chemin de la sauvegarde, seul.
+  --attendre : attend jusqu'à 10 minutes la fin d'une autre opération (sauvegarde quotidienne).
+EOF
+      ;;
+    restore)
+      cat <<'EOF'
+tracebayctl restore [--yes] [SAUVEGARDE]
+tracebayctl restore --check [SAUVEGARDE]
+  SAUVEGARDE : dossier (ou son nom) de proxmox/docker/backups, ou ancien fichier pre_update_*.sql.gz.
+  Sans argument : liste numérotée des 15 dernières. Confirmation, sauvegarde de sécurité de l'état
+  actuel, API arrêtée pendant l'import, puis redémarrée. Si l'import échoue, la base est remise
+  dans son état d'avant. --check vérifie la sauvegarde sans rien toucher.
+EOF
+      ;;
     *) usage ;;
   esac
 }
@@ -58,12 +84,16 @@ menu() {
 Tracebay : que faire ?
   1  État du serveur
   2  Vérifier la configuration
+  3  Sauvegarder la base
+  4  Restaurer une sauvegarde
   q  Quitter
 EOF
     read -r -p "Choix : " choix || exit 0
     case "$choix" in
       1) ("$TB_SELF" status) || true ;;
       2) ("$TB_SELF" check) || true ;;
+      3) ("$TB_SELF" backup >/dev/null) || true ;;
+      4) ("$TB_SELF" restore) || true ;;
       q | Q) exit 0 ;;
       *) warn "Choix inconnu : $choix" ;;
     esac
@@ -92,6 +122,8 @@ main() {
   case "$commande" in
     status) cmd_status "$@" ;;
     check) cmd_check "$@" ;;
+    backup) cmd_backup "$@" ;;
+    restore) cmd_restore "$@" ;;
     *)
       usage >&2
       die "Commande inconnue : $commande" 2

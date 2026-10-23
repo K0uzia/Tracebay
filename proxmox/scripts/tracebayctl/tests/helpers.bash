@@ -2,6 +2,8 @@
 # Environnement de test : dépôt Git factice (avec un origin local), faux docker, curl, systemctl,
 # hostname, et faux flock si le système n'en a pas. Aucun accès réseau ni Docker réel.
 
+bats_require_minimum_version 1.5.0
+
 TB_SRC="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
 
 # Secrets de test, forts : ils ne doivent jamais apparaître dans une sortie ni dans les arguments d'une commande.
@@ -37,6 +39,7 @@ setup_tb() {
 
   git init -q --bare -b proxmox "$origine"
   git init -q -b proxmox "$TB_REPO"
+  git -C "$TB_REPO" config core.autocrlf false
   mkdir -p "$TB_REPO/proxmox/docker" "$TB_REPO/proxmox/app/src/db"
   cp "$TB_SRC/../../docker/docker-compose.yml" "$TB_REPO/proxmox/docker/"
   echo "CREATE TABLE IF NOT EXISTS lots (id SERIAL PRIMARY KEY);" > "$TB_REPO/proxmox/app/src/db/schema.sql"
@@ -45,8 +48,8 @@ setup_tb() {
   copier_scripts "$TB_REPO"
   (
     cd "$TB_REPO" || exit 1
-    git -c user.name=test -c user.email=test@example.invalid add -A
-    git -c user.name=test -c user.email=test@example.invalid commit -q -m "version initiale"
+    git -c core.autocrlf=false -c user.name=test -c user.email=test@example.invalid add -A
+    git -c core.autocrlf=false -c user.name=test -c user.email=test@example.invalid commit -q -m "version initiale"
     git remote add origin "$origine"
     git push -q origin proxmox
     git fetch -q origin
