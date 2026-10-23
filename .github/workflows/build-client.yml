@@ -48,7 +48,9 @@ jobs:
         run: node .claude/skills/desk-audit/scripts/check-repo.mjs
 
   build-linux:
-    runs-on: ubuntu-latest
+    # Ubuntu 24.04 figé : sur ubuntu-latest (26.04, glibc 2.43), le mksquashfs
+    # d'appimage@1.0.2 impose son libm.so.6 aux outils du système et échoue.
+    runs-on: ubuntu-24.04
     needs: checks
     if: |
       github.event_name == 'push' ||
