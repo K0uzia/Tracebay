@@ -73,6 +73,34 @@ Puis :
 2. contrôler : `curl -s -o /dev/null -w '%{http_code}\n' http://localhost:4000/api/monitoring/users` doit afficher `401` ; `curl -s http://localhost:4000/api/health` doit répondre ;
 3. seulement ensuite, publier la version des postes qui s'appuie sur ce serveur.
 
+## Atelier : nom et logo des PDF
+
+Le nom et le logo imprimés en en-tête des PDF (lots, disques, commandes, dons, prêts) sont un réglage du serveur, partagé par tous les postes. Ils sont stockés dans la table `app_settings` (clés `branding.company_name` et `branding.logo`), et donc compris dans les sauvegardes `pg_dump`. Aucune migration de schéma : la table existe déjà.
+
+- Sans réglage : nom « Tracebay », pas de logo.
+- Logo : PNG, JPEG ou WebP, 512 Ko maximum. Pas de SVG (refusé).
+- Lecture publique : `GET /api/branding`, utilisée par les postes au moment de générer un PDF.
+- Modification réservée à l'administrateur : page `/monitoring`, onglet « Atelier », ou `PUT /api/admin/branding` et `DELETE /api/admin/branding/logo` avec `ADMIN_TOKEN`. En ligne de commande :
+
+```bash
+sudo bash proxmox/scripts/proxmox.sh set-branding "NOM DE L'ATELIER" /chemin/logo.png
+```
+
+### Passage à la version 3.6.2 des postes (logo par réglage)
+
+Jusqu'à la 3.6.1, le logo de La Capsule était écrit en dur dans les gabarits PDF. À partir de la 3.6.2, il vient du réglage ci-dessus et le fichier n'est plus livré avec l'application. Pour qu'un atelier déjà installé garde son en-tête, enregistrer le réglage sur le serveur **avant** de publier la 3.6.2 des postes :
+
+```bash
+cd /root/workspace
+sudo bash proxmox/scripts/proxmox.sh update
+git fetch origin refs/tags/v3.6.0:refs/tags/v3.6.0
+git show v3.6.0:apps/client/public/src/icons/capsule.png > /tmp/capsule.png
+sudo bash proxmox/scripts/proxmox.sh set-branding "LA CAPSULE" /tmp/capsule.png
+curl -s http://localhost:4000/api/branding | head -c 120; echo   # doit afficher "company_name":"LA CAPSULE"
+```
+
+Tant que le réglage n'est pas fait, les PDF des postes en 3.6.2 portent le nom « Tracebay », sans logo.
+
 ## Import ponctuel de données
 
 Aucun import automatique. Pour une reprise exceptionnelle : générer le fichier hors du dépôt (`proxmox/scripts/rebuild_import_sql_from_pdfs.py`), le relire, l'appliquer une fois, puis le supprimer. Il contient des données personnelles et ne doit jamais être commité (il est ignoré par git).

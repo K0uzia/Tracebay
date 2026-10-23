@@ -11,6 +11,7 @@ import jwt from 'jsonwebtoken';
 import { registerMonitoringRoutes, incrementMessageCount } from './api/monitoring';
 import { registerClientErrorsRoutes } from './api/client-errors';
 import { registerAdminRoutes } from './api/admin';
+import { registerBrandingRoutes, pgBrandingStore } from './api/branding';
 import { registerCompression } from './middleware/compression';
 import { registerRateLimit, registerAuthRateLimit } from './middleware/rate-limit';
 import { registerAdminGuard, registrationAllowed } from './middleware/admin-guard';
@@ -173,6 +174,9 @@ function broadcastUserCount() {
 
     // Register admin routes
     await registerAdminRoutes(fastify);
+
+    // Réglage d'atelier (nom et logo des PDF)
+    await registerBrandingRoutes(fastify, pgBrandingStore(query));
 
     // Health check endpoint
     fastify.get('/api/health', async (request: FastifyRequest, reply: FastifyReply) => {

@@ -1174,6 +1174,41 @@ cmd_update() {
   ok "Mise à jour terminée. Sauvegardes : $DOCKER_DIR/backups/ — vérifier : proxmox status"
 }
 
+# Nom et logo imprimés sur les PDF : réglage d'atelier partagé par tous les postes (table app_settings).
+cmd_set_branding() {
+  require_root
+  local name="${1:-}" file="${2:-}"
+  name="${name//[$'\001'-$'\037']/}"
+  [[ -n "$name" ]] || err "Usage : $0 set-branding \"NOM DE L'ATELIER\" [/chemin/logo.png|.jpg|.webp]"
+  (( ${#name} <= 120 )) || err "Nom trop long (120 caractères maximum)."
+
+  local logo_sql="" mime="" size magic
+  if [[ -n "$file" ]]; then
+    [[ -f "$file" ]] || err "Logo introuvable : $file"
+    size=$(stat -c %s "$file")
+    (( size > 0 && size <= 524288 )) || err "Le logo doit faire au plus 512 Ko."
+    magic=$(head -c 12 "$file" | od -An -tx1 | tr -d ' \n')
+    case "$magic" in
+      89504e470d0a1a0a*) mime="image/png" ;;
+      ffd8ff*) mime="image/jpeg" ;;
+      52494646????????57454250) mime="image/webp" ;;
+      *) err "Format de logo accepté : PNG, JPEG ou WebP (pas de SVG)." ;;
+    esac
+    # base64 ne contient pas d'apostrophe : insertion littérale sûre.
+    logo_sql="INSERT INTO app_settings (key, value, updated_at) VALUES ('branding.logo', 'data:${mime};base64,$(base64 -w0 "$file")', now()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();"
+  fi
+
+  ensure_paths
+  cd "$DOCKER_DIR"
+  wait_db || err "PostgreSQL indisponible."
+  {
+    printf '%s\n' "INSERT INTO app_settings (key, value, updated_at) VALUES ('branding.company_name', :'nom', now()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now();"
+    if [[ -n "$logo_sql" ]]; then printf '%s\n' "$logo_sql"; fi
+  } | docker compose exec -T db psql -U "$DB_USER_DEFAULT" -d "$DB_NAME_DEFAULT" -v ON_ERROR_STOP=1 -v nom="$name" >/dev/null \
+    || err "Enregistrement du réglage de l'atelier impossible."
+  ok "Réglage de l'atelier enregistré : $name${mime:+ (logo $mime)}. Les postes l'utilisent pour les prochains PDF."
+}
+
 # Nouveaux JWT_SECRET, ADMIN_TOKEN et mot de passe PostgreSQL ; toutes les sessions sont déconnectées.
 cmd_rotate_secrets() {
   require_root
@@ -1289,13 +1324,15 @@ case "$COMMAND" in
   test-api|api-test) cmd_test ;;
   update) cmd_update ;;
   rotate-secrets) cmd_rotate_secrets ;;
+  set-branding) cmd_set_branding "$@" ;;
   restore-backup) cmd_restore_backup "$@" ;;
   help|--help|-h)
-    echo "Usage: $0 [menu|update|rotate-secrets|restore-backup|purge|install|destroy-db-volume|start|stop|restart|status|test-api|help]"
+    echo "Usage: $0 [menu|update|rotate-secrets|set-branding|restore-backup|purge|install|destroy-db-volume|start|stop|restart|status|test-api|help]"
     echo ""
     echo "  (sans argument, en terminal)  menu interactif — mise à jour ou purge légère, sans toucher au volume PostgreSQL."
     echo "  update              Backup pg_dump, Git + build, contrôle des secrets, compose up --build, migrations."
     echo "  rotate-secrets      Nouveaux JWT_SECRET, ADMIN_TOKEN et mot de passe PostgreSQL (.env sauvegardé avant)."
+    echo "  set-branding NOM [LOGO]  Nom et logo (PNG, JPEG ou WebP, 512 Ko max) imprimés sur les PDF de tous les postes."
     echo "  purge               Nettoie caches/images Docker orphelins (ne supprime pas la DB)."
     echo "  install             Installation ou réparation complète (volume DB inchangé)."
     echo "  destroy-db-volume   SUPPRIME le volume PostgreSQL (données perdues). Nécessite :"
@@ -1308,5 +1345,5 @@ case "$COMMAND" in
     echo "Backups récentes (avec --clean dans pg_dump) : un simple gunzip|psql peut suffire sur une base déjà remplie."
     echo "  cd proxmox/docker && gunzip -c backups/pre_update_DATE.sql.gz | docker compose exec -T db psql -U Admin -d workspace_db -v ON_ERROR_STOP=1"
     ;;
-  *) echo "Usage: $0 [menu|update|rotate-secrets|restore-backup|purge|install|start|stop|restart|status|test-api|help]" >&2; exit 1 ;;
+  *) echo "Usage: $0 [menu|update|rotate-secrets|set-branding|restore-backup|purge|install|start|stop|restart|status|test-api|help]" >&2; exit 1 ;;
 esac

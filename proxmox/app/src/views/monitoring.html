@@ -53,6 +53,7 @@
       <div class="nav-item" data-page="db"><span class="icon"><i class="fa-solid fa-database"></i></span> Base de données</div>
       <div class="nav-item" data-page="logs"><span class="icon"><i class="fa-solid fa-list"></i></span> Logs</div>
       <div class="nav-item" data-page="config-smtp"><span class="icon"><i class="fa-solid fa-envelope-open-text"></i></span> Email</div>
+      <div class="nav-item" data-page="config-branding"><span class="icon"><i class="fa-solid fa-building"></i></span> Atelier</div>
     </nav>
     <div class="sidebar-footer">
       <button class="btn-logout" onclick="doLogout()">Déconnexion</button>
@@ -335,6 +336,35 @@
       <div class="card" style="margin-top:1rem" id="smtp-status-card" style="display:none">
         <div class="card-header"><h2>Statut du dernier test</h2></div>
         <div class="card-body" id="smtp-status-body"></div>
+      </div>
+    </div>
+
+    <!-- ── Atelier (nom et logo des PDF) ── -->
+    <div class="page" id="page-config-branding">
+      <div class="page-header">
+        <h1>Atelier</h1>
+        <p>Nom et logo imprimés en en-tête des PDF de tous les postes</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>En-tête des PDF</h2></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label" for="branding-name">Nom de l'atelier</label>
+            <input type="text" class="form-input" id="branding-name" maxlength="120" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="branding-logo-file">Logo (PNG, JPEG ou WebP, 512 Ko maximum)</label>
+            <input type="file" class="form-input" id="branding-logo-file" accept="image/png,image/jpeg,image/webp">
+          </div>
+          <div class="form-group">
+            <span class="form-label">Logo actuel</span>
+            <div id="branding-logo-preview" style="min-height:48px"></div>
+          </div>
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="saveBrandingConfig()"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
+            <button class="btn btn-secondary" onclick="removeBrandingLogo()"><i class="fa-solid fa-trash"></i> Retirer le logo</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -1032,7 +1062,7 @@ document.querySelectorAll('.nav-item').forEach(el => {
 function navigateTo(page) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
   document.querySelectorAll('.page').forEach(el => el.classList.toggle('active', el.id === 'page-' + page));
-  const loaders = { dashboard: loadDashboard, users: loadUsers, agenda: loadAgenda, reception: loadReception, 'config-smtp': loadSmtpConfig, errors: loadLogErrors, db: loadLogDb, logs: () => loadLogAuth() };
+  const loaders = { dashboard: loadDashboard, users: loadUsers, agenda: loadAgenda, reception: loadReception, 'config-smtp': loadSmtpConfig, 'config-branding': loadBrandingConfig, errors: loadLogErrors, db: loadLogDb, logs: () => loadLogAuth() };
   if (loaders[page]) loaders[page]();
 }
 
@@ -2564,6 +2594,64 @@ async function saveSmtpConfig() {
   if (data.error) { toast(data.error, 'error'); return; }
   toast('Configuration email enregistrée');
   document.getElementById('smtp-pass').value = '';
+}
+
+// ── Atelier (nom et logo des PDF) ─────────────────────────────────────────────
+const BRANDING_LOGO_MAX = 512 * 1024;
+
+function renderBrandingPreview(logo, name) {
+  const box = document.getElementById('branding-logo-preview');
+  box.textContent = '';
+  if (!logo) {
+    box.textContent = 'Aucun logo : seul le nom figure sur les PDF.';
+    return;
+  }
+  const img = document.createElement('img');
+  img.src = logo;
+  img.alt = name || 'Logo';
+  img.style.maxHeight = '64px';
+  box.appendChild(img);
+}
+
+async function loadBrandingConfig() {
+  const data = await api('GET', '/api/branding');
+  if (data.error) { toast(data.error, 'error'); return; }
+  document.getElementById('branding-name').value = data.company_name || '';
+  document.getElementById('branding-logo-file').value = '';
+  renderBrandingPreview(data.logo, data.company_name);
+}
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error('Lecture du fichier impossible'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function saveBrandingConfig() {
+  const name = document.getElementById('branding-name').value.trim();
+  if (!name) { toast('Le nom de l\'atelier est obligatoire', 'error'); return; }
+  const body = { company_name: name };
+  const file = document.getElementById('branding-logo-file').files[0];
+  if (file) {
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { toast('Logo : PNG, JPEG ou WebP uniquement', 'error'); return; }
+    if (file.size > BRANDING_LOGO_MAX) { toast('Le logo dépasse 512 Ko', 'error'); return; }
+    body.logo = await readFileAsDataUrl(file);
+  }
+  const data = await api('PUT', '/api/admin/branding', body);
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Atelier enregistré : utilisé pour les prochains PDF');
+  document.getElementById('branding-logo-file').value = '';
+  renderBrandingPreview(data.logo, data.company_name);
+}
+
+async function removeBrandingLogo() {
+  const data = await api('DELETE', '/api/admin/branding/logo');
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Logo retiré');
+  renderBrandingPreview(null, data.company_name);
 }
 
 function showSmtpTestModal() {
