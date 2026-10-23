@@ -4,7 +4,8 @@
  */
 const { app, BrowserWindow, ipcMain, shell, nativeImage, Menu, crashReporter, net, session } = require('electron');
 const path = require('path');
-const { applyBranding, createBrandingCache } = require('./branding');
+const { applyBranding, applyPdfColor, createBrandingCache } = require('./branding');
+const { createAtelierSession } = require('./atelier');
 const { verifierLicence, jourParis } = require('./licence');
 const CLE_PUBLIQUE_LICENCE = require('./licence-cle-publique');
 const url = require('url');
@@ -2130,7 +2131,11 @@ function buildPdfSafeLinkHref(s) {
 }
 
 /** Libellés français pour les types (code API -> affichage PDF) */
-const TYPE_LABELS = { portable: 'Portable', fixe: 'Fixe', ecran: 'Écran', autres: 'Autres' };
+// Anciens codes enregistrés ; depuis la 3.8.0, le type enregistré est le libellé de la liste.
+const TYPE_LABELS = {
+    portable: 'Portable', 'pc portable': 'Portable', fixe: 'Fixe', 'pc fixe': 'Fixe',
+    ecran: 'Écran', 'écran': 'Écran', autres: 'Autres'
+};
 function typeLabel(code) {
     if (!code || typeof code !== 'string') {
         return 'Non défini';
@@ -2204,9 +2209,10 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
         recovered_at
     } = payload;
 
-    const css = fs.readFileSync(cssPath, 'utf8');
+    const branding = await brandingCache.get();
+    const css = applyPdfColor(fs.readFileSync(cssPath, 'utf8'), branding);
     let html = fs.readFileSync(htmlPath, 'utf8');
-    html = applyBranding(html, await brandingCache.get());
+    html = applyBranding(html, branding);
 
     const summaryBlock = buildPdfSummaryBlock(totalItems, typeEntries, stateEntries);
     const itemsRows = items
@@ -2355,7 +2361,8 @@ ipcMain.handle('generate-lot-pdf', async (_event, payload) => {
     items.forEach((it) => {
         const s = (it.state && String(it.state).trim()) || 'Non défini';
         stateCounts[s] = (stateCounts[s] || 0) + 1;
-        const t = (it.type && String(it.type).trim()) || 'Non défini';
+        // Par libellé : un ancien code (portable) et son libellé (Portable) sont comptés ensemble
+        const t = typeLabel(it.type);
         typeCounts[t] = (typeCounts[t] || 0) + 1;
     });
     const STATE_ORDER = ['Reconditionnés', 'Pour pièces', 'HS', 'Non défini'];
@@ -2583,9 +2590,10 @@ async function generateDisquesPdfFromHtmlTemplate(payload, fullPath) {
     }
     const { date, disks = [] } = payload;
 
-    const css = fs.readFileSync(cssPath, 'utf8');
+    const branding = await brandingCache.get();
+    const css = applyPdfColor(fs.readFileSync(cssPath, 'utf8'), branding);
     let html = fs.readFileSync(htmlPath, 'utf8');
-    html = applyBranding(html, await brandingCache.get());
+    html = applyBranding(html, branding);
 
     const dateStr = (date && /^\d{4}-\d{2}-\d{2}/.test(String(date).trim())) ? String(date).trim().slice(0, 10) : new Date().toISOString().slice(0, 10);
     const dateFormatted = formatDateForPdf(dateStr);
@@ -2742,9 +2750,10 @@ async function generateCommandePdfFromHtmlTemplate(payload, fullPath) {
     }
     const { commandeName, date, lines = [] } = payload;
 
-    const css = fs.readFileSync(cssPath, 'utf8');
+    const branding = await brandingCache.get();
+    const css = applyPdfColor(fs.readFileSync(cssPath, 'utf8'), branding);
     let html = fs.readFileSync(htmlPath, 'utf8');
-    html = applyBranding(html, await brandingCache.get());
+    html = applyBranding(html, branding);
 
     const dateStr = (date && /^\d{4}-\d{2}-\d{2}/.test(String(date).trim())) ? String(date).trim().slice(0, 10) : new Date().toISOString().slice(0, 10);
     const dateFormatted = formatDateForPdf(dateStr);
@@ -2908,9 +2917,10 @@ async function generateDonsPdfFromHtmlTemplate(payload, fullPath) {
     }
     const { lotName, date, lines = [] } = payload;
 
-    const css = fs.readFileSync(cssPath, 'utf8');
+    const branding = await brandingCache.get();
+    const css = applyPdfColor(fs.readFileSync(cssPath, 'utf8'), branding);
     let html = fs.readFileSync(htmlPath, 'utf8');
-    html = applyBranding(html, await brandingCache.get());
+    html = applyBranding(html, branding);
 
     const dateStr = (date && /^\d{4}-\d{2}-\d{2}/.test(String(date).trim())) ? String(date).trim().slice(0, 10) : new Date().toISOString().slice(0, 10);
     const dateFormatted = formatDateForPdf(dateStr);
@@ -3070,9 +3080,10 @@ async function generatePretMaterielPdfFromHtmlTemplate(payload, fullPath) {
         lines = []
     } = payload || {};
 
-    const css = fs.readFileSync(cssPath, 'utf8');
+    const branding = await brandingCache.get();
+    const css = applyPdfColor(fs.readFileSync(cssPath, 'utf8'), branding);
     let html = fs.readFileSync(htmlPath, 'utf8');
-    html = applyBranding(html, await brandingCache.get());
+    html = applyBranding(html, branding);
 
     const dateStr = (payload?.date && /^\d{4}-\d{2}-\d{2}/.test(String(payload.date).trim()))
         ? String(payload.date).trim().slice(0, 10)
@@ -3319,6 +3330,39 @@ ipcMain.handle('get-app-config', async () => {
  */
 ipcMain.handle('get-connection-config', async () => {
     return { ...serverConfig, mode: MODE };
+});
+
+// Réglages d'atelier modifiés depuis ce poste par un compte administrateur (jeton « atelier »
+// d'une heure, gardé dans ce processus et jamais transmis au renderer). Pages de l'application.
+const atelierSession = createAtelierSession({
+    serverUrl: SERVER_URL,
+    fetchImpl: (...args) => fetch(...args)
+});
+
+function depuisApplication(event) {
+    return String(event?.senderFrame?.url || '').startsWith('file://');
+}
+
+function atelierHandle(canal, action) {
+    ipcMain.handle(canal, async (event, payload) => {
+        if (!depuisApplication(event)) {
+            return { success: false, error: 'Origine refusée.' };
+        }
+        return action(payload);
+    });
+}
+
+atelierHandle('atelier:etat', () => ({ success: true, ...atelierSession.etat() }));
+atelierHandle('atelier:connexion', (payload) => atelierSession.connexion(payload));
+atelierHandle('atelier:deconnexion', () => atelierSession.deconnexion());
+atelierHandle('atelier:enregistrer-types', (payload) => atelierSession.enregistrerTypes(payload));
+atelierHandle('atelier:enregistrer-branding', async (payload) => {
+    const res = await atelierSession.enregistrerBranding(payload);
+    if (res.success) {
+        // Prochains PDF avec le nouveau nom, logo ou couleur, sans attendre l'expiration du cache
+        brandingCache.clear();
+    }
+    return res;
 });
 
 // Lancement automatique à l'ouverture de session : natif sur Windows et macOS, fichier .desktop

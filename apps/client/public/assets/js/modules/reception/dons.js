@@ -5,6 +5,7 @@
 
 import getLogger from '../../config/Logger.js';
 import api from '../../config/api.js';
+import { getMaterialTypes, typeOptionsHtml } from '../settings/materialTypes.js';
 
 const logger = getLogger();
 
@@ -51,6 +52,7 @@ export default class DonsManager {
     async init() {
         logger.debug('Initialisation DonsManager');
         await this.loadReferenceData();
+        this.types = await getMaterialTypes();
         this.updateMarqueSelects();
         this.setupEventListeners();
         this.addFirstLineIfEmpty();
@@ -159,9 +161,12 @@ export default class DonsManager {
             const stagiaireInput = row.querySelector('.dons-input-stagiaire');
 
             const typeVal = typeSelect?.value || '';
-            const typeDisplay = typeVal === 'autres' && typeOther?.value?.trim()
-                ? typeOther.value.trim()
-                : (typeSelect?.selectedOptions?.[0]?.textContent || typeVal || '-');
+            // Sans type choisi : « - » (et non le texte du placeholder)
+            const typeDisplay = !typeVal
+                ? '-'
+                : typeVal === 'autres'
+                    ? (typeOther?.value?.trim() || '-')
+                    : typeVal;
             const marqueName = marqueSelect?.selectedOptions?.[0]?.textContent || '-';
             const modeleName = modeleSelect?.selectedOptions?.[0]?.textContent || '-';
 
@@ -203,11 +208,7 @@ export default class DonsManager {
             <td class="col-type" data-label="Type">
                 <div class="type-cell-wrapper">
                     <select class="dons-select-type" name="type">
-                        <option value="">Type...</option>
-                        <option value="portable">Portable</option>
-                        <option value="fixe">Fixe</option>
-                        <option value="ecran">Écran</option>
-                        <option value="autres">Autres</option>
+                        ${typeOptionsHtml(this.types || [])}
                     </select>
                     <input type="text" class="dons-input-type-other" name="type_other" placeholder="Précisez..." style="display:none;" maxlength="100">
                 </div>

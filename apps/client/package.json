@@ -1,6 +1,6 @@
 {
   "name": "Tracebay",
-  "version": "3.7.2",
+  "version": "3.8.0",
   "main": "main.js",
   "homepage": "https://github.com/K0uzia/Tracebay#readme",
   "description": "Tracebay : traçabilité de matériel (lots, disques, archives) et agenda",
@@ -8,7 +8,8 @@
   "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "electron-updater": "^6.3.9",
-    "pdfkit": "^0.15.0"
+    "pdfkit": "^0.15.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
@@ -63,6 +64,7 @@
       "branding.js",
       "licence.js",
       "licence-cle-publique.js",
+      "atelier.js",
       "config/**/*",
       "assets/**/*",
       "public/**/*",

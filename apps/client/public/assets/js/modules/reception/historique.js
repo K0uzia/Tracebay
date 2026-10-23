@@ -11,13 +11,12 @@ import { loadLotsWithItems } from './lotsApi.js';
 import { getSessions, getSession, getSessionPdfUrl, updateSession } from './disquesApi.js';
 import { OS_OPTIONS, getOsIcon, getOsLabel, getOsOption } from './osOptions.js';
 import TracabiliteManager from './tracabilite.js';
+import { getMaterialTypes, typeOptionsHtml, typeLabel, otherTypeText } from '../settings/materialTypes.js';
 const logger = getLogger();
 
 
 const VALUE_AUTRE_DISQUES = '__autre__';
 const VALUE_AUTRE_GENERIC = '__autre__';
-const LOT_TYPE_OPTIONS = ['', 'portable', 'fixe', 'ecran', 'Autre'];
-const DON_TYPE_OPTIONS = ['', 'portable', 'fixe', 'Autre'];
 
 export default class HistoriqueManager {
     constructor(modalManager) {
@@ -38,6 +37,7 @@ export default class HistoriqueManager {
         logger.debug('🚀 Initialisation HistoriqueManager (historique + traçabilité)');
         this.fillYearSelect();
         this.fillMonthSelect();
+        this.types = await getMaterialTypes();
         await this.loadData();
         this.setupEventListeners();
         logger.debug('✅ HistoriqueManager prêt');
@@ -804,20 +804,7 @@ export default class HistoriqueManager {
     }
 
     normalizeTypeValue(rawType) {
-        const value = String(rawType || '').trim().toLowerCase();
-        if (!value) {
-            return '';
-        }
-        if (value === 'pc portable') {
-            return 'portable';
-        }
-        if (value === 'pc fixe') {
-            return 'fixe';
-        }
-        if (value === 'écran') {
-            return 'ecran';
-        }
-        return value;
+        return typeLabel(rawType);
     }
 
     hasAuthToken() {
@@ -1624,7 +1611,7 @@ export default class HistoriqueManager {
                 tbody.innerHTML = lines.map((line, idx) => `
                     <tr>
                         <td>${idx + 1}</td>
-                        <td>${this.escapeHtml(String(line?.type || '-'))}</td>
+                        <td>${this.escapeHtml(typeLabel(line?.type) || '-')}</td>
                         <td>${this.escapeHtml(String(line?.marqueName || line?.marque || '-'))}</td>
                         <td>${this.escapeHtml(String(line?.modeleName || line?.modele || '-'))}</td>
                         <td>${this.escapeHtml(String(line?.serialNumber || line?.serial || '-'))}</td>
@@ -1961,22 +1948,9 @@ export default class HistoriqueManager {
                     <td>${idx + 1}</td>
                     <td>
                         <select class="hist-don-type-select">
-                            ${(() => {
-        const val = this.normalizeTypeValue(line?.type);
-        const known = DON_TYPE_OPTIONS.slice(1, -1);
-        const isOther = val && !known.includes(val);
-        return DON_TYPE_OPTIONS.map(opt => {
-            const value = opt === 'Autre' ? VALUE_AUTRE_GENERIC : opt;
-            const selected = (opt === 'Autre' && isOther) || (opt !== 'Autre' && val === opt);
-            return `<option value="${this.escapeAttr(value)}" ${selected ? 'selected' : ''}>${this.escapeHtml(opt || '-- Type --')}</option>`;
-        }).join('');
-    })()}
+                            ${typeOptionsHtml(this.types || [], { selected: line?.type, placeholder: '-- Type --', otherValue: VALUE_AUTRE_GENERIC })}
                         </select>
-                        <input type="text" class="hist-don-type-other" value="${this.escapeAttr(this.normalizeTypeValue(line?.type))}" placeholder="Type libre" style="margin-top:6px;display:${(() => {
-    const val = this.normalizeTypeValue(line?.type);
-    const known = DON_TYPE_OPTIONS.slice(1, -1);
-    return val && !known.includes(val) ? 'block' : 'none';
-})()};">
+                        <input type="text" class="hist-don-type-other" value="${this.escapeAttr(otherTypeText(this.types || [], line?.type))}" placeholder="Type libre" style="margin-top:6px;display:${otherTypeText(this.types || [], line?.type) ? 'block' : 'none'};">
                     </td>
                     <td>
                         ${(() => {
@@ -2581,7 +2555,7 @@ export default class HistoriqueManager {
             <tr>
                 <td>${idx + 1}</td>
                 <td>${this.escapeHtml(item.serial_number || '-')}</td>
-                <td>${this.escapeHtml(item.type || '-')}</td>
+                <td>${this.escapeHtml(typeLabel(item.type) || '-')}</td>
                 <td>${this.escapeHtml(item.marque_name || '-')}</td>
                 <td>${this.escapeHtml(item.modele_name || '-')}</td>
                 <td class="col-os"><i class="fa-brands fa-${getOsIcon(item.os)}" title="${getOsLabel(item.os)}"></i></td>
@@ -2897,8 +2871,7 @@ export default class HistoriqueManager {
                 const itemState = item.state || '';
                 const knownStates = ['Reconditionnés', 'Pour pièces', 'HS'];
                 const isOtherState = itemState && !knownStates.includes(itemState);
-                const itemType = this.normalizeTypeValue(item.type);
-                const isOtherType = itemType && !LOT_TYPE_OPTIONS.slice(1, -1).includes(itemType);
+                const otherType = otherTypeText(this.types || [], item.type);
                 const itemMarque = String(item.marque_name || '').trim();
                 const itemModele = String(item.modele_name || '').trim();
                 const marqueMatch = this.marques.find(m => (m.name || '').trim() === itemMarque);
@@ -2914,13 +2887,9 @@ export default class HistoriqueManager {
                     </td>
                     <td>
                         <select class="item-type-select" data-item-id="${item.id}">
-                            ${LOT_TYPE_OPTIONS.map(opt => {
-        const value = opt === 'Autre' ? VALUE_AUTRE_GENERIC : opt;
-        const selected = (opt === 'Autre' && isOtherType) || (opt !== 'Autre' && itemType === opt);
-        return `<option value="${this.escapeAttr(value)}" ${selected ? 'selected' : ''}>${this.escapeHtml(opt || '-- Type --')}</option>`;
-    }).join('')}
+                            ${typeOptionsHtml(this.types || [], { selected: item.type, placeholder: '-- Type --', otherValue: VALUE_AUTRE_GENERIC })}
                         </select>
-                        <input type="text" class="item-type-other-input" data-item-id="${item.id}" value="${isOtherType ? this.escapeAttr(itemType) : ''}" placeholder="Précisez le type" style="margin-top:6px;display:${isOtherType ? 'block' : 'none'};">
+                        <input type="text" class="item-type-other-input" data-item-id="${item.id}" value="${this.escapeAttr(otherType)}" placeholder="Précisez le type" style="margin-top:6px;display:${otherType ? 'block' : 'none'};">
                     </td>
                     <td>
                         <select class="item-marque-select" data-item-id="${item.id}">

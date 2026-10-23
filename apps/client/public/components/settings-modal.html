@@ -10,7 +10,13 @@
 
         <div class="settings-layout">
             <nav class="settings-nav" role="tablist" aria-orientation="vertical" aria-label="Sections des paramètres">
-                <button type="button" class="settings-nav__item" role="tab" id="settingsTabUpdate" aria-controls="settingsPanelUpdate" aria-selected="true">
+                <button type="button" class="settings-nav__item" role="tab" id="settingsTabBranding" aria-controls="settingsPanelBranding" aria-selected="true">
+                    <i class="fa-solid fa-palette" aria-hidden="true"></i><span>Branding</span>
+                </button>
+                <button type="button" class="settings-nav__item" role="tab" id="settingsTabTypes" aria-controls="settingsPanelTypes" aria-selected="false" tabindex="-1">
+                    <i class="fa-solid fa-tags" aria-hidden="true"></i><span>Types</span>
+                </button>
+                <button type="button" class="settings-nav__item" role="tab" id="settingsTabUpdate" aria-controls="settingsPanelUpdate" aria-selected="false" tabindex="-1">
                     <i class="fa-solid fa-cloud-arrow-down" aria-hidden="true"></i><span>Mise à jour</span>
                     <span class="settings-nav__dot" id="settingsNavUpdateDot" hidden aria-label="Mise à jour disponible"></span>
                 </button>
@@ -26,7 +32,23 @@
             </nav>
 
             <div class="settings-panels">
-                <section class="settings-panel" role="tabpanel" id="settingsPanelUpdate" aria-labelledby="settingsTabUpdate">
+                <section class="settings-panel" role="tabpanel" id="settingsPanelBranding" aria-labelledby="settingsTabBranding">
+                    <header class="settings-panel__header">
+                        <h3>Branding</h3>
+                        <p>Nom, logo et couleur imprimés sur les PDF (lots, disques, commandes, dons, prêts) de tous les postes.</p>
+                    </header>
+                    <div id="settingsBrandingSettings"></div>
+                </section>
+
+                <section class="settings-panel" role="tabpanel" id="settingsPanelTypes" aria-labelledby="settingsTabTypes" hidden>
+                    <header class="settings-panel__header">
+                        <h3>Types de matériel</h3>
+                        <p>Liste commune à tous les postes. Retirer un type ne modifie pas les machines déjà enregistrées.</p>
+                    </header>
+                    <div id="settingsTypesSettings"></div>
+                </section>
+
+                <section class="settings-panel" role="tabpanel" id="settingsPanelUpdate" aria-labelledby="settingsTabUpdate" hidden>
                     <header class="settings-panel__header">
                         <h3>Mise à jour</h3>
                         <p>Vérifiez et installez la dernière version de Tracebay. Les versions sont publiées sur GitHub, qui ne reçoit que l'adresse IP du poste et la version installée.</p>
@@ -202,20 +224,6 @@
                             <div class="settings-facts__row">
                                 <dt>Expiration</dt>
                                 <dd id="settingsLicenceExpire">-</dd>
-                            </div>
-                        </dl>
-                    </div>
-                    <div class="settings-block">
-                        <h4>Atelier</h4>
-                        <p class="settings-block__hint">Nom et logo imprimés sur les PDF. Ils sont définis par l'administrateur du serveur (page de monitoring, onglet Atelier) et valent pour tous les postes.</p>
-                        <dl class="settings-facts">
-                            <div class="settings-facts__row">
-                                <dt>Nom</dt>
-                                <dd id="settingsBrandingName">-</dd>
-                            </div>
-                            <div class="settings-facts__row">
-                                <dt>Logo</dt>
-                                <dd id="settingsBrandingLogo">-</dd>
                             </div>
                         </dl>
                     </div>

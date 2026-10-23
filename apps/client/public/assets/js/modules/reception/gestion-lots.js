@@ -8,6 +8,9 @@ import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
 import { showAppNotification } from '../../config/notifications.js';
 import { escapeHtml } from '../../utils/html.js';
+import {
+    getMaterialTypes, typeOptionsHtml, matchType, otherTypeText, OTHER_TYPE
+} from '../settings/materialTypes.js';
 const logger = getLogger();
 
 const LOT_DRAFT_STORAGE_PREFIX = 'workspace_lot_draft';
@@ -44,6 +47,8 @@ export default class GestionLotsManager {
         logger.debug('🚀 Initialisation GestionLotsManager');
         
         await this.loadReferenceData();
+        this.types = await getMaterialTypes();
+        this.renderTypesNotice();
         this.setupEventListeners();
         
         // Restaurer le brouillon local, sinon ligne SCAN vide
@@ -74,6 +79,27 @@ export default class GestionLotsManager {
             }
         }, 500);
         logger.debug('✅ GestionLotsManager prêt');
+    }
+
+    /** Aucun type défini : bandeau vers Paramètres > Types (« Autre (préciser) » reste là). */
+    renderTypesNotice() {
+        const body = document.querySelector('.lots-saisie-page .lot-page__body');
+        if (!body || (this.types || []).length) {
+            return;
+        }
+        const notice = document.createElement('div');
+        notice.className = 'lot-types-notice';
+        notice.setAttribute('role', 'status');
+        notice.innerHTML = `
+            <i class="fa-solid fa-circle-info" aria-hidden="true"></i>
+            <span>Aucun type de matériel défini pour l'atelier.
+                L'administrateur les définit dans Paramètres > Types.</span>
+            <button type="button" class="lot-btn lot-btn--secondary">Voir les types</button>`;
+        notice.querySelector('button').addEventListener('click', () => {
+            window.app?.showSettingsModal?.();
+            setTimeout(() => window.app?.selectSettingsTab?.('settingsTabTypes'), 50);
+        });
+        body.insertBefore(notice, body.querySelector('.lot-table-area'));
     }
 
     /**
@@ -551,11 +577,7 @@ export default class GestionLotsManager {
             <td data-label="Type">
                 <div class="type-cell-wrapper">
                     <select name="type" required>
-                        <option value="">Type</option>
-                        <option value="portable">Portable</option>
-                        <option value="fixe">Fixe</option>
-                        <option value="ecran">Écran</option>
-                        <option value="autres">Autres</option>
+                        ${typeOptionsHtml(this.types || [])}
                     </select>
                     <input type="text" name="type_other" class="type-other-input" placeholder="Précisez..." style="display: none;" maxlength="100">
                 </div>
@@ -648,18 +670,19 @@ export default class GestionLotsManager {
         const modeleSelect = row.querySelector('select[name="modele"]');
 
         if (typeSelect && data.type) {
-            const known = ['portable', 'fixe', 'ecran', 'autres'];
-            if (known.includes(data.type)) {
-                typeSelect.value = data.type;
-                if (data.type === 'autres' && typeOtherInput) {
+            const match = matchType(this.types || [], data.type);
+            if (match || data.type === OTHER_TYPE) {
+                typeSelect.value = match || OTHER_TYPE;
+                if (data.type === OTHER_TYPE && typeOtherInput) {
                     typeOtherInput.value = data.typeOther || '';
                     typeOtherInput.style.display = 'inline-block';
                     typeOtherInput.required = true;
                 }
             } else {
-                typeSelect.value = 'autres';
+                typeSelect.value = OTHER_TYPE;
                 if (typeOtherInput) {
-                    typeOtherInput.value = data.typeOther || data.type;
+                    const autre = otherTypeText(this.types || [], data.type);
+                    typeOtherInput.value = data.typeOther || autre;
                     typeOtherInput.style.display = 'inline-block';
                     typeOtherInput.required = true;
                 }
@@ -1002,6 +1025,10 @@ export default class GestionLotsManager {
      * Remplir les selects d'application en masse (modale)
      */
     populateMassSelects() {
+        const modalMassType = document.getElementById('modal-mass-type');
+        if (modalMassType) {
+            modalMassType.innerHTML = typeOptionsHtml(this.types || [], { placeholder: '- Ne pas modifier -' });
+        }
         const modalMassMarque = document.getElementById('modal-mass-marque');
         const modalMassModele = document.getElementById('modal-mass-modele');
         

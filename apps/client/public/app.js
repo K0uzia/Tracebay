@@ -624,7 +624,7 @@ class PageManager {
         this.wireLazyLegalText('settingsThirdPartyDetails', 'settingsThirdPartyText', 'get-third-party-licenses', 'Licences tierces introuvables.');
         this.wireUpdateAutoToggle();
         this.wireAutoLaunchToggle();
-        this.refreshBrandingInfo();
+        this.refreshAtelierSettings();
         this.refreshLicenceInfo();
         this.refreshTechnicianErasure();
         modal.classList.remove('hidden');
@@ -666,37 +666,19 @@ class PageManager {
         }
     }
 
-    /** Atelier (nom et logo des PDF), réglage du serveur affiché en lecture seule. */
-    async refreshBrandingInfo() {
-        const nameEl = document.getElementById('settingsBrandingName');
-        const logoEl = document.getElementById('settingsBrandingLogo');
-        if (!nameEl || !logoEl) {
+    /** Paramètres > Branding et Types : réglages d'atelier (lecture seule, ou édition admin). */
+    async refreshAtelierSettings() {
+        const brandingEl = document.getElementById('settingsBrandingSettings');
+        const typesEl = document.getElementById('settingsTypesSettings');
+        if (!brandingEl || !typesEl) {
             return;
         }
-        nameEl.textContent = 'Chargement…';
-        logoEl.textContent = '-';
-        try {
-            const { default: api } = await import('./assets/js/config/api.js');
-            const res = await api.get('/api/branding', { useCache: false });
-            if (!res.ok) {
-                throw new Error(`HTTP ${res.status}`);
-            }
-            const data = await res.json();
-            nameEl.textContent = data.company_name || 'Tracebay';
-            logoEl.textContent = '';
-            if (/^data:image\/(png|jpeg|webp);base64,/.test(String(data.logo || ''))) {
-                const img = document.createElement('img');
-                img.className = 'settings-branding-logo';
-                img.src = data.logo;
-                img.alt = `Logo\u00a0: ${data.company_name || 'Tracebay'}`;
-                logoEl.appendChild(img);
-            } else {
-                logoEl.textContent = 'Aucun';
-            }
-        } catch (_) {
-            nameEl.textContent = 'Serveur injoignable';
-            logoEl.textContent = '-';
+        if (!this.atelierSettings) {
+            const { default: AtelierSettings } = await import('./assets/js/modules/settings/AtelierSettings.js');
+            const notifier = (m, t) => this.showNotification(m, t);
+            this.atelierSettings = new AtelierSettings({ brandingEl, typesEl, notifier });
         }
+        await this.atelierSettings.render();
     }
 
     /** Préférence du poste « Rechercher les mises à jour au démarrage » (activée par défaut). */

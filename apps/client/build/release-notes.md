@@ -1,3 +1,21 @@
+## Tracebay 3.8.0
+
+### Paramètres : Branding et Types, réglages de l'atelier
+- Deux nouveaux onglets en tête des Paramètres, comme dans l'édition portable.
+- Branding : nom affiché, logo et couleur des PDF (lots, disques, commandes, dons, prêts), avec un aperçu de l'en-tête. La couleur remplace le bleu des titres et des filets ; une teinte trop claire est refusée. Au choix d'un logo, sa couleur dominante est proposée.
+- Types : la liste des types de matériel proposés dans les lots, l'inventaire, l'historique et les dons, avec le nombre de machines par type. « Autre (préciser) » reste toujours disponible.
+- Ces réglages valent pour tous les postes. Chacun les voit, avec la mention « Défini par l'administrateur de l'atelier ». Pour les modifier : « Modifier (administrateur) », puis le nom et le mot de passe d'un compte administrateur ; la modification reste ouverte une heure sur le poste. La page de monitoring du serveur propose les mêmes réglages.
+
+### Types de matériel
+- Les listes de types des lots, de l'inventaire, de l'historique et des dons viennent désormais de la liste de l'atelier, au lieu d'être écrites dans l'application.
+- Retirer un type de la liste ne modifie aucune machine : le type reste affiché tel quel dans l'inventaire et l'historique, et l'onglet Types indique combien de machines l'utilisent encore.
+- Les anciens types (portable, fixe, écran) s'affichent avec leur libellé et sont comptés ensemble dans le résumé des PDF.
+
+### À savoir
+- Mettre à jour le serveur avant les postes : la version 3.8.0 du serveur apporte ces réglages. Sans elle, les onglets Branding et Types indiquent que les réglages sont indisponibles, et les listes reprennent Portable, Fixe, Écran.
+- Sans réglage enregistré, la liste de départ est Portable, Fixe, Écran et la couleur est le bleu d'origine.
+- Aucune migration de données.
+
 ## Tracebay 3.7.2
 
 ### Paramètres

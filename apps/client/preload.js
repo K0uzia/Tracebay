@@ -28,7 +28,12 @@ const ALLOWED_CHANNELS = {
         'install-app-update',
         'get-pending-app-update',
         'settings:get-auto-launch',
-        'settings:set-auto-launch'
+        'settings:set-auto-launch',
+        'atelier:etat',
+        'atelier:connexion',
+        'atelier:deconnexion',
+        'atelier:enregistrer-branding',
+        'atelier:enregistrer-types'
     ],
     on: [
         'update-was-installed',

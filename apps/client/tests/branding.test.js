@@ -13,8 +13,8 @@ const TEMPLATE = '<header>{{company_logo}}<h2>{{company_name}}</h2></header><h1>
 
 describe('sanitizeBranding', () => {
     test('sans réglage : « Tracebay », sans logo', () => {
-        expect(sanitizeBranding(null)).toEqual({ name: 'Tracebay', logo: null });
-        expect(sanitizeBranding({ company_name: '   ' })).toEqual({ name: 'Tracebay', logo: null });
+        expect(sanitizeBranding(null)).toEqual({ name: 'Tracebay', logo: null, pdfColor: null });
+        expect(sanitizeBranding({ company_name: '   ' })).toEqual({ name: 'Tracebay', logo: null, pdfColor: null });
     });
 
     test('logo PNG ou JPEG gardé, type déduit des octets', () => {
@@ -94,6 +94,35 @@ describe('createBrandingCache', () => {
         expect((await cache.get()).name).toBe('LA CAPSULE');
 
         const empty = createBrandingCache({ url: 'u', fetchImpl: () => Promise.resolve({ ok: false, status: 500 }) });
-        expect(await empty.get()).toEqual({ name: 'Tracebay', logo: null });
+        expect(await empty.get()).toEqual({ name: 'Tracebay', logo: null, pdfColor: null });
+    });
+});
+
+describe('couleur des PDF', () => {
+    const { applyPdfColor, contrastWithWhite } = require('../branding');
+
+    test('couleur validée comme sur le serveur (format, contraste ≥ 3:1), sinon ignorée', () => {
+        expect(sanitizeBranding({ pdf_color: '#8a1c1c' }).pdfColor).toBe('#8A1C1C');
+        expect(sanitizeBranding({ pdf_color: '#ffff00' }).pdfColor).toBeNull();
+        expect(sanitizeBranding({ pdf_color: 'rouge' }).pdfColor).toBeNull();
+        expect(sanitizeBranding({}).pdfColor).toBeNull();
+        expect(contrastWithWhite('#2D3073')).toBeGreaterThan(10);
+    });
+
+    test('bleu des gabarits et sa variante claire remplacés ; rien sans couleur', () => {
+        const css = 'h1{color:#2D3073} .s{border-color:#3e3b8c} p{color:#333}';
+        expect(applyPdfColor(css, { pdfColor: '#8A1C1C' })).toBe('h1{color:#8A1C1C} .s{border-color:#983737} p{color:#333}');
+        expect(applyPdfColor(css, { pdfColor: null })).toBe(css);
+        expect(applyPdfColor(css, null)).toBe(css);
+        expect(applyPdfColor(css, { pdfColor: '#ffff00' })).toBe(css);
+    });
+
+    test('les 5 gabarits CSS contiennent le bleu remplacé', () => {
+        for (const nom of ['lot', 'disques', 'commande', 'dons', 'prets-materiel']) {
+            const css = fs.readFileSync(path.join(__dirname, '..', 'public', 'pdf-templates', `${nom}.css`), 'utf8');
+            const sortie = applyPdfColor(css, { pdfColor: '#8A1C1C' });
+            expect(sortie).not.toMatch(/#2D3073/i);
+            expect(sortie).toContain('#8A1C1C');
+        }
     });
 });

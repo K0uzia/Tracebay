@@ -8,6 +8,7 @@
 @import url(./components/footer.css);
 @import url(./components/auth-modal.css);
 @import url(./components/settings-modal.css);
+@import url(./components/post-settings.css);
 
 /* ----------CSS PAGES----------- */
 @import url(./modules/agenda.css);

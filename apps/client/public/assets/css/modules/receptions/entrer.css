@@ -804,3 +804,26 @@
     border-color: rgba(248, 113, 113, 0.55);
     color: #fecaca;
 }
+
+/* Aucun type défini pour l'atelier : bandeau vers Paramètres > Types (comme la portable) */
+.lots-saisie-page .lot-types-notice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--unit-2);
+    margin-top: var(--unit-2);
+    padding: 10px 14px;
+    border: 1px solid rgba(124, 156, 255, 0.35);
+    border-radius: 10px;
+    font-size: 0.8125rem;
+    color: var(--lot-text);
+    background: var(--lot-accent-soft);
+}
+
+.lots-saisie-page .lot-types-notice i {
+    color: var(--lot-accent);
+}
+
+.lots-saisie-page .lot-types-notice span {
+    flex: 1 1 280px;
+}

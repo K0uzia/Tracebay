@@ -7,11 +7,11 @@ import api from '../../config/api.js';
 import getLogger from '../../config/Logger.js';
 import { showAppNotification } from '../../config/notifications.js';
 import { loadLotsWithItems, addLotItem, removeLotItem, restoreLotItem, deleteLot } from './lotsApi.js';
+import { getMaterialTypes, typeOptionsHtml, typeLabel, otherTypeText } from '../settings/materialTypes.js';
 import { getOsIcon, getOsLabel, getOsOption } from './osOptions.js';
 const logger = getLogger();
 
 const VALUE_AUTRE = '__autre__';
-const LOT_TYPE_OPTIONS = ['', 'portable', 'fixe', 'ecran', 'Autre'];
 
 export default class InventaireManager {
     constructor(modalManager) {
@@ -30,6 +30,7 @@ export default class InventaireManager {
 
     async init() {
         logger.debug('🚀 Initialisation InventaireManager');
+        this.types = await getMaterialTypes();
         await Promise.all([this.loadReferenceData(), this.loadLots()]);
         this.setupEventListeners();
         logger.debug('✅ InventaireManager prêt');
@@ -68,21 +69,9 @@ export default class InventaireManager {
         }
     }
 
+    /** Libellé du type affiché et enregistré (anciens codes portable, fixe, ecran convertis). */
     normalizeTypeValue(rawType) {
-        const value = String(rawType || '').trim().toLowerCase();
-        if (!value) {
-            return '';
-        }
-        if (value === 'pc portable') {
-            return 'portable';
-        }
-        if (value === 'pc fixe') {
-            return 'fixe';
-        }
-        if (value === 'écran') {
-            return 'ecran';
-        }
-        return value;
+        return typeLabel(rawType);
     }
 
     /**
@@ -330,7 +319,7 @@ export default class InventaireManager {
                                     <tr class="item-row item-${(item.state && item.state.trim() !== '') ? this.escapeHtml(item.state.replace(/\s+/g, '-')) : 'non-defini'}">
                                         <td class="col-num">${idx + 1}</td>
                                         <td class="col-sn" title="${this.escapeHtml(item.serial_number || '')}">${this.escapeHtml(item.serial_number || '-')}</td>
-                                        <td class="col-type">${this.escapeHtml(item.type || '-')}</td>
+                                        <td class="col-type">${this.escapeHtml(typeLabel(item.type) || '-')}</td>
                                         <td class="col-marque">${this.escapeHtml(item.marque_name || '-')}</td>
                                         <td class="col-modele">${this.escapeHtml(item.modele_name || '-')}</td>
                                         <td class="col-os"><i class="fa-brands fa-${getOsIcon(item.os)}" title="${getOsLabel(item.os)}"></i></td>
@@ -709,23 +698,14 @@ export default class InventaireManager {
             serialInput.value = item.serial_number || '';
         }
 
-        const itemType = this.normalizeTypeValue(item.type);
-        const isOtherType = itemType && !LOT_TYPE_OPTIONS.slice(1, -1).includes(itemType);
         const typeSelect = document.getElementById('modal-pc-type-select');
         const typeOther = document.getElementById('modal-pc-type-other');
         if (typeSelect) {
-            if (isOtherType) {
-                typeSelect.value = VALUE_AUTRE;
-                if (typeOther) {
-                    typeOther.value = itemType;
-                    typeOther.style.display = 'block';
-                }
-            } else {
-                typeSelect.value = itemType || '';
-                if (typeOther) {
-                    typeOther.value = '';
-                    typeOther.style.display = 'none';
-                }
+            typeSelect.innerHTML = typeOptionsHtml(this.types || [], { selected: item.type, placeholder: '- Type -', otherValue: VALUE_AUTRE });
+            const otherText = otherTypeText(this.types || [], item.type);
+            if (typeOther) {
+                typeOther.value = otherText;
+                typeOther.style.display = otherText ? 'block' : 'none';
             }
         }
 
@@ -824,7 +804,7 @@ export default class InventaireManager {
         const typeSelect = document.getElementById('modal-pc-type-select');
         const typeOther = document.getElementById('modal-pc-type-other');
         if (typeSelect) {
-            typeSelect.value = '';
+            typeSelect.innerHTML = typeOptionsHtml(this.types || [], { placeholder: '- Type -', otherValue: VALUE_AUTRE });
         }
         if (typeOther) {
             typeOther.value = '';
