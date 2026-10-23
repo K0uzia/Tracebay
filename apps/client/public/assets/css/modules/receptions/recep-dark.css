@@ -486,6 +486,17 @@ html[data-theme-dark="1"] {
         color: #bbf7d0 !important;
     }
 
+    .r-root .historique-lot-actions .btn-delete-hist {
+        background: rgba(248, 113, 113, 0.14) !important;
+        color: #fecaca !important;
+        border-color: rgba(248, 113, 113, 0.4) !important;
+    }
+
+    .r-root .historique-lot-actions .btn-delete-hist:hover:not(:disabled) {
+        background: rgba(248, 113, 113, 0.24) !important;
+        border-color: rgba(248, 113, 113, 0.55) !important;
+    }
+
     .r-root .historique-lot-actions .btn-recovered {
         background: rgba(255, 255, 255, 0.06) !important;
         color: var(--recep-text-muted) !important;

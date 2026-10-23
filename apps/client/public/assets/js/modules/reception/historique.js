@@ -457,6 +457,9 @@ export default class HistoriqueManager {
                             <i class="fa-solid fa-list-check" aria-hidden="true"></i> Éditer matériel
                         </button>
                         ${this.buildDonPdfActions(don)}
+                        <button type="button" class="btn-delete-hist" data-kind="don" data-record-id="${this.escapeHtml(String(don.id || ''))}" title="Supprimer définitivement le don">
+                            <i class="fa-solid fa-trash" aria-hidden="true"></i> Supprimer
+                        </button>
                     </div>
                 </div>
             </div>
@@ -482,7 +485,13 @@ export default class HistoriqueManager {
                         <button type="button" class="btn-view-pret-details-hist" data-pret-id="${this.escapeHtml(String(pret.id || ''))}" title="Voir les détails du prêt">
                             <i class="fa-solid fa-eye" aria-hidden="true"></i> Voir détails
                         </button>
+                        <button type="button" class="btn-edit-pret-hist" data-pret-id="${this.escapeHtml(String(pret.id || ''))}" title="Modifier le prêt">
+                            <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Modifier
+                        </button>
                         ${this.buildPretPdfActions(pret)}
+                        <button type="button" class="btn-delete-hist" data-kind="pret" data-record-id="${this.escapeHtml(String(pret.id || ''))}" title="Supprimer définitivement le prêt">
+                            <i class="fa-solid fa-trash" aria-hidden="true"></i> Supprimer
+                        </button>
                     </div>
                 </div>
             </div>
@@ -1251,6 +1260,18 @@ export default class HistoriqueManager {
                 this.viewPretDetails(btn.dataset.pretId);
             });
         });
+        document.querySelectorAll('.btn-edit-pret-hist').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.editPretFromHistorique(btn.dataset.pretId);
+            });
+        });
+        document.querySelectorAll('.btn-delete-hist').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.askDeleteRecord(btn.dataset.kind, btn.dataset.recordId);
+            });
+        });
 
         this.attachPdfEventListeners();
     }
@@ -1727,6 +1748,182 @@ export default class HistoriqueManager {
             this.showNotification('Don mis à jour', 'success');
         } catch (err) {
             this.showNotification(err?.message || 'Édition impossible', 'error');
+        }
+    }
+
+    describeApiFailure(res, action) {
+        if (res?.status === 404) {
+            return `${action} impossible\u00a0: l'enregistrement n'existe plus. Actualisez l'historique.`;
+        }
+        return `${action} impossible (erreur serveur ${res?.status || 'inconnue'}). Réessayez plus tard.`;
+    }
+
+    syncPretMontantField() {
+        const payant = document.getElementById('input-pret-payant-hist');
+        const montant = document.getElementById('input-pret-montant-hist');
+        if (montant) {
+            montant.disabled = !payant?.checked;
+        }
+    }
+
+    editPretFromHistorique(pretId) {
+        const pret = this.prets.find(p => String(p.id) === String(pretId));
+        if (!pret) {
+            return;
+        }
+        this.currentEditingPretId = String(pretId);
+        const setValue = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.value = value;
+            }
+        };
+        const rg = pret.remuneration_gratuit;
+        const gratuit = rg !== false && rg !== 0 && String(rg).toLowerCase() !== 'false';
+        setValue('input-pret-reference-hist', String(pret.reference || '').trim());
+        setValue('input-pret-borrower-name-hist', String(pret.borrower_name || '').trim());
+        setValue('input-pret-borrower-type-hist', String(pret.borrower_type || '').toLowerCase() === 'societe' ? 'societe' : 'personne');
+        setValue('input-pret-borrower-contact-hist', String(pret.borrower_contact || '').trim());
+        setValue('input-pret-date-debut-hist', String(pret.date_debut || pret.date || '').slice(0, 10));
+        setValue('input-pret-date-fin-hist', String(pret.date_fin || pret.date_debut || '').slice(0, 10));
+        setValue('input-pret-montant-hist', !gratuit && pret.remuneration_montant != null ? String(pret.remuneration_montant) : '');
+        const payant = document.getElementById('input-pret-payant-hist');
+        if (payant) {
+            payant.checked = !gratuit;
+        }
+        this.syncPretMontantField();
+        this.modalManager.open('modal-edit-pret-hist');
+    }
+
+    async savePretFromHistorique() {
+        const pretId = this.currentEditingPretId;
+        if (!pretId) {
+            return;
+        }
+        const value = (id) => String(document.getElementById(id)?.value || '').trim();
+        const borrowerName = value('input-pret-borrower-name-hist');
+        const dateDebut = value('input-pret-date-debut-hist');
+        const dateFin = value('input-pret-date-fin-hist') || dateDebut;
+        const payant = !!document.getElementById('input-pret-payant-hist')?.checked;
+        const montantRaw = value('input-pret-montant-hist');
+        const montant = Number(montantRaw);
+        if (!borrowerName) {
+            this.showNotification('Le nom de l\'emprunteur est obligatoire.', 'warning');
+            return;
+        }
+        if (!dateDebut) {
+            this.showNotification('La date de début est obligatoire.', 'warning');
+            return;
+        }
+        if (dateFin < dateDebut) {
+            this.showNotification('La date de fin ne peut pas précéder la date de début.', 'warning');
+            return;
+        }
+        if (payant && (montantRaw === '' || !Number.isFinite(montant) || montant < 0)) {
+            this.showNotification('Indiquez le montant du prêt payant.', 'warning');
+            return;
+        }
+        const body = {
+            reference: value('input-pret-reference-hist') || null,
+            borrower_type: value('input-pret-borrower-type-hist') === 'societe' ? 'societe' : 'personne',
+            borrower_name: borrowerName,
+            borrower_contact: value('input-pret-borrower-contact-hist') || null,
+            date_debut: dateDebut,
+            date_fin: dateFin,
+            remuneration_gratuit: !payant,
+            remuneration_montant: payant ? montant : null
+        };
+        const saveBtn = document.getElementById('btn-save-pret-hist');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+        }
+        try {
+            const res = await api.put(this.resolveDetailEndpoint('pret', pretId), body);
+            if (!res.ok) {
+                throw new Error(this.describeApiFailure(res, 'Modification'));
+            }
+            this.modalManager.close('modal-edit-pret-hist');
+            const idx = this.prets.findIndex(p => String(p.id) === String(pretId));
+            const hadPdf = idx >= 0 && !!String(this.prets[idx].pdf_path || '').trim();
+            if (idx >= 0) {
+                this.prets[idx] = { ...this.prets[idx], ...body };
+            }
+            this.showNotification('Prêt mis à jour', 'success');
+            if (hadPdf && window.electron?.invoke) {
+                this.syncPdfBridge();
+                await this.pdf.regeneratePretPdf(pretId);
+            } else if (hadPdf) {
+                this.showNotification('Le PDF n\'a pas été régénéré\u00a0: utilisez « Régénérer PDF » depuis l\'application de bureau.', 'warning');
+            }
+            await this.loadData();
+        } catch (err) {
+            this.showNotification(err?.message || 'Modification impossible', 'error');
+        } finally {
+            if (saveBtn) {
+                saveBtn.disabled = false;
+            }
+        }
+    }
+
+    askDeleteRecord(kind, recordId) {
+        const isPret = kind === 'pret';
+        const list = isPret ? this.prets : this.dons;
+        const record = list.find(r => String(r.id) === String(recordId));
+        if (!record) {
+            this.showNotification('Enregistrement introuvable. Actualisez l\'historique.', 'error');
+            return;
+        }
+        const name = isPret
+            ? String(record.reference || record.borrower_name || '').trim()
+            : String(record.lot_name || record.name || '').trim();
+        const noun = isPret ? 'le prêt' : 'le don';
+        const label = name ? `${noun} « ${name} » (n° ${record.id})` : `${noun} n° ${record.id}`;
+        this.pendingDelete = { kind: isPret ? 'pret' : 'don', id: String(record.id) };
+        const setText = (id, text) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.textContent = text;
+            }
+        };
+        setText('modal-confirm-delete-hist-title', isPret ? 'Supprimer le prêt' : 'Supprimer le don');
+        setText('modal-confirm-delete-hist-text', `Supprimer définitivement ${label}\u00a0? Ses données seront effacées du serveur. Cette action est irréversible.`);
+        setText('modal-confirm-delete-hist-pdf', String(record.pdf_path || '').trim()
+            ? 'Le PDF associé sera supprimé s\'il est accessible depuis le serveur. Sinon, son emplacement vous sera indiqué pour le supprimer vous-même.'
+            : 'Aucun PDF n\'est associé à cet enregistrement.');
+        this.modalManager.open('modal-confirm-delete-hist');
+    }
+
+    async confirmDeleteRecord() {
+        const pending = this.pendingDelete;
+        if (!pending) {
+            return;
+        }
+        const confirmBtn = document.getElementById('btn-confirm-delete-hist');
+        if (confirmBtn) {
+            confirmBtn.disabled = true;
+        }
+        try {
+            const res = await api.delete(this.resolveDetailEndpoint(pending.kind, pending.id));
+            if (!res.ok) {
+                throw new Error(this.describeApiFailure(res, 'Suppression'));
+            }
+            const data = await res.json().catch(() => ({}));
+            this.pendingDelete = null;
+            this.modalManager.close('modal-confirm-delete-hist');
+            const noun = pending.kind === 'pret' ? 'Prêt' : 'Don';
+            if (data?.pdf_path && !data.pdf_deleted) {
+                this.showNotification(`${noun} supprimé. Le PDF n'a pas pu être supprimé depuis le serveur\u00a0: supprimez-le vous-même (${data.pdf_path}).`, 'warning', { duration: 15000 });
+            } else {
+                this.showNotification(data?.pdf_deleted ? `${noun} et PDF supprimés` : `${noun} supprimé`, 'success');
+            }
+            await this.loadData();
+            document.getElementById('btn-refresh-historique')?.focus();
+        } catch (err) {
+            this.showNotification(err?.message || 'Suppression impossible', 'error');
+        } finally {
+            if (confirmBtn) {
+                confirmBtn.disabled = false;
+            }
         }
     }
 
@@ -2476,6 +2673,18 @@ export default class HistoriqueManager {
         const saveDonItemsBtn = document.getElementById('btn-save-don-items-hist');
         if (saveDonItemsBtn) {
             saveDonItemsBtn.addEventListener('click', () => this.saveDonItemsFromHistorique());
+        }
+        const savePretBtn = document.getElementById('btn-save-pret-hist');
+        if (savePretBtn) {
+            savePretBtn.addEventListener('click', () => this.savePretFromHistorique());
+        }
+        const payantInput = document.getElementById('input-pret-payant-hist');
+        if (payantInput) {
+            payantInput.addEventListener('change', () => this.syncPretMontantField());
+        }
+        const confirmDeleteBtn = document.getElementById('btn-confirm-delete-hist');
+        if (confirmDeleteBtn) {
+            confirmDeleteBtn.addEventListener('click', () => this.confirmDeleteRecord());
         }
     }
 
