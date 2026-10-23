@@ -25,21 +25,21 @@ export function nomAffiche(name) {
     return `${nom.replace(/\s/g, ESPACE_VISIBLE)} (espaces en trop)`;
 }
 
-/** Message lisible pour un échec réseau ou une réponse du serveur sans explication. */
+/** Message lisible pour un échec réseau ou une réponse sans explication (mêmes mots partout). */
 export function messageErreur(err, status) {
     if (err?.message && !/^HTTP \d+$/.test(err.message) && !(err instanceof TypeError)) {
         return err.message;
     }
     if (status) {
-        return `le serveur n'a pas pu traiter la demande (code ${status}). Réessayez ; si cela persiste, prévenez l'administrateur du serveur.`;
+        return `Tracebay n'a pas pu traiter la demande (code ${status}). Réessayez ; si cela persiste, prévenez la personne qui administre Tracebay.`;
     }
-    return 'le serveur ne répond pas. Vérifiez la connexion du poste puis réessayez.';
+    return 'Tracebay ne répond pas. Réessayez dans un instant.';
 }
 
 function afficherErreurListe(container, options) {
     container.innerHTML = `
         <div class="post-settings">
-            <p class="settings-error" role="alert">Liste des techniciens indisponible${NB}: le serveur ne répond pas.</p>
+            <p class="settings-error" role="alert">Liste des techniciens indisponible${NB}: Tracebay ne répond pas.</p>
             <div class="settings-actions">
                 <button type="button" class="settings-btn settings-btn--ghost" data-action="reessayer">Réessayer</button>
             </div>

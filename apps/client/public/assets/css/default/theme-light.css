@@ -31,7 +31,7 @@ html[data-theme-dark="0"] select,
 html[data-theme-dark="0"] textarea {
     background-color: #ffffff !important;
     color: #0d1117 !important;
-    border: 1px solid rgba(13, 17, 23, 0.18) !important;
+    border: 1px solid var(--border-control) !important;
 }
 
 html[data-theme-dark="0"] input::placeholder,
@@ -198,7 +198,7 @@ html[data-theme-dark="0"] .settings-update-progress-text {
 html[data-theme-dark="0"] .settings-btn--ghost {
     background: #ffffff !important;
     color: #1a1a1a !important;
-    border-color: rgba(13, 17, 23, 0.14) !important;
+    border-color: var(--border-control) !important;
 }
 
 html[data-theme-dark="0"] .settings-btn--ghost:hover:not(:disabled) {
@@ -438,7 +438,7 @@ html[data-theme-dark="0"] .agenda-modal select,
 html[data-theme-dark="0"] .agenda-modal textarea {
     background: #ffffff !important;
     color: #0d1117 !important;
-    border-color: rgba(13, 17, 23, 0.14) !important;
+    border-color: var(--border-control) !important;
 }
 
 html[data-theme-dark="0"] .agenda-event-form .form-group input[type="color"] {

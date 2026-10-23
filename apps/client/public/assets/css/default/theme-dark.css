@@ -41,7 +41,7 @@ select,
     padding: 0 var(--unit-2);
     background-color: var(--bg-surface-2);
     color: var(--text-primary);
-    border: 1px solid var(--border);
+    border: 1px solid var(--border-control);
     border-radius: 10px;
     font-size: 0.9375rem;
     line-height: 1.4;
@@ -98,7 +98,7 @@ input[type="search"],
 textarea {
     background-color: var(--bg-surface-2);
     color: var(--text-primary);
-    border-color: var(--border);
+    border-color: var(--border-control);
 }
 
 input::placeholder,
@@ -116,7 +116,7 @@ textarea::placeholder {
 .r-root .edit-items-table input {
     background-color: var(--bg-surface-2);
     color: var(--text-primary);
-    border-color: var(--border);
+    border-color: var(--border-control);
 }
 
 .r-root .lot-table tbody tr:hover {

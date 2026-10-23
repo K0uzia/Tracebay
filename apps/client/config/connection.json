@@ -82,7 +82,8 @@
       "modeles": "/api/marques/:id/modeles"
     },
     "agenda": {
-      "events": "/api/agenda/events"
+      "events": "/api/agenda/events",
+      "holidays": "/api/agenda/holidays"
     },
     "disques": {
       "sessions": "/api/disques/sessions",
@@ -108,6 +109,10 @@
       "create": "/api/prets-materiel",
       "tracabilite": "/api/prets-materiel/tracabilite",
       "get": "/api/prets-materiel/:id"
+    },
+    "config": {
+      "apps": "/api/admin/config/apps",
+      "folders": "/api/admin/config/folders"
     }
   }
 }

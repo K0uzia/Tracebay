@@ -14,6 +14,9 @@
                     <i class="fa-solid fa-cloud-arrow-down" aria-hidden="true"></i><span>Mise à jour</span>
                     <span class="settings-nav__dot" id="settingsNavUpdateDot" hidden aria-label="Mise à jour disponible"></span>
                 </button>
+                <button type="button" class="settings-nav__item" role="tab" id="settingsTabAppearance" aria-controls="settingsPanelAppearance" aria-selected="false" tabindex="-1">
+                    <i class="fa-solid fa-circle-half-stroke" aria-hidden="true"></i><span>Apparence</span>
+                </button>
                 <button type="button" class="settings-nav__item" role="tab" id="settingsTabPrivacy" aria-controls="settingsPanelPrivacy" aria-selected="false" tabindex="-1">
                     <i class="fa-solid fa-user-shield" aria-hidden="true"></i><span>Confidentialité</span>
                 </button>
@@ -63,6 +66,40 @@
                         <span>Mise à jour prête. Cliquez sur <strong>Redémarrer pour appliquer</strong> (une demande administrateur peut apparaître).</span>
                     </div>
                     <div class="settings-error hidden" id="settingsUpdateError" role="alert"></div>
+                </section>
+
+                <section class="settings-panel" role="tabpanel" id="settingsPanelAppearance" aria-labelledby="settingsTabAppearance" hidden>
+                    <header class="settings-panel__header">
+                        <h3>Apparence</h3>
+                        <p>Le choix est mémorisé sur ce poste.</p>
+                    </header>
+                    <div class="settings-row">
+                        <div class="settings-row__text">
+                            <span class="settings-row__title" id="settingsThemeSystemLabel">Suivre le thème du système</span>
+                            <span class="settings-row__hint">Thème clair ou sombre selon le réglage de l'ordinateur.</span>
+                        </div>
+                        <button type="button" class="settings-switch" id="settingsThemeSystemToggle" role="switch" aria-checked="true" aria-labelledby="settingsThemeSystemLabel">
+                            <span class="settings-switch__thumb" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row__text">
+                            <span class="settings-row__title" id="settingsThemeLabel">Thème sombre</span>
+                            <span class="settings-row__hint">Désactivé, l'interface passe en thème clair. Le changer arrête de suivre le système.</span>
+                        </div>
+                        <button type="button" class="settings-switch" id="settingsThemeDarkToggle" role="switch" aria-checked="true" aria-labelledby="settingsThemeLabel">
+                            <span class="settings-switch__thumb" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                    <div class="settings-row">
+                        <div class="settings-row__text">
+                            <span class="settings-row__title" id="settingsAutoLaunchLabel">Lancer au démarrage</span>
+                            <span class="settings-row__hint">Ouvre Tracebay automatiquement à l'ouverture de la session.</span>
+                        </div>
+                        <button type="button" class="settings-switch" id="settingsAutoLaunchToggle" role="switch" aria-checked="false" aria-labelledby="settingsAutoLaunchLabel">
+                            <span class="settings-switch__thumb" aria-hidden="true"></span>
+                        </button>
+                    </div>
                 </section>
 
                 <section class="settings-panel" role="tabpanel" id="settingsPanelPrivacy" aria-labelledby="settingsTabPrivacy" hidden>

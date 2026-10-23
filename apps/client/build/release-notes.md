@@ -1,3 +1,22 @@
+## Tracebay 3.7.2
+
+### Paramètres
+- Nouvel onglet Apparence :
+  - « Suivre le thème du système » est activé par défaut : Tracebay passe en clair ou en sombre comme l'ordinateur, y compris quand celui-ci change ;
+  - « Thème sombre » permet de choisir soi-même, et ce choix reste mémorisé sur le poste ;
+  - « Lancer au démarrage » ouvre Tracebay à l'ouverture de la session.
+- La fenêtre des Paramètres s'agrandit avec l'écran (jusqu'aux écrans de 2560 px), le texte gardant une largeur de lecture confortable.
+
+### Lisibilité
+- Les contours des listes, champs, interrupteurs et boutons secondaires sont plus marqués, dans les deux thèmes, pour être bien visibles (contraste conforme aux règles d'accessibilité).
+
+### Messages
+- Les messages d'erreur de l'effacement d'un nom de technicien parlent de « Tracebay » plutôt que du « serveur ».
+
+### À savoir
+- Un poste qui n'avait jamais changé de thème suit désormais le thème du système : sur un ordinateur réglé en clair, Tracebay s'ouvre en clair. Le choix reste possible dans Paramètres > Apparence.
+- Aucune action sur le serveur, aucune migration de données.
+
 ## Tracebay 3.7.1
 
 ### Paramètres > Confidentialité : effacer le nom d'un technicien

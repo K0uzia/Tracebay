@@ -39,8 +39,8 @@ describe('fonctions pures', () => {
 
     test('messageErreur : message du serveur, code sans explication, réseau', () => {
         expect(messageErreur(new Error('Nom introuvable.'), 404)).toBe('Nom introuvable.');
-        expect(messageErreur(new Error('HTTP 500'), 500)).toMatch(/code 500\).*administrateur/);
-        expect(messageErreur(new TypeError('Failed to fetch'), 0)).toMatch(/ne répond pas/);
+        expect(messageErreur(new Error('HTTP 500'), 500)).toMatch(/code 500\).*administre Tracebay/);
+        expect(messageErreur(new TypeError('Failed to fetch'), 0)).toBe('Tracebay ne répond pas. Réessayez dans un instant.');
         expect(messageErreur(new Error('HTTP 500'), 500)).not.toMatch(/^HTTP/);
     });
 });
@@ -107,7 +107,7 @@ describe('bloc', () => {
         await new Promise((r) => setTimeout(r, 0));
         const erreur = $('.settings-error');
         expect(erreur.classList.contains('hidden')).toBe(false);
-        expect(erreur.textContent).toMatch(/Effacement impossible\u00a0: le serveur n'a pas pu traiter la demande \(code 500\)/);
+        expect(erreur.textContent).toMatch(/Effacement impossible\u00a0: Tracebay n'a pas pu traiter la demande \(code 500\)/);
         expect($('[data-action="confirmer"]').textContent).toBe('Effacer le nom');
         expect($('[data-action="annuler"]').disabled).toBe(false);
         $('[data-action="annuler"]').click();
@@ -117,7 +117,7 @@ describe('bloc', () => {
     test('liste indisponible : bouton Réessayer qui recharge et garde le focus', async () => {
         api.get.mockResolvedValueOnce(reponse(500, {}));
         await afficherEffacementTechnicien(container);
-        expect($('[role="alert"]').textContent).toMatch(/indisponible/);
+        expect($('[role="alert"]').textContent).toMatch(/indisponible\u00a0: Tracebay ne répond pas/);
         liste([{ name: 'Élodie', count: 3 }]);
         $('[data-action="reessayer"]').click();
         await new Promise((r) => setTimeout(r, 0));

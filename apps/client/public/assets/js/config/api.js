@@ -58,12 +58,27 @@ async function init() {
         return;
     }
 
+    // Source unique : config/connection.json lu par le processus principal, avec le mode effectif
+    // (SERVER_MODE compris). Le renderer et le processus principal visent donc le même serveur.
+    if (typeof window.electron?.invoke === 'function') {
+        try {
+            const cfg = await window.electron.invoke('get-connection-config');
+            if (cfg && applyConnectionConfig(cfg)) {
+                initialized = true;
+                await mergeAppConfigFromMain();
+                return;
+            }
+        } catch (e) {
+            logger.warn('get-connection-config échoué', e);
+        }
+    }
+
+    // Hors Electron (tests, navigateur) : fichier servi à côté de la page, s'il existe.
     try {
         const response = await fetch('./config/connection.json');
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
-
         const cfg = await response.json();
         if (applyConnectionConfig(cfg)) {
             initialized = true;
@@ -72,21 +87,6 @@ async function init() {
         }
     } catch (error) {
         logger.error('Erreur chargement config', error);
-    }
-
-    // En build (file://), fetch peut échouer : utiliser la config lue par le process principal
-    if (typeof window.electron?.invoke === 'function') {
-        try {
-            const cfg = await window.electron.invoke('get-connection-config');
-            if (cfg && applyConnectionConfig(cfg)) {
-                initialized = true;
-                logger.info('API Config chargée depuis le process principal (fallback build)');
-                await mergeAppConfigFromMain();
-                return;
-            }
-        } catch (e) {
-            logger.warn('Fallback get-connection-config échoué', e);
-        }
     }
 
     // Dernier recours : localhost

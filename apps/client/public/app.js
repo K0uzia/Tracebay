@@ -114,14 +114,42 @@ class PageManager {
         });
     }
 
+    /** Sans choix enregistré sur le poste, le thème suit celui du système, même quand il change. */
     initializeThemePreference() {
+        this.systemThemeQuery = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+        this.systemThemeQuery?.addEventListener?.('change', () => {
+            if (this.isFollowingSystemTheme()) {
+                this.applyThemePreference(this.systemPrefersDark());
+            }
+        });
+        this.applyThemePreference(this.isFollowingSystemTheme() ? this.systemPrefersDark() : this.storedTheme() === '1');
+    }
+
+    storedTheme() {
         try {
-            const stored = localStorage.getItem(this.themeStorageKey);
-            const isDark = stored === null ? true : stored === '1';
-            this.applyThemePreference(isDark);
+            return localStorage.getItem(this.themeStorageKey);
         } catch (_) {
-            this.applyThemePreference(true);
+            return null;
         }
+    }
+
+    isFollowingSystemTheme() {
+        return this.storedTheme() === null;
+    }
+
+    systemPrefersDark() {
+        return this.systemThemeQuery ? this.systemThemeQuery.matches : true;
+    }
+
+    setFollowSystemTheme(follow) {
+        if (!follow) {
+            this.setThemePreference(this.isDarkThemeEnabled());
+            return;
+        }
+        try {
+            localStorage.removeItem(this.themeStorageKey);
+        } catch (_) {}
+        this.applyThemePreference(this.systemPrefersDark());
     }
 
     applyThemePreference(isDark) {
@@ -175,6 +203,10 @@ class PageManager {
         }
         if (settingsText) {
             settingsText.textContent = enabled ? 'ON' : 'OFF';
+        }
+        const systemBtn = document.getElementById('settingsThemeSystemToggle');
+        if (systemBtn) {
+            systemBtn.setAttribute('aria-checked', this.isFollowingSystemTheme() ? 'true' : 'false');
         }
     }
 
@@ -591,6 +623,7 @@ class PageManager {
         this.wireLazyLegalText('settingsLicenseDetails', 'settingsLicenseText', 'get-license', 'Licence introuvable.');
         this.wireLazyLegalText('settingsThirdPartyDetails', 'settingsThirdPartyText', 'get-third-party-licenses', 'Licences tierces introuvables.');
         this.wireUpdateAutoToggle();
+        this.wireAutoLaunchToggle();
         this.refreshBrandingInfo();
         this.refreshLicenceInfo();
         this.refreshTechnicianErasure();
@@ -676,6 +709,34 @@ class PageManager {
     }
 
     /** Interrupteur de la recherche de mises à jour au démarrage : câblé une seule fois. */
+    /** « Lancer au démarrage » : câblé une fois, reflète l'état du système à chaque ouverture. */
+    wireAutoLaunchToggle() {
+        const toggle = document.getElementById('settingsAutoLaunchToggle');
+        if (!toggle || !window.electron?.invoke) {
+            return;
+        }
+        if (toggle.dataset.wired !== '1') {
+            toggle.dataset.wired = '1';
+            toggle.addEventListener('click', async () => {
+                const next = toggle.getAttribute('aria-checked') !== 'true';
+                toggle.setAttribute('aria-checked', next ? 'true' : 'false');
+                try {
+                    const res = await window.electron.invoke('settings:set-auto-launch', { enabled: next });
+                    toggle.setAttribute('aria-checked', res?.enabled ? 'true' : 'false');
+                    if (!res?.success) {
+                        this.showNotification(res?.error || 'Impossible de modifier le lancement au démarrage', 'error');
+                    }
+                } catch (_) {
+                    toggle.setAttribute('aria-checked', next ? 'false' : 'true');
+                    this.showNotification('Impossible de modifier le lancement au démarrage', 'error');
+                }
+            });
+        }
+        window.electron.invoke('settings:get-auto-launch', {})
+            .then(res => toggle.setAttribute('aria-checked', res?.enabled ? 'true' : 'false'))
+            .catch(() => { /* état inconnu : laisser tel quel */ });
+    }
+
     wireUpdateAutoToggle() {
         const toggle = document.getElementById('settingsUpdateAutoToggle');
         if (!toggle) {
@@ -829,6 +890,12 @@ class PageManager {
             this.syncThemeToggleUI();
             themeToggleBtn.addEventListener('click', () => {
                 this.setThemePreference(!this.isDarkThemeEnabled());
+            });
+        }
+        const themeSystemBtn = document.getElementById('settingsThemeSystemToggle');
+        if (themeSystemBtn) {
+            themeSystemBtn.addEventListener('click', () => {
+                this.setFollowSystemTheme(!this.isFollowingSystemTheme());
             });
         }
 

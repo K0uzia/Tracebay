@@ -3314,11 +3314,70 @@ ipcMain.handle('get-app-config', async () => {
 });
 
 /**
- * Obtenir la configuration connexion complète (connection.json) lue depuis le disque.
- * Utilisée par le renderer quand fetch('./config/connection.json') échoue (ex. en build avec file://).
+ * Configuration connexion (config/connection.json, source unique) avec le mode effectif :
+ * SERVER_MODE, s'il est défini, choisit l'environnement pour le renderer comme pour ce processus.
  */
 ipcMain.handle('get-connection-config', async () => {
-    return serverConfig;
+    return { ...serverConfig, mode: MODE };
+});
+
+// Lancement automatique à l'ouverture de session : natif sur Windows et macOS, fichier .desktop
+// d'autostart sous Linux (code de la portable ; icône et exécutable « workspace » du paquet Linux).
+function linuxAutostartFile() {
+    return path.join(os.homedir(), '.config', 'autostart', 'tracebay.desktop');
+}
+
+function getAutoLaunchEnabled() {
+    if (process.platform === 'linux') {
+        try {
+            return fs.existsSync(linuxAutostartFile());
+        } catch (_) {
+            return false;
+        }
+    }
+    try {
+        return app.getLoginItemSettings().openAtLogin === true;
+    } catch (_) {
+        return false;
+    }
+}
+
+ipcMain.handle('settings:get-auto-launch', async () => {
+    return { success: true, enabled: getAutoLaunchEnabled() };
+});
+
+ipcMain.handle('settings:set-auto-launch', async (_event, payload) => {
+    const enabled = payload?.enabled === true;
+    try {
+        if (process.platform === 'linux') {
+            const file = linuxAutostartFile();
+            if (enabled) {
+                // AppImage : chemin réel du paquet (APPIMAGE) ; sinon binaire installé (.deb).
+                const exec = process.env.APPIMAGE || process.execPath;
+                const lignes = [
+                    '[Desktop Entry]',
+                    'Type=Application',
+                    'Name=Tracebay',
+                    `Exec="${exec}"`,
+                    'Icon=workspace',
+                    'Terminal=false',
+                    'X-GNOME-Autostart-enabled=true'
+                ];
+                const content = `${lignes.join('\n')}\n`;
+                fs.mkdirSync(path.dirname(file), { recursive: true });
+                fs.writeFileSync(file, content, 'utf8');
+            } else {
+                try {
+                    fs.unlinkSync(file);
+                } catch (_) { /* déjà absent */ }
+            }
+        } else {
+            app.setLoginItemSettings({ openAtLogin: enabled, openAsHidden: false });
+        }
+        return { success: true, enabled: getAutoLaunchEnabled() };
+    } catch (err) {
+        return { success: false, error: err?.message || 'Impossible de modifier le lancement au démarrage' };
+    }
 });
 
 /**

@@ -17,6 +17,9 @@
     --text-secondary: #b5bfd3;
     --text-muted: #7f8aa3;
     --border: rgba(255, 255, 255, 0.08);
+    /* Contour des contrôles (champs, listes, interrupteurs, boutons secondaires) : 3:1 au moins sur
+       --bg-elevated, --bg-surface et --bg-surface-2 (WCAG 1.4.11). */
+    --border-control: #68728a;
 
     /* Alias legacy */
     --blanc: var(--bg-surface);
@@ -155,6 +158,7 @@ html[data-theme-dark="0"] {
     --text-secondary: #1a1a1a;
     --text-muted: #4b5563;
     --border: rgba(13, 17, 23, 0.14);
+    --border-control: #7f8794;
 
     /* Alias legacy : texte sombre sur surfaces claires */
     --blanc: #ffffff;

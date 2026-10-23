@@ -26,7 +26,9 @@ const ALLOWED_CHANNELS = {
         'check-app-update',
         'download-app-update',
         'install-app-update',
-        'get-pending-app-update'
+        'get-pending-app-update',
+        'settings:get-auto-launch',
+        'settings:set-auto-launch'
     ],
     on: [
         'update-was-installed',
