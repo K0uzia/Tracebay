@@ -101,6 +101,50 @@ curl -s http://localhost:4000/api/branding | head -c 120; echo   # doit afficher
 
 Tant que le réglage n'est pas fait, les PDF des postes en 3.6.2 portent le nom « Tracebay », sans logo.
 
+## Licence de l'atelier (à partir de la 3.7.0)
+
+Une clé de licence `TB1.…`, émise par Kouzia, vaut pour tout l'atelier. Elle se saisit une fois sur le serveur, jamais sur les postes. Le serveur la vérifie hors ligne (signature Ed25519, clé publique embarquée) et ne contacte personne.
+
+```bash
+sudo bash proxmox/scripts/proxmox.sh set-licence "TB1.…"     # ou /monitoring, onglet Licence
+curl -s http://localhost:4000/api/licence; echo                 # état, titulaire, expiration
+```
+
+États et effets :
+
+| État | Écriture | Ce que voient les postes |
+|---|---|---|
+| Active | oui | rien |
+| Expire bientôt (30 jours ou moins) | oui | bandeau avec la date |
+| Expirée depuis 15 jours ou moins | oui | bandeau rouge avec la date de passage en lecture seule |
+| Expirée depuis plus de 15 jours, horloge du serveur reculée, clé invalide | non (lecture seule) | bandeau rouge, refus des écritures (code 423) |
+| Installation antérieure à la 3.7.0 sans clé (exemption) | oui, sans limite | mention « Licence non activée » dans À propos |
+| Installation neuve sans clé | non (lecture seule) | bandeau rouge |
+
+- Le délai de grâce après expiration (15 jours) et l'avertissement (30 jours) sont des constantes du code : `JOURS_GRACE_APRES_EXPIRATION` et `JOURS_AVERTISSEMENT`, dans `proxmox/app/src/lib/licence.ts` et `apps/client/licence.js`.
+- Exemption : au premier démarrage d'un serveur 3.7.0, si la base contient déjà des données (lots, dons, prêts, commandes, sessions de disques, agenda) et qu'aucune clé n'a jamais été saisie, l'installation reste en écriture sans limite de temps. Dès qu'une clé est saisie une fois, les règles normales s'appliquent. Risque assumé : une installation créée avant la 3.7.0 reste exemptée tant qu'aucune clé n'y est saisie.
+- Avec une licence valide, le nom de l'entreprise signé dans la clé remplace celui du réglage d'atelier sur les PDF. Pendant l'exemption ou le délai de grâce, c'est le nom du réglage d'atelier.
+- Horloge : le serveur mémorise le dernier jour vu (heure de Paris). Une date antérieure est traitée comme une expiration.
+
+En lecture seule, restent possibles : la consultation, les PDF et l'export ; la connexion ; la saisie de la licence et le réglage d'atelier ; l'enregistrement du chemin d'un PDF (`pdf_path` seul) ; et tout ce qui efface une personne (droit à l'effacement) :
+
+| Effacement | Route |
+|---|---|
+| Don, prêt (avec leur PDF) | `DELETE /api/dons/:id`, `DELETE /api/admin/dons/:id`, `DELETE /api/prets-materiel/:id` |
+| Événement d'agenda | `DELETE /api/agenda/events/:id`, `DELETE /api/admin/agenda/:id` |
+| Nom d'un technicien sur le matériel | `POST /api/lots/technicians/anonymize { name }` (égalité exacte, ce seul champ) |
+| Compte utilisateur (serveur seulement) | `DELETE /api/admin/users/:id` : sessions et messages supprimés, journal d'activité anonymisé |
+| Messages (serveur seulement) | `DELETE /api/admin/messages/:id`, `DELETE /api/admin/messages` |
+| Remontée d'erreur d'un poste (serveur seulement) | `DELETE /api/admin/monitoring/errors/:id` |
+
+Les destinataires des envois de PDF par e-mail ne sont pas enregistrés en base. Une adresse peut apparaître dans le journal du serveur (`proxmox/docker/logs`) si un envoi échoue : elle disparaît avec la rotation des journaux.
+
+### Passage à la 3.7.0
+
+1. `update` du serveur : la 3.7.0 du serveur fige l'exemption à son premier démarrage.
+2. `set-licence` avec la clé de l'atelier, émise dans Kouzia Hub.
+3. Publier les postes en 3.7.0.
+
 ## Import ponctuel de données
 
 Aucun import automatique. Pour une reprise exceptionnelle : générer le fichier hors du dépôt (`proxmox/scripts/rebuild_import_sql_from_pdfs.py`), le relire, l'appliquer une fois, puis le supprimer. Il contient des données personnelles et ne doit jamais être commité (il est ignoré par git).
