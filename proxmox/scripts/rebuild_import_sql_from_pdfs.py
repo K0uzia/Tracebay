@@ -8,11 +8,12 @@ Objectif:
 - Avec --parse-all-pdf (ou --parse-*-pdf) : tableaux extraits via pdftotext ; les PDFs doivent être
   accessibles sur la machine où tu lances ce script (souvent ton poste ou un serveur avec /mnt/team).
 
-Workflow typique « CT sans PDF »:
+Utilisation (ponctuelle, manuelle) :
 1) Sur une machine où les PDFs existent : python3 proxmox/scripts/rebuild_import_sql_from_pdfs.py --parse-all-pdf --out import.sql
-2) git add import.sql && git commit && git push
-3) Sur le CT : git pull puis sudo bash proxmox/scripts/proxmox.sh update (injecte import.sql à la racine du repo).
-   Le CT n’a pas besoin des PDFs ni de relancer le script Python : seul import.sql est requis côté CT.
+2) Copier import.sql sur le CT hors du dépôt (scp), relire son contenu, puis l’appliquer une seule fois :
+   cd proxmox/docker && docker compose exec -T db psql -U Admin -d workspace_db -v ON_ERROR_STOP=1 < /chemin/import.sql
+3) Supprimer le fichier. Ne jamais le committer : il contient des données personnelles (noms, emprunteurs),
+   il est ignoré par git, et proxmox.sh update ne l’applique plus (les dons et prêts ne sont pas dédoublonnés).
 
 Règle métier : 1 fichier PDF = 1 enregistrement (lot, don, etc.). Le chemin du dossier fait partie de l’identité
 (chemins différents = lots / typologies différents même si le nom de fichier se ressemble).

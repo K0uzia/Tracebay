@@ -20,6 +20,11 @@ apps/server/dist/
 .env.*.local
 .env.development.local
 proxmox/docker/email.env
+proxmox/docker/docker-compose.override.yml
+proxmox/docker/.env.bak-*
+import.sql
+__pycache__/
+*.pyc
 
 # Logs
 logs/
