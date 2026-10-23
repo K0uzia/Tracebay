@@ -10,8 +10,10 @@ TB_DUMP_FIN="-- PostgreSQL database dump complete"
 tag_valide() { [[ "$1" =~ ^[a-z0-9][a-z0-9-]{0,31}$ ]]; }
 
 # gzip lisible, non vide, et fin de dump écrite par pg_dump (absente si le dump a été coupé).
+# Depuis PostgreSQL 16.10 (CVE-2025-8714), pg_dump écrit encore « \unrestrict <clé> » après ce
+# commentaire : on le cherche dans les 20 dernières lignes, pas seulement les dernières.
 dump_valide() {
-  [[ -s "$1" ]] && gzip -t "$1" 2>/dev/null && gzip -dc "$1" | tail -n 3 | grep -F -e "$TB_DUMP_FIN" >/dev/null
+  [[ -s "$1" ]] && gzip -t "$1" 2>/dev/null && gzip -dc "$1" | tail -n 20 | grep -F -e "$TB_DUMP_FIN" >/dev/null
 }
 
 taille_base_mo() {
@@ -64,6 +66,9 @@ do_backup() {
     return 1
   fi
   if ! dump_valide "$encours/db.sql.gz"; then
+    # Diagnostic : fin du dump telle que reçue (clé de \unrestrict masquée, lignes tronquées).
+    info "Fin du dump reçu ($(stat -c %s "$encours/db.sql.gz") octets compressés) :"
+    gzip -dc "$encours/db.sql.gz" 2> /dev/null | tail -n 6 | sed -E 's/^(\\(un)?restrict ).*/\1<clé>/' | cut -c1-80 | sed 's/^/  | /' >&2 || true
     rm -rf -- "$encours"
     warn "Sauvegarde vide ou incomplète (fin de dump absente) : supprimée."
     return 1

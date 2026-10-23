@@ -31,6 +31,29 @@ fausse_sauvegarde() {
   refuter_secrets "$output $stderr"
 }
 
+@test "backup : fin de dump de PostgreSQL 16.10 et plus (\\unrestrict après le commentaire) acceptée" {
+  # Cas réel du 23/10 : pg_dump 16.10 écrit « \unrestrict <clé> » après « dump complete ».
+  run --separate-stderr "$CTL" backup
+  [ "$status" -eq 0 ]
+  gzip -dc "$output/db.sql.gz" | tail -n 3 | grep -q '^\\unrestrict '
+  run "$CTL" restore --check "$(basename "$output")"
+  [ "$status" -eq 0 ]
+}
+
+@test "backup : fin de dump d'avant PostgreSQL 16.10 acceptée" {
+  FAKE_PGDUMP_ANCIEN=1 run --separate-stderr "$CTL" backup
+  [ "$status" -eq 0 ]
+  ! gzip -dc "$output/db.sql.gz" | grep -q 'restrict'
+}
+
+@test "backup : dump coupé, fin affichée pour le diagnostic (clé masquée)" {
+  FAKE_PGDUMP_TRUNCATED=1 run "$CTL" backup
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Fin du dump reçu"* ]]
+  [[ "$output" == *"  | INSERT INTO lots VALUES (1);"* ]]
+  [[ "$output" != *"Kq3vF0aZ9cTb2LmW"* ]]
+}
+
 @test "backup : pg_dump en échec, rien n'est gardé" {
   FAKE_PGDUMP_FAIL=1 run "$CTL" backup
   echo "$output"; [ "$status" -eq 1 ]

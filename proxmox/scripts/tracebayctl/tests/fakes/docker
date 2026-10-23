@@ -71,8 +71,16 @@ if [[ "${1:-}" == "compose" ]]; then
             echo "pg_dump: error: simulé" >&2
             exit 1
           fi
-          printf -- '-- PostgreSQL database dump\n%s\n' "$(cat "$FAKE_DIR/db.content" 2>/dev/null)"
-          [[ -n "${FAKE_PGDUMP_TRUNCATED:-}" ]] || printf -- '-- PostgreSQL database dump complete\n'
+          # Format réel de pg_dump 16.10 et suivants : \restrict en tête, \unrestrict APRÈS le commentaire
+          # de fin. FAKE_PGDUMP_ANCIEN=1 : format d'avant 16.10, sans ces deux lignes.
+          cle="Kq3vF0aZ9cTb2LmW"
+          printf -- '--\n-- PostgreSQL database dump\n--\n\n'
+          [[ -n "${FAKE_PGDUMP_ANCIEN:-}" ]] || printf '\\restrict %s\n\n' "$cle"
+          printf '%s\n' "$(cat "$FAKE_DIR/db.content" 2>/dev/null)"
+          if [[ -z "${FAKE_PGDUMP_TRUNCATED:-}" ]]; then
+            printf -- '\n--\n-- PostgreSQL database dump complete\n--\n\n'
+            [[ -n "${FAKE_PGDUMP_ANCIEN:-}" ]] || printf '\\unrestrict %s\n\n' "$cle"
+          fi
           ;;
         psql)
           entree="$(cat)"
@@ -103,7 +111,7 @@ if [[ "${1:-}" == "compose" ]]; then
             printf '%s' "${BASH_REMATCH[1]}" > "$FAKE_DIR/db.password"
           fi
           if [[ "$entree" == *"-- PostgreSQL database dump"* ]]; then
-            printf '%s\n' "$entree" | grep -v '^--' > "$FAKE_DIR/db.content"
+            printf '%s\n' "$entree" | grep -v -e '^--' -e '^[\]' -e '^$' > "$FAKE_DIR/db.content"
           fi
           ;;
         node) echo "${FAKE_NODE_VERSION:-v22.23.4}" ;;
