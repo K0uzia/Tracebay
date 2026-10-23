@@ -19,7 +19,7 @@ import { globalCache } from './utils/cache';
 import { initServerLogBuffer, createPinoBufferStream } from './utils/server-log-buffer';
 import { testConnection, initializeDatabase, query } from './db';
 import { buildDisquesPdfPath } from './utils/disques-pdf';
-import { resolvePdfFilePath, TEAM_BASE_PATH } from './utils/pdf-path';
+import { resolvePdfFilePath, resolvePdfFileForDeletion, TEAM_BASE_PATH } from './utils/pdf-path';
 
 // Load environment variables
 dotenv.config();
@@ -3275,6 +3275,51 @@ function broadcastUserCount() {
       }
     });
 
+    // Droit à l'effacement (RGPD) : suppression définitive de l'enregistrement, puis de son PDF
+    // s'il est joignable depuis ce serveur et qu'aucun autre don ou prêt ne le référence.
+    const deleteRecordWithPdf = async (table: 'dons' | 'prets_materiel', id: string, reply: FastifyReply) => {
+      const notFound = table === 'dons' ? 'Don introuvable' : 'Prêt matériel introuvable';
+      if (!/^d+$/.test(String(id || ''))) {
+        reply.statusCode = 400;
+        return { error: 'Identifiant invalide' };
+      }
+      try {
+        const existing = await query(`SELECT pdf_path FROM ${table} WHERE id = $1`, [id]);
+        if (existing.rowCount === 0) {
+          reply.statusCode = 404;
+          return { error: notFound };
+        }
+        const rawPdf = (existing.rows[0] as any)?.pdf_path;
+        const pdfPath = rawPdf ? String(rawPdf) : null;
+        await query(`DELETE FROM ${table} WHERE id = $1`, [id]);
+        let pdfDeleted = false;
+        if (pdfPath) {
+          const shared = await query(
+            'SELECT 1 FROM dons WHERE pdf_path = $1 UNION ALL SELECT 1 FROM prets_materiel WHERE pdf_path = $1 LIMIT 1',
+            [pdfPath]
+          );
+          const file = shared.rowCount === 0 ? resolvePdfFileForDeletion(pdfPath) : null;
+          if (file) {
+            try {
+              await fs.promises.unlink(file);
+              pdfDeleted = true;
+            } catch (err: any) {
+              fastify.log.warn({ code: err?.code }, `DELETE ${table}: PDF non supprimé`);
+            }
+          }
+        }
+        return { success: true, id: Number(id), pdf_path: pdfPath, pdf_deleted: pdfDeleted };
+      } catch (error: any) {
+        if (error?.code === '42P01') {
+          reply.statusCode = 500;
+          return { error: `Table ${table} manquante (migration requise)` };
+        }
+        fastify.log.error({ code: error?.code }, `DELETE ${table}/:id error`);
+        reply.statusCode = 500;
+        return { error: 'Database error' };
+      }
+    };
+
     fastify.post('/api/dons', async (request: FastifyRequest, reply: FastifyReply) => {
       const body = request.body as any;
       const lotName = String(body?.lot_name || body?.name || '').trim() || null;
@@ -3368,6 +3413,11 @@ function broadcastUserCount() {
         reply.statusCode = 500;
         return { error: 'Database error' };
       }
+    });
+
+    fastify.delete('/api/dons/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      return deleteRecordWithPdf('dons', id, reply);
     });
 
     fastify.get('/api/dons/tracabilite', async (_request: FastifyRequest, reply: FastifyReply) => {
@@ -3611,6 +3661,11 @@ function broadcastUserCount() {
         reply.statusCode = 500;
         return { error: 'Database error' };
       }
+    });
+
+    fastify.delete('/api/prets-materiel/:id', async (request: FastifyRequest, reply: FastifyReply) => {
+      const { id } = request.params as { id: string };
+      return deleteRecordWithPdf('prets_materiel', id, reply);
     });
 
     fastify.post('/api/commandes/products', async (request: FastifyRequest, reply: FastifyReply) => {

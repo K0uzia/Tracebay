@@ -48,3 +48,27 @@ export function resolvePdfFilePath(rawPath: string): string | null {
   }
   return null;
 }
+
+/**
+ * Chemin du PDF à supprimer : uniquement le chemin enregistré (ou sa traduction vers le montage
+ * équipe), jamais le repli par nom de fichier de resolvePdfFilePath, qui pourrait viser le PDF
+ * d'un autre enregistrement. Confiné au montage équipe et limité aux fichiers .pdf.
+ */
+export function resolvePdfFileForDeletion(rawPath: string): string | null {
+  const first = normalizeStoredPdfPath(rawPath);
+  if (!first) return null;
+  const teamBase = path.resolve(TEAM_BASE_PATH);
+  const teamParent = path.dirname(teamBase);
+  const candidates = new Set<string>([first]);
+  if (first.startsWith('/mnt/team/#TEAM/')) candidates.add(path.resolve(teamBase, first.slice('/mnt/team/#TEAM/'.length)));
+  if (first.startsWith('/mnt/team/')) candidates.add(path.resolve(teamParent, first.slice('/mnt/team/'.length)));
+  for (const c of [...candidates]) {
+    if (c.includes('TRAÇABILITÉ')) candidates.add(c.replace(/TRAÇABILITÉ/g, 'TRACABILITE'));
+    if (c.includes('TRACABILITÉ')) candidates.add(c.replace(/TRACABILITÉ/g, 'TRACABILITE'));
+  }
+  for (const candidate of candidates) {
+    if (!candidate.startsWith(teamParent + path.sep) || path.extname(candidate).toLowerCase() !== '.pdf') continue;
+    if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
+  }
+  return null;
+}
