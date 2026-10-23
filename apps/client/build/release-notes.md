@@ -10,6 +10,9 @@
 ### Linux
 - La version Linux (AppImage) est de nouveau publiée ; elle manquait à la 3.6.0.
 
+### Données
+- Des documents internes non utilisés par l'application (dont une liste nominative) ne sont plus inclus dans le paquet.
+
 ### À savoir
 - Le serveur de l'atelier doit être mis à jour avant les postes : sans sa nouvelle version, la suppression d'un prêt ou d'un don échoue avec un message d'erreur, sans rien effacer.
 - Aucune migration de données.
