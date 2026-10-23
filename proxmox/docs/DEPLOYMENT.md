@@ -86,9 +86,9 @@ Le nom et le logo imprimés en en-tête des PDF (lots, disques, commandes, dons,
 sudo bash proxmox/scripts/proxmox.sh set-branding "NOM DE L'ATELIER" /chemin/logo.png
 ```
 
-### Passage à la version 3.6.2 des postes (logo par réglage)
+### Passage à la version 3.7.0 des postes (logo par réglage)
 
-Jusqu'à la 3.6.1, le logo de La Capsule était écrit en dur dans les gabarits PDF. À partir de la 3.6.2, il vient du réglage ci-dessus et le fichier n'est plus livré avec l'application. Pour qu'un atelier déjà installé garde son en-tête, enregistrer le réglage sur le serveur **avant** de publier la 3.6.2 des postes :
+Jusqu'à la 3.6.1, le logo de La Capsule était écrit en dur dans les gabarits PDF. À partir de la 3.7.0, il vient du réglage ci-dessus et le fichier n'est plus livré avec l'application. Pour qu'un atelier déjà installé garde son en-tête, enregistrer le réglage sur le serveur **avant** de publier la 3.7.0 des postes :
 
 ```bash
 cd /root/workspace
@@ -99,7 +99,7 @@ sudo bash proxmox/scripts/proxmox.sh set-branding "LA CAPSULE" /tmp/capsule.png
 curl -s http://localhost:4000/api/branding | head -c 120; echo   # doit afficher "company_name":"LA CAPSULE"
 ```
 
-Tant que le réglage n'est pas fait, les PDF des postes en 3.6.2 portent le nom « Tracebay », sans logo.
+Tant que le réglage n'est pas fait, les PDF des postes en 3.7.0 portent le nom « Tracebay », sans logo.
 
 ## Licence de l'atelier (à partir de la 3.7.0)
 
