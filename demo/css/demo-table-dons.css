@@ -1,0 +1,28 @@
+/**
+ * Tableau Dons. Largeurs en multiples de --ui-font, réglées sur le contenu réel.
+ * Colonnes étroites : 6.75 ; colonnes de contenu : 62.25.
+ * Tableau minimal : 69 x --ui-font, soit 966 px à 1280 px.
+ */
+
+.r-root .dons-container .lot-table:not(#tb) {
+  --tb-fixed-u: 6.75;
+  --tb-flex: 62.25;
+}
+
+/* numéro de ligne */
+.r-root .dons-container .lot-table:not(#tb) th.lot-table__th--num { --w: 3; }
+/* bouton supprimer */
+.r-root .dons-container .lot-table:not(#tb) th.lot-table__th--action { --w: 3.75; }
+
+/* liste : Portable, Fixe, Écran */
+.r-root .dons-container .lot-table:not(#tb) th.lot-table__th--type { --w: 8.5; }
+/* liste : HP, Asus, Marque... */
+.r-root .dons-container .lot-table:not(#tb) th.lot-table__th--marque { --w: 9; }
+/* liste : EliteBook 840 G7 */
+.r-root .dons-container .lot-table:not(#tb) th.lot-table__th--modele { --w: 12.5; }
+/* S/N (NX-DON-WIP-02) */
+.r-root .dons-container .lot-table:not(#tb) th.lot-table__th--sn { --w: 11; }
+/* date jj/mm/aaaa et son calendrier */
+.r-root .dons-container .lot-table:not(#tb) th.lot-table__th--date { --w: 10.25; }
+/* nom du bénéficiaire (Remy Calder) */
+.r-root .dons-container .lot-table:not(#tb) th.lot-table__th--stagiaire { --w: 11; }

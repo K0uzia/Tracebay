@@ -717,7 +717,7 @@
           "<th class=\"lot-table__th--select\"><input type=\"checkbox\" id=\"disques-select-all\" class=\"lot-checkbox\" title=\"Tout sélectionner\"></th>" +
           "<th class=\"lot-table__th--num\">#</th><th class=\"lot-table__th--sn\">S/N</th><th class=\"lot-table__th--type\">Type</th>" +
           "<th class=\"lot-table__th--marque\">Marque</th><th class=\"lot-table__th--modele\">Modèle</th>" +
-          "<th class=\"lot-table__th--date\">Taille</th><th class=\"lot-table__th--entree\">Interface</th>" +
+          "<th class=\"lot-table__th--taille\">Taille</th><th class=\"lot-table__th--interface\">Interface</th>" +
           "<th class=\"lot-table__th--destroy\" title=\"Destruction physique\">D.phy</th><th class=\"lot-table__th--shred\">Shred</th>" +
           "<th class=\"lot-table__th--action\"></th>" +
         "</tr></thead><tbody id=\"disques-session-tbody\">" +
@@ -1434,7 +1434,7 @@
     const entity = API.getEntity(kind, id);
     if (!entity) return;
     const items = entity.items || [];
-    let head = "<th>S/N</th><th>Détail</th>";
+    let head = "<th class=\"details-table__th--sn\">S/N</th><th>Détail</th>";
     let body = items.map(function (it) {
       if (kind === "commande") return "<tr><td>" + esc(it.product) + "</td><td>" + esc(it.qty) + " × " + esc(it.price) + " €</td></tr>";
       if (kind === "don") return "<tr><td>" + esc(it.sn) + "</td><td>" + esc(recipientOf(it)) + " : " + esc(it.brand) + " " + esc(it.model) + "</td></tr>";
