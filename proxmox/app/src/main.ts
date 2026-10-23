@@ -2027,9 +2027,6 @@ function broadcastUserCount() {
           return { error: 'PDF path invalid' };
         }
         const resolvedFile = resolvePdfFilePath(filePath);
-        // #region agent log
-        if (typeof fetch === 'function') fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run5',hypothesisId:'H10',location:'main.ts:/api/commandes/:id/pdf',message:'Commande PDF resolved path',data:{id,raw:filePath,resolvedFile},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         if (!resolvedFile || !fs.existsSync(resolvedFile)) {
           reply.statusCode = 404;
           return { error: 'PDF file not found' };
@@ -2064,9 +2061,6 @@ function broadcastUserCount() {
           return { error: 'PDF path invalid' };
         }
         const resolvedFile = resolvePdfFilePath(filePath);
-        // #region agent log
-        if (typeof fetch === 'function') fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run5',hypothesisId:'H10',location:'main.ts:/api/dons/:id/pdf',message:'Don PDF resolved path',data:{id,raw:filePath,resolvedFile},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         if (!resolvedFile || !fs.existsSync(resolvedFile)) {
           reply.statusCode = 404;
           return { error: 'PDF file not found' };

@@ -819,22 +819,13 @@ function api(method, path, body) {
     'Authorization': 'Bearer ' + TOKEN,
   };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
-  // #region agent log
-  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H1',location:'monitoring.html:api:beforeFetch',message:'API request start',data:{base:BASE,path,method,hasToken:!!TOKEN,protocol:window.location.protocol},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   return fetch(BASE + path, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
   }).then(async (r) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H1',location:'monitoring.html:api:afterFetch',message:'API response received',data:{path,method,status:r.status,ok:r.ok,contentType:r.headers.get('content-type') || ''},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     return r.json();
   }).catch((err) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H1',location:'monitoring.html:api:fetchError',message:'API fetch error',data:{path,method,error:String(err?.message || err)},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     throw err;
   });
 }
@@ -1496,9 +1487,6 @@ function openLotModal(id, editable = true) {
         const itemModel = it.modele_name || it.modele || it.model || '';
         const itemSerial = it.serial_number || it.serial || '';
         const itemDate = toDateInputLocal(it.date || it.received_at || it.created_at || it.state_changed_at);
-        // #region agent log
-        fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run3',hypothesisId:'H6',location:'monitoring.html:openLotModal:item',message:'Lot item mapped for modal',data:{itemId:it.id,state:currentState,rawDate:it.date || null,rawCreatedAt:it.created_at || null,rawStateChangedAt:it.state_changed_at || null,itemDate},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         return `<tr data-item-id="${it.id}">
           <td>${it.id}</td>
           <td><input type="text" class="lot-item-type form-input" data-id="${it.id}" value="${escHtml(itemType)}" placeholder="Type"></td>
@@ -1584,9 +1572,6 @@ async function loadCommandes() {
   try {
     const data = await api('GET', '/api/admin/commandes?limit=200');
     const list = (data.data || []).slice();
-    // #region agent log
-    fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run5',hypothesisId:'H9',location:'monitoring.html:loadCommandes',message:'Commandes list pdf paths',data:{count:list.length,first:list[0]?{id:list[0].id,pdf_path:list[0].pdf_path||null}:null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Aucune commande</td></tr>'; return; }
     const base = window.location.origin;
     tbody.innerHTML = list.map(c => {
@@ -1616,9 +1601,6 @@ async function loadDons() {
   try {
     const data = await api('GET', '/api/admin/dons?limit=200');
     const list = (data.data || []).slice();
-    // #region agent log
-    fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run5',hypothesisId:'H9',location:'monitoring.html:loadDons',message:'Dons list pdf paths',data:{count:list.length,first:list[0]?{id:list[0].id,pdf_path:list[0].pdf_path||null}:null},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     if (!list.length) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="5">Aucun don</td></tr>';
       return;
@@ -1740,9 +1722,6 @@ async function savePretDetail() {
 async function openDonDetail(id) {
   const data = await api('GET', '/api/admin/dons/' + id);
   if (data.error) { toast(data.error, 'error'); return; }
-  // #region agent log
-  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H2',location:'monitoring.html:openDonDetail',message:'Don detail payload received',data:{id,hasDon:!!data?.don,keys:data?.don?Object.keys(data.don):[],linesType:typeof data?.don?.lines,isLinesArray:Array.isArray(data?.don?.lines),lineCount:Array.isArray(data?.don?.lines)?data.don.lines.length:-1},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   currentDonDetail = data.don || {};
   currentDonLines = getDonLines(currentDonDetail);
   donDetailEditable = false;
@@ -1757,9 +1736,6 @@ async function openCommandeDetail(id) {
   if (data.error) { toast(data.error, 'error'); return; }
   currentCommandeDetail = data.commande || data.data || {};
   currentCommandeLines = getCommandeLines(currentCommandeDetail);
-  // #region agent log
-  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run2',hypothesisId:'H3',location:'monitoring.html:openCommandeDetail',message:'Commande detail loaded',data:{id,lineCount:currentCommandeLines.length,keys:Object.keys(currentCommandeDetail || {}),hasLinesArray:Array.isArray(currentCommandeDetail?.lines),hasLignesArray:Array.isArray(currentCommandeDetail?.lignes)},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   commandeDetailEditable = false;
   renderCommandeDetailModal();
   openModal('commande-detail-modal');
@@ -1859,9 +1835,6 @@ async function saveCommandeDetail() {
       link: (document.querySelector(`.cmd-line-link[data-idx="${i}"]`)?.value || '').trim() || null
     }))
   };
-  // #region agent log
-  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run2',hypothesisId:'H3',location:'monitoring.html:saveCommandeDetail',message:'Commande payload before PUT',data:{id:currentCommandeDetail.id,domLineCount,sourceLineCount:sourceLines.length,lineCount:body.lignes.length,first:body.lignes[0]?{product_name_ref:body.lignes[0].product_name_ref,quantity:body.lignes[0].quantity,date:body.lignes[0].date}:null},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   if (domLineCount > 0 && body.lignes.length === 0) {
     toast('Aucune ligne détectée, sauvegarde bloquée pour éviter l\'effacement.', 'error');
     return;
@@ -1894,9 +1867,6 @@ function renderDonDetailModal() {
   const lines = currentDonLines.length ? currentDonLines : getDonLines(d);
   currentDonLines = lines;
   const rawLines = Array.isArray(d.lines) ? d.lines : (Array.isArray(d.lignes) ? d.lignes : (Array.isArray(d.items) ? d.items : parseMaybeJsonArray(d.lines || d.lignes || d.items)));
-  // #region agent log
-  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run2',hypothesisId:'H2',location:'monitoring.html:renderDonDetailModal',message:'Don lines normalized for render',data:{donId:d.id || null,count:lines.length,rawCount:Array.isArray(rawLines)?rawLines.length:0,rawFirstKeys:Array.isArray(rawLines)&&rawLines[0]?Object.keys(rawLines[0]):[],rawFirst:Array.isArray(rawLines)&&rawLines[0]?rawLines[0]:null,first:lines[0]?{materiel:lines[0].materiel,modele:lines[0].modele,type:lines[0].type,serial_number:lines[0].serial_number,date:lines[0].date,nom:lines[0].nom,prenom:lines[0].prenom}:null},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   const editable = !!donDetailEditable;
   const linesHtml = lines.length
     ? lines.map((l, i) => {
@@ -1947,9 +1917,6 @@ async function saveDonDetail() {
       };
     })
   };
-  // #region agent log
-  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H3',location:'monitoring.html:saveDonDetail',message:'Don payload before PUT',data:{id:currentDonDetail.id,lineCount:body.lines.length,first:body.lines[0]?{materiel:body.lines[0].materiel,modele:body.lines[0].modele,type:body.lines[0].type,serial_number:body.lines[0].serial_number,date:body.lines[0].date,nom:body.lines[0].nom,prenom:body.lines[0].prenom}:null},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   const data = await api('PUT', '/api/admin/dons/' + currentDonDetail.id, body);
   if (data.error) { toast(data.error, 'error'); return; }
   toast('Don mis à jour');
@@ -1969,13 +1936,7 @@ async function regenerateDonPdf() {
 
 async function openPdfPath(path) {
   if (!path) { toast('Aucun PDF disponible', 'error'); return; }
-  // #region agent log
-  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H4',location:'monitoring.html:openPdfPath:before',message:'Open PDF requested',data:{path},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   const data = await api('POST', '/api/admin/open-path', { path });
-  // #region agent log
-  fetch('http://127.0.0.1:7680/ingest/250de527-3fcc-4619-b66e-c496868c4275',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'fdef1d'},body:JSON.stringify({sessionId:'fdef1d',runId:'run1',hypothesisId:'H4',location:'monitoring.html:openPdfPath:after',message:'Open PDF response',data:{path,error:data?.error || null,success:!!data?.success,openedPath:data?.openedPath || null},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
   if (data.error) { toast(data.error, 'error'); return; }
   toast('PDF ouvert');
 }
