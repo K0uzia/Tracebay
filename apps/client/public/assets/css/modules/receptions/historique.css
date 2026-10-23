@@ -216,6 +216,7 @@
 .historique-lot-actions .btn-edit-commande-name-hist,
 .historique-lot-actions .btn-edit-commande-items-hist,
 .historique-lot-actions .btn-view-pret-details-hist,
+.historique-lot-actions .btn-edit-pret-hist,
 .historique-lot-actions .btn-action {
     background: var(--bg-surface-2);
     color: var(--bleu2);
@@ -236,10 +237,28 @@
 .historique-lot-actions .btn-edit-commande-name-hist:hover,
 .historique-lot-actions .btn-edit-commande-items-hist:hover,
 .historique-lot-actions .btn-view-pret-details-hist:hover,
+.historique-lot-actions .btn-edit-pret-hist:hover,
 .historique-lot-actions .btn-action:hover {
     background: rgba(62, 59, 140, 0.06);
     border-color: var(--bleu1);
     color: var(--bleu1);
+}
+
+.historique-lot-actions .btn-delete-hist {
+    background: rgba(248, 113, 113, 0.14);
+    color: #fecaca;
+    border: 1px solid rgba(248, 113, 113, 0.4);
+}
+
+.historique-lot-actions .btn-delete-hist:hover {
+    background: rgba(248, 113, 113, 0.24);
+    border-color: rgba(248, 113, 113, 0.55);
+}
+
+.historique-modal-note {
+    margin: var(--unit-2) 0 0;
+    font: var(--font-text2);
+    color: var(--text2);
 }
 
 .historique-lot-actions .btn-to-recover {

@@ -446,6 +446,70 @@
     </div>
 </dialog>
 
+<dialog class="universal-modal lots-modal" id="modal-edit-pret-hist" data-modal-id="modal-edit-pret-hist" aria-labelledby="modal-edit-pret-hist-title">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h2 id="modal-edit-pret-hist-title"><i class="fa-solid fa-pen-to-square" aria-hidden="true"></i> Modifier le prêt</h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-edit-pret-hist" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label for="input-pret-reference-hist">Référence</label>
+                <input type="text" id="input-pret-reference-hist" maxlength="255" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="input-pret-borrower-name-hist">Emprunteur</label>
+                <input type="text" id="input-pret-borrower-name-hist" maxlength="255" required autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="input-pret-borrower-type-hist">Type d'emprunteur</label>
+                <select id="input-pret-borrower-type-hist">
+                    <option value="personne">Personne</option>
+                    <option value="societe">Société</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="input-pret-borrower-contact-hist">Contact</label>
+                <input type="text" id="input-pret-borrower-contact-hist" maxlength="255" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label for="input-pret-date-debut-hist">Début</label>
+                <input type="date" id="input-pret-date-debut-hist" required>
+            </div>
+            <div class="form-group">
+                <label for="input-pret-date-fin-hist">Fin</label>
+                <input type="date" id="input-pret-date-fin-hist" required>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" id="input-pret-payant-hist"> Prêt payant</label>
+                <input type="number" id="input-pret-montant-hist" min="0" step="0.01" placeholder="Montant (€)" aria-label="Montant (€)" disabled>
+            </div>
+            <p class="historique-modal-note">Le PDF du prêt est régénéré avec ces informations et l'ancien PDF est supprimé.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-edit-pret-hist">Annuler</button>
+            <button type="button" class="modal-submit-btn" id="btn-save-pret-hist"><i class="fa-solid fa-check" aria-hidden="true"></i> Enregistrer</button>
+        </div>
+    </div>
+</dialog>
+
+<dialog class="universal-modal lots-modal" id="modal-confirm-delete-hist" data-modal-id="modal-confirm-delete-hist" aria-labelledby="modal-confirm-delete-hist-title" aria-describedby="modal-confirm-delete-hist-text">
+    <div class="modal-content modal-md">
+        <div class="modal-header">
+            <h2><i class="fa-solid fa-triangle-exclamation" aria-hidden="true"></i> <span id="modal-confirm-delete-hist-title">Supprimer</span></h2>
+            <button type="button" class="modal-close-btn" data-modal-close="modal-confirm-delete-hist" aria-label="Fermer"><i class="fa-solid fa-times" aria-hidden="true"></i></button>
+        </div>
+        <div class="modal-body">
+            <p id="modal-confirm-delete-hist-text"></p>
+            <p class="historique-modal-note" id="modal-confirm-delete-hist-pdf"></p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="modal-cancel-btn" data-modal-close="modal-confirm-delete-hist">Annuler</button>
+            <button type="button" class="lots-modal__btn lots-modal__btn--danger" id="btn-confirm-delete-hist"><i class="fa-solid fa-trash" aria-hidden="true"></i> Supprimer définitivement</button>
+        </div>
+    </div>
+</dialog>
+
 <dialog class="universal-modal lots-modal" id="modal-edit-commande-items-hist" data-modal-id="modal-edit-commande-items-hist">
     <div class="modal-content modal-lg">
         <div class="modal-header">
