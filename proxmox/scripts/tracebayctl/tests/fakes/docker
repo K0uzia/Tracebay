@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# Faux docker des tests : journalise chaque appel dans $FAKE_DIR/docker.log, comportement réglé par FAKE_*.
+# État simulé dans $FAKE_DIR : db.down / api.down (service arrêté), db.content (contenu de la base),
+# db.password (mot de passe du rôle PostgreSQL), images construites (build.log).
+set -u
+printf '%s\n' "$*" >> "$FAKE_DIR/docker.log"
+
+compteur() {
+  local f="$FAKE_DIR/$1.count" n=0
+  [[ -f "$f" ]] && n="$(cat "$f")"
+  n=$((n + 1))
+  echo "$n" > "$f"
+  echo "$n"
+}
+
+echoue_a() { # FAKE_<X>_FAIL_AT="2 3" : échec aux appels 2 et 3
+  local liste="$1" n="$2"
+  [[ " $liste " == *" $n "* ]]
+}
+
+if [[ "${1:-}" == "compose" ]]; then
+  shift
+  case "${1:-}" in
+    version) echo "Docker Compose version v2.30.0" ;;
+    config)
+      if [[ "${2:-}" == "--images" ]]; then
+        printf 'postgres:16-bookworm\nworkspace-proxmox:latest\n'
+        exit 0
+      fi
+      if [[ -n "${FAKE_CONFIG_FAIL:-}" ]]; then
+        echo "yaml: line 9: mapping values are not allowed in this context" >&2
+        exit 1
+      fi
+      ;;
+    ps)
+      [[ -f "$FAKE_DIR/db.down" ]] || echo db
+      [[ -f "$FAKE_DIR/api.down" ]] || echo proxmox
+      ;;
+    up)
+      n="$(compteur up)"
+      if echoue_a "${FAKE_UP_FAIL_AT:-}" "$n"; then
+        echo "Error response from daemon: simulé" >&2
+        exit 1
+      fi
+      rm -f "$FAKE_DIR/db.down"
+      [[ "${*: -1}" == "db" ]] || rm -f "$FAKE_DIR/api.down"
+      ;;
+    build)
+      n="$(compteur build)"
+      if echoue_a "${FAKE_BUILD_FAIL_AT:-}" "$n"; then
+        echo "failed to solve: simulé" >&2
+        exit 1
+      fi
+      (cd "$TB_REPO" && git rev-parse --short HEAD) >> "$FAKE_DIR/build.log"
+      ;;
+    stop)
+      [[ " $* " == *" proxmox"* || $# -eq 1 ]] && touch "$FAKE_DIR/api.down"
+      [[ " $* " == *" db"* || $# -eq 1 ]] && touch "$FAKE_DIR/db.down"
+      ;;
+    down) touch "$FAKE_DIR/api.down" "$FAKE_DIR/db.down" ;;
+    logs) echo "journal simulé : $*" ;;
+    exec)
+      shift
+      [[ "${1:-}" == "-T" ]] && shift
+      shift
+      case "${1:-}" in
+        pg_isready) [[ -f "$FAKE_DIR/db.down" ]] && exit 1 ;;
+        pg_dump)
+          if [[ -n "${FAKE_PGDUMP_FAIL:-}" ]]; then
+            echo "pg_dump: error: simulé" >&2
+            exit 1
+          fi
+          printf -- '-- PostgreSQL database dump\n%s\n' "$(cat "$FAKE_DIR/db.content" 2>/dev/null)"
+          [[ -n "${FAKE_PGDUMP_TRUNCATED:-}" ]] || printf -- '-- PostgreSQL database dump complete\n'
+          ;;
+        psql)
+          entree="$(cat)"
+          printf '%s\n-- fin psql (%s)\n' "$entree" "$*" >> "$FAKE_DIR/psql.log"
+          n="$(compteur psql)"
+          if echoue_a "${FAKE_PSQL_FAIL_AT:-}" "$n"; then
+            echo "ERROR: simulé" >&2
+            exit 3
+          fi
+          if [[ -n "${FAKE_PSQL_FAIL_ON:-}" && "$entree" == *"$FAKE_PSQL_FAIL_ON"* ]]; then
+            echo "ERROR: simulé ($FAKE_PSQL_FAIL_ON)" >&2
+            exit 3
+          fi
+          if [[ "$entree" =~ PASSWORD\ \'([^\']*)\' ]]; then
+            printf '%s' "${BASH_REMATCH[1]}" > "$FAKE_DIR/db.password"
+          fi
+          if [[ "$entree" == *"-- PostgreSQL database dump"* ]]; then
+            printf '%s\n' "$entree" | grep -v '^--' > "$FAKE_DIR/db.content"
+          fi
+          ;;
+        node) echo "${FAKE_NODE_VERSION:-v22.23.4}" ;;
+      esac
+      ;;
+  esac
+  exit 0
+fi
+
+case "${1:-}" in
+  inspect)
+    case "$*" in
+      *State.Status*) echo running ;;
+      *Health*) echo healthy ;;
+      *RestartCount*) echo 0 ;;
+    esac
+    ;;
+  image) date -u -d "-${FAKE_IMAGE_AGE_DAYS:-3} days" +%Y-%m-%dT%H:%M:%SZ ;;
+  info) echo "$FAKE_DIR" ;;
+  volume) [[ "${2:-}" == "inspect" ]] && exit 1 ;;
+esac
+exit 0

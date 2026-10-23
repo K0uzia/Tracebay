@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Faux flock, seulement quand le système n'en a pas (Git Bash) : verrou par mkdir, mêmes options
+# que les appels de tracebayctl (-n, -w N, -o, -E code). Le vrai comportement de -o est testé avec le vrai flock.
+code=1
+while [[ "${1:-}" == -* ]]; do
+  case "$1" in
+    -w | -E) [[ "$1" == "-E" ]] && code="$2"; shift ;;
+  esac
+  shift
+done
+verrou="$1"
+shift
+mkdir "$verrou.d" 2>/dev/null || exit "$code"
+trap 'rmdir "$verrou.d"' EXIT
+"$@"

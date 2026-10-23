@@ -1,0 +1,5 @@
+# Scripts shell : toujours LF, même extraits sous Windows (bash refuse les CRLF).
+*.sh text eol=lf
+*.bats text eol=lf
+proxmox/scripts/tracebayctl/tracebayctl text eol=lf
+proxmox/scripts/tracebayctl/tests/** text eol=lf

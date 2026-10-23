@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Faux curl des tests : journalise les arguments, copie en-têtes et corps envoyés, répond selon l'URL.
+# L'API répond 000 si $FAKE_DIR/api.down existe ; GET /api/branding renvoie 500 si le mot de passe
+# du rôle (db.password) ne correspond plus à DB_PASSWORD du .env, comme l'API réelle.
+set -u
+printf '%s\n' "$*" >> "$FAKE_DIR/curl.log"
+
+url="" format="" sortie="" methode="GET"
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -w) format="$2"; shift ;;
+    -o) sortie="$2"; shift ;;
+    -X) methode="$2"; shift ;;
+    -H)
+      if [[ "$2" == @* ]]; then cat "${2#@}" >> "$FAKE_DIR/curl.headers"; else printf '%s\n' "$2" >> "$FAKE_DIR/curl.headers"; fi
+      shift
+      ;;
+    --data-binary | --data | -d)
+      if [[ "$2" == @* ]]; then cat "${2#@}" > "$FAKE_DIR/curl.body"; else printf '%s' "$2" > "$FAKE_DIR/curl.body"; fi
+      shift
+      ;;
+    -m | --max-time) shift ;;
+    http*) url="$1" ;;
+  esac
+  shift
+done
+
+if [[ -f "$FAKE_DIR/api.down" ]]; then
+  [[ -n "$format" ]] && printf '%s' "${format//%\{http_code\}/000}"
+  exit 7
+fi
+
+chemin="/${url#http*://*/}"
+code=200 corps='{"success":true}'
+case "$methode $chemin" in
+  "GET /api/health") code="${FAKE_HEALTH:-200}" corps='{"status":"ok"}' ;;
+  "GET /api/branding")
+    attendu="$(sed -n 's/^DB_PASSWORD=//p' "$TB_REPO/proxmox/docker/.env" | tail -n 1)"
+    if [[ -f "$FAKE_DIR/db.password" && "$(cat "$FAKE_DIR/db.password")" != "$attendu" ]]; then
+      code=500 corps='{"error":"Réglage de l'"'"'atelier illisible."}'
+    else
+      code="${FAKE_BRANDING_CODE:-200}"
+      corps='{"success":true,"company_name":"LA CAPSULE","logo":"data:image/png;base64,iVBORw0K","nom_impose":false}'
+    fi
+    ;;
+  "GET /api/licence") corps="${FAKE_LICENCE:-{\"success\":true,\"etat\":\"non_activee\",\"ecriture\":true,\"entreprise\":null}}" ;;
+  "PUT /api/admin/branding") code="${FAKE_PUT_CODE:-200}" corps="${FAKE_PUT_BODY:-{\"success\":true}}" ;;
+  "PUT /api/admin/licence") code="${FAKE_PUT_CODE:-200}" corps="${FAKE_PUT_BODY:-{\"success\":true,\"etat\":\"active\",\"entreprise\":\"Atelier test\",\"expire\":\"2027-10-23\"}}" ;;
+esac
+
+if [[ "$sortie" != "/dev/null" ]]; then printf '%s' "$corps"; fi
+[[ -n "$format" ]] && printf '%b' "${format//%\{http_code\}/$code}"
+exit 0

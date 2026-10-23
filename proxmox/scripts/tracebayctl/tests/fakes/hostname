@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Faux hostname des tests.
+[[ "${1:-}" == "-I" ]] && echo "192.0.2.10 "
+exit 0

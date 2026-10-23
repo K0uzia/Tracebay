@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Faux systemctl des tests.
+printf '%s\n' "$*" >> "$FAKE_DIR/systemctl.log"
+case "${1:-}" in
+  is-enabled) echo "${FAKE_SYSTEMD_ENABLED:-enabled}" ;;
+  is-active) echo "${FAKE_SYSTEMD_ACTIVE:-active}" ;;
+esac
+exit 0

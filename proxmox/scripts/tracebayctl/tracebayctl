@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# tracebayctl : exploitation du serveur Tracebay (API Fastify + PostgreSQL sous Docker Compose).
+# Sans argument dans un terminal : menu. « tracebayctl help » : liste des commandes.
+
+# shellcheck source-path=SCRIPTDIR
+set -euo pipefail
+
+TB_SELF="$(readlink -f "${BASH_SOURCE[0]}")"
+TB_SELF_DIR="$(dirname "$TB_SELF")"
+
+# shellcheck source=lib.sh
+. "$TB_SELF_DIR/lib.sh"
+# shellcheck source=status.sh
+. "$TB_SELF_DIR/status.sh"
+
+usage() {
+  cat <<'EOF'
+Usage : tracebayctl <commande> [options]
+        tracebayctl            (menu, dans un terminal)
+
+Consultation
+  status                 État complet : conteneurs, version, API, licence, atelier, Node, disque, sauvegardes.
+  check                  Valide Docker, docker-compose.yml et les secrets du .env, sans rien modifier.
+
+Aide
+  help                   Cette aide.
+  <commande> -h          Aide d'une commande.
+
+Codes de sortie : 0 réussi, 1 erreur, 2 usage incorrect, 75 opération déjà en cours, 130 interruption.
+EOF
+}
+
+usage_cmd() {
+  case "$1" in
+    status)
+      cat <<'EOF'
+tracebayctl status
+  Lecture seule, sans verrou. Les secrets sont affichés « renseigné » ou avec leur défaut, jamais leur valeur.
+  Les points à regarder sont en jaune et comptés à la fin.
+EOF
+      ;;
+    check)
+      cat <<'EOF'
+tracebayctl check
+  docker compose config -q, secrets du .env (vides, connus ou trop courts) et droits 600 du .env.
+  Lancé aussi avant chaque opération qui utilise compose ou le .env.
+EOF
+      ;;
+    *) usage ;;
+  esac
+}
+
+menu() {
+  local choix
+  while true; do
+    cat >&2 <<'EOF'
+
+Tracebay : que faire ?
+  1  État du serveur
+  2  Vérifier la configuration
+  q  Quitter
+EOF
+    read -r -p "Choix : " choix || exit 0
+    case "$choix" in
+      1) ("$TB_SELF" status) || true ;;
+      2) ("$TB_SELF" check) || true ;;
+      q | Q) exit 0 ;;
+      *) warn "Choix inconnu : $choix" ;;
+    esac
+  done
+}
+
+main() {
+  trap_signals
+  if [[ $# -eq 0 ]]; then
+    if [[ -t 0 ]]; then
+      tb_resolve_repo
+      menu
+    fi
+    usage >&2
+    exit 2
+  fi
+  local commande="$1"
+  shift
+  case "$commande" in
+    help | -h | --help)
+      usage
+      return 0
+      ;;
+  esac
+  tb_resolve_repo
+  case "$commande" in
+    status) cmd_status "$@" ;;
+    check) cmd_check "$@" ;;
+    *)
+      usage >&2
+      die "Commande inconnue : $commande" 2
+      ;;
+  esac
+}
+
+main "$@"
