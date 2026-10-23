@@ -213,6 +213,7 @@ status_config() {
     probleme="$(secret_problem "$nom" "$(env_get "$nom")")"
     if [[ -z "$probleme" ]]; then ligne "$nom" "renseigné"; else alerte "$nom" "$probleme"; fi
   done
+  declare -F status_comptes > /dev/null && status_comptes
   if lock_busy; then
     ligne "Verrou d'opération" "pris : $(lock_holder)"
   else

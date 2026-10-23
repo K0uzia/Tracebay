@@ -18,6 +18,8 @@ TB_SELF_DIR="$(dirname "$TB_SELF")"
 . "$TB_SELF_DIR/update.sh"
 # shellcheck source=secrets.sh
 . "$TB_SELF_DIR/secrets.sh"
+# shellcheck source=atelier.sh
+. "$TB_SELF_DIR/atelier.sh"
 
 usage() {
   cat <<'EOF'
@@ -27,6 +29,9 @@ Usage : tracebayctl <commande> [options]
 Consultation
   status                 État complet : conteneurs, version, API, licence, atelier, Node, disque, sauvegardes.
   check                  Valide Docker, docker-compose.yml et les secrets du .env, sans rien modifier.
+  logs [api|db] [-f] [-n N]
+                         Journaux de l'API (par défaut) ou de PostgreSQL, 200 lignes, -f pour suivre.
+  users                  Comptes : id, nom, rôle, date de création, mot de passe défini (jamais le hachage).
 
 Mise à jour
   update [--yes] [--skip-backup] [--force]
@@ -41,6 +46,14 @@ Sauvegardes
 Secrets
   rotate-secrets [--yes] Nouveaux JWT_SECRET, ADMIN_TOKEN et mot de passe PostgreSQL ; tout est remis
                          comme avant si une étape échoue.
+
+Atelier et comptes
+  set-branding --nom NOM [--logo FICHIER | --retirer-logo]
+                         Nom et logo (PNG, JPEG, WebP, 512 Ko) imprimés sur les PDF de tous les postes.
+  set-licence CLE        Clé de licence de l'atelier (TB1...), vérifiée par le serveur ; - pour la lire sur stdin.
+  admin-password NOM     Nouveau mot de passe d'un compte, saisi deux fois sans affichage.
+  user-delete [--yes] NOM
+                         Supprime un compte après confirmation ; journal d'activité anonymisé.
 
 Aide
   help                   Cette aide.
@@ -93,6 +106,47 @@ tracebayctl rotate-secrets [--yes]
   Tous les utilisateurs devront se reconnecter.
 EOF
       ;;
+    logs)
+      cat <<'EOF'
+tracebayctl logs [api|db] [-f] [-n N]
+  docker compose logs de l'API (défaut) ou de PostgreSQL ; 200 dernières lignes, -f (ou live) pour suivre.
+EOF
+      ;;
+    users)
+      cat <<'EOF'
+tracebayctl users
+  Liste des comptes lue dans PostgreSQL, colonnes choisies : le hachage du mot de passe n'est jamais lu.
+EOF
+      ;;
+    set-branding)
+      cat <<'EOF'
+tracebayctl set-branding --nom "NOM DE L'ATELIER" [--logo FICHIER | --retirer-logo]
+tracebayctl set-branding "NOM" [FICHIER]          (ancienne forme, acceptée)
+  Contrôle local (nom de 120 caractères au plus, logo PNG, JPEG ou WebP de 512 Ko au plus, pas de SVG),
+  puis PUT /api/admin/branding : le serveur valide à son tour. Une licence valide impose son nom sur les PDF.
+EOF
+      ;;
+    set-licence)
+      cat <<'EOF'
+tracebayctl set-licence "TB1...."
+tracebayctl set-licence -          (clé lue sur l'entrée standard)
+  Envoie la clé au serveur (PUT /api/admin/licence), qui vérifie la signature ; affiche l'état obtenu.
+EOF
+      ;;
+    admin-password)
+      cat <<'EOF'
+tracebayctl admin-password NOM
+  Saisie masquée, deux fois, 12 caractères au moins (sans terminal : une ligne sur l'entrée standard).
+  Le serveur hache le mot de passe (bcrypt) ; rien n'est affiché ni passé en argument.
+EOF
+      ;;
+    user-delete)
+      cat <<'EOF'
+tracebayctl user-delete [--yes] NOM
+  Nom exact, sinon insensible à la casse s'il n'y a qu'un compte. Confirmation qui nomme le compte, puis
+  DELETE /api/admin/users/:id : le journal d'activité ne garde que l'action et la date.
+EOF
+      ;;
     backup)
       cat <<'EOF'
 tracebayctl backup [--tag ETIQUETTE] [--attendre]
@@ -126,6 +180,8 @@ Tracebay : que faire ?
   2  Vérifier la configuration
   5  Mettre à jour
   6  Renouveler les secrets
+  7  Journaux de l'API
+  8  Comptes
   3  Sauvegarder la base
   4  Restaurer une sauvegarde
   q  Quitter
@@ -138,6 +194,8 @@ EOF
       4) ("$TB_SELF" restore) || true ;;
       5) ("$TB_SELF" update) || true ;;
       6) ("$TB_SELF" rotate-secrets) || true ;;
+      7) ("$TB_SELF" logs) || true ;;
+      8) ("$TB_SELF" users) || true ;;
       q | Q) exit 0 ;;
       *) warn "Choix inconnu : $choix" ;;
     esac
@@ -170,6 +228,12 @@ main() {
     restore) cmd_restore "$@" ;;
     update) cmd_update "$@" ;;
     rotate-secrets) cmd_rotate_secrets "$@" ;;
+    set-branding) cmd_set_branding "$@" ;;
+    set-licence) cmd_set_licence "$@" ;;
+    logs) cmd_logs "$@" ;;
+    users) cmd_users "$@" ;;
+    admin-password) cmd_admin_password "$@" ;;
+    user-delete) cmd_user_delete "$@" ;;
     *)
       usage >&2
       die "Commande inconnue : $commande" 2
