@@ -40,6 +40,40 @@ sauvegardes_maj() { find "$TB_REPO/proxmox/docker/backups" -maxdepth 1 -name '*-
   [[ "$output" == *"Dernière mise à jour"*"$ANCIEN vers $NOUVEAU, réussie, schéma : ok"* ]]
 }
 
+@test "update : dernière image PostgreSQL de la même étiquette récupérée avant le redémarrage" {
+  nouvelle_version
+  FAKE_PULL_NEW=1 run "$CTL" update --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Nouvelle image postgres:16-bookworm (même version majeure)"* ]]
+  tirage="$(grep -n '^compose pull db$' "$FAKE_DIR/docker.log" | head -n 1 | cut -d: -f1)"
+  redemarrage="$(grep -n '^compose up -d --remove-orphans$' "$FAKE_DIR/docker.log" | head -n 1 | cut -d: -f1)"
+  sauvegarde="$(grep -n 'pg_dump' "$FAKE_DIR/docker.log" | head -n 1 | cut -d: -f1)"
+  [ "$sauvegarde" -lt "$tirage" ]
+  [ "$tirage" -lt "$redemarrage" ]
+}
+
+@test "update : image PostgreSQL déjà à jour" {
+  nouvelle_version
+  run "$CTL" update --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Image postgres:16-bookworm déjà à jour."* ]]
+}
+
+@test "update : téléchargement de l'image PostgreSQL impossible, mise à jour poursuivie" {
+  nouvelle_version
+  FAKE_PULL_FAIL=1 run "$CTL" update --yes
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Téléchargement de l'image PostgreSQL impossible"* ]]
+  [ "$(git -C "$TB_REPO" rev-parse --short HEAD)" = "$NOUVEAU" ]
+}
+
+@test "update --no-db-pull : image PostgreSQL non téléchargée" {
+  nouvelle_version
+  run "$CTL" update --yes --no-db-pull
+  [ "$status" -eq 0 ]
+  ! grep -q "^compose pull" "$FAKE_DIR/docker.log"
+}
+
 @test "update : sauvegarde impossible, arrêt sans rien changer" {
   nouvelle_version
   FAKE_PGDUMP_FAIL=1 run "$CTL" update --yes

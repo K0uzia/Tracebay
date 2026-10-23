@@ -36,6 +36,27 @@ appliquer_schemas() {
   echo "$erreurs"
 }
 
+# Dernière image de la même étiquette (postgres:16-bookworm : correctifs de la 16, jamais une autre
+# majeure). La sauvegarde est déjà faite ; db n'est recréé au redémarrage que si l'image a changé.
+# Un échec du téléchargement n'arrête pas la mise à jour : l'image actuelle reste en service.
+maj_image_db() {
+  local image avant apres
+  [[ -n "${TB_NO_DB_PULL:-}" ]] && return 0
+  title "Image PostgreSQL"
+  image="$(dc config --images 2> /dev/null | grep -i postgres | head -n 1 || true)"
+  avant="$(docker image inspect -f '{{.Id}}' "$image" 2> /dev/null || true)"
+  if ! dc pull db; then
+    warn "Téléchargement de l'image PostgreSQL impossible (réseau ?) : l'image actuelle reste en service."
+    return 0
+  fi
+  apres="$(docker image inspect -f '{{.Id}}' "$image" 2> /dev/null || true)"
+  if [[ -n "$apres" && "$apres" != "$avant" ]]; then
+    info "Nouvelle image ${image:-PostgreSQL} (même version majeure) : PostgreSQL sera redémarré avec elle."
+  else
+    info "Image ${image:-PostgreSQL} déjà à jour."
+  fi
+}
+
 marquer_service_actif() {
   command -v systemctl > /dev/null 2>&1 || return 0
   if systemctl is-enabled "$TB_SERVICE" > /dev/null 2>&1 && ! systemctl is-active "$TB_SERVICE" > /dev/null 2>&1; then
@@ -48,6 +69,8 @@ cmd_update() {
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --skip-backup) sauter=1 ;;
+      # Variable et non argument : l'appel de la phase 2 reste celui de l'invariant ci-dessus.
+      --no-db-pull) export TB_NO_DB_PULL=1 ;;
       --yes) export TB_YES=1 ;;
       --force) forcer=1 ;;
       --suite) suite=1 ;;
@@ -129,6 +152,8 @@ update_suite() {
     retour_code sans-construction
     die "Construction échouée : code revenu à $(court "$depuis"), l'ancienne version est toujours en service."
   fi
+
+  maj_image_db
 
   title "Base de données"
   if ! ensure_db_up || ! set_db_role_password "$(env_get DB_PASSWORD)"; then

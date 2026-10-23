@@ -55,7 +55,7 @@ sudo tracebayctl update
 1. Contrôles (Docker, `docker compose config`, secrets), liste des nouveautés de `origin/proxmox`, confirmation (`--yes` pour s'en passer).
 2. Sauvegarde obligatoire de la base : si elle échoue, arrêt, rien n'a changé. `--skip-backup` s'en passe après une seconde confirmation.
 3. Nouveau code (`git reset --hard origin/proxmox`), puis la suite tourne avec les scripts de la nouvelle version.
-4. Compose de la nouvelle version validé et image construite pendant que l'ancienne tourne : en cas d'échec, le code revient à la version d'avant et rien n'a changé.
+4. Compose de la nouvelle version validé et image construite pendant que l'ancienne tourne : en cas d'échec, le code revient à la version d'avant et rien n'a changé. Puis dernière image PostgreSQL de la même étiquette (`postgres:16-bookworm` : correctifs de la 16, jamais une autre version majeure) ; PostgreSQL n'est redémarré que si elle a changé (`--no-db-pull` pour s'en passer).
 5. Mot de passe PostgreSQL réaligné, `schema.sql` puis migrations embarquées (`proxmox/app/src/db/migrations-embarquees.sql`), redémarrage, contrôle de la santé et de l'accès à la base. En cas d'échec : retour automatique à la version d'avant, et la commande indique la sauvegarde à restaurer si la base a déjà changé.
 
 Une erreur de schéma reste un avertissement (comme avant) : elle est notée dans `/var/lib/tracebay/schema-erreurs.log` et sur la ligne « Dernière mise à jour » de `tracebayctl status`. Aucune donnée n'est injectée.

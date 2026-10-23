@@ -170,7 +170,7 @@ status_versions() {
     [[ -n "$cree" ]] || continue
     age="$(jours_depuis "$cree" || echo "?")"
     if [[ "$age" =~ ^[0-9]+$ ]] && ((age > TB_IMAGE_MAX_AGE_DAYS)); then
-      alerte "Image $image" "construite il y a $age jours : penser à tracebayctl update"
+      alerte "Image $image" "construite il y a $age jours : tracebayctl update (récupère aussi la dernière image PostgreSQL de la même version)"
     else
       ligne "Image $image" "construite il y a $age jour(s)"
     fi

@@ -36,7 +36,7 @@ Consultation
   users                  Comptes : id, nom, rôle, date de création, mot de passe défini (jamais le hachage).
 
 Mise à jour
-  update [--yes] [--skip-backup] [--force]
+  update [--yes] [--skip-backup] [--force] [--no-db-pull]
                          Sauvegarde obligatoire, nouvelle version de la branche proxmox, image construite
                          avant de toucher aux conteneurs ; retour automatique à la version d'avant si échec.
 
@@ -98,7 +98,7 @@ EOF
       ;;
     update)
       cat <<'EOF'
-tracebayctl update [--yes] [--skip-backup] [--force]
+tracebayctl update [--yes] [--skip-backup] [--force] [--no-db-pull]
   1. Contrôles (Docker, compose, secrets), git fetch et liste des nouveautés, confirmation.
   2. Sauvegarde obligatoire (étiquette avant-maj) : si elle échoue, arrêt, rien n'a changé.
      --skip-backup s'en passe, après une seconde confirmation.
@@ -108,6 +108,8 @@ tracebayctl update [--yes] [--skip-backup] [--force]
   5. Mot de passe PostgreSQL réaligné, schema.sql et migrations embarquées (erreur : avertissement
      noté dans status), redémarrage, santé de l'API et accès à la base.
      En cas d'échec : retour à la version d'avant, et la sauvegarde à restaurer est indiquée.
+  Après la construction : dernière image PostgreSQL de la même étiquette (postgres:16-bookworm, jamais
+  une autre majeure) ; PostgreSQL n'est redémarré que si elle a changé. --no-db-pull pour s'en passer.
   --force : reconstruit et redémarre même sans nouveau commit.
   L'API n'est jamais laissée arrêtée, même après une interruption.
 EOF

@@ -46,6 +46,13 @@ if [[ "${1:-}" == "compose" ]]; then
       rm -f "$FAKE_DIR/db.down"
       [[ "${*: -1}" == "db" ]] || rm -f "$FAKE_DIR/api.down"
       ;;
+    pull)
+      if [[ -n "${FAKE_PULL_FAIL:-}" ]]; then
+        echo "error pulling image: simulé" >&2
+        exit 1
+      fi
+      [[ -n "${FAKE_PULL_NEW:-}" ]] && echo "sha256:nouvelle" > "$FAKE_DIR/db.image"
+      ;;
     build)
       n="$(compteur build)"
       if echoue_a "${FAKE_BUILD_FAIL_AT:-}" "$n"; then
@@ -129,7 +136,13 @@ case "${1:-}" in
       *RestartCount*) echo 0 ;;
     esac
     ;;
-  image) date -u -d "-${FAKE_IMAGE_AGE_DAYS:-3} days" +%Y-%m-%dT%H:%M:%SZ ;;
+  image)
+    if [[ "$*" == *"{{.Id}}"* ]]; then
+      cat "$FAKE_DIR/db.image" 2> /dev/null || echo "sha256:actuelle"
+    else
+      date -u -d "-${FAKE_IMAGE_AGE_DAYS:-3} days" +%Y-%m-%dT%H:%M:%SZ
+    fi
+    ;;
   info) echo "$FAKE_DIR" ;;
   volume) [[ "${2:-}" == "inspect" ]] && exit 1 ;;
 esac
