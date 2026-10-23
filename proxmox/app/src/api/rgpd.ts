@@ -7,6 +7,21 @@ type QueryFn = (sql: string, params?: any[]) => Promise<{ rows: any[]; rowCount?
  * Liste commune avec la version portable : docs/LICENCE.md.
  */
 export async function registerRgpdRoutes(fastify: FastifyInstance, query: QueryFn): Promise<void> {
+  // Noms de techniciens enregistrés sur le matériel (éléments supprimés compris), pour l'effacement RGPD.
+  fastify.get('/api/lots/technicians', async (_request: FastifyRequest, reply: FastifyReply) => {
+    try {
+      const result = await query(
+        `SELECT technician AS name, COUNT(*)::int AS count FROM lot_items
+         WHERE technician IS NOT NULL AND technician <> '' GROUP BY technician ORDER BY technician`
+      );
+      return { success: true, technicians: result.rows };
+    } catch (err: any) {
+      fastify.log.error({ code: err?.code }, 'GET /api/lots/technicians');
+      reply.statusCode = 500;
+      return { error: 'Liste des techniciens illisible.' };
+    }
+  });
+
   // Retire un nom de technicien de tout le matériel : seulement ce champ, seulement en cas d'égalité exacte.
   fastify.post('/api/lots/technicians/anonymize', async (request: FastifyRequest, reply: FastifyReply) => {
     const name = (request.body as any)?.name;

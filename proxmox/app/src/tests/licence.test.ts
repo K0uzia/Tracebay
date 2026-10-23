@@ -134,6 +134,8 @@ describe('lecture seule', () => {
     assert.equal(ecriturePermiseEnLectureSeule('PUT', '/api/dons/:id', { pdf_path: '/x.pdf' }), true);
     assert.equal(ecriturePermiseEnLectureSeule('PUT', '/api/dons/:id', { pdf_path: '/x.pdf', lot_name: 'Y' }), false);
     assert.equal(ecriturePermiseEnLectureSeule('PUT', '/api/dons/:id', {}), false);
+    assert.equal(ecriturePermiseEnLectureSeule('PUT', '/api/commandes/:id', { pdf_path: '/c.pdf' }), true);
+    assert.equal(ecriturePermiseEnLectureSeule('PUT', '/api/commandes/:id', { pdf_path: '/c.pdf', name: 'x' }), false);
     assert.equal(ecriturePermiseEnLectureSeule('POST', '/api/lots', {}), false);
     assert.equal(ecriturePermiseEnLectureSeule('DELETE', '/api/lots/:id', undefined), false);
   });
@@ -184,6 +186,19 @@ describe('lecture seule', () => {
 });
 
 describe('nom imposé et effacement', () => {
+  test('liste des techniciens : route fixe prioritaire sur /api/lots/:id, noms et nombres', async () => {
+    const f = Fastify();
+    f.get('/api/lots/:id', async () => ({ lot: true }));
+    await registerRgpdRoutes(f, async (sql) => {
+      assert.match(sql, /SELECT technician AS name, COUNT\(\*\)::int AS count FROM lot_items/);
+      return { rows: [{ name: 'Jean Dupont', count: 4 }] };
+    });
+    const r = await f.inject({ method: 'GET', url: '/api/lots/technicians' });
+    assert.deepEqual(r.json(), { success: true, technicians: [{ name: 'Jean Dupont', count: 4 }] });
+    assert.deepEqual((await f.inject({ method: 'GET', url: '/api/lots/12' })).json(), { lot: true });
+    await f.close();
+  });
+
   test('réglage d\'atelier : le nom signé remplace celui du réglage', async () => {
     const data = new Map<string, string>([['branding.company_name', 'Ancien nom']]);
     const store = {

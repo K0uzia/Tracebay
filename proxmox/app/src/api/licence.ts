@@ -191,6 +191,7 @@ const PDF_PATH_SEUL = new Set([
   'PUT /api/disques/sessions/:id',
   'PUT /api/dons/:id',
   'PUT /api/prets-materiel/:id',
+  'PUT /api/commandes/:id',
 ]);
 
 export function ecriturePermiseEnLectureSeule(method: string, route: string, body: unknown): boolean {

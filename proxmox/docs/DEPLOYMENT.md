@@ -126,13 +126,13 @@ curl -s http://localhost:4000/api/licence; echo                 # état, titulai
 - Avec une licence valide, le nom de l'entreprise signé dans la clé remplace celui du réglage d'atelier sur les PDF. Pendant l'exemption ou le délai de grâce, c'est le nom du réglage d'atelier.
 - Horloge : le serveur mémorise le dernier jour vu (heure de Paris). Une date antérieure est traitée comme une expiration.
 
-En lecture seule, restent possibles : la consultation, les PDF et l'export ; la connexion ; la saisie de la licence et le réglage d'atelier ; l'enregistrement du chemin d'un PDF (`pdf_path` seul) ; et tout ce qui efface une personne (droit à l'effacement) :
+En lecture seule, restent possibles : la consultation, les PDF et l'export ; la connexion ; la saisie de la licence et le réglage d'atelier ; l'enregistrement du chemin d'un PDF (`pdf_path` seul, sur les lots, sessions de disques, commandes, dons et prêts) ; et tout ce qui efface une personne (droit à l'effacement) :
 
 | Effacement | Route |
 |---|---|
 | Don, prêt (avec leur PDF) | `DELETE /api/dons/:id`, `DELETE /api/admin/dons/:id`, `DELETE /api/prets-materiel/:id` |
 | Événement d'agenda | `DELETE /api/agenda/events/:id`, `DELETE /api/admin/agenda/:id` |
-| Nom d'un technicien sur le matériel | `POST /api/lots/technicians/anonymize { name }` (égalité exacte, ce seul champ) |
+| Nom d'un technicien sur le matériel | `POST /api/lots/technicians/anonymize { name }` (égalité exacte, ce seul champ) ; liste des noms : `GET /api/lots/technicians` |
 | Compte utilisateur (serveur seulement) | `DELETE /api/admin/users/:id` : sessions et messages supprimés, journal d'activité anonymisé |
 | Messages (serveur seulement) | `DELETE /api/admin/messages/:id`, `DELETE /api/admin/messages` |
 | Remontée d'erreur d'un poste (serveur seulement) | `DELETE /api/admin/monitoring/errors/:id` |
