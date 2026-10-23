@@ -4,7 +4,7 @@ import { query, transaction } from '../db';
 import { getServerLogs } from '../utils/server-log-buffer';
 import { generateDisquesPdf, buildDisquesPdfPath } from '../utils/disques-pdf';
 import { resolvePdfFilePath, TEAM_BASE_PATH } from '../utils/pdf-path';
-import { checkAdminAuth, signAdminJwt } from '../lib/admin-auth';
+import { ATELIER_JWT_TTL_SECONDS, checkAdminAuth, signAdminJwt } from '../lib/admin-auth';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as child_process from 'child_process';
@@ -224,7 +224,11 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   // ─────────────────────────────────────────────
 
   fastify.post('/api/admin/auth/login', async (request: FastifyRequest, reply: FastifyReply) => {
-    const { username, password } = request.body as any;
+    const { username, password, scope } = request.body as any;
+    if (scope !== undefined && scope !== 'atelier') {
+      reply.statusCode = 400;
+      return { error: 'Portée inconnue (seule « atelier » existe).' };
+    }
     if (!username || !password) {
       reply.statusCode = 400;
       return { error: 'username et password requis' };
@@ -252,6 +256,11 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       if (!passwordValid) {
         reply.statusCode = 401;
         return { error: 'Identifiants incorrects' };
+      }
+      // Portée « atelier » : jeton d'une heure, valable seulement sur les réglages d'atelier (postes).
+      if (scope === 'atelier') {
+        const token = signAdminJwt({ id: user.id, username: user.username, admin: true, scope: 'atelier' }, ATELIER_JWT_TTL_SECONDS);
+        return { success: true, token, username: user.username, scope: 'atelier', expires_in: ATELIER_JWT_TTL_SECONDS };
       }
       const token = signAdminJwt({ id: user.id, username: user.username, admin: true });
       return { success: true, token, username: user.username };

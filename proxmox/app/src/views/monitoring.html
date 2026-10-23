@@ -344,7 +344,7 @@
     <div class="page" id="page-config-branding">
       <div class="page-header">
         <h1>Atelier</h1>
-        <p>Nom et logo imprimés en en-tête des PDF de tous les postes</p>
+        <p>Nom, logo et couleur des PDF, types de matériel : réglages partagés par tous les postes</p>
       </div>
       <div class="card">
         <div class="card-header"><h2>En-tête des PDF</h2></div>
@@ -361,10 +361,32 @@
             <span class="form-label">Logo actuel</span>
             <div id="branding-logo-preview" style="min-height:48px"></div>
           </div>
+          <div class="form-group">
+            <label class="form-label" for="branding-color">Couleur des PDF (assez foncée pour un texte blanc)</label>
+            <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap">
+              <input type="color" id="branding-color" value="#2d3073" style="width:3rem;height:2.25rem;padding:0;border:none;background:none">
+              <span id="branding-color-value"></span>
+              <button class="btn btn-secondary" onclick="resetBrandingColor()"><i class="fa-solid fa-rotate-left"></i> Bleu d'origine</button>
+            </div>
+          </div>
           <div style="display:flex;gap:0.5rem;flex-wrap:wrap">
             <button class="btn btn-primary" onclick="saveBrandingConfig()"><i class="fa-solid fa-floppy-disk"></i> Enregistrer</button>
             <button class="btn btn-secondary" onclick="removeBrandingLogo()"><i class="fa-solid fa-trash"></i> Retirer le logo</button>
           </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>Types de matériel</h2></div>
+        <div class="card-body">
+          <div class="form-group">
+            <label class="form-label" for="material-types">Un type par ligne (40 caractères, 50 types au plus). « Autre (préciser) » reste toujours proposé sur les postes.</label>
+            <textarea class="form-input" id="material-types" rows="8" spellcheck="false"></textarea>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Utilisation actuelle (machines)</span>
+            <ul id="material-types-usage" style="margin:0;padding-left:1.2rem"></ul>
+          </div>
+          <button class="btn btn-primary" onclick="saveMaterialTypes()"><i class="fa-solid fa-floppy-disk"></i> Enregistrer les types</button>
         </div>
       </div>
     </div>
@@ -2598,12 +2620,89 @@ function renderBrandingPreview(logo, name) {
   box.appendChild(img);
 }
 
+const PDF_BLUE = '#2D3073';
+let brandingColorChanged = false;
+
+function renderBrandingColor(color) {
+  const input = document.getElementById('branding-color');
+  input.value = (color || PDF_BLUE).toLowerCase();
+  document.getElementById('branding-color-value').textContent = color ? color : `${PDF_BLUE} (bleu d'origine)`;
+  brandingColorChanged = false;
+}
+
 async function loadBrandingConfig() {
   const data = await api('GET', '/api/branding');
   if (data.error) { toast(data.error, 'error'); return; }
   document.getElementById('branding-name').value = data.company_name || '';
   document.getElementById('branding-logo-file').value = '';
   renderBrandingPreview(data.logo, data.company_name);
+  renderBrandingColor(data.pdf_color);
+  const input = document.getElementById('branding-color');
+  if (!input.dataset.wired) {
+    input.dataset.wired = '1';
+    input.addEventListener('input', () => {
+      brandingColorChanged = true;
+      document.getElementById('branding-color-value').textContent = input.value.toUpperCase();
+    });
+  }
+  await loadMaterialTypes();
+}
+
+async function resetBrandingColor() {
+  const data = await api('PUT', '/api/admin/branding', { pdf_color: null });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Couleur des PDF : bleu d\'origine');
+  renderBrandingColor(data.pdf_color);
+}
+
+// Anciens codes enregistrés sur les machines, rattachés à leur libellé (même table que les postes).
+const LEGACY_TYPE_LABELS = { portable: 'Portable', 'pc portable': 'Portable', fixe: 'Fixe', 'pc fixe': 'Fixe', ecran: 'Écran', 'écran': 'Écran', autres: 'Autres' };
+
+function typeLabel(value) {
+  const s = String(value ?? '').trim();
+  return LEGACY_TYPE_LABELS[s.toLowerCase()] || s;
+}
+
+function renderMaterialTypesUsage(types, usage) {
+  const list = document.getElementById('material-types-usage');
+  list.textContent = '';
+  const parLibelle = new Map();
+  for (const u of usage || []) {
+    const label = typeLabel(u.type);
+    const cle = label.toLowerCase();
+    const prev = parLibelle.get(cle) || { label, count: 0 };
+    prev.count += u.count;
+    parLibelle.set(cle, prev);
+  }
+  if (parLibelle.size === 0) {
+    const li = document.createElement('li');
+    li.textContent = 'Aucune machine enregistrée.';
+    list.appendChild(li);
+    return;
+  }
+  const dansLaListe = new Set(types.map((t) => t.toLowerCase()));
+  for (const { label, count } of [...parLibelle.values()].sort((a, b) => b.count - a.count)) {
+    const li = document.createElement('li');
+    const horsListe = !dansLaListe.has(label.toLowerCase());
+    li.textContent = `${label} : ${count} machine${count > 1 ? 's' : ''}${horsListe ? ' (hors liste, affiché tel quel sur les postes)' : ''}`;
+    list.appendChild(li);
+  }
+}
+
+async function loadMaterialTypes() {
+  const data = await api('GET', '/api/material-types');
+  if (data.error) { toast(data.error, 'error'); return; }
+  document.getElementById('material-types').value = (data.types || []).join('\n');
+  renderMaterialTypesUsage(data.types || [], data.usage);
+}
+
+async function saveMaterialTypes() {
+  const types = document.getElementById('material-types').value.split('\n');
+  const data = await api('PUT', '/api/admin/material-types', { types });
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Types de matériel enregistrés : utilisés par les postes dès leur prochain chargement');
+  document.getElementById('material-types').value = data.types.join('\n');
+  renderMaterialTypesUsage(data.types, data.usage);
 }
 
 function readFileAsDataUrl(file) {
@@ -2619,6 +2718,7 @@ async function saveBrandingConfig() {
   const name = document.getElementById('branding-name').value.trim();
   if (!name) { toast('Le nom de l\'atelier est obligatoire', 'error'); return; }
   const body = { company_name: name };
+  if (brandingColorChanged) body.pdf_color = document.getElementById('branding-color').value;
   const file = document.getElementById('branding-logo-file').files[0];
   if (file) {
     if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { toast('Logo : PNG, JPEG ou WebP uniquement', 'error'); return; }
@@ -2630,6 +2730,7 @@ async function saveBrandingConfig() {
   toast('Atelier enregistré : utilisé pour les prochains PDF');
   document.getElementById('branding-logo-file').value = '';
   renderBrandingPreview(data.logo, data.company_name);
+  renderBrandingColor(data.pdf_color);
 }
 
 async function removeBrandingLogo() {

@@ -4,6 +4,7 @@ import {
   BrandingError,
   BrandingStore,
   readBranding,
+  validateColor,
   validateLogo,
   validateName,
 } from '../lib/branding';
@@ -58,14 +59,17 @@ export async function registerBrandingRoutes(
   fastify.put('/api/admin/branding', async (request: FastifyRequest, reply: FastifyReply) => {
     const body = (request.body as any) || {};
     try {
-      if (body.company_name === undefined && body.logo === undefined) {
-        throw new BrandingError('Rien à enregistrer : company_name ou logo attendu.');
+      if (body.company_name === undefined && body.logo === undefined && body.pdf_color === undefined) {
+        throw new BrandingError('Rien à enregistrer : company_name, logo ou pdf_color attendu.');
       }
       const name = body.company_name !== undefined ? validateName(body.company_name) : undefined;
       const logo = body.logo !== undefined && body.logo !== null ? validateLogo(body.logo) : undefined;
+      const couleur = body.pdf_color !== undefined && body.pdf_color !== null ? validateColor(body.pdf_color) : undefined;
       if (name !== undefined) await store.set(BRANDING_KEYS.name, name);
       if (logo !== undefined) await store.set(BRANDING_KEYS.logo, logo);
       if (body.logo === null) await store.remove(BRANDING_KEYS.logo);
+      if (couleur !== undefined) await store.set(BRANDING_KEYS.pdfColor, couleur);
+      if (body.pdf_color === null) await store.remove(BRANDING_KEYS.pdfColor);
       return { success: true, ...(await lire()) };
     } catch (err: any) {
       if (err instanceof BrandingError) {

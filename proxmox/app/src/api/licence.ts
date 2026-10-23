@@ -171,6 +171,7 @@ const ECRITURES_TOUJOURS_PERMISES = new Set([
   'PUT /api/admin/licence',
   'PUT /api/admin/branding',
   'DELETE /api/admin/branding/logo',
+  'PUT /api/admin/material-types',
   'DELETE /api/dons/:id',
   'DELETE /api/admin/dons/:id',
   'DELETE /api/prets-materiel/:id',

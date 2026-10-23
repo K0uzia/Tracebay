@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { hasAdminCredentials } from '../lib/admin-auth';
+import { adminScope, hasAdminCredentials } from '../lib/admin-auth';
 
 // Routes admin et monitoring restées publiques : connexion admin, configuration lue par le
 // client Electron (FolderManager), remontée d'erreurs du client.
@@ -29,6 +29,9 @@ export function registerAdminGuard(fastify: FastifyInstance): void {
     const routeUrl = (request as any).routeOptions?.url ?? (request as any).routerPath;
     if (!isAdminProtected(request.method, routeUrl)) return;
     if (hasAdminCredentials(request)) return;
+    if (adminScope(request) === 'atelier') {
+      return reply.code(403).send({ error: "Jeton limité aux réglages d'atelier (nom, logo, couleur, types)." });
+    }
     return reply.code(401).send({ error: 'Non autorisé : jeton administrateur requis.' });
   });
 }

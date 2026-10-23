@@ -80,14 +80,20 @@ rm -rf proxmox/app/node_modules proxmox/app/dist   # restes de l'ancien build su
 - `status` doit montrer : santé 200, accès à la base, Node de l'API en v22.23.4 ou plus, `docker compose config` valide, secrets « renseigné », dernière sauvegarde du jour, sauvegarde quotidienne active, aucun compte de test ni mot de passe publié.
 - Node sur l'hôte n'est plus utilisé (`status` le signale) : il peut être désinstallé (`apt-get remove nodejs npm`).
 
-## Atelier : nom et logo des PDF
+## Atelier : nom, logo et couleur des PDF, types de matériel
 
-Le nom et le logo imprimés en en-tête des PDF (lots, disques, commandes, dons, prêts) sont un réglage du serveur, partagé par tous les postes. Ils sont stockés dans la table `app_settings` (clés `branding.company_name` et `branding.logo`), et donc compris dans les sauvegardes `pg_dump`. Aucune migration de schéma : la table existe déjà.
+Le nom, le logo et la couleur des en-têtes de PDF (lots, disques, commandes, dons, prêts), ainsi que la liste des types de matériel, sont des réglages du serveur partagés par tous les postes. Ils sont stockés dans la table `app_settings` (clés `branding.company_name`, `branding.logo`, `branding.pdf_color` et `material.types`), donc compris dans les sauvegardes `pg_dump`. Aucune migration de schéma : la table existe déjà.
 
-- Sans réglage : nom « Tracebay », pas de logo.
+- Sans réglage : nom « Tracebay », pas de logo, bleu d'origine (#2D3073), types Portable, Fixe et Écran.
 - Logo : PNG, JPEG ou WebP, 512 Ko maximum. Pas de SVG (refusé).
-- Lecture publique : `GET /api/branding`, utilisée par les postes au moment de générer un PDF.
-- Modification réservée à l'administrateur : page `/monitoring`, onglet « Atelier », ou `PUT /api/admin/branding` et `DELETE /api/admin/branding/logo` avec `ADMIN_TOKEN`. En ligne de commande :
+- Couleur : `#RRVVBB`, assez foncée pour un texte blanc (contraste de 3:1 au moins), sinon refusée.
+- Types : 40 caractères, 50 types au plus, doublons refusés. Sur une machine, le type enregistré est le libellé ; retirer un type de la liste ne modifie aucune machine (le type reste affiché tel quel, et `GET /api/material-types` renvoie le nombre de machines par type).
+- Lecture publique : `GET /api/branding` et `GET /api/material-types`.
+- Modification réservée à l'administrateur :
+  - page `/monitoring`, onglet « Atelier » ;
+  - depuis un poste (Paramètres, onglets Branding et Types), par un compte de rôle `admin`, avec un jeton à portée « atelier » valable une heure (`POST /api/admin/auth/login` avec `{ "scope": "atelier" }`), accepté seulement par `PUT /api/admin/branding`, `DELETE /api/admin/branding/logo` et `PUT /api/admin/material-types` ;
+  - `PUT /api/admin/branding`, `DELETE /api/admin/branding/logo` et `PUT /api/admin/material-types` avec `ADMIN_TOKEN` ;
+  - en ligne de commande, pour le nom et le logo :
 
 ```bash
 sudo tracebayctl set-branding --nom "NOM DE L'ATELIER" --logo /chemin/logo.png

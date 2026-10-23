@@ -59,11 +59,11 @@ describe('validation du logo', () => {
 });
 
 describe('routes', () => {
-  test('GET public : nom par défaut « Tracebay », sans logo', async () => {
+  test('GET public : nom par défaut « Tracebay », sans logo ni couleur', async () => {
     const { f } = await app();
     const res = await f.inject({ method: 'GET', url: '/api/branding' });
     assert.equal(res.statusCode, 200);
-    assert.deepEqual(res.json(), { success: true, company_name: 'Tracebay', logo: null, nom_impose: false });
+    assert.deepEqual(res.json(), { success: true, company_name: 'Tracebay', logo: null, pdf_color: null, nom_impose: false });
     await f.close();
   });
 
