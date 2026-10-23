@@ -36,35 +36,47 @@
     margin: 0;
 }
 
+/* Libellé du shred à la taille et à la graisse des autres cellules */
 .entrer-page .lot-table .disques-shred-text {
     align-self: flex-start;
-    font-size: 0.8125rem;
+    font-size: var(--ui-font);
     font-weight: 500;
-    color: var(--text2);
+    color: inherit;
     line-height: 1.35;
+    white-space: nowrap;
 }
 
+/* Tableau Disques (session d'effacement) : largeurs en multiples de --ui-font, réglées sur le contenu réel.
+   Colonnes étroites 12.75, colonnes de contenu 56.3 : tableau minimal de 967 px à 1280 px.
+   Structure et dimensions communes : recep-common.css. */
 #disques-session-table {
-    width: 100%;
-    /* En dessous, le tableau défile plutôt que de tronquer les en-têtes */
-    min-width: 820px;
-    table-layout: fixed;
-    font-size: 0.86rem;
+    --tb-fixed-u: 12.75;
+    --tb-flex: 56.3;
 }
+
+/* case à cocher, numéro de ligne, case Destruction physique, bouton supprimer */
+#disques-session-table .lot-table__th--select { --w: 3; }
+#disques-session-table .lot-table__th--num { --w: 2.25; }
+#disques-session-table .lot-table__th--destroy { --w: 3.75; }
+#disques-session-table .lot-table__th--action { --w: 3.75; }
+/* S/N disque (DSK-NEXA-551) */
+#disques-session-table .lot-table__th--sn { --w: 10.5; }
+/* liste : SSD, HDD */
+#disques-session-table .lot-table__th--type { --w: 5.5; }
+/* liste : Samsung, Seagate */
+#disques-session-table .lot-table__th--marque { --w: 7.5; }
+/* liste : 870 EVO, Barracuda 2TB */
+#disques-session-table .lot-table__th--modele { --w: 10; }
+/* saisie : 500 Go, 2 To */
+#disques-session-table .lot-table__th--taille { --w: 6; }
+/* liste : SATA, NVMe, USB */
+#disques-session-table .lot-table__th--interface { --w: 6; }
+/* texte : Secure E. + Sanitize, Destruction physique */
+#disques-session-table .lot-table__th--shred { --w: 10.8; }
 
 #disques-session-table th,
 #disques-session-table td {
     white-space: nowrap;
-    min-width: 0;
-    padding: 5px 6px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-#disques-session-table th {
-    font-size: 0.76rem;
-    letter-spacing: 0.02em;
-    padding: var(--unit-1) 6px;
 }
 
 #disques-session-table .type-cell-wrapper {
@@ -73,6 +85,7 @@
     min-width: 0;
 }
 
+/* Marque, Modèle, Taille : le champ « Autre » se pose sur la liste, flèche visible */
 #disques-session-table td:nth-child(5) .type-cell-wrapper,
 #disques-session-table td:nth-child(6) .type-cell-wrapper,
 #disques-session-table td:nth-child(7) .type-cell-wrapper {
@@ -85,8 +98,7 @@
     position: absolute;
     left: 0;
     top: 0;
-    width: calc(100% - 24px);
-    height: 34px;
+    width: calc(100% - var(--ui-select-arrow));
     margin: 0;
     z-index: 2;
     border-right: none;
@@ -94,40 +106,10 @@
 
 #disques-session-table td input[type="text"],
 #disques-session-table td select {
-    min-width: 0;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
     display: block;
-    height: 34px;
-    padding: 6px 8px;
-    font-size: 0.84rem;
 }
 
-#disques-session-table th:nth-child(1),
-#disques-session-table td:nth-child(1) { width: 40px; text-align: center; padding: 8px; }
-#disques-session-table th:nth-child(2),
-#disques-session-table td:nth-child(2) { width: 32px; text-align: center; padding: 8px; }
-#disques-session-table th:nth-child(3),
-#disques-session-table td:nth-child(3) { width: 16%; }
-#disques-session-table th:nth-child(4),
-#disques-session-table td:nth-child(4) { width: 9%; }
-#disques-session-table th:nth-child(5),
-#disques-session-table td:nth-child(5) { width: 12%; }
-#disques-session-table th:nth-child(6),
-#disques-session-table td:nth-child(6) { width: 13%; }
-#disques-session-table th:nth-child(7),
-#disques-session-table td:nth-child(7) { width: 9%; }
-#disques-session-table th:nth-child(8),
-#disques-session-table td:nth-child(8) { width: 11%; }
-#disques-session-table th:nth-child(9),
-#disques-session-table td:nth-child(9) { width: 64px; text-align: center; }
-#disques-session-table th:nth-child(10),
-#disques-session-table td:nth-child(10) { width: 11%; }
-#disques-session-table th:nth-child(11),
-#disques-session-table td:nth-child(11) { width: 48px; text-align: center; }
-
-#disques-session-table td:nth-child(11) .btn-delete-row {
+#disques-session-table td:last-child .btn-delete-row {
     width: 32px;
     height: 32px;
     padding: 0;
@@ -143,21 +125,8 @@
     vertical-align: middle;
 }
 
-#disques-session-table td:nth-child(1),
-#disques-session-table td:nth-child(2),
-#disques-session-table td:nth-child(9),
-#disques-session-table td:nth-child(11) {
-    vertical-align: middle;
-}
-
-#disques-session-table td:nth-child(1),
-#disques-session-table td:nth-child(9) {
-    padding-top: 0;
-    padding-bottom: 0;
-}
-
-#disques-session-table td:nth-child(9) .disques-row-dest-label {
-    min-height: 34px;
+#disques-session-table td .disques-row-dest-label {
+    min-height: var(--ui-field-h);
     display: inline-flex;
     align-items: center;
     justify-content: center;

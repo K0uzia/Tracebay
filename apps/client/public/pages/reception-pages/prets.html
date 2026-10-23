@@ -1,45 +1,43 @@
 <section class="recep-page lot-page prets-container">
     <div class="lot-page__body">
-        <div class="lot-card lot-card--config">
-            <div class="lot-card__inner">
-                <div class="prets-config-grid">
-                    <div class="lot-config__field">
-                        <label class="lot-config__label" for="prets-lot-name"><i class="fa-solid fa-tag" aria-hidden="true"></i> Nom du lot (PDF)</label>
-                        <input class="lot-config__input" type="text" id="prets-lot-name" placeholder="Ex. Lot AFPA mars 2026" maxlength="255" autocomplete="off">
-                    </div>
-                    <div class="lot-config__field">
-                        <label class="lot-config__label" for="prets-date-debut"><i class="fa-solid fa-calendar-day" aria-hidden="true"></i> Début</label>
-                        <input class="lot-config__input" type="date" id="prets-date-debut" required>
-                    </div>
-                    <div class="lot-config__field">
-                        <label class="lot-config__label" for="prets-date-fin"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i> Fin</label>
-                        <input class="lot-config__input" type="date" id="prets-date-fin" required>
-                    </div>
-                    <div class="lot-config__field">
-                        <label class="lot-config__label" for="prets-borrower-name"><i class="fa-solid fa-building-user" aria-hidden="true"></i> Emprunteur</label>
-                        <input class="lot-config__input" type="text" id="prets-borrower-name" placeholder="Nom ou structure" maxlength="255" required autocomplete="organization">
-                    </div>
-                    <div class="lot-config__field">
-                        <label class="lot-config__label" for="prets-borrower-type"><i class="fa-solid fa-user-tag" aria-hidden="true"></i> Type</label>
-                        <select class="lot-config__input" id="prets-borrower-type" name="prets-borrower-type" aria-label="Type d'emprunteur">
-                            <option value="personne">Personne</option>
-                            <option value="societe">Structure</option>
-                        </select>
-                    </div>
-                    <div class="prets-remuneration-row">
-                        <label class="lot-config__label prets-payant-label">
-                            <input type="checkbox" id="prets-payant">
-                            Prêt payant
-                        </label>
-                        <div class="lot-config__field prets-montant-field" id="prets-montant-wrap" hidden>
-                            <input class="lot-config__input" type="number" id="prets-montant" min="0" step="0.01" placeholder="Montant (€)" disabled>
-                        </div>
+        <div class="recep-toolbar-compact prets-config" role="group" aria-label="Informations du prêt">
+            <div class="prets-config-grid">
+                <div class="lot-config__field lot-config__field--wide">
+                    <label class="lot-config__label" for="prets-lot-name"><i class="fa-solid fa-tag" aria-hidden="true"></i> Nom du lot (PDF)</label>
+                    <input class="lot-config__input" type="text" id="prets-lot-name" placeholder="Ex. Lot AFPA mars 2026" maxlength="255" autocomplete="off">
+                </div>
+                <div class="lot-config__field lot-config__field--narrow">
+                    <label class="lot-config__label" for="prets-date-debut"><i class="fa-solid fa-calendar-day" aria-hidden="true"></i> Début</label>
+                    <input class="lot-config__input" type="date" id="prets-date-debut" required>
+                </div>
+                <div class="lot-config__field lot-config__field--narrow">
+                    <label class="lot-config__label" for="prets-date-fin"><i class="fa-solid fa-calendar-check" aria-hidden="true"></i> Fin</label>
+                    <input class="lot-config__input" type="date" id="prets-date-fin" required>
+                </div>
+                <div class="lot-config__field lot-config__field--wide">
+                    <label class="lot-config__label" for="prets-borrower-name"><i class="fa-solid fa-building-user" aria-hidden="true"></i> Emprunteur</label>
+                    <input class="lot-config__input" type="text" id="prets-borrower-name" placeholder="Nom ou structure" maxlength="255" required autocomplete="organization">
+                </div>
+                <div class="lot-config__field lot-config__field--medium">
+                    <label class="lot-config__label" for="prets-borrower-type"><i class="fa-solid fa-user-tag" aria-hidden="true"></i> Type</label>
+                    <select class="lot-config__input" id="prets-borrower-type" name="prets-borrower-type" aria-label="Type d'emprunteur">
+                        <option value="personne">Personne</option>
+                        <option value="societe">Structure</option>
+                    </select>
+                </div>
+                <div class="prets-remuneration-row">
+                    <label class="lot-config__label prets-payant-label">
+                        <input type="checkbox" id="prets-payant">
+                        Prêt payant
+                    </label>
+                    <div class="lot-config__field prets-montant-field" id="prets-montant-wrap" hidden>
+                        <input class="lot-config__input" type="number" id="prets-montant" min="0" step="0.01" placeholder="Montant (€)" disabled>
                     </div>
                 </div>
-                <div class="lot-config__actions">
-                    <button type="button" class="lot-btn lot-btn--ghost" id="prets-btn-add-line" title="Ajouter une ligne"><i class="fa-solid fa-plus" aria-hidden="true"></i> Ligne</button>
-                    <button type="button" class="lot-btn lot-btn--primary" id="prets-btn-save-pdf" title="Enregistrer la fiche PDF"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Enregistrer</button>
-                </div>
+            </div>
+            <div class="lot-config__actions">
+                <button type="button" class="lot-btn lot-btn--ghost" id="prets-btn-add-line" title="Ajouter une ligne"><i class="fa-solid fa-plus" aria-hidden="true"></i> Ligne</button>
+                <button type="button" class="lot-btn lot-btn--primary" id="prets-btn-save-pdf" title="Enregistrer la fiche PDF"><i class="fa-solid fa-floppy-disk" aria-hidden="true"></i> Enregistrer</button>
             </div>
         </div>
 

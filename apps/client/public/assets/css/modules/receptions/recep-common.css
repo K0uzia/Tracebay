@@ -822,6 +822,209 @@
     }
 }
 
+/* =============================================================================
+   Sous-pages de saisie et de suivi : largeur, rythme, champs du haut, boutons
+   Échelle de bureau unique (--ui-*, variables.css), identique dans les deux thèmes.
+   ============================================================================= */
+
+.recep-section > .recep-page.lot-page {
+    width: 100%;
+    max-width: var(--ui-content-max);
+    margin-inline: auto;
+    padding: var(--ui-gap) calc(var(--ui-gap) * 1.5);
+    gap: 0;
+}
+
+.r-root .lot-page .lot-page__body {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--ui-gap) * 2.25);
+}
+
+.r-root .lot-page .lot-page__body > :is(.recep-toolbar-compact, .lot-toolbar, .lot-card) {
+    margin-top: 0;
+    margin-bottom: 0;
+}
+
+/* Barre du haut (filtres, nom, actions) : une zone sans fond, un filet dessous */
+.r-root .recep-toolbar-compact {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--ui-gap);
+    padding: var(--unit-3) 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.r-root .recep-toolbar-compact .lot-config__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--unit-2);
+    margin-left: auto;
+}
+
+.r-root .lot-page .lot-config__label {
+    font-size: var(--ui-font-label);
+}
+
+.r-root .lot-page :is(.lot-config__input, .lot-toolbar__name) {
+    box-sizing: border-box;
+    width: 100%;
+    height: var(--ui-field-h);
+    min-height: var(--ui-field-h);
+    padding: 0 var(--ui-field-px);
+    border-radius: var(--ui-radius);
+    font-size: var(--ui-font);
+    line-height: normal;
+}
+
+.r-root .lot-page select.lot-config__input {
+    padding-right: var(--ui-select-arrow);
+    background-position: right var(--ui-field-px) center;
+}
+
+/* Largeur selon le contenu attendu, jamais une largeur fixe qui tronque :
+   --wide (noms, recherche), --medium (catégorie, état, type), --narrow (année, mois, dates) */
+.r-root .lot-page .lot-config__field {
+    flex: 1 1 calc(var(--ui-font) * 12);
+    min-width: 0;
+    max-width: none;
+}
+
+.r-root .lot-page .lot-config__field--wide {
+    flex: 2 1 calc(var(--ui-font) * 22);
+    min-width: min(100%, calc(var(--ui-font) * 16));
+    max-width: calc(var(--ui-font) * 36);
+}
+
+.r-root .lot-page .lot-config__field--medium {
+    flex: 1 1 calc(var(--ui-font) * 12);
+    min-width: min(100%, calc(var(--ui-font) * 10));
+    max-width: calc(var(--ui-font) * 15);
+}
+
+.r-root .lot-page .lot-config__field--narrow {
+    flex: 0 1 calc(var(--ui-font) * 10);
+    min-width: min(100%, calc(var(--ui-font) * 8.5));
+    max-width: calc(var(--ui-font) * 12);
+}
+
+.r-root .lot-page .lot-btn {
+    box-sizing: border-box;
+    height: var(--ui-field-h);
+    min-height: var(--ui-field-h);
+    padding: 0 calc(var(--ui-field-px) * 1.5);
+    border-radius: var(--ui-radius);
+    font-size: var(--ui-font);
+    line-height: 1;
+}
+
+/* =============================================================================
+   Tableaux de saisie (.lot-table) : socle commun
+   Chaque colonne a une largeur --w en multiples de --ui-font, réglée sur son contenu dans
+   le CSS de sa page. Le tableau fait au moins la somme (--tb-fixed-u + --tb-flex) ; plus
+   large, le surplus se répartit au prorata (table-layout: fixed) ; plus étroit, il défile
+   dans son cadre. Chrome ignore les calc() qui mêlent % et longueur dans une colonne.
+   ============================================================================= */
+
+.r-root .lot-table-wrap {
+    box-sizing: border-box;
+    padding: 0;
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--tb-frame-radius);
+    scrollbar-width: thin;
+}
+
+.r-root .lot-card--table {
+    border-radius: var(--tb-frame-radius);
+}
+
+.r-root .lot-table {
+    --tb-fixed-u: 0;
+    --tb-flex: 1;
+    display: table;
+    width: 100%;
+    max-width: none;
+    min-width: calc(var(--ui-font) * (var(--tb-fixed-u) + var(--tb-flex)));
+    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: var(--ui-font);
+}
+
+.r-root .lot-table thead th {
+    --w: 1;
+    box-sizing: border-box;
+    width: calc(var(--ui-font) * var(--w));
+    height: var(--tb-head-h);
+    min-width: 0;
+    max-width: none;
+    padding: 0 var(--tb-cell-px);
+    font-size: var(--ui-font-head);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    text-align: left;
+    vertical-align: middle;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.r-root .lot-table tbody td {
+    box-sizing: border-box;
+    height: var(--tb-row-h);
+    min-width: 0;
+    padding: 0 var(--tb-cell-px);
+    font-size: var(--ui-font);
+    vertical-align: middle;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Champs et listes dans les cellules : mêmes tokens que les champs du haut */
+.r-root .lot-table td :is(input[type="text"], input[type="number"], input[type="date"], input[type="search"], input:not([type]), select) {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: var(--ui-field-h);
+    min-height: var(--ui-field-h);
+    margin: 0;
+    padding: 0 var(--ui-field-px);
+    border-radius: var(--ui-radius);
+    font-size: var(--ui-font);
+    line-height: normal;
+}
+
+.r-root .lot-table td select {
+    padding-right: var(--ui-select-arrow);
+    background-position: right var(--ui-field-px) center;
+}
+
+.r-root .lot-table td .type-cell-wrapper {
+    min-width: 0;
+}
+
+/* Colonnes centrées : sélection, numéro, destruction, action */
+.r-root .lot-table :is(.lot-table__th--select, .lot-table__th--num, .lot-table__th--destroy, .lot-table__th--action),
+.r-root .lot-table td:is([data-label="Sélection"], [data-label="N°"], [data-label="Destr. phy."], .col-num, .col-action, .col-actions, :last-child) {
+    text-align: center;
+}
+
+.r-root .lot-table td :is(.btn-delete-row, .btn-remove-line, .btn-edit-pc) {
+    margin: 0 auto;
+}
+
+/* Cases et boutons : jamais de points de suspension à côté d'un contrôle */
+.r-root .lot-table td:is(:last-child, [data-label="Sélection"]) {
+    overflow: visible;
+    text-overflow: clip;
+}
+
 /* Lot details info grid (historique modal) */
 .lot-details-info {
     margin-bottom: var(--unit-3);

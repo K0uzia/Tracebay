@@ -1,16 +1,18 @@
 <section class="recep-page lot-page entrer-page lots-saisie-page">
     <div class="lot-page__body">
         <div class="lot-toolbar" role="toolbar" aria-label="Actions session disques">
-            <input
-                class="lot-toolbar__name"
-                type="text"
-                id="disques-session-name"
-                name="session_name"
-                placeholder="Nom du lot (optionnel)"
-                maxlength="255"
-                autocomplete="off"
-                aria-label="Nom du lot"
-            >
+            <div class="lot-config__field lot-config__field--wide lot-toolbar__field">
+                <label class="lot-config__label" for="disques-session-name"><i class="fa-solid fa-tag" aria-hidden="true"></i> Nom du lot</label>
+                <input
+                    class="lot-toolbar__name"
+                    type="text"
+                    id="disques-session-name"
+                    name="session_name"
+                    placeholder="Nom du lot (optionnel)"
+                    maxlength="255"
+                    autocomplete="off"
+                >
+            </div>
             <div class="lot-toolbar__actions">
                 <button type="button" class="lot-btn lot-btn--ghost" id="disques-btn-add-line" title="Ajouter une ligne"><i class="fa-solid fa-plus" aria-hidden="true"></i> Ligne</button>
                 <button type="button" class="lot-btn lot-btn--secondary" id="disques-btn-add-marque" data-modal-open="disques-modal-add-marque" title="Ajouter une marque"><i class="fa-solid fa-plus" aria-hidden="true"></i> Marque</button>
@@ -33,8 +35,8 @@
                             <th class="lot-table__th--type">Type</th>
                             <th class="lot-table__th--marque">Marque</th>
                             <th class="lot-table__th--modele">Modèle</th>
-                            <th class="lot-table__th--date">Taille</th>
-                            <th class="lot-table__th--entree">Interface</th>
+                            <th class="lot-table__th--taille">Taille</th>
+                            <th class="lot-table__th--interface">Interface</th>
                             <th class="lot-table__th--destroy" title="Destruction physique">D.phy</th>
                             <th class="lot-table__th--shred">Shred</th>
                             <th class="lot-table__th--action"></th>

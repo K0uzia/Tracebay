@@ -60,6 +60,30 @@
     --unit-7: calc(var(--unit) * 7);
     --unit-8: calc(var(--unit) * 8);
 
+    /* Échelle de bureau, fluide entre 1280 et 2560 px de large (texte 14 à 16 px, champs 36 à 40 px).
+       Partagée par les champs du haut des pages, les boutons et les tableaux de la Réception. */
+    --ui-font: clamp(0.875rem, 0.75rem + 0.15625vw, 1rem);
+    --ui-font-label: calc(var(--ui-font) * 0.87);
+    --ui-font-head: calc(var(--ui-font) * 0.8);
+    --ui-field-h: clamp(2.25rem, 2rem + 0.3125vw, 2.5rem);
+    --ui-field-px: clamp(0.625rem, 0.5rem + 0.15625vw, 0.75rem);
+    --ui-select-arrow: calc(var(--ui-field-px) + 1.125rem);
+    --ui-gap: clamp(0.75rem, 0.375rem + 0.47vw, 1.125rem);
+    --ui-radius: 8px;
+    /* Contenu centré qui grandit avec l'écran sans tout agrandir */
+    --ui-content-max: min(100%, calc(36vw + 720px));
+
+    /* Tableaux de saisie (Réception) : en-tête, ligne, marge de cellule, cadre */
+    --tb-head-h: calc(var(--ui-field-h) + 4px);
+    --tb-row-h: calc(var(--ui-field-h) + var(--ui-gap) * 1.25);
+    --tb-cell-px: calc(var(--ui-gap) * 0.75);
+    --tb-frame-radius: 10px;
+    --tb-head-color: #9db5ff;
+    --tb-head-bg: #182131;
+    --tb-head-border: rgba(255, 255, 255, 0.08);
+    --tb-cell-color: rgba(232, 236, 244, 0.88);
+    --tb-cell-border: rgba(255, 255, 255, 0.06);
+
     /* Typographie */
     --font-btn: 0.98rem system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     --font-text: 400 1.2rem system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;

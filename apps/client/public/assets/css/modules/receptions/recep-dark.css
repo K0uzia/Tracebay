@@ -23,12 +23,7 @@ html[data-theme-dark="1"] {
         justify-content: center;
         gap: 6px;
         max-width: none;
-        min-height: 36px;
-        padding: 0 var(--unit-3);
-        border-radius: 8px;
         font-weight: 500;
-        font-size: 0.8125rem;
-        line-height: 1.2;
         cursor: pointer;
         white-space: nowrap;
         border: 1px solid transparent;
@@ -132,24 +127,24 @@ html[data-theme-dark="1"] {
         box-shadow: 0 0 0 3px rgba(124, 156, 255, 0.16);
     }
 
-    /* ---------- Tableaux .lot-table (pages hors lots-saisie) ---------- */
-    .r-root .recep-page:not(.lots-saisie-page) .lot-table th {
-        background: #182131 !important;
-        color: #9db5ff !important;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    /* ---------- Tableaux .lot-table : mêmes couleurs sur toutes les pages ---------- */
+    .r-root .lot-table thead th {
+        color: var(--tb-head-color);
+        background: var(--tb-head-bg);
+        border-bottom: 1px solid var(--tb-head-border);
     }
 
-    .r-root .recep-page:not(.lots-saisie-page) .lot-table td {
-        color: rgba(232, 236, 244, 0.88);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    .r-root .lot-table tbody td {
+        color: var(--tb-cell-color);
+        border-bottom: 1px solid var(--tb-cell-border);
     }
 
-    .r-root .recep-page:not(.lots-saisie-page) .lot-table tbody tr:nth-child(even) {
+    .r-root .lot-table tbody tr:nth-child(even) {
         background: rgba(255, 255, 255, 0.02);
     }
 
-    .r-root .recep-page:not(.lots-saisie-page) .lot-table tbody tr:hover {
-        background: rgba(124, 156, 255, 0.08) !important;
+    .r-root .lot-table tbody tr:hover {
+        background: rgba(124, 156, 255, 0.08);
     }
 
     .r-root .recep-page .lot-table td input,
@@ -427,7 +422,6 @@ html[data-theme-dark="1"] {
         border-color: rgba(124, 156, 255, 0.5) !important;
     }
 
-    .r-root .historique-lot-header,
     .r-root .tracabilite-container .lot-card-header {
         background: rgba(255, 255, 255, 0.02) !important;
     }
@@ -742,35 +736,6 @@ html[data-theme-dark="1"] {
         color: var(--recep-accent) !important;
     }
 
-    /* Toolbar compacte (pages saisie hors Lots) */
-    .r-root .recep-toolbar-compact {
-        display: flex;
-        flex-wrap: wrap;
-        align-items: flex-end;
-        gap: var(--unit-2);
-        padding: var(--unit-3) 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-        margin-bottom: var(--unit-2);
-    }
-
-    .r-root .recep-toolbar-compact .lot-config__field {
-        max-width: 280px;
-    }
-
-    .r-root .recep-toolbar-compact .lot-config__actions {
-        margin-left: auto;
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--unit-2);
-        align-items: center;
-    }
-
-    .r-root .prets-container .prets-config-grid {
-        padding-bottom: var(--unit-2);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-        margin-bottom: var(--unit-2);
-    }
-
     .r-root .prets-container .lot-table td.col-sn.prets-td--blocked {
         background: rgba(255, 255, 255, 0.04) !important;
     }
@@ -803,43 +768,12 @@ html[data-theme-dark="1"] {
         color: #f4f7fb;
     }
 
-    .r-root .recep-toolbar-compact .lot-config__field--search {
-        flex: 1 1 240px;
-        max-width: 420px;
-    }
-
-    @media (max-width: 900px) {
-        .r-root .recep-toolbar-compact {
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .r-root .recep-toolbar-compact .lot-config__field,
-        .r-root .recep-toolbar-compact .lot-config__field--search {
-            max-width: none;
-        }
-
-        .r-root .recep-toolbar-compact .lot-config__actions {
-            margin-left: 0;
-            width: 100%;
-        }
-
-        .r-root .recep-toolbar-compact .lot-btn {
-            flex: 1 1 auto;
-        }
-    }
-
     .r-root .prets-payant-label {
         display: inline-flex !important;
         align-items: center;
         gap: var(--unit-2);
         cursor: pointer;
         margin: 0;
-    }
-
-    .r-root .prets-container .lot-config__actions {
-        margin-top: var(--unit-2);
-        justify-content: flex-end;
     }
 
     .r-root .lots-saisie-page .lot-table-wrap:has(#disques-session-tbody:empty)::after {

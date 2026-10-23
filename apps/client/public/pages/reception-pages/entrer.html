@@ -1,15 +1,17 @@
 <section class="recep-page lot-page entrer-page lots-saisie-page">
     <div class="lot-page__body">
         <div class="lot-toolbar" id="lot-toolbar" role="toolbar" aria-label="Actions lot">
-            <input
-                class="lot-toolbar__name"
-                type="text"
-                id="input-lot-name"
-                name="lot_name"
-                placeholder="Nom du lot (optionnel)"
-                maxlength="255"
-                aria-label="Nom du lot"
-            >
+            <div class="lot-config__field lot-config__field--wide lot-toolbar__field">
+                <label class="lot-config__label" for="input-lot-name"><i class="fa-solid fa-tag" aria-hidden="true"></i> Nom du lot</label>
+                <input
+                    class="lot-toolbar__name"
+                    type="text"
+                    id="input-lot-name"
+                    name="lot_name"
+                    placeholder="Nom du lot (optionnel)"
+                    maxlength="255"
+                >
+            </div>
             <div class="lot-toolbar__actions">
                 <button type="button" class="lot-btn lot-btn--ghost" id="btn-add-manual" title="Ajouter une ligne manuellement">
                     <i class="fa-solid fa-plus" aria-hidden="true"></i> Ligne
