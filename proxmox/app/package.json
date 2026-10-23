@@ -8,7 +8,7 @@
     "build": "tsc && npm run build:copy-views",
     "build:copy-views": "mkdir -p dist/views && cp -f src/views/monitoring.html src/views/monitoring.css src/views/favicon.png dist/views/ 2>/dev/null || true",
     "start": "node dist/main.js",
-    "test": "echo \"No tests for proxmox\"",
+    "test": "node --import tsx --test src/tests/*.test.ts",
     "type-check": "tsc --noEmit",
     "lint": "eslint src --ext .ts"
   },

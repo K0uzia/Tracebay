@@ -28,7 +28,7 @@ export const performanceConfig = {
       timeWindow: '1 minute',
     },
     auth: {
-      max: 50,
+      max: 10,
       timeWindow: '15 minutes',
     },
   },

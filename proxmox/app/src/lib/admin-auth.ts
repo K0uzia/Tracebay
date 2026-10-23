@@ -1,0 +1,58 @@
+import * as crypto from 'crypto';
+import { FastifyReply, FastifyRequest } from 'fastify';
+import { getSecret } from '../config/secrets';
+
+const ADMIN_JWT_TTL_SECONDS = 60 * 60 * 8;
+
+function safeEqual(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
+}
+
+function hmac(data: string): string {
+  return crypto.createHmac('sha256', getSecret('JWT_SECRET')).update(data).digest('base64url');
+}
+
+/** JWT admin maison (HS256), émis par POST /api/admin/auth/login. */
+export function signAdminJwt(payload: Record<string, any>): string {
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const body = Buffer.from(JSON.stringify({ ...payload, iat: now, exp: now + ADMIN_JWT_TTL_SECONDS })).toString('base64url');
+  return `${header}.${body}.${hmac(`${header}.${body}`)}`;
+}
+
+export function verifyAdminJwt(token: string): Record<string, any> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const [header, body, sig] = parts;
+    if (!safeEqual(sig, hmac(`${header}.${body}`))) return null;
+    const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
+    if (typeof payload.exp !== 'number' || payload.exp < Math.floor(Date.now() / 1000)) return null;
+    return payload.admin === true ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Jeton admin présenté en en-tête (x-admin-token ou Authorization: Bearer), jamais en URL. */
+function presentedToken(request: FastifyRequest): string {
+  const header = request.headers['x-admin-token'];
+  if (typeof header === 'string' && header.trim()) return header.trim();
+  return String(request.headers.authorization || '').replace(/^Bearer\s+/i, '').trim();
+}
+
+export function hasAdminCredentials(request: FastifyRequest): boolean {
+  const token = presentedToken(request);
+  if (!token) return false;
+  if (safeEqual(token, getSecret('ADMIN_TOKEN'))) return true;
+  return verifyAdminJwt(token) !== null;
+}
+
+/** Envoie 401 et renvoie false si la requête n'a pas de droit admin. */
+export function checkAdminAuth(request: FastifyRequest, reply: FastifyReply): boolean {
+  if (hasAdminCredentials(request)) return true;
+  reply.code(401).send({ error: 'Non autorisé : jeton administrateur requis.' });
+  return false;
+}

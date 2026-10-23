@@ -5,7 +5,7 @@ import { Event } from '../models/Event';
 import { User } from '../models/User';
 import { getServerLogs } from '../utils/server-log-buffer';
 import { query } from '../db';
-import { checkAdminAuth } from './admin';
+import { checkAdminAuth } from '../lib/admin-auth';
 
 /**
  * Monitoring statistics interface

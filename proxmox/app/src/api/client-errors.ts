@@ -5,10 +5,10 @@
  */
 
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { hasAdminCredentials } from '../lib/admin-auth';
 import { query } from '../db';
 import * as path from 'path';
 import * as fs from 'fs/promises';
-import * as crypto from 'crypto';
 
 // Rate limiting simple (sans dépendance externe)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -55,68 +55,11 @@ setInterval(() => {
   }
 }, 300000);
 
-// Middleware d'authentification pour le dashboard
+// Dashboard : ADMIN_TOKEN ou JWT admin uniquement (aussi imposé par le garde admin global).
 async function requireAuth(request: FastifyRequest, reply: FastifyReply): Promise<boolean> {
-  // Option : accès lecture seule sans token (réseau interne uniquement)
-  const publicReadOnly = process.env.MONITORING_PUBLIC === 'true' || process.env.MONITORING_PUBLIC === '1';
-  const method = (request as any).method;
-  if (publicReadOnly && (method === 'GET' || method === 'HEAD')) {
-    return true;
-  }
-
-  const authHeader = request.headers.authorization;
-  const cookies = request.headers.cookie || '';
-  const cookieMatch = cookies.match(/workspace_jwt=([^;]+)/);
-  const token = authHeader && authHeader.startsWith('Bearer ')
-    ? authHeader.substring(7).trim()
-    : cookieMatch ? cookieMatch[1].trim() : (request.query as any)?.token;
-
-  if (!token) {
-    reply.statusCode = 401;
-    reply.send({ success: false, error: 'Authentification requise. Ajoutez ?token=VOTRE_TOKEN à l\'URL ou définissez MONITORING_ADMIN_TOKEN.' });
-    return false;
-  }
-
-  const adminToken = process.env.MONITORING_ADMIN_TOKEN || 'SECRET_RETIRE';
-  if (token === adminToken || token === 'SECRET_RETIRE') {
-    return true;
-  }
-
-  const raw = token.replace(/^Bearer\s+/i, '').trim();
-
-  // Accepter le JWT admin (même format que /api/admin/auth/login : header.body.sig)
-  if (raw.includes('.') && raw.split('.').length === 3) {
-    try {
-      const parts = raw.split('.');
-      const [headerB64, bodyB64, sig] = parts;
-      const jwtSecret = process.env.JWT_SECRET || 'SECRET_RETIRE';
-      const expected = crypto.createHmac('sha256', jwtSecret).update(`${headerB64}.${bodyB64}`).digest('base64url');
-      if (sig === expected) {
-        const payload = JSON.parse(Buffer.from(bodyB64, 'base64url').toString());
-        if (payload.exp != null && payload.exp < Math.floor(Date.now() / 1000)) {
-          reply.statusCode = 401;
-          reply.send({ success: false, error: 'Token expiré' });
-          return false;
-        }
-        if (payload.admin === true) return true;
-      }
-    } catch {
-      // invalid JWT
-    }
-  }
-
-  // Ancien format JWT (jwt_ + base64) pour rétrocompat
-  if (raw.startsWith('jwt_')) {
-    try {
-      const decoded = JSON.parse(Buffer.from(raw.slice(4), 'base64').toString());
-      if (decoded && decoded.username) return true;
-    } catch {
-      // token invalide
-    }
-  }
-
-  reply.statusCode = 403;
-  reply.send({ success: false, error: 'Token invalide' });
+  if (hasAdminCredentials(request)) return true;
+  reply.statusCode = 401;
+  reply.send({ success: false, error: 'Non autorisé : jeton administrateur requis.' });
   return false;
 }
 

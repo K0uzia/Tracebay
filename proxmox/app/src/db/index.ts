@@ -13,7 +13,7 @@ const dbConfig = {
   user: process.env.DB_USER || 'workspace',
   host: process.env.DB_HOST || 'localhost',
   database: process.env.DB_NAME || 'workspace',
-  password: process.env.DB_PASSWORD || 'SECRET_RETIRE',
+  password: process.env.DB_PASSWORD,
   port: parseInt(process.env.DB_PORT || '5432'),
   
   // Connection pool settings (Phase 5 optimization)

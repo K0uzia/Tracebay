@@ -4,7 +4,7 @@ import { query, transaction } from '../db';
 import { getServerLogs } from '../utils/server-log-buffer';
 import { generateDisquesPdf, buildDisquesPdfPath } from '../utils/disques-pdf';
 import { resolvePdfFilePath, TEAM_BASE_PATH } from '../utils/pdf-path';
-import * as crypto from 'crypto';
+import { checkAdminAuth, signAdminJwt } from '../lib/admin-auth';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as child_process from 'child_process';
@@ -24,69 +24,11 @@ const PVE_TOKEN_ID = (process.env.PVE_TOKEN_ID || '').trim();
 const PVE_TOKEN_SECRET = (process.env.PVE_TOKEN_SECRET || '').trim();
 const PVE_VERIFY_TLS = (process.env.PVE_VERIFY_TLS || 'true').trim().toLowerCase() !== 'false';
 
-const ADMIN_TOKEN = process.env.ADMIN_TOKEN || 'SECRET_RETIRE';
-const JWT_SECRET = process.env.JWT_SECRET || 'SECRET_RETIRE';
-
 function isAllowedLocalPath(targetPath: string): boolean {
   if (!targetPath) return false;
   const normalized = path.resolve(targetPath);
   const allowedBase = path.resolve(TEAM_BASE_PATH);
   return normalized === allowedBase || normalized.startsWith(allowedBase + path.sep);
-}
-
-// ─────────────────────────────────────────────
-// JWT admin (HMAC-SHA256, payload base64)
-// ─────────────────────────────────────────────
-
-function signAdminJwt(payload: Record<string, any>): string {
-  const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
-  const body = Buffer.from(JSON.stringify({
-    ...payload,
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 60 * 60 * 8, // 8h
-  })).toString('base64url');
-  const sig = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
-  return `${header}.${body}.${sig}`;
-}
-
-function verifyAdminJwt(token: string): Record<string, any> | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const [header, body, sig] = parts;
-    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${body}`).digest('base64url');
-    if (sig !== expected) return null;
-    const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
-    if (payload.exp < Math.floor(Date.now() / 1000)) return null;
-    if (!payload.admin) return null;
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
-export function checkAdminAuth(request: FastifyRequest, reply: FastifyReply): boolean {
-  const raw =
-    (request.query as any).token ||
-    (request.headers['x-admin-token'] as string) ||
-    (request.headers.authorization?.replace(/Bearer\s+/i, '') ?? '');
-
-  if (!raw) {
-    reply.statusCode = 401;
-    reply.send({ error: 'Non autorisé' });
-    return false;
-  }
-
-  // Token statique (rétrocompatibilité)
-  if (raw === ADMIN_TOKEN) return true;
-
-  // JWT admin signé
-  const payload = verifyAdminJwt(raw);
-  if (payload) return true;
-
-  reply.statusCode = 401;
-  reply.send({ error: 'Non autorisé' });
-  return false;
 }
 
 // ─────────────────────────────────────────────

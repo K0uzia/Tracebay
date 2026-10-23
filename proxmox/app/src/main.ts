@@ -12,7 +12,9 @@ import { registerMonitoringRoutes, incrementMessageCount } from './api/monitorin
 import { registerClientErrorsRoutes } from './api/client-errors';
 import { registerAdminRoutes } from './api/admin';
 import { registerCompression } from './middleware/compression';
-import { registerRateLimit } from './middleware/rate-limit';
+import { registerRateLimit, registerAuthRateLimit } from './middleware/rate-limit';
+import { registerAdminGuard, registrationAllowed } from './middleware/admin-guard';
+import { assertSecretsOrExit, getSecret } from './config/secrets';
 import { registerMonitoring } from './middleware/monitoring';
 import { globalMetrics } from './utils/metrics';
 import { globalCache } from './utils/cache';
@@ -125,6 +127,7 @@ function broadcastUserCount() {
 
 // Register plugins
 (async () => {
+  assertSecretsOrExit();
   try {
     // Initialize database connection
     console.log('🔄 Connecting to PostgreSQL...');
@@ -138,7 +141,9 @@ function broadcastUserCount() {
 
     // Phase 5: Performance optimization middlewares
     await registerCompression(fastify);
+    registerAuthRateLimit(fastify);
     await registerRateLimit(fastify);
+    registerAdminGuard(fastify);
     await registerMonitoring(fastify);
 
     // Security
@@ -263,7 +268,7 @@ function broadcastUserCount() {
         };
       }
 
-      const jwtSecret = process.env.JWT_SECRET || 'changeme';
+      const jwtSecret = getSecret('JWT_SECRET');
       const token = jwt.sign(
         { id: dbUser.id, username: dbUser.username, role: dbUser.role },
         jwtSecret,
@@ -289,7 +294,7 @@ function broadcastUserCount() {
       const token = typeof authHeader === 'string' ? authHeader.replace(/Bearer\s+/i, '').trim() : '';
       if (token) {
         try {
-          const jwtSecret = process.env.JWT_SECRET || 'changeme';
+          const jwtSecret = getSecret('JWT_SECRET');
           const decoded = jwt.verify(token, jwtSecret) as { username?: string };
           normalizedUsername = decoded.username ? String(decoded.username).trim().toLowerCase() : null;
         } catch {
@@ -333,7 +338,7 @@ function broadcastUserCount() {
 
       let payload: { id?: number; username?: string; role?: string } = {};
       try {
-        const jwtSecret = process.env.JWT_SECRET || 'changeme';
+        const jwtSecret = getSecret('JWT_SECRET');
         payload = jwt.verify(token, jwtSecret) as { id: number; username: string; role: string };
       } catch {
         reply.statusCode = 401;
@@ -378,7 +383,7 @@ function broadcastUserCount() {
       const token = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '').trim() : '';
       if (!token) return null;
       try {
-        const jwtSecret = process.env.JWT_SECRET || 'changeme';
+        const jwtSecret = getSecret('JWT_SECRET');
         const payload = jwt.verify(token, jwtSecret) as { id?: number };
         return payload?.id != null ? Number(payload.id) : null;
       } catch {
@@ -392,6 +397,10 @@ function broadcastUserCount() {
     };
 
     fastify.post('/api/auth/register', async (request: FastifyRequest, reply: FastifyReply) => {
+      if (!registrationAllowed(request)) {
+        reply.statusCode = 403;
+        return { error: "Inscription désactivée : demandez à l'administrateur de créer votre compte." };
+      }
       const { username, password } = request.body as { username: string; password: string };
 
       if (!username || !password) {
@@ -433,7 +442,7 @@ function broadcastUserCount() {
         return { error: 'Erreur serveur' };
       }
 
-      const jwtSecret = process.env.JWT_SECRET || 'changeme';
+      const jwtSecret = getSecret('JWT_SECRET');
       const token = jwt.sign(
         { id: dbUser!.id, username: dbUser!.username, role: 'user' },
         jwtSecret,
@@ -2665,7 +2674,7 @@ function broadcastUserCount() {
                 break;
               }
               try {
-                const jwtSecret = process.env.JWT_SECRET || 'changeme';
+                const jwtSecret = getSecret('JWT_SECRET');
                 const decoded = jwt.verify(raw, jwtSecret) as { username?: string };
                 if (decoded && decoded.username) tokenUsername = String(decoded.username).trim().toLowerCase();
               } catch {

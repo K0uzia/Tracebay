@@ -3,9 +3,11 @@
  * Phase 5: Protect API from abuse and DDoS
  */
 
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import { FastifyInstance, FastifyRequest } from 'fastify';
 import rateLimit from '@fastify/rate-limit';
 import { performanceConfig } from '../config/performance.config';
+
+export const AUTH_ROUTES = ['/api/auth/login', '/api/auth/register', '/api/admin/auth/login'];
 
 export async function registerRateLimit(fastify: FastifyInstance) {
   const { rateLimit: rateLimitConfig } = performanceConfig;
@@ -27,27 +29,29 @@ export async function registerRateLimit(fastify: FastifyInstance) {
 }
 
 /**
- * Stricter rate limit for authentication endpoints
+ * Limite stricte sur les routes de connexion et d'inscription, par adresse IP.
+ * À appeler AVANT registerRateLimit : le plugin lit config.rateLimit dans son propre onRoute,
+ * qui doit passer après celui-ci.
  */
-export async function registerAuthRateLimit(fastify: FastifyInstance) {
+export function registerAuthRateLimit(fastify: FastifyInstance) {
   const { rateLimit: rateLimitConfig } = performanceConfig;
 
-  await fastify.register(rateLimit, {
-    max: rateLimitConfig.auth.max,
-    timeWindow: rateLimitConfig.auth.timeWindow,
-    cache: 5000,
-    nameSpace: 'auth-rate-limit-',
-    keyGenerator: (request: FastifyRequest) => {
-      return `auth-${request.ip}`;
-    },
-    errorResponseBuilder: (request: FastifyRequest, context: any) => {
-      return {
-        statusCode: 429,
-        error: 'Too Many Authentication Attempts',
-        message: `Too many login attempts. Try again in ${Math.ceil(context.ttl / 1000 / 60)} minutes.`,
-        retryAfter: context.ttl,
-      };
-    },
+  fastify.addHook('onRoute', (routeOptions) => {
+    const methods = Array.isArray(routeOptions.method) ? routeOptions.method : [routeOptions.method];
+    if (!methods.includes('POST') || !AUTH_ROUTES.includes(routeOptions.url)) return;
+    routeOptions.config = {
+      ...(routeOptions.config as object),
+      rateLimit: {
+        max: rateLimitConfig.auth.max,
+        timeWindow: rateLimitConfig.auth.timeWindow,
+        keyGenerator: (request: FastifyRequest) => `auth-${request.ip}`,
+        errorResponseBuilder: (_request: FastifyRequest, context: any) => ({
+          statusCode: 429,
+          error: 'Trop de tentatives',
+          message: `Trop de tentatives de connexion. Réessayez dans ${Math.ceil(context.ttl / 1000 / 60)} minute(s).`,
+        }),
+      },
+    } as any;
   });
 
   fastify.log.info({
