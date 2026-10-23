@@ -586,9 +586,43 @@ class PageManager {
         this.wireLazyLegalText('settingsLicenseDetails', 'settingsLicenseText', 'get-license', 'Licence introuvable.');
         this.wireLazyLegalText('settingsThirdPartyDetails', 'settingsThirdPartyText', 'get-third-party-licenses', 'Licences tierces introuvables.');
         this.wireUpdateAutoToggle();
+        this.refreshBrandingInfo();
         modal.classList.remove('hidden');
         // Focus dans la fenêtre (lecteurs d'écran, Échap) sans contour visible au clic
         modal.querySelector('.settings-modal-container')?.focus({ preventScroll: true });
+    }
+
+    /** Atelier (nom et logo des PDF), réglage du serveur affiché en lecture seule. */
+    async refreshBrandingInfo() {
+        const nameEl = document.getElementById('settingsBrandingName');
+        const logoEl = document.getElementById('settingsBrandingLogo');
+        if (!nameEl || !logoEl) {
+            return;
+        }
+        nameEl.textContent = 'Chargement…';
+        logoEl.textContent = '-';
+        try {
+            const { default: api } = await import('./assets/js/config/api.js');
+            const res = await api.get('/api/branding', { useCache: false });
+            if (!res.ok) {
+                throw new Error(`HTTP ${res.status}`);
+            }
+            const data = await res.json();
+            nameEl.textContent = data.company_name || 'Tracebay';
+            logoEl.textContent = '';
+            if (/^data:image\/(png|jpeg|webp);base64,/.test(String(data.logo || ''))) {
+                const img = document.createElement('img');
+                img.className = 'settings-branding-logo';
+                img.src = data.logo;
+                img.alt = `Logo\u00a0: ${data.company_name || 'Tracebay'}`;
+                logoEl.appendChild(img);
+            } else {
+                logoEl.textContent = 'Aucun';
+            }
+        } catch (_) {
+            nameEl.textContent = 'Serveur injoignable';
+            logoEl.textContent = '-';
+        }
     }
 
     /** Préférence du poste « Rechercher les mises à jour au démarrage » (activée par défaut). */

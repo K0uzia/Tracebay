@@ -1600,7 +1600,7 @@
             "<div class=\"settings-panels\">" +
               panel("Update", "Mise à jour", "Vérifiez et installez la dernière version de Tracebay.",
                 "<div class=\"settings-status\"><span class=\"settings-status__label\">État</span>" +
-                  "<div class=\"settings-status__value settings-update-status\" id=\"settingsUpdateStatus\">Tracebay démo 3.6.1, à jour</div></div>" +
+                  "<div class=\"settings-status__value settings-update-status\" id=\"settingsUpdateStatus\">Tracebay démo 3.6.2, à jour</div></div>" +
                 "<div class=\"settings-actions\">" +
                   "<button type=\"button\" id=\"settingsBtnCheckUpdate\" class=\"settings-btn settings-btn--ghost\"><i class=\"fa-solid fa-arrows-rotate\" aria-hidden=\"true\"></i> Vérifier</button>" +
                   "<button type=\"button\" id=\"settingsBtnDownloadUpdate\" class=\"settings-btn settings-btn--primary hidden\" disabled><i class=\"fa-solid fa-download\" aria-hidden=\"true\"></i> Télécharger et préparer</button>" +
@@ -1620,7 +1620,7 @@
               panel("About", "À propos", "Traçabilité de matériel informatique et agenda d'atelier.",
                 "<dl class=\"settings-facts\">" +
                   "<div class=\"settings-facts__row\"><dt>Logiciel</dt><dd>Tracebay</dd></div>" +
-                  "<div class=\"settings-facts__row\"><dt>Version</dt><dd>3.6.1 (démo)</dd></div>" +
+                  "<div class=\"settings-facts__row\"><dt>Version</dt><dd>3.6.2 (démo)</dd></div>" +
                   "<div class=\"settings-facts__row\"><dt>Éditeur</dt><dd>K0uzia</dd></div>" +
                   "<div class=\"settings-facts__row\"><dt>Licence</dt><dd>Tracebay Source-Available License</dd></div>" +
                   "<div class=\"settings-facts__row\"><dt>Données</dt><dd>Fictives, enregistrées dans ce navigateur (bouton «&nbsp;Réinitialiser&nbsp;» du bandeau pour les effacer)</dd></div>" +
@@ -1648,7 +1648,7 @@
   function openSettings() {
     const modal = document.getElementById("settingsModal");
     modal.classList.remove("hidden");
-    document.getElementById("settingsUpdateStatus").textContent = "Tracebay démo 3.6.1, à jour";
+    document.getElementById("settingsUpdateStatus").textContent = "Tracebay démo 3.6.2, à jour";
     document.getElementById("settingsBtnDownloadUpdate").classList.add("hidden");
     document.getElementById("settingsBtnRestartUpdate").classList.add("hidden");
     document.getElementById("settingsUpdateProgress").classList.add("hidden");
@@ -1759,7 +1759,7 @@
     if (tab) selectSettingsTab(tab, false);
     if (e.target.closest("#settingsThemeDarkToggle")) setTheme(!App.themeDark);
     if (e.target.closest("#settingsBtnCheckUpdate")) {
-      document.getElementById("settingsUpdateStatus").textContent = "Nouvelle version 3.6.1 disponible (simulé)";
+      document.getElementById("settingsUpdateStatus").textContent = "Nouvelle version 3.6.2 disponible (simulé)";
       const dl = document.getElementById("settingsBtnDownloadUpdate");
       dl.classList.remove("hidden"); dl.disabled = false;
       document.getElementById("profileUpdatePing").classList.remove("hidden");
@@ -1784,7 +1784,7 @@
       }, 160);
     }
     if (e.target.closest("#settingsBtnRestartUpdate")) {
-      notify("Redémarrage simulé, vous restez sur la démo 3.6.1", "success");
+      notify("Redémarrage simulé, vous restez sur la démo 3.6.2", "success");
       closeSettings();
     }
   });

@@ -229,6 +229,12 @@
 }
 
 /* Liste « libellé : valeur » */
+.settings-branding-logo {
+    display: block;
+    max-height: var(--unit-6);
+    max-width: 100%;
+}
+
 .settings-facts {
     margin: 0;
     border: 1px solid var(--border);

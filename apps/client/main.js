@@ -4,6 +4,7 @@
  */
 const { app, BrowserWindow, ipcMain, shell, nativeImage, Menu, crashReporter, net, session } = require('electron');
 const path = require('path');
+const { applyBranding, createBrandingCache } = require('./branding');
 const url = require('url');
 const http = require('http');
 const fs = require('fs');
@@ -67,6 +68,9 @@ const SERVER_URL = currentConfig.url;
 const SERVER_WS_URL = currentConfig.ws;
 const healthEndpoint = serverConfig.endpoints?.health || '/api/health';
 const SERVER_HEALTH_ENDPOINT = `${SERVER_URL}${healthEndpoint}`;
+
+// En-tête des PDF (nom et logo de l'atelier), réglage partagé lu sur le serveur.
+const brandingCache = createBrandingCache({ url: `${SERVER_URL}/api/branding`, fetchImpl: (...args) => fetch(...args) });
 const MAX_RETRY_ATTEMPTS = 10;
 const RETRY_INTERVAL = 500;
 
@@ -2200,6 +2204,7 @@ async function generateLotPdfFromHtmlTemplate(payload, fullPath, stateEntries, t
 
     const css = fs.readFileSync(cssPath, 'utf8');
     let html = fs.readFileSync(htmlPath, 'utf8');
+    html = applyBranding(html, await brandingCache.get());
 
     const summaryBlock = buildPdfSummaryBlock(totalItems, typeEntries, stateEntries);
     const itemsRows = items
@@ -2578,6 +2583,7 @@ async function generateDisquesPdfFromHtmlTemplate(payload, fullPath) {
 
     const css = fs.readFileSync(cssPath, 'utf8');
     let html = fs.readFileSync(htmlPath, 'utf8');
+    html = applyBranding(html, await brandingCache.get());
 
     const dateStr = (date && /^\d{4}-\d{2}-\d{2}/.test(String(date).trim())) ? String(date).trim().slice(0, 10) : new Date().toISOString().slice(0, 10);
     const dateFormatted = formatDateForPdf(dateStr);
@@ -2736,6 +2742,7 @@ async function generateCommandePdfFromHtmlTemplate(payload, fullPath) {
 
     const css = fs.readFileSync(cssPath, 'utf8');
     let html = fs.readFileSync(htmlPath, 'utf8');
+    html = applyBranding(html, await brandingCache.get());
 
     const dateStr = (date && /^\d{4}-\d{2}-\d{2}/.test(String(date).trim())) ? String(date).trim().slice(0, 10) : new Date().toISOString().slice(0, 10);
     const dateFormatted = formatDateForPdf(dateStr);
@@ -2901,6 +2908,7 @@ async function generateDonsPdfFromHtmlTemplate(payload, fullPath) {
 
     const css = fs.readFileSync(cssPath, 'utf8');
     let html = fs.readFileSync(htmlPath, 'utf8');
+    html = applyBranding(html, await brandingCache.get());
 
     const dateStr = (date && /^\d{4}-\d{2}-\d{2}/.test(String(date).trim())) ? String(date).trim().slice(0, 10) : new Date().toISOString().slice(0, 10);
     const dateFormatted = formatDateForPdf(dateStr);
@@ -3062,6 +3070,7 @@ async function generatePretMaterielPdfFromHtmlTemplate(payload, fullPath) {
 
     const css = fs.readFileSync(cssPath, 'utf8');
     let html = fs.readFileSync(htmlPath, 'utf8');
+    html = applyBranding(html, await brandingCache.get());
 
     const dateStr = (payload?.date && /^\d{4}-\d{2}-\d{2}/.test(String(payload.date).trim()))
         ? String(payload.date).trim().slice(0, 10)
