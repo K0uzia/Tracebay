@@ -11,8 +11,10 @@
 # Effacer DÉFINITIVEMENT les données PostgreSQL (rare, à éviter) :
 #   I_ACCEPT_DESTROY_ALL_DATABASE_DATA=YES_I_UNDERSTAND sudo bash proxmox/scripts/proxmox.sh destroy-db-volume
 #
-# import.sql : racine du repo ou IMPORT_SQL_PATH= ; SKIP_IMPORT_SQL=1 pour ignorer
-# (Générer import.sql là où les PDFs sont, commit/push, puis pull sur le CT — le CT n’a pas besoin des PDFs.)
+# Secrets (JWT_SECRET, ADMIN_TOKEN, DB_PASSWORD) : générés dans proxmox/docker/.env au premier
+# déploiement, jamais de valeur par défaut. update refuse de continuer si l'un d'eux est faible :
+#   sudo bash proxmox/scripts/proxmox.sh rotate-secrets
+# Aucune donnée n'est injectée automatiquement (plus d'import.sql appliqué par update ou install).
 # Avant mise à jour : pg_dump → proxmox/docker/backups/pre_update_*.sql.gz
 # Le dump inclut --clean --if-exists : une restauration (gunzip | psql) remplace l'état des objets du dump.
 # Restaurer : cd proxmox/docker && gunzip -c backups/pre_update_XXX.sql.gz | docker compose exec -T db psql -U Admin -d workspace_db -v ON_ERROR_STOP=1
@@ -24,7 +26,6 @@ IFS=$'\n\t'
 # =============== Configuration ===============
 DB_NAME_DEFAULT="workspace_db"
 DB_USER_DEFAULT="Admin"
-DB_PASS_DEFAULT="SECRET_RETIRE"
 DB_PORT_DEFAULT=5432
 API_PORT_DEFAULT=4000
 
@@ -148,6 +149,90 @@ ensure_paths() {
   mkdir -p "$DOCKER_DIR/logs"
 }
 
+# Valeur hexadécimale aléatoire de N octets ; échoue plutôt que de produire un secret prévisible.
+rand_hex() {
+  local n="$1" v=""
+  v=$(openssl rand -hex "$n" 2>/dev/null || true)
+  [[ -z "$v" ]] && v=$(head -c "$n" /dev/urandom 2>/dev/null | od -An -tx1 | tr -d ' \n')
+  if [[ ${#v} -lt $((n * 2)) ]]; then
+    echo "Impossible de générer un secret aléatoire (openssl et /dev/urandom indisponibles)." >&2
+    return 1
+  fi
+  echo "$v"
+}
+
+env_get() {
+  [[ -f "$ENV_FILE" ]] || return 0
+  grep -E "^$1=" "$ENV_FILE" | tail -n 1 | cut -d= -f2- || true
+}
+
+env_set() {
+  if grep -qE "^$1=" "$ENV_FILE"; then
+    sed -i "s|^$1=.*|$1=$2|" "$ENV_FILE"
+  else
+    echo "$1=$2" >> "$ENV_FILE"
+  fi
+}
+
+# Même règle que proxmox/app/src/config/secrets.ts : vide, valeur publiée ou trop court.
+secret_problem() {
+  local name="$1" value="$2" min=32
+  [[ "$name" == "DB_PASSWORD" ]] && min=16
+  if [[ -z "$value" ]]; then echo "absent"; return 0; fi
+  case "${value,,}" in
+    changeme|change-me|SECRET_RETIRE|SECRET_RETIRE|SECRET_RETIRE|SECRET_RETIRE|SECRET_RETIRE|SECRET_RETIRE|secret|password|admin|workspace|change-me-*|admin-*)
+      echo "valeur par défaut connue (publiée dans le dépôt)"; return 0 ;;
+  esac
+  if (( ${#value} < min )); then echo "trop court (${#value} caractères, minimum $min)"; fi
+  return 0
+}
+
+# Complète JWT_SECRET et ADMIN_TOKEN s'ils manquent, puis refuse de continuer sur un secret faible.
+ensure_secrets() {
+  [[ -f "$ENV_FILE" ]] || return 0
+  local name problem bad=0
+  for name in JWT_SECRET ADMIN_TOKEN; do
+    if [[ -z "$(env_get "$name")" ]]; then
+      env_set "$name" "$(rand_hex 32)"
+      info "$name absent : généré dans $ENV_FILE."
+    fi
+  done
+  chmod 600 "$ENV_FILE"
+  for name in JWT_SECRET ADMIN_TOKEN DB_PASSWORD; do
+    problem="$(secret_problem "$name" "$(env_get "$name")")"
+    if [[ -n "$problem" ]]; then
+      warn "$name : $problem"
+      bad=1
+    fi
+  done
+  if [[ $bad -eq 1 ]]; then
+    err "Secrets absents ou faibles dans $ENV_FILE. Lancer d'abord : sudo bash proxmox/scripts/proxmox.sh rotate-secrets"
+  fi
+}
+
+# À appeler depuis $DOCKER_DIR.
+wait_db() {
+  local i
+  for i in {1..45}; do
+    if docker compose exec -T db pg_isready -U "$DB_USER_DEFAULT" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
+}
+
+# Aligne le mot de passe du rôle PostgreSQL sur DB_PASSWORD du .env (POSTGRES_PASSWORD ne sert
+# qu'à la création du volume). Connexion locale au conteneur : l'ancien mot de passe n'est pas requis.
+sync_db_password() {
+  local pw user
+  pw="$(env_get DB_PASSWORD)"
+  user="$(env_get DB_USER)"
+  user="${user:-$DB_USER_DEFAULT}"
+  printf '%s\n' "ALTER ROLE :\"usr\" WITH PASSWORD :'pw';" \
+    | docker compose exec -T db psql -U "$user" -d postgres -v ON_ERROR_STOP=1 -v usr="$user" -v pw="$pw" >/dev/null
+}
+
 git_update() {
   if [[ -d "$REPO_ROOT/.git" ]]; then
     info "Mise à jour du dépôt Git..."
@@ -160,12 +245,10 @@ git_update() {
 generate_env() {
   info "Génération de la configuration (.env)"
   local ct_ip=$(get_ip)
-  local jwt_secret
-  jwt_secret=$(openssl rand -hex 32 2>/dev/null || head -c 32 /dev/urandom | xxd -p -c 64)
-  [[ -z "$jwt_secret" ]] && jwt_secret="change-me-$(date +%s)-$(openssl rand -hex 8 2>/dev/null || echo fallback)"
-  local admin_token
-  admin_token=$(openssl rand -hex 24 2>/dev/null || head -c 24 /dev/urandom | xxd -p -c 48)
-  [[ -z "$admin_token" ]] && admin_token="admin-$(date +%s)"
+  local jwt_secret admin_token db_password
+  jwt_secret=$(rand_hex 32)
+  admin_token=$(rand_hex 32)
+  db_password=$(rand_hex 24)
 
   cat > "$ENV_FILE" <<EOF
 # Configuration générée automatiquement par proxmox.sh — rien à modifier pour démarrer
@@ -190,7 +273,7 @@ DB_HOST=db
 DB_PORT=${DB_PORT_DEFAULT}
 DB_NAME=${DB_NAME_DEFAULT}
 DB_USER=${DB_USER_DEFAULT}
-DB_PASSWORD=${DB_PASS_DEFAULT}
+DB_PASSWORD=${db_password}
 DB_POOL_MIN=2
 DB_POOL_MAX=10
 DB_IDLE_TIMEOUT=30000
@@ -198,7 +281,11 @@ DB_CONNECTION_TIMEOUT=2000
 
 # Compose
 COMPOSE_PROJECT_NAME=proxmox
+
+# Inscription libre depuis le client (false : comptes créés par l'administrateur)
+ALLOW_REGISTRATION=false
 EOF
+  chmod 600 "$ENV_FILE"
 
   echo ""
   info "Configuration email (envoi de PDF par mail depuis la réception)"
@@ -549,7 +636,7 @@ backup_postgres_before_update() {
 }
 
 # À appeler depuis $DOCKER_DIR avec le service db déjà up.
-apply_db_schemas_and_import() {
+apply_db_schemas() {
   if [[ -f "$APP_SCHEMA_SQL" ]]; then
     info "Schéma applicatif : $APP_SCHEMA_SQL"
     if docker compose exec -T db psql -U "$DB_USER_DEFAULT" -d "$DB_NAME_DEFAULT" -v ON_ERROR_STOP=1 < "$APP_SCHEMA_SQL"; then
@@ -558,26 +645,10 @@ apply_db_schemas_and_import() {
       warn "Schéma applicatif : erreur (voir ci-dessus). Poursuite avec migrations embarquées."
     fi
   else
-    warn "Fichier introuvable : $APP_SCHEMA_SQL (tables commandes/disques/dons/prêts peuvent manquer pour import.sql)."
+    warn "Fichier introuvable : $APP_SCHEMA_SQL (tables commandes/disques/dons/prêts peuvent manquer)."
   fi
 
   docker compose exec -T db psql -U "$DB_USER_DEFAULT" -d "$DB_NAME_DEFAULT" < /tmp/proxmox_schema.sql && ok "Migrations embarquées (proxmox_schema) OK." || warn "Migrations embarquées : erreur partielle."
-
-  if [[ "${SKIP_IMPORT_SQL:-}" == "1" ]]; then
-    info "SKIP_IMPORT_SQL=1 — aucun import SQL fichier."
-  else
-    local import_file="${IMPORT_SQL_PATH:-$REPO_ROOT/import.sql}"
-    if [[ -f "$import_file" ]]; then
-      info "Injection SQL (données) : $import_file"
-      if docker compose exec -T db psql -U "$DB_USER_DEFAULT" -d "$DB_NAME_DEFAULT" -v ON_ERROR_STOP=1 < "$import_file"; then
-        ok "import.sql appliqué."
-      else
-        warn "import.sql : échec (contraintes uniques, doublons, ou schéma incomplet). Les données déjà présentes ne sont pas effacées."
-      fi
-    else
-      info "Pas de fichier import ($import_file). Aucune injection. Générer puis copier import.sql à la racine du workspace ou définir IMPORT_SQL_PATH."
-    fi
-  fi
 }
 
 run_db_setup() {
@@ -617,7 +688,8 @@ run_db_setup() {
     done
     echo
     sleep 2
-    apply_db_schemas_and_import
+    sync_db_password || err "Impossible d'aligner le mot de passe PostgreSQL sur DB_PASSWORD."
+    apply_db_schemas
     docker compose down
   fi
   rm -f /tmp/proxmox_schema.sql
@@ -843,11 +915,13 @@ run_tests() {
   local user="AdminTest"
   local pass="SECRET_RETIRE"
   local token=""
+  local admin_token
+  admin_token=$(grep -E '^ADMIN_TOKEN=' "$DOCKER_DIR/.env" 2>/dev/null | tail -n 1 | cut -d= -f2-)
 
   echo -e "\n${CYAN}--- [TEST API CLIENT COMPLET] ---${RESET}\n"
 
   echo "1. Configuration utilisateur de test..."
-  curl -s -X POST "$API_URL/api/auth/register" -H "Content-Type: application/json" -d "{\"username\":\"$user\",\"password\":\"$pass\"}" >/dev/null
+  curl -s -X POST "$API_URL/api/auth/register" -H "Content-Type: application/json" -H "x-admin-token: $admin_token" -d "{\"username\":\"$user\",\"password\":\"$pass\"}" >/dev/null
   ok "Utilisateur $user prêt"
 
   echo "2. Authentification..."
@@ -875,6 +949,9 @@ run_tests() {
       local extra_args=()
       if [[ " $protected " == *" $ep "* && -n "$token" ]]; then
         extra_args+=(-H "Authorization: Bearer $token")
+      fi
+      if [[ "$ep" == "/api/metrics" || "$ep" == /api/monitoring/* ]]; then
+        extra_args+=(-H "x-admin-token: $admin_token")
       fi
       
       if [[ "$ep" == "/api/events" || "$ep" == "/api/messages" || "$ep" == "/api/shortcuts" || "$ep" == "/api/shortcuts/categories" ]]; then
@@ -991,6 +1068,7 @@ cmd_install() {
   else
     generate_env
   fi
+  ensure_secrets
   npm_build
   docker_build_images
   run_db_setup
@@ -1054,9 +1132,13 @@ cmd_update() {
   else
     info ".env conservé."
   fi
+  ensure_secrets
   npm_build
 
   cd "$DOCKER_DIR"
+  docker compose up -d db
+  wait_db || err "PostgreSQL indisponible."
+  sync_db_password || err "Impossible d'aligner le mot de passe PostgreSQL sur DB_PASSWORD."
   info "Mise à jour des conteneurs : docker compose up -d --build (rebuild + redémarrage, sans compose down)..."
   docker compose up -d --build --remove-orphans
 
@@ -1078,9 +1160,45 @@ cmd_update() {
   echo
   sleep 2
   prepare_sql_script
-  apply_db_schemas_and_import
+  apply_db_schemas
   rm -f /tmp/proxmox_schema.sql
   ok "Mise à jour terminée. Sauvegardes : $DOCKER_DIR/backups/ — vérifier : proxmox status"
+}
+
+# Nouveaux JWT_SECRET, ADMIN_TOKEN et mot de passe PostgreSQL ; toutes les sessions sont déconnectées.
+cmd_rotate_secrets() {
+  require_root
+  ensure_paths
+  cd "$DOCKER_DIR"
+  [[ -f "$ENV_FILE" ]] || generate_env
+  local backup
+  backup="$ENV_FILE.bak-$(date +%Y%m%d_%H%M%S)"
+  cp -p "$ENV_FILE" "$backup"
+  chmod 600 "$backup"
+  warn "Rotation de JWT_SECRET, ADMIN_TOKEN et DB_PASSWORD : les utilisateurs devront se reconnecter."
+
+  local jwt admin dbpw
+  jwt=$(rand_hex 32)
+  admin=$(rand_hex 32)
+  dbpw=$(rand_hex 24)
+  env_set JWT_SECRET "$jwt"
+  env_set ADMIN_TOKEN "$admin"
+  env_set DB_PASSWORD "$dbpw"
+  chmod 600 "$ENV_FILE"
+
+  if [[ -z "$(docker compose ps --status running -q db 2>/dev/null)" ]]; then
+    docker compose up -d db
+  fi
+  if ! wait_db || ! sync_db_password; then
+    cp -p "$backup" "$ENV_FILE"
+    err "Échec du changement de mot de passe PostgreSQL : .env restauré depuis $backup, rien n'a changé."
+  fi
+  ok "Mot de passe PostgreSQL changé."
+
+  docker compose up -d --remove-orphans
+  ok "Secrets renouvelés dans $ENV_FILE, conteneurs redémarrés."
+  info "Nouveau ADMIN_TOKEN (page de monitoring, en-tête x-admin-token) : lire ADMIN_TOKEN dans $ENV_FILE."
+  info "Ancien .env conservé dans $backup : le supprimer une fois le service vérifié (proxmox status)."
 }
 
 # Restauration « ancien pg_dump » (sans --clean dans le fichier) : il faut une base vide, sinon ERROR: relation already exists
@@ -1161,12 +1279,14 @@ case "$COMMAND" in
   status) cmd_status ;;
   test-api|api-test) cmd_test ;;
   update) cmd_update ;;
+  rotate-secrets) cmd_rotate_secrets ;;
   restore-backup) cmd_restore_backup "$@" ;;
   help|--help|-h)
-    echo "Usage: $0 [menu|update|restore-backup|purge|install|destroy-db-volume|start|stop|restart|status|test-api|help]"
+    echo "Usage: $0 [menu|update|rotate-secrets|restore-backup|purge|install|destroy-db-volume|start|stop|restart|status|test-api|help]"
     echo ""
     echo "  (sans argument, en terminal)  menu interactif — mise à jour ou purge légère, sans toucher au volume PostgreSQL."
-    echo "  update              Backup pg_dump, Git + build, compose up --build, migrations + import.sql."
+    echo "  update              Backup pg_dump, Git + build, contrôle des secrets, compose up --build, migrations."
+    echo "  rotate-secrets      Nouveaux JWT_SECRET, ADMIN_TOKEN et mot de passe PostgreSQL (.env sauvegardé avant)."
     echo "  purge               Nettoie caches/images Docker orphelins (ne supprime pas la DB)."
     echo "  install             Installation ou réparation complète (volume DB inchangé)."
     echo "  destroy-db-volume   SUPPRIME le volume PostgreSQL (données perdues). Nécessite :"
@@ -1179,5 +1299,5 @@ case "$COMMAND" in
     echo "Backups récentes (avec --clean dans pg_dump) : un simple gunzip|psql peut suffire sur une base déjà remplie."
     echo "  cd proxmox/docker && gunzip -c backups/pre_update_DATE.sql.gz | docker compose exec -T db psql -U Admin -d workspace_db -v ON_ERROR_STOP=1"
     ;;
-  *) echo "Usage: $0 [menu|update|restore-backup|purge|install|start|stop|restart|status|test-api|help]" >&2; exit 1 ;;
+  *) echo "Usage: $0 [menu|update|rotate-secrets|restore-backup|purge|install|start|stop|restart|status|test-api|help]" >&2; exit 1 ;;
 esac

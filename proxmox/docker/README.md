@@ -26,7 +26,7 @@ docker compose -f docker/proxmox/docker-compose.yml up --build -d
 
 Services:
 - Proxmox API: http://localhost:4000
-- PostgreSQL: localhost:5432 (workspace/workspace/SECRET_RETIRE)
+- PostgreSQL : non publié sur le réseau, accès par `docker compose exec db psql` (secrets dans `.env`, voir docs/DEPLOYMENT.md)
 
 Healthcheck:
 - Proxmox: http://localhost:4000/api/health
