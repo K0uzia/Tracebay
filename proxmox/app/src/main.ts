@@ -3275,6 +3275,23 @@ function broadcastUserCount() {
       }
     });
 
+    // Supprime un PDF de don ou de prêt que plus aucun enregistrement ne référence. Renvoie true si effacé.
+    const removeUnreferencedPdf = async (pdfPath: string, context: string): Promise<boolean> => {
+      try {
+        const shared = await query(
+          'SELECT 1 FROM dons WHERE pdf_path = $1 UNION ALL SELECT 1 FROM prets_materiel WHERE pdf_path = $1 LIMIT 1',
+          [pdfPath]
+        );
+        const file = shared.rowCount === 0 ? resolvePdfFileForDeletion(pdfPath) : null;
+        if (!file) return false;
+        await fs.promises.unlink(file);
+        return true;
+      } catch (err: any) {
+        fastify.log.warn({ code: err?.code }, `${context}: PDF non supprimé`);
+        return false;
+      }
+    };
+
     // Droit à l'effacement (RGPD) : suppression définitive de l'enregistrement, puis de son PDF
     // s'il est joignable depuis ce serveur et qu'aucun autre don ou prêt ne le référence.
     const deleteRecordWithPdf = async (table: 'dons' | 'prets_materiel', id: string, reply: FastifyReply) => {
@@ -3292,22 +3309,7 @@ function broadcastUserCount() {
         const rawPdf = (existing.rows[0] as any)?.pdf_path;
         const pdfPath = rawPdf ? String(rawPdf) : null;
         await query(`DELETE FROM ${table} WHERE id = $1`, [id]);
-        let pdfDeleted = false;
-        if (pdfPath) {
-          const shared = await query(
-            'SELECT 1 FROM dons WHERE pdf_path = $1 UNION ALL SELECT 1 FROM prets_materiel WHERE pdf_path = $1 LIMIT 1',
-            [pdfPath]
-          );
-          const file = shared.rowCount === 0 ? resolvePdfFileForDeletion(pdfPath) : null;
-          if (file) {
-            try {
-              await fs.promises.unlink(file);
-              pdfDeleted = true;
-            } catch (err: any) {
-              fastify.log.warn({ code: err?.code }, `DELETE ${table}: PDF non supprimé`);
-            }
-          }
-        }
+        const pdfDeleted = pdfPath ? await removeUnreferencedPdf(pdfPath, `DELETE ${table}`) : false;
         return { success: true, id: Number(id), pdf_path: pdfPath, pdf_deleted: pdfDeleted };
       } catch (error: any) {
         if (error?.code === '42P01') {
@@ -3579,7 +3581,7 @@ function broadcastUserCount() {
       const { id } = request.params as { id: string };
       const body = request.body as any;
       try {
-        const existing = await query('SELECT id FROM prets_materiel WHERE id = $1', [id]);
+        const existing = await query('SELECT id, pdf_path FROM prets_materiel WHERE id = $1', [id]);
         if (existing.rowCount === 0) {
           reply.statusCode = 404;
           return { error: 'Prêt matériel introuvable' };
@@ -3652,6 +3654,12 @@ function broadcastUserCount() {
                      date, date_debut, date_fin, remuneration_gratuit, remuneration_montant, pdf_path, lines, created_at, updated_at`,
           values
         );
+        // PDF régénéré après une modification : l'ancien fichier porte encore les anciennes données.
+        const previousPdf = (existing.rows[0] as any)?.pdf_path ? String((existing.rows[0] as any).pdf_path) : null;
+        const newPdf = (result.rows[0] as any)?.pdf_path ? String((result.rows[0] as any).pdf_path) : null;
+        if (previousPdf && previousPdf !== newPdf) {
+          await removeUnreferencedPdf(previousPdf, 'PUT prets_materiel');
+        }
         return { success: true, pret: result.rows[0] };
       } catch (error: any) {
         if (error?.code === '42P01') {
