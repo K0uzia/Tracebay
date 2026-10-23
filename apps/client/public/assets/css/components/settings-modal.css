@@ -249,6 +249,37 @@
     display: none !important;
 }
 
+/* Bloc « Effacer le nom d'un technicien » : classes du module partagé avec la portable (post-settings.css) */
+.post-settings {
+    display: flex;
+    flex-direction: column;
+    gap: var(--unit-1);
+    min-width: 0;
+}
+
+.post-settings__label {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.post-settings__hint {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+/* Jamais plus large que le panneau : un nom long est coupé par des points de suspension */
+.settings-modal .post-settings__input {
+    width: 100%;
+    max-width: 40rem;
+    min-width: 0;
+    text-overflow: ellipsis;
+    /* Place de la flèche (theme-dark.css), que « .settings-modal select » ramenait à 16 px */
+    padding-right: calc(var(--unit-2) + 18px);
+}
+
 .licence-banner[hidden] {
     display: none;
 }

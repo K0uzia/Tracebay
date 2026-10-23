@@ -1,3 +1,16 @@
+## Tracebay 3.7.1
+
+### Paramètres > Confidentialité : effacer le nom d'un technicien
+- Un nom long ne dépasse plus du panneau : il est coupé par des points de suspension.
+- Libellé, liste et boutons sont espacés et à la taille du reste des Paramètres.
+- Un nom enregistré avec des espaces en trop (au début, à la fin ou doublés) montre ces espaces (␣) et la mention « espaces en trop », pour ne pas le confondre avec le même nom sans espaces.
+- Échap annule la confirmation sans fermer toute la fenêtre des Paramètres.
+- Pendant l'effacement, le bouton indique « Effacement… ». Un échec donne un message compréhensible, et si la liste ne se charge pas, un bouton « Réessayer » la recharge.
+- Après un effacement, le clavier reste sur la liste. Les grands nombres s'écrivent à la française (1 234 éléments).
+
+### À savoir
+- Aucune action sur le serveur, aucune migration de données.
+
 ## Tracebay 3.7.0
 
 Cette version regroupe aussi les évolutions prévues pour les versions 3.6.2 et 3.6.3, qui n'ont pas été publiées séparément.
