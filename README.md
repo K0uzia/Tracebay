@@ -179,7 +179,6 @@ python3 -m http.server 8080 --directory demo
 | ------------ | -------------------------------------------------------------------------- |
 | Linux        | AppImage, `.deb`, `.rpm`, `.tar.gz` (`electron-builder`, `apps/client/dist/`) |
 | Windows      | NSIS ou portable                                                           |
-| macOS        | DMG                                                                        |
 | Mises à jour | `electron-updater`, GitHub Releases                                        |
 | CI           | `[.github/workflows/build-client.yml](.github/workflows/build-client.yml)` |
 

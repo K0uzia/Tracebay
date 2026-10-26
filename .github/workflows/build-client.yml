@@ -24,7 +24,6 @@ on:
         options:
           - linux
           - win
-          - mac
           - all
       publier:
         description: 'Publier la release (non : paquets en artefacts seulement, pour une recette)'
@@ -165,63 +164,9 @@ jobs:
             apps/client/dist/*.blockmap
             apps/client/dist/*.yml
 
-  build-macos:
-    runs-on: macos-latest
-    needs: checks
-    if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'mac' || github.event.inputs.platform == 'all'))
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
-      - name: Install dependencies (root)
-        run: npm ci
-
-      - name: Vérifier token de publication
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          if [ -z "${GH_TOKEN}" ] && [ -z "${GITHUB_TOKEN}" ]; then
-            echo "::error::Aucun token GitHub. Ajoutez un secret GH_TOKEN (PAT avec scope repo) dans Settings > Secrets and variables > Actions."
-            exit 1
-          fi
-          echo "Token de publication configuré."
-
-      - name: Build client (macOS)
-        working-directory: apps/client
-        env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NODE_ENV: production
-          # Publication seulement depuis main, jamais avec publier=non (branche de test : toujours never)
-          PUBLISH_MODE: ${{ github.ref == 'refs/heads/main' && !(github.event_name == 'workflow_dispatch' && github.event.inputs.publier == 'non') && 'always' || 'never' }}
-          # Pas de certificat Apple Developer en CI : éviter la signature ad-hoc qui casse le build
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-        shell: bash
-        run: npx electron-builder --mac --publish="$PUBLISH_MODE"
-
-      - name: Upload macOS artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: client-macos
-          path: |
-            apps/client/dist/*.dmg
-            apps/client/dist/*.zip
-            apps/client/dist/*.blockmap
-            apps/client/dist/*.yml
-
   sommes:
     # SHA256SUMS.txt de tous les paquets construits : artefact, et pièce de la release quand elle est publiée.
-    needs: [build-linux, build-windows, build-macos]
+    needs: [build-linux, build-windows]
     if: ${{ !cancelled() && !contains(needs.*.result, 'failure') && contains(needs.*.result, 'success') }}
     runs-on: ubuntu-24.04
     permissions:
