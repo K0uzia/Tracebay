@@ -4,7 +4,8 @@
 # L'application installée tourne ; le helper reçoit son environnement (/proc/PID/environ) comme dans main.js,
 # puis l'application reçoit SIGTERM (main.js fait app.exit). pkexec est remplacé par sudo -n (runner sans polkit).
 set -uo pipefail
-DEB=$1
+# Chemin absolu : apt prend un chemin relatif sans « ./ » pour un nom de paquet
+DEB=$(realpath "$1")
 HELPERS=$2
 NOM=$3
 J=$4/$NOM
