@@ -17,12 +17,13 @@
 - Avant d'installer une mise à jour (AppImage, .deb, .rpm), Tracebay vérifie que le fichier téléchargé est identique à celui de la publication ; un fichier différent est supprimé et la mise à jour refusée.
 - Après l'installation d'une mise à jour .deb ou .rpm, la relance de Tracebay est contrôlée : si l'ancienne fenêtre ne se ferme pas, elle est fermée ; si la relance échoue, elle est retentée et la raison est notée dans le journal de mise à jour.
 - L'archive .tar.gz et la version portable Windows ne se mettent pas à jour seules : Tracebay l'indique et renvoie vers la page des versions.
+- Le paquet .deb déclare toutes les bibliothèques dont Tracebay a besoin (libgbm1 manquait), et installe la bonne bibliothèque son sur Ubuntu 24.04.
 
 ### Quel fichier télécharger ?
-- Ubuntu, Debian, Linux Mint : workspace.deb (installation par double-clic ou `sudo apt install ./workspace.deb`, mises à jour automatiques).
+- Ubuntu, Debian, Linux Mint : workspace.deb (installation par double-clic ou `sudo apt install ./workspace.deb`, mises à jour automatiques). Sur Ubuntu 24.04 et plus récent, c'est le format à prendre : il installe la règle de sécurité (AppArmor) dont Tracebay a besoin pour démarrer.
 - Fedora, RHEL, openSUSE : workspace.rpm (`sudo dnf install ./workspace.rpm`, mises à jour automatiques).
-- Autre distribution, ou sans droits administrateur : workspace.AppImage. Le navigateur retire le droit d'exécution au téléchargement : `chmod +x workspace.AppImage`, ou Propriétés > Autoriser l'exécution. Sans FUSE sur le poste : `./workspace.AppImage --appimage-extract-and-run`.
-- Sans installation ni FUSE : workspace.tar.gz, à décompresser (`tar xzf workspace.tar.gz`) puis lancer `workspace` dans le dossier obtenu. Pas de mise à jour automatique.
+- Autre distribution, ou sans droits administrateur : workspace.AppImage. Le navigateur retire le droit d'exécution au téléchargement : `chmod +x workspace.AppImage`, ou Propriétés > Autoriser l'exécution. Sans FUSE sur le poste : `./workspace.AppImage --appimage-extract-and-run`. L'AppImage ne démarre pas sur Ubuntu 24.04 et plus récent (restriction de sécurité d'Ubuntu) : y prendre le .deb.
+- Sans installation ni FUSE : workspace.tar.gz, à décompresser (`tar xzf workspace.tar.gz`) puis lancer `workspace` dans le dossier obtenu. Pas de mise à jour automatique. Sur Ubuntu 24.04 et plus récent, une fois après la décompression, dans ce dossier : `sudo chown root:root chrome-sandbox && sudo chmod 4755 chrome-sandbox`.
 - Windows : Tracebay-Setup.exe (installation, mises à jour automatiques) ou Tracebay-Portable.exe (sans installation, mise à jour à la main).
 - Vérifier un fichier : `sha256sum -c SHA256SUMS.txt --ignore-missing` dans le dossier de téléchargement.
 

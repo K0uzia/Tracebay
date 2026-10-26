@@ -275,23 +275,25 @@ jobs:
             objdump -T "$f" | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -n 1
           done
 
-      - name: AppImage et tar.gz sur le runner (FUSE de l'hôte, bac à sable réel)
+      - name: Ubuntu poste de travail (userns restreint par AppArmor, réglage d'Ubuntu 24.04)
         run: |
-          ls -l /dev/fuse; command -v fusermount fusermount3 || true
-          sysctl kernel.apparmor_restrict_unprivileged_userns || true
-          mkdir -p "$RUNNER_TEMP/archive" && tar xzf paquets/workspace.tar.gz -C "$RUNNER_TEMP/archive"
-          ls -l "$RUNNER_TEMP"/archive/*/workspace "$RUNNER_TEMP"/archive/*/chrome-sandbox
-          .github/scripts/test-lancement.sh appimage "$RUNNER_TEMP/workspace.AppImage"
-          .github/scripts/test-lancement.sh archive "$RUNNER_TEMP"/archive/*/workspace
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=1
+          mkdir -p "$RUNNER_TEMP/journaux"
+          sysctl kernel.apparmor_restrict_unprivileged_userns > "$RUNNER_TEMP/journaux/sysctl.txt"
 
-      - name: Ubuntu poste de travail (userns restreint par AppArmor)
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=1
-
-      - name: AppImage et tar.gz, userns restreint (sans profil AppArmor)
+      - name: AppImage et tar.gz, userns restreint
         continue-on-error: true
         run: |
-          .github/scripts/test-lancement.sh appimage-restreint "$RUNNER_TEMP/workspace.AppImage"
-          .github/scripts/test-lancement.sh archive-restreint "$RUNNER_TEMP"/archive/*/workspace
+          ls -l /dev/fuse; command -v fusermount fusermount3 || true
+          mkdir -p "$RUNNER_TEMP/archive" && tar xzf paquets/workspace.tar.gz -C "$RUNNER_TEMP/archive"
+          sandbox=$(ls "$RUNNER_TEMP"/archive/*/chrome-sandbox)
+          r=0
+          .github/scripts/test-lancement.sh appimage "$RUNNER_TEMP/workspace.AppImage" || r=1
+          .github/scripts/test-lancement.sh archive "$RUNNER_TEMP"/archive/*/workspace || r=1
+          # Consigne des notes de version pour le tar.gz : bac à sable setuid, comme Chrome
+          sudo chown root:root "$sandbox" && sudo chmod 4755 "$sandbox"
+          .github/scripts/test-lancement.sh archive-setuid "$RUNNER_TEMP"/archive/*/workspace || r=1
+          exit $r
 
       - name: Mise à jour .deb, helper de la 3.7.2 (reproduction)
         continue-on-error: true

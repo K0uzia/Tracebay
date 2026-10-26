@@ -36,6 +36,7 @@ case "$MODE" in
         cp /p/workspace.deb /tmp/workspace.deb
         apt_installer /tmp/workspace.deb
         dpkg -s workspace | grep -E '^(Version|Depends)'
+        dpkg -l | grep -Ei 'asound|libgbm' | awk '{print "  " $2, $3}'
         ls -l /usr/bin/workspace /opt/Tracebay/chrome-sandbox
         set -- /usr/bin/workspace
         ;;

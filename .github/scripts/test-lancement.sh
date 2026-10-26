@@ -4,7 +4,8 @@
 set -uo pipefail
 NOM=$1
 shift
-LOG="$RUNNER_TEMP/lancement-$NOM.log"
+mkdir -p "$RUNNER_TEMP/journaux"
+LOG="$RUNNER_TEMP/journaux/lancement-$NOM.log"
 "$@" > "$LOG" 2>&1 < /dev/null &
 APP=$!
 sleep 20
