@@ -66,6 +66,7 @@
       "licence-cle-publique.js",
       "atelier.js",
       "linux-update.js",
+      "server-address.js",
       "config/**/*",
       "assets/**/*",
       "public/**/*",

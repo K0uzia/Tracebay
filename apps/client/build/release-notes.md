@@ -11,6 +11,11 @@
 - Retirer un type de la liste ne modifie aucune machine : le type reste affiché tel quel dans l'inventaire et l'historique, et l'onglet Types indique combien de machines l'utilisent encore.
 - Les anciens types (portable, fixe, écran) s'affichent avec leur libellé et sont comptés ensemble dans le résumé des PDF.
 
+### Connexion au serveur
+- Nouvel onglet Paramètres > Connexion : l'adresse du serveur de l'atelier se règle sur chaque poste, avec un bouton « Tester ». « Enregistrer et redémarrer » vérifie d'abord que le serveur répond, puis relance Tracebay.
+- Si le serveur ne répond plus, un bandeau l'indique, avec un accès direct à l'adresse du serveur.
+- À la mise à jour, chaque poste garde l'adresse qu'il utilisait : elle est enregistrée dans le dossier de données de Tracebay (fichier connection.json), sans rien à faire.
+
 ### Paquets et mises à jour
 - Chaque version est publiée dans tous les formats : AppImage, .deb, .rpm et archive .tar.gz pour Linux, installateur et version portable pour Windows, avec un fichier SHA256SUMS.txt pour vérifier les téléchargements.
 - Nouveau paquet .rpm (Fedora, RHEL, openSUSE) : Tracebay s'y met à jour comme avec le .deb.

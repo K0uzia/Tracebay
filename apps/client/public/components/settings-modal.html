@@ -16,6 +16,9 @@
                 <button type="button" class="settings-nav__item" role="tab" id="settingsTabTypes" aria-controls="settingsPanelTypes" aria-selected="false" tabindex="-1">
                     <i class="fa-solid fa-tags" aria-hidden="true"></i><span>Types</span>
                 </button>
+                <button type="button" class="settings-nav__item" role="tab" id="settingsTabConnexion" aria-controls="settingsPanelConnexion" aria-selected="false" tabindex="-1">
+                    <i class="fa-solid fa-server" aria-hidden="true"></i><span>Connexion</span>
+                </button>
                 <button type="button" class="settings-nav__item" role="tab" id="settingsTabUpdate" aria-controls="settingsPanelUpdate" aria-selected="false" tabindex="-1">
                     <i class="fa-solid fa-cloud-arrow-down" aria-hidden="true"></i><span>Mise à jour</span>
                     <span class="settings-nav__dot" id="settingsNavUpdateDot" hidden aria-label="Mise à jour disponible"></span>
@@ -46,6 +49,14 @@
                         <p>Liste commune à tous les postes. Retirer un type ne modifie pas les machines déjà enregistrées.</p>
                     </header>
                     <div id="settingsTypesSettings"></div>
+                </section>
+
+                <section class="settings-panel" role="tabpanel" id="settingsPanelConnexion" aria-labelledby="settingsTabConnexion" hidden>
+                    <header class="settings-panel__header">
+                        <h3>Connexion</h3>
+                        <p>Adresse du serveur de l'atelier, propre à ce poste. Tracebay redémarre pour l'utiliser.</p>
+                    </header>
+                    <div id="settingsConnexionSettings"></div>
                 </section>
 
                 <section class="settings-panel" role="tabpanel" id="settingsPanelUpdate" aria-labelledby="settingsTabUpdate" hidden>
@@ -144,7 +155,7 @@
                     </div>
                     <div class="settings-block">
                         <h4>Lieu de stockage</h4>
-                        <p class="settings-block__hint">Sur le serveur de l'atelier (base de données et dossiers partagés des PDF), qui envoie aussi les e-mails. Sur ce poste, Tracebay ne garde que des préférences d'interface, la session de connexion et les derniers éléments consultés.</p>
+                        <p class="settings-block__hint">Sur le serveur de l'atelier (base de données et dossiers partagés des PDF), qui envoie aussi les e-mails. Sur ce poste, Tracebay ne garde que des préférences d'interface, l'adresse du serveur (onglet Connexion), la session de connexion et les derniers éléments consultés.</p>
                     </div>
                     <div class="settings-block">
                         <h4>Responsable du traitement</h4>

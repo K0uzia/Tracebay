@@ -151,8 +151,8 @@ function getEndpointPath(path) {
  * @param {string} endpointPath - Chemin de l'endpoint (ex: 'auth.login' ou '/api/auth/login')
  * @returns {string} URL complète (ex: 'http://server:4000/api/auth/login')
  * @example
- * getUrl('auth.login') // 'http://192.168.1.62:4000/api/auth/login'
- * getUrl('/api/health') // 'http://192.168.1.62:4000/api/health'
+ * getUrl('auth.login') // 'http://192.0.2.10:4000/api/auth/login'
+ * getUrl('/api/health') // 'http://192.0.2.10:4000/api/health'
  */
 function getUrl(endpointPath) {
     const serverUrl = window.SERVER_CONFIG?.serverUrl || 'http://localhost:8060';
@@ -360,7 +360,7 @@ const api = {
     
     /**
      * Obtient l'URL du serveur depuis la configuration
-     * @returns {string} URL du serveur (ex: 'http://192.168.1.62:4000')
+     * @returns {string} URL du serveur (ex: 'http://192.0.2.10:4000')
      */
     getServerUrl() {
         return window.SERVER_CONFIG?.serverUrl || window.APP_CONFIG?.serverUrl || 'http://localhost:8060';
@@ -368,7 +368,7 @@ const api = {
     
     /**
      * Obtient l'URL WebSocket depuis la configuration
-     * @returns {string} URL WebSocket (ex: 'ws://192.168.1.62:4000')
+     * @returns {string} URL WebSocket (ex: 'ws://192.0.2.10:4000')
      */
     getWsUrl() {
         return window.SERVER_CONFIG?.serverWsUrl || window.APP_CONFIG?.serverWsUrl || 'ws://localhost:8060';

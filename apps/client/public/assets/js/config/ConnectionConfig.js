@@ -37,69 +37,6 @@ class ConnectionConfig {
     }
 
     /**
-     * Découverte du serveur via beacon UDP
-     * Nécessite un module serveur qui envoie des beacons UDP
-     */
-    async discoverServer() {
-        try {
-            // Essayer une requête locale d'abord (plus rapide)
-            const health = await this.testServerHealth('http://localhost:8060');
-            if (health) {
-                return {
-                    url: 'http://localhost:8060',
-                    ws: 'ws://localhost:8060'
-                };
-            }
-
-            // Scanner les adresses locales courantes
-            const commonIPs = [
-                'http://192.168.1.1:4000',
-                'http://192.168.1.62:4000',
-                'http://192.168.0.1:4000',
-                'http://10.0.0.1:4000'
-            ];
-
-            for (const url of commonIPs) {
-                const health = await this.testServerHealth(url);
-                if (health) {
-                    return {
-                        url,
-                        ws: url.replace('http', 'ws')
-                    };
-                }
-            }
-
-            return null;
-        } catch (error) {
-            console.error('❌ Erreur découverte serveur:', error);
-            return null;
-        }
-    }
-
-    /**
-     * Tester la santé d'un serveur
-     */
-    async testServerHealth(baseUrl) {
-        try {
-            const healthEndpoint = '/api/health';
-            const response = await fetch(`${baseUrl}${healthEndpoint}`, {
-                method: 'GET',
-                timeout: 2000
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                if (data.status === 'ok') {
-                    return true;
-                }
-            }
-        } catch (error) {
-            // Erreur attendue si le serveur n'est pas disponible
-        }
-        return false;
-    }
-
-    /**
      * Mettre à jour l'état de connexion
      */
     setConnected(connected) {

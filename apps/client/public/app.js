@@ -311,6 +311,12 @@ class PageManager {
     }
 
     updateServerStatus(status, data) {
+        // Échec définitif (reconnexions épuisées) : bandeau avec accès à l'adresse du serveur
+        if (status === 'failed' || status === 'connected') {
+            import('./assets/js/modules/settings/ConnexionSettings.js').then(({ bandeauConnexion }) => {
+                bandeauConnexion(status === 'failed', this.serverUrl, () => this.showConnexionSettings());
+            }).catch(() => { /* bandeau facultatif */ });
+        }
         // Mettre à jour l'indicateur visuel dans le footer si présent
         const serverIndicator = document.getElementById('footer-server-value');
         const serverIcon = document.getElementById('footer-server-icon');
@@ -625,11 +631,28 @@ class PageManager {
         this.wireUpdateAutoToggle();
         this.wireAutoLaunchToggle();
         this.refreshAtelierSettings();
+        this.refreshConnexion();
         this.refreshLicenceInfo();
         this.refreshTechnicianErasure();
         modal.classList.remove('hidden');
         // Focus dans la fenêtre (lecteurs d'écran, Échap) sans contour visible au clic
         modal.querySelector('.settings-modal-container')?.focus({ preventScroll: true });
+    }
+
+    /** Paramètres > Connexion : adresse du serveur propre au poste. */
+    async refreshConnexion() {
+        const container = document.getElementById('settingsConnexionSettings');
+        if (!container || !window.electron?.invoke) {
+            return;
+        }
+        const { afficherConnexion } = await import('./assets/js/modules/settings/ConnexionSettings.js');
+        await afficherConnexion(container, { notifier: (m, t) => this.showNotification(m, t) });
+    }
+
+    /** Paramètres ouverts sur l'onglet Connexion (bandeau « serveur injoignable »). */
+    showConnexionSettings() {
+        this.showSettingsModal();
+        this.selectSettingsTab?.('settingsTabConnexion');
     }
 
     /** Paramètres > Confidentialité : effacer le nom d'un technicien (écran de la portable). */

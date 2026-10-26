@@ -10,6 +10,9 @@ const {
     detecterTypeInstallation, lireTypePaquet, sha512Fichier, empreintesYml,
     scriptInstallationRoot, scriptHelper
 } = require('./linux-update');
+const {
+    normaliserAdresse, lireAdressePoste, ecrireAdressePoste, migrerAdressePoste
+} = require('./server-address');
 const { verifierLicence, jourParis } = require('./licence');
 const CLE_PUBLIQUE_LICENCE = require('./licence-cle-publique');
 const url = require('url');
@@ -65,6 +68,20 @@ try {
 const MODE = process.env.SERVER_MODE || serverConfig.mode || 'local';
 const environments = serverConfig.environments || {};
 let currentConfig = environments[MODE] || environments.local;
+
+// Adresse du poste (<userData>/connection.json) : prime sur l'adresse livrée ; SERVER_MODE (dev)
+// passe avant. Version installée : au premier lancement, l'adresse livrée en place y est recopiée.
+const FICHIER_ADRESSE = path.join(app.getPath('userData'), 'connection.json');
+let ADRESSE_SOURCE = process.env.SERVER_MODE ? 'developpement' : 'paquet';
+if (!process.env.SERVER_MODE) {
+    const { adresse } = app.isPackaged
+        ? migrerAdressePoste({ fichier: FICHIER_ADRESSE, adresseEnPlace: environments[MODE] })
+        : { adresse: lireAdressePoste(FICHIER_ADRESSE) };
+    if (adresse) {
+        currentConfig = { ...currentConfig, url: adresse.serverUrl, ws: adresse.serverWsUrl };
+        ADRESSE_SOURCE = 'poste';
+    }
+}
 
 // Utiliser la config locale par défaut
 if (!currentConfig || !currentConfig.url) {
@@ -3205,7 +3222,9 @@ ipcMain.handle('get-app-config', async () => {
  * SERVER_MODE, s'il est défini, choisit l'environnement pour le renderer comme pour ce processus.
  */
 ipcMain.handle('get-connection-config', async () => {
-    return { ...serverConfig, mode: MODE };
+    // Le renderer vise la même adresse que ce processus (adresse du poste comprise)
+    const effective = { ...(environments[MODE] || {}), url: SERVER_URL, ws: SERVER_WS_URL };
+    return { ...serverConfig, mode: MODE, environments: { ...environments, [MODE]: effective } };
 });
 
 // Réglages d'atelier modifiés depuis ce poste par un compte administrateur (jeton « atelier »
@@ -3229,6 +3248,56 @@ function atelierHandle(canal, action) {
 }
 
 atelierHandle('atelier:etat', () => ({ success: true, ...atelierSession.etat() }));
+
+// Paramètres > Connexion : adresse du serveur propre au poste, prise en compte au redémarrage
+// (SERVER_URL est lu une fois, au démarrage).
+async function testerAdresse(saisie) {
+    const a = normaliserAdresse(saisie);
+    if (!a.ok) {
+        return { success: false, error: a.error };
+    }
+    try {
+        const res = await fetch(`${a.serverUrl}${healthEndpoint}`, { signal: AbortSignal.timeout(5000) });
+        const corps = res.ok ? await res.json().catch(() => null) : null;
+        if (corps?.status === 'ok') {
+            return { success: true, serverUrl: a.serverUrl };
+        }
+        return { success: false, error: `${a.serverUrl} répond, mais ce n'est pas un serveur Tracebay.` };
+    } catch (_) {
+        return {
+            success: false,
+            error: `Aucune réponse de ${a.serverUrl} : vérifiez l'adresse, le réseau et que le serveur est démarré.`
+        };
+    }
+}
+
+function enregistrerAdresse(saisie) {
+    if (process.env.SERVER_MODE) {
+        return { success: false, error: 'SERVER_MODE est défini (développement) : il choisit le serveur.' };
+    }
+    const a = normaliserAdresse(saisie);
+    if (!a.ok) {
+        return { success: false, error: a.error };
+    }
+    try {
+        ecrireAdressePoste(FICHIER_ADRESSE, a);
+    } catch (e) {
+        return { success: false, error: `Enregistrement impossible : ${e?.message || e}` };
+    }
+    // Relance après la réponse au renderer ; AppImage et portable Windows : leur fichier d'origine
+    const execPath = process.env.APPIMAGE || process.env.PORTABLE_EXECUTABLE_FILE;
+    setTimeout(() => {
+        app.relaunch(execPath ? { execPath } : undefined);
+        app.exit(0);
+    }, 400);
+    return { success: true, serverUrl: a.serverUrl };
+}
+
+atelierHandle('connexion:adresse', () => ({
+    success: true, serverUrl: SERVER_URL, source: ADRESSE_SOURCE, fichier: FICHIER_ADRESSE
+}));
+atelierHandle('connexion:tester', (payload) => testerAdresse(payload?.adresse));
+atelierHandle('connexion:enregistrer', (payload) => enregistrerAdresse(payload?.adresse));
 atelierHandle('atelier:connexion', (payload) => atelierSession.connexion(payload));
 atelierHandle('atelier:deconnexion', () => atelierSession.deconnexion());
 atelierHandle('atelier:enregistrer-types', (payload) => atelierSession.enregistrerTypes(payload));
