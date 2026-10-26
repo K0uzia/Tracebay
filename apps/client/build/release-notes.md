@@ -11,6 +11,21 @@
 - Retirer un type de la liste ne modifie aucune machine : le type reste affiché tel quel dans l'inventaire et l'historique, et l'onglet Types indique combien de machines l'utilisent encore.
 - Les anciens types (portable, fixe, écran) s'affichent avec leur libellé et sont comptés ensemble dans le résumé des PDF.
 
+### Paquets et mises à jour
+- Chaque version est publiée dans tous les formats : AppImage, .deb, .rpm et archive .tar.gz pour Linux, installateur et version portable pour Windows, avec un fichier SHA256SUMS.txt pour vérifier les téléchargements.
+- Nouveau paquet .rpm (Fedora, RHEL, openSUSE) : Tracebay s'y met à jour comme avec le .deb.
+- Avant d'installer une mise à jour (AppImage, .deb, .rpm), Tracebay vérifie que le fichier téléchargé est identique à celui de la publication ; un fichier différent est supprimé et la mise à jour refusée.
+- Après l'installation d'une mise à jour .deb ou .rpm, la relance de Tracebay est contrôlée : si l'ancienne fenêtre ne se ferme pas, elle est fermée ; si la relance échoue, elle est retentée et la raison est notée dans le journal de mise à jour.
+- L'archive .tar.gz et la version portable Windows ne se mettent pas à jour seules : Tracebay l'indique et renvoie vers la page des versions.
+
+### Quel fichier télécharger ?
+- Ubuntu, Debian, Linux Mint : workspace.deb (installation par double-clic ou `sudo apt install ./workspace.deb`, mises à jour automatiques).
+- Fedora, RHEL, openSUSE : workspace.rpm (`sudo dnf install ./workspace.rpm`, mises à jour automatiques).
+- Autre distribution, ou sans droits administrateur : workspace.AppImage. Le navigateur retire le droit d'exécution au téléchargement : `chmod +x workspace.AppImage`, ou Propriétés > Autoriser l'exécution. Sans FUSE sur le poste : `./workspace.AppImage --appimage-extract-and-run`.
+- Sans installation ni FUSE : workspace.tar.gz, à décompresser (`tar xzf workspace.tar.gz`) puis lancer `workspace` dans le dossier obtenu. Pas de mise à jour automatique.
+- Windows : Tracebay-Setup.exe (installation, mises à jour automatiques) ou Tracebay-Portable.exe (sans installation, mise à jour à la main).
+- Vérifier un fichier : `sha256sum -c SHA256SUMS.txt --ignore-missing` dans le dossier de téléchargement.
+
 ### À savoir
 - Mettre à jour le serveur avant les postes : la version 3.8.0 du serveur apporte ces réglages. Sans elle, les onglets Branding et Types indiquent que les réglages sont indisponibles, et les listes reprennent Portable, Fixe, Écran.
 - Sans réglage enregistré, la liste de départ est Portable, Fixe, Écran et la couleur est le bleu d'origine.

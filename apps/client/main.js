@@ -6,6 +6,10 @@ const { app, BrowserWindow, ipcMain, shell, nativeImage, Menu, crashReporter, ne
 const path = require('path');
 const { applyBranding, applyPdfColor, createBrandingCache } = require('./branding');
 const { createAtelierSession } = require('./atelier');
+const {
+    detecterTypeInstallation, lireTypePaquet, sha512Fichier, empreintesYml,
+    scriptInstallationRoot, scriptHelper
+} = require('./linux-update');
 const { verifierLicence, jourParis } = require('./licence');
 const CLE_PUBLIQUE_LICENCE = require('./licence-cle-publique');
 const url = require('url');
@@ -312,205 +316,69 @@ function tryLinuxAppImageUpdateHelperDetailed(currentAppPath, newAppPath) {
 }
 
 /**
- * Sous Linux .deb : helper détaché qui, APRÈS la mort de l’app :
- * 1) installe le .deb via **un seul** pkexec (évite le spam de boîtes admin)
- * 2) relance `workspace` (identité Debian) ou `Tracebay` (installs transitoires)
- *
- * Important : le paquet Debian / binaire restent « workspace » pour que les
- * mises à jour remplacent le .deb déjà installé et que les scripts machines
- * (autostart) continuent de fonctionner. Le nom affiché UI reste Tracebay.
- *
- * Important : ne jamais lancer dpkg/pkexec tant que l’app tourne : les binaires
- * sous /usr/lib/workspace sont ouverts, et pkexec détaché + quit immédiat
- * tue souvent la session d’auth sans installer.
+ * Linux .deb ou .rpm : helper détaché qui, APRÈS la fin de l'application, installe le paquet
+ * avec une seule élévation pkexec, puis relance l'application et vérifie qu'elle tourne
+ * (scripts : linux-update.js, journal : <temp>/workspace-manual-update/deb-update.log).
+ * Jamais d'installation tant que l'application tourne : ses fichiers sous /opt/Tracebay sont
+ * ouverts, et elle garde le verrou d'instance unique.
+ * Paquet et binaire restent « workspace » : une mise à jour remplace ainsi le paquet déjà
+ * installé, et les scripts des postes (démarrage automatique) continuent de fonctionner.
  */
-function tryLinuxDebUpdateHelper(debPath) {
+function tryLinuxPackageUpdateHelper(pkgPath, type) {
     if (process.platform !== 'linux') {
         return { ok: false, error: 'Plateforme non supportée' };
     }
-    if (!debPath || !fs.existsSync(debPath)) {
-        return { ok: false, error: `Paquet .deb introuvable: ${debPath || ''}` };
+    if (!pkgPath || !fs.existsSync(pkgPath)) {
+        return { ok: false, error: `Paquet introuvable: ${pkgPath || ''}` };
     }
     try {
         const tempDir = path.join(app.getPath('temp'), 'workspace-manual-update');
-        try {
-            fs.mkdirSync(tempDir, { recursive: true }); 
-        } catch (_) { /* ignore */ }
-
+        fs.mkdirSync(tempDir, { recursive: true });
         // Copie stable : le helper doit encore voir le fichier après la fermeture
-        const stableDeb = path.join(tempDir, 'workspace-install.deb');
-        try {
-            fs.copyFileSync(debPath, stableDeb);
-        } catch (e) {
-            return { ok: false, error: `Impossible de préparer le .deb: ${e?.message || e}` };
-        }
-
+        const stablePkg = path.join(tempDir, `workspace-install.${type}`);
+        fs.copyFileSync(pkgPath, stablePkg);
         const logFile = path.join(tempDir, 'deb-update.log');
-        const installScriptPath = path.join(tempDir, 'deb-install-root.sh');
-        const scriptPath = path.join(tempDir, 'deb-update.sh');
+        const installScriptPath = path.join(tempDir, 'package-install-root.sh');
+        const scriptPath = path.join(tempDir, 'package-update.sh');
+        fs.writeFileSync(installScriptPath, scriptInstallationRoot(type), { mode: 0o755 });
+        fs.writeFileSync(scriptPath, scriptHelper(), { mode: 0o755 });
+        fs.chmodSync(installScriptPath, 0o755);
+        fs.chmodSync(scriptPath, 0o755);
 
-        // Script root : une seule élévation pour toute la chaîne d’install
-        const installRootBody = `#!/bin/sh
-set -e
-DEB="$1"
-LOG="$2"
-log() { echo "$(date '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || date) [root] $*" >> "$LOG" 2>/dev/null || true; }
-log "install start deb=$DEB"
-if ! command -v dpkg >/dev/null 2>&1; then
-  log "FAIL dpkg introuvable"
-  exit 1
-fi
-if dpkg -i "$DEB" >> "$LOG" 2>&1; then
-  log "dpkg -i ok"
-  exit 0
-fi
-log "dpkg -i failed, apt-get -f then retry"
-if command -v apt-get >/dev/null 2>&1; then
-  apt-get install -f -y >> "$LOG" 2>&1 || true
-fi
-if dpkg -i "$DEB" >> "$LOG" 2>&1; then
-  log "dpkg -i ok after apt-get -f"
-  exit 0
-fi
-log "FAIL dpkg -i définitif"
-exit 1
-`;
-        fs.writeFileSync(installScriptPath, installRootBody, { encoding: 'utf8', mode: 0o755 });
-        try {
-            fs.chmodSync(installScriptPath, 0o755); 
-        } catch (_) { /* ignore */ }
-
-        const scriptBody = `#!/bin/sh
-log() { echo "$(date '+%Y-%m-%dT%H:%M:%S' 2>/dev/null || date) $*" >> "$WS_DEB_LOG" 2>/dev/null || true; }
-log "deb update helper start pid=$WS_DEB_PID deb=$WS_DEB_PATH"
-log "display=$DISPLAY wayland=$WAYLAND_DISPLAY xauth=$XAUTHORITY"
-
-i=0
-while kill -0 "$WS_DEB_PID" 2>/dev/null; do
-  sleep 0.25
-  i=$((i + 1))
-  if [ "$i" -gt 240 ]; then
-    log "timeout waiting for pid $WS_DEB_PID : force continue"
-    break
-  fi
-done
-log "app exited, waiting before install"
-sleep 1.5
-
-if [ ! -f "$WS_DEB_PATH" ]; then
-  log "FAIL missing deb: $WS_DEB_PATH"
-  exit 1
-fi
-if [ ! -x "$WS_DEB_INSTALL_SH" ]; then
-  log "FAIL missing install script: $WS_DEB_INSTALL_SH"
-  exit 1
-fi
-
-# Conserver l’environnement graphique pour la boîte de dialogue polkit (UNE seule fois)
-PKEXEC_ENV=""
-[ -n "$DISPLAY" ] && PKEXEC_ENV="$PKEXEC_ENV DISPLAY=$DISPLAY"
-[ -n "$XAUTHORITY" ] && PKEXEC_ENV="$PKEXEC_ENV XAUTHORITY=$XAUTHORITY"
-[ -n "$WAYLAND_DISPLAY" ] && PKEXEC_ENV="$PKEXEC_ENV WAYLAND_DISPLAY=$WAYLAND_DISPLAY"
-[ -n "$DBUS_SESSION_BUS_ADDRESS" ] && PKEXEC_ENV="$PKEXEC_ENV DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS"
-[ -n "$XDG_RUNTIME_DIR" ] && PKEXEC_ENV="$PKEXEC_ENV XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR"
-
-install_ok=0
-if command -v pkexec >/dev/null 2>&1; then
-  log "trying: single pkexec $WS_DEB_INSTALL_SH"
-  if [ -n "$PKEXEC_ENV" ]; then
-    # shellcheck disable=SC2086
-    if pkexec env $PKEXEC_ENV /bin/sh "$WS_DEB_INSTALL_SH" "$WS_DEB_PATH" "$WS_DEB_LOG"; then
-      install_ok=1
-      log "pkexec install ok"
-    else
-      log "pkexec install failed (annulé ou erreur dpkg)"
-    fi
-  else
-    if pkexec /bin/sh "$WS_DEB_INSTALL_SH" "$WS_DEB_PATH" "$WS_DEB_LOG"; then
-      install_ok=1
-      log "pkexec install ok"
-    else
-      log "pkexec install failed (annulé ou erreur dpkg)"
-    fi
-  fi
-else
-  log "FAIL pkexec introuvable"
-  exit 1
-fi
-
-if [ "$install_ok" -ne 1 ]; then
-  log "FAIL installation .deb échouée : ouvrir manuellement: $WS_DEB_PATH"
-  if command -v xdg-open >/dev/null 2>&1; then
-    xdg-open "$WS_DEB_PATH" >/dev/null 2>&1 || true
-  fi
-  exit 1
-fi
-
-sleep 1
-bin=""
-# Identité Debian historique = workspace (scripts / autostart machines)
-if [ -x /usr/bin/workspace ]; then bin=/usr/bin/workspace;
-elif command -v workspace >/dev/null 2>&1; then bin=$(command -v workspace);
-elif [ -x /usr/local/bin/workspace ]; then bin=/usr/local/bin/workspace;
-elif [ -x /usr/lib/workspace/workspace ]; then bin=/usr/lib/workspace/workspace;
-elif [ -x /usr/bin/Tracebay ]; then bin=/usr/bin/Tracebay;
-elif command -v Tracebay >/dev/null 2>&1; then bin=$(command -v Tracebay);
-elif [ -x /usr/local/bin/Tracebay ]; then bin=/usr/local/bin/Tracebay;
-elif [ -x /usr/lib/Tracebay/Tracebay ]; then bin=/usr/lib/Tracebay/Tracebay;
-fi
-if [ -z "$bin" ]; then
-  log "FAIL workspace/Tracebay binary not found after install"
-  exit 1
-fi
-
-log "launching $bin"
-# Relancer dans la session utilisateur (DISPLAY déjà dans l’env du helper)
-if command -v setsid >/dev/null 2>&1; then
-  setsid "$bin" >/dev/null 2>&1 &
-else
-  nohup "$bin" >/dev/null 2>&1 &
-fi
-disown 2>/dev/null || true
-log "launch issued, done"
-exit 0
-`;
-        fs.writeFileSync(scriptPath, scriptBody, { encoding: 'utf8', mode: 0o755 });
-        try {
-            fs.chmodSync(scriptPath, 0o755); 
-        } catch (_) { /* ignore */ }
-
-        const env = {
-            ...process.env,
-            WS_DEB_PID: String(process.pid),
-            WS_DEB_PATH: stableDeb,
-            WS_DEB_LOG: logFile,
-            WS_DEB_INSTALL_SH: installScriptPath
-        };
-
-        const shells = ['/bin/sh', '/usr/bin/sh', '/bin/bash', '/usr/bin/bash'];
-        for (const shellPath of shells) {
-            try {
-                if (!fs.existsSync(shellPath)) {
-                    continue;
-                }
-                const child = spawn(shellPath, [scriptPath], {
-                    detached: true,
-                    stdio: 'ignore',
-                    env
-                });
-                if (child && typeof child.pid === 'number' && child.pid > 0) {
-                    child.unref();
-                    console.log('[Update] helper deb update démarré, pid=', child.pid, 'log=', logFile);
-                    return { ok: true, logFile, stableDeb };
-                }
-            } catch (inner) {
-                console.warn('[Update] deb update spawn failed:', inner?.message || inner);
+        const child = spawn('/bin/sh', [scriptPath], {
+            detached: true,
+            stdio: 'ignore',
+            env: {
+                ...process.env,
+                WS_PID: String(process.pid),
+                WS_PKG: stablePkg,
+                WS_INSTALL_SH: installScriptPath,
+                WS_LOG: logFile,
+                WS_RELAUNCH_LOG: path.join(tempDir, 'relaunch.log')
             }
+        });
+        if (!child || !(child.pid > 0)) {
+            return { ok: false, error: 'Impossible de démarrer le helper d’installation' };
         }
-        return { ok: false, error: 'Impossible de démarrer le helper d’installation .deb' };
+        child.unref();
+        console.log('[Update] helper paquet démarré, pid=', child.pid, 'log=', logFile);
+        return { ok: true, logFile, stablePkg };
     } catch (e) {
-        console.warn('[Update] deb update helper failed:', e?.message);
+        console.warn('[Update] helper paquet:', e?.message);
         return { ok: false, error: e?.message || String(e) };
+    }
+}
+
+/** Contrôle d'intégrité : sha512 publié dans latest-*.yml, obligatoire avant toute installation. */
+async function verifierTelechargement(fichier, sha512Attendu) {
+    if (!sha512Attendu) {
+        throw new Error('Empreinte absente de la publication : installation refusée par sécurité.');
+    }
+    if ((await sha512Fichier(fichier)) !== sha512Attendu) {
+        try {
+            fs.unlinkSync(fichier);
+        } catch (_) { /* déjà absent */ }
+        throw new Error('Fichier téléchargé corrompu ou modifié : supprimé, réessayez.');
     }
 }
 
@@ -559,19 +427,12 @@ function currentAppImagePath() {
 }
 
 function getInstallPackageType() {
-    if (process.platform === 'linux') {
-        if (currentAppImagePath()) {
-            return 'AppImage';
-        }
-        return 'deb';
-    }
-    if (process.platform === 'darwin') {
-        return 'dmg';
-    }
-    if (process.platform === 'win32') {
-        return 'nsis';
-    }
-    return 'unknown';
+    return detecterTypeInstallation({
+        platform: process.platform,
+        appImagePath: currentAppImagePath(),
+        packageTypeFile: lireTypePaquet(path.join(process.resourcesPath || '', 'package-type')),
+        portableDir: process.env.PORTABLE_EXECUTABLE_DIR
+    });
 }
 
 /** Headers GitHub : User-Agent obligatoire, sinon 403. */
@@ -602,8 +463,8 @@ function defaultAssetFileName(packageType = getInstallPackageType()) {
     if (packageType === 'AppImage') {
         return 'workspace.AppImage';
     }
-    if (packageType === 'deb') {
-        return 'workspace.deb';
+    if (packageType === 'deb' || packageType === 'rpm') {
+        return `workspace.${packageType}`;
     }
     if (packageType === 'dmg') {
         const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
@@ -622,7 +483,8 @@ function parseElectronUpdaterYml(text) {
     return {
         version: versionMatch ? normalizeSemver(versionMatch[1]) : null,
         files: urls,
-        path: pathMatch ? pathMatch[1] : null
+        path: pathMatch ? pathMatch[1] : null,
+        sha512: empreintesYml(text)
     };
 }
 
@@ -634,9 +496,9 @@ function pickAssetFileNameFromYml(yml, packageType) {
             || yml?.path
             || defaultAssetFileName('AppImage');
     }
-    if (packageType === 'deb') {
-        return files.find(f => lower(f).endsWith('.deb'))
-            || defaultAssetFileName('deb');
+    if (packageType === 'deb' || packageType === 'rpm') {
+        return files.find(f => lower(f).endsWith(`.${packageType}`))
+            || defaultAssetFileName(packageType);
     }
     if (packageType === 'dmg') {
         const arch = process.arch === 'arm64' ? 'arm64' : 'x64';
@@ -683,6 +545,7 @@ async function fetchLatestUpdateMeta(packageType = getInstallPackageType()) {
         releaseName: `v${yml.version}`,
         assetName,
         downloadUrl,
+        sha512: (assetName && yml.sha512[assetName]) || null,
         packageType,
         source: 'yml'
     };
@@ -737,6 +600,11 @@ function pickReleaseAsset(releaseJson, packageType = getInstallPackageType()) {
             || assets.find(a => nameOf(a) === 'Tracebay.appimage')
             || assets.find(a => /Tracebay.*\.appimage$/i.test(nameOf(a)))
             || assets.find(a => /\.appimage$/i.test(nameOf(a)))
+            || null;
+    }
+    if (packageType === 'rpm') {
+        return assets.find(a => nameOf(a) === 'workspace.rpm')
+            || assets.find(a => /\.rpm$/i.test(nameOf(a)))
             || null;
     }
     if (packageType === 'deb') {
@@ -869,6 +737,7 @@ async function downloadAndApplyAppImageUpdate() {
     const downloadedPath = path.join(tempDir, 'workspace.appimage');
 
     const dl = await downloadToFile(meta.downloadUrl, downloadedPath, sendUpdateProgress);
+    await verifierTelechargement(downloadedPath, meta.sha512);
     linuxAppImageBackup(currentApp);
 
     try {
@@ -905,22 +774,23 @@ async function downloadAndApplyAppImageUpdate() {
  * Mise à jour .deb : télécharge uniquement (pas de pkexec / pas de quit).
  * L’installation privilégiée se fait au clic « Redémarrer ».
  */
-async function downloadAndApplyDebUpdate() {
-    const meta = await fetchLatestUpdateMeta('deb');
+async function downloadAndApplyPackageUpdate(type) {
+    const meta = await fetchLatestUpdateMeta(type);
     if (!meta?.downloadUrl) {
-        return { success: false, error: 'Aucun asset .deb trouvé sur la release' };
+        return { success: false, error: `Aucun paquet .${type} trouvé sur la release` };
     }
     const latest = normalizeSemver(meta.latestVersion || '');
     const tempDir = path.join(app.getPath('temp'), 'workspace-manual-update');
     try {
         fs.mkdirSync(tempDir, { recursive: true }); 
     } catch (_) { }
-    const downloadedPath = path.join(tempDir, 'workspace.deb');
+    const downloadedPath = path.join(tempDir, `workspace.${type}`);
 
     const dl = await downloadToFile(meta.downloadUrl, downloadedPath, sendUpdateProgress);
+    await verifierTelechargement(downloadedPath, meta.sha512);
 
     setPendingAppUpdate({
-        packageType: 'deb',
+        packageType: type,
         latestVersion: latest || null,
         downloadedPath,
         helperStarted: false
@@ -931,7 +801,7 @@ async function downloadAndApplyDebUpdate() {
         latestVersion: latest || null,
         bytes: dl.bytes,
         needsRestart: true,
-        message: 'Paquet .deb téléchargé. Redémarrez pour installer (demande admin si besoin).'
+        message: `Paquet .${type} vérifié et téléchargé. Redémarrez pour installer (demande admin).`
     };
 }
 
@@ -1051,10 +921,10 @@ async function installPendingAppUpdate() {
         return { success: true, message: 'Redémarrage pour appliquer la mise à jour…' };
     }
 
-    if (packageType === 'deb') {
+    if (packageType === 'deb' || packageType === 'rpm') {
         const downloadedPath = pendingAppUpdate.downloadedPath;
         if (!downloadedPath || !fs.existsSync(downloadedPath)) {
-            return { success: false, error: 'Paquet .deb introuvable : retéléchargez la mise à jour' };
+            return { success: false, error: 'Paquet introuvable : retéléchargez la mise à jour' };
         }
 
         // Évite de relancer plusieurs helpers (= spam de boîtes admin) si l’utilisateur reclique
@@ -1076,11 +946,11 @@ async function installPendingAppUpdate() {
         }
 
         // Quit d’abord, installer ensuite via helper (1 seul pkexec après mort du process).
-        const helper = tryLinuxDebUpdateHelper(downloadedPath);
+        const helper = tryLinuxPackageUpdateHelper(downloadedPath, packageType);
         if (!helper.ok) {
             return {
                 success: false,
-                error: helper.error || 'Impossible de préparer l’installation .deb',
+                error: helper.error || 'Impossible de préparer l’installation du paquet',
                 detail: helper.error || null,
                 debug: {
                     downloadedPath,
@@ -1157,10 +1027,16 @@ ipcMain.handle('download-app-update', async () => {
         let result;
         if (packageType === 'AppImage') {
             result = await downloadAndApplyAppImageUpdate();
-        } else if (packageType === 'deb') {
-            result = await downloadAndApplyDebUpdate();
+        } else if (packageType === 'deb' || packageType === 'rpm') {
+            result = await downloadAndApplyPackageUpdate(packageType);
         } else if (packageType === 'dmg' || packageType === 'nsis') {
             result = await downloadAndApplyElectronUpdater();
+        } else if (packageType === 'archive' || packageType === 'portable') {
+            result = {
+                success: false,
+                error: 'Cette version (archive ou portable) ne se met pas à jour seule : '
+                    + 'téléchargez la nouvelle version sur la page des versions de Tracebay.'
+            };
         } else {
             result = { success: false, error: `Mise à jour non supportée pour ce type d’installation (${packageType})` };
         }

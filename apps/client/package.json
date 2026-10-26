@@ -65,6 +65,7 @@
       "licence.js",
       "licence-cle-publique.js",
       "atelier.js",
+      "linux-update.js",
       "config/**/*",
       "assets/**/*",
       "public/**/*",
@@ -194,6 +195,18 @@
           "arch": [
             "x64"
           ]
+        },
+        {
+          "target": "rpm",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/linux/icons",
@@ -236,6 +249,21 @@
         "Tracebay",
         "--provides",
         "Tracebay"
+      ]
+    },
+    "rpm": {
+      "artifactName": "workspace.${ext}",
+      "fpm": [
+        "--name",
+        "workspace",
+        "--replaces",
+        "Tracebay",
+        "--conflicts",
+        "Tracebay",
+        "--provides",
+        "Tracebay",
+        "--rpm-rpmbuild-define",
+        "_build_id_links none"
       ]
     }
   },
