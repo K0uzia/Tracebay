@@ -42,7 +42,7 @@ function isAllowedLocalPath(targetPath: string): boolean {
  */
 /**
  * Extrait un champ objet depuis un fichier de config JS en utilisant
- * une approche par comptage de parenthèses — robuste face aux méthodes ES6.
+ * une approche par comptage de parenthèses, robuste face aux méthodes ES6.
  */
 function parseConfigField(content: string, field: string): any {
   // Trouver "field: {" puis extraire l'objet en comptant les accolades
@@ -1350,7 +1350,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
       await transporter.sendMail({
         from: config.MAIL_FROM || config.SMTP_USER || 'noreply@localhost',
         to,
-        subject: 'Test SMTP — Workspace Admin',
+        subject: 'Test SMTP : Tracebay',
         text: 'Ceci est un email de test envoyé depuis le panel admin Workspace.',
         html: '<p>Ceci est un email de test envoyé depuis le <strong>panel admin Workspace</strong>.</p>',
       });
@@ -1783,7 +1783,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   // ─────────────────────────────────────────────
-  // COMMANDES (entête + lignes) — admin
+  // COMMANDES (entête + lignes) : admin
   // ─────────────────────────────────────────────
 
   fastify.get('/api/admin/commandes', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -1946,7 +1946,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   // ─────────────────────────────────────────────
-  // DONS — admin
+  // DONS : admin
   // ─────────────────────────────────────────────
   fastify.get('/api/admin/dons', async (request: FastifyRequest, reply: FastifyReply) => {
     const { limit = '100', offset = '0' } = request.query as any;
@@ -2048,7 +2048,7 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
   });
 
   // ─────────────────────────────────────────────
-  // ENTRÉES RÉCEPTION — admin (préfixe /api/admin pour éviter doublon avec main.ts /api/entrees)
+  // ENTRÉES RÉCEPTION : admin (préfixe /api/admin pour éviter doublon avec main.ts /api/entrees)
   // ─────────────────────────────────────────────
 
   fastify.get('/api/admin/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -2102,5 +2102,5 @@ export async function registerAdminRoutes(fastify: FastifyInstance): Promise<voi
     }
   });
 
-  fastify.log.info('✅ Admin routes registered (v2 — auth admin JWT)');
+  fastify.log.info('✅ Admin routes registered (v2, auth admin JWT)');
 }
