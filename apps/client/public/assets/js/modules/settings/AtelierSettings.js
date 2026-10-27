@@ -9,6 +9,7 @@
 import api from '../../config/api.js';
 import { escapeHtml } from '../../utils/html.js';
 import { getMaterialTypesInfo, invalidateMaterialTypes, usageParType } from './materialTypes.js';
+import { ouvrirConnexionAdmin } from './connexionAdmin.js';
 
 const NB = String.fromCharCode(160);
 const PDF_BLUE = '#2D3073';
@@ -567,73 +568,21 @@ export default class AtelierSettings {
         await this.render();
     }
 
-    /** Connexion d'un administrateur dans un <dialog> ; le mot de passe n'est gardé nulle part. */
+    /** Connexion d'un administrateur (dialogue partagé, connexionAdmin.js). */
     ouvrirConnexion(declencheur) {
         const section = declencheur?.closest?.('#settingsBrandingSettings, #settingsTypesSettings');
-        const dialog = document.createElement('dialog');
-        dialog.className = 'atelier-dialog';
-        dialog.setAttribute('aria-labelledby', 'atelierConnexionTitre');
-        dialog.innerHTML = `
-            <form class="post-settings" method="dialog" novalidate>
-                <h3 id="atelierConnexionTitre">Compte administrateur</h3>
-                <p class="post-settings__hint">Nom et logo des PDF, couleur et types de matériel valent pour tous les postes : leur modification est réservée à un compte administrateur de l'atelier. Elle reste ouverte une heure sur ce poste.</p>
-                <label class="post-settings__label" for="atelierUtilisateur">Nom d'utilisateur</label>
-                <input class="post-settings__input" id="atelierUtilisateur" name="username" type="text" autocomplete="username" maxlength="50" required>
-                <label class="post-settings__label" for="atelierMotDePasse">Mot de passe</label>
-                <input class="post-settings__input" id="atelierMotDePasse" name="password" type="password" autocomplete="current-password" maxlength="200" required>
-                <p class="settings-error" role="alert" hidden></p>
-                <div class="settings-actions">
-                    <button type="submit" class="settings-btn settings-btn--primary" data-action="connexion">Se connecter</button>
-                    <button type="button" class="settings-btn settings-btn--ghost" data-action="annuler">Annuler</button>
-                </div>
-            </form>`;
-        document.body.appendChild(dialog);
-        const form = dialog.querySelector('form');
-        const erreur = form.querySelector('.settings-error');
-        const user = form.querySelector('[name="username"]');
-        const pass = form.querySelector('[name="password"]');
-        const valider = form.querySelector('[data-action="connexion"]');
-        user.value = localStorage.getItem('workspace_username') || '';
-        const fermer = () => {
-            pass.value = '';
-            dialog.close();
-        };
-        dialog.addEventListener('close', () => {
-            dialog.remove();
-            if (!this.edition) {
-                declencheur?.isConnected && declencheur.focus();
+        ouvrirConnexionAdmin({
+            declencheur,
+            aide: 'Nom et logo des PDF, couleur et types de matériel valent pour tous les postes : leur '
+                + 'modification est réservée à un compte administrateur de l\'atelier. Elle reste ouverte '
+                + 'une heure sur ce poste.',
+            rendreFocus: () => !this.edition,
+            onConnecte: async (res) => {
+                this.session = res;
+                this.notifier?.(`Modification des réglages de l'atelier ouverte jusqu'à ${heure(res.expiresAt)}.`, 'success');
+                await this.render();
+                section?.querySelector('input:not([readonly]):not([type="file"])')?.focus();
             }
         });
-        form.querySelector('[data-action="annuler"]').addEventListener('click', fermer);
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            erreur.hidden = true;
-            if (!user.value.trim() || !pass.value) {
-                erreur.textContent = 'Indiquez le nom d\'utilisateur et le mot de passe.';
-                erreur.hidden = false;
-                (user.value.trim() ? pass : user).focus();
-                return;
-            }
-            valider.disabled = true;
-            valider.textContent = 'Connexion…';
-            const res = await window.electron.invoke('atelier:connexion', { username: user.value.trim(), password: pass.value })
-                .catch(() => ({ success: false, error: 'Connexion impossible.' }));
-            pass.value = '';
-            valider.disabled = false;
-            valider.textContent = 'Se connecter';
-            if (!res?.success) {
-                erreur.textContent = res?.error || 'Connexion refusée.';
-                erreur.hidden = false;
-                pass.focus();
-                return;
-            }
-            this.session = res;
-            fermer();
-            this.notifier?.(`Modification des réglages de l'atelier ouverte jusqu'à ${heure(res.expiresAt)}.`, 'success');
-            await this.render();
-            section?.querySelector('input:not([readonly]):not([type="file"])')?.focus();
-        });
-        dialog.showModal();
-        (user.value ? pass : user).focus();
     }
 }

@@ -3451,6 +3451,7 @@ atelierHandle('connexion:enregistrer', (payload) => enregistrerAdresse(payload?.
 atelierHandle('atelier:connexion', (payload) => atelierSession.connexion(payload));
 atelierHandle('atelier:deconnexion', () => atelierSession.deconnexion());
 atelierHandle('atelier:enregistrer-types', (payload) => atelierSession.enregistrerTypes(payload));
+atelierHandle('atelier:anonymiser-technicien', (payload) => atelierSession.anonymiserTechnicien(payload));
 atelierHandle('atelier:enregistrer-branding', async (payload) => {
     const res = await atelierSession.enregistrerBranding(payload);
     if (res.success) {

@@ -1,8 +1,9 @@
 /**
- * Réglages d'atelier modifiés depuis un poste (nom, logo et couleur des PDF, types de matériel).
+ * Réglages d'atelier modifiés depuis un poste (nom, logo et couleur des PDF, types de matériel,
+ * effacement d'un nom de technicien).
  * Module du processus principal, sans import Electron : testé avec Jest.
  *
- * Le jeton à portée « atelier » (1 h, trois routes seulement côté serveur) reste dans ce module :
+ * Le jeton à portée « atelier » (1 h, quatre routes seulement côté serveur) reste dans ce module :
  * jamais transmis au renderer, jamais écrit sur disque. Le renderer n'envoie que des données
  * validées ici avec zod.
  */
@@ -24,6 +25,10 @@ const Branding = z.object({
 
 const Types = z.object({
     types: z.array(z.string().max(40)).max(50)
+}).strict();
+
+const Technicien = z.object({
+    name: z.string().min(1).max(255).refine((n) => n.trim().length > 0, { message: 'Nom du technicien attendu.' })
 }).strict();
 
 const ERREUR_RESEAU = 'Le serveur ne répond pas. Vérifiez la connexion du poste puis réessayez.';
@@ -137,6 +142,15 @@ function createAtelierSession(o) {
                 return invalide(parsed.error);
             }
             return ecrire('PUT', '/api/admin/material-types', parsed.data);
+        },
+
+        /** Effacement d'un nom de technicien dans toute la base (droit à l'effacement), admin. */
+        async anonymiserTechnicien(payload) {
+            const parsed = Technicien.safeParse(payload);
+            if (!parsed.success) {
+                return invalide(parsed.error);
+            }
+            return ecrire('POST', '/api/lots/technicians/anonymize', parsed.data);
         }
     };
 }

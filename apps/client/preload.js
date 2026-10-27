@@ -36,7 +36,8 @@ const ALLOWED_CHANNELS = {
         'atelier:connexion',
         'atelier:deconnexion',
         'atelier:enregistrer-branding',
-        'atelier:enregistrer-types'
+        'atelier:enregistrer-types',
+        'atelier:anonymiser-technicien'
     ],
     on: [
         'update-was-installed',

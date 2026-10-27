@@ -109,3 +109,40 @@ describe('écritures', () => {
         expect((await s.enregistrerTypes({ types: ['Portable'] })).code).toBe('reconnexion');
     });
 });
+
+describe('effacement d’un nom de technicien', () => {
+    test('envoyé avec le jeton « atelier » sur la route du serveur, nom exact', async () => {
+        const { s, fetchImpl } = session({ ecriture: reponse(200, { success: true, anonymises: 4 }) });
+        await s.connexion({ username: 'admin', password: 'p' });
+        const res = await s.anonymiserTechnicien({ name: ' Jean ' });
+        expect(res).toEqual({ success: true, data: { success: true, anonymises: 4 } });
+        const [url, options] = fetchImpl.mock.calls[1];
+        expect(url).toBe('http://serveur:4000/api/lots/technicians/anonymize');
+        expect(options.method).toBe('POST');
+        expect(options.headers.Authorization).toBe('Bearer jeton-secret');
+        expect(JSON.parse(options.body)).toEqual({ name: ' Jean ' });
+    });
+
+    test('sans session administrateur : aucun appel, reconnexion demandée', async () => {
+        const { s, fetchImpl } = session();
+        expect((await s.anonymiserTechnicien({ name: 'Jean' })).code).toBe('reconnexion');
+        expect(fetchImpl).not.toHaveBeenCalled();
+    });
+
+    test('nom vide, trop long ou champ en trop : refusé avant tout appel', async () => {
+        const { s, fetchImpl } = session();
+        await s.connexion({ username: 'admin', password: 'p' });
+        const invalides = [{ name: '' }, { name: '   ' }, { name: 'x'.repeat(256) }, { name: 'Jean', tout: true }];
+        for (const payload of invalides) {
+            expect((await s.anonymiserTechnicien(payload)).success).toBe(false);
+        }
+        expect(fetchImpl).toHaveBeenCalledTimes(1);
+    });
+
+    test('refus du serveur (403) : session terminée', async () => {
+        const { s } = session({ ecriture: reponse(403, { error: 'Réservé aux administrateurs' }) });
+        await s.connexion({ username: 'admin', password: 'p' });
+        expect((await s.anonymiserTechnicien({ name: 'Jean' })).code).toBe('reconnexion');
+        expect(s.etat().connecte).toBe(false);
+    });
+});

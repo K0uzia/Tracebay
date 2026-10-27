@@ -1,10 +1,12 @@
 /**
  * Paramètres > Données et confidentialité : effacer le nom d'un technicien de tout le matériel
  * (droit à l'effacement). Seul ce champ est vidé ; possible même en lecture seule de la licence.
- * Module identique dans l'édition serveur et la portable.
+ * Édition serveur : réservé à un administrateur de l'atelier ; l'effacement part du processus
+ * principal avec le jeton « atelier » (le serveur refuse tout autre poste, 401 ou 403).
  */
 import api from '../../config/api.js';
 import { escapeHtml } from '../../utils/html.js';
+import { ouvrirConnexionAdmin } from './connexionAdmin.js';
 
 const NB = '\u00a0';
 const ESPACE_VISIBLE = '\u2423';
@@ -73,6 +75,8 @@ export async function afficherEffacementTechnicien(container, options = {}) {
         afficherErreurListe(container, options);
         return;
     }
+    const session = await window.electron?.invoke?.('atelier:etat').catch(() => null);
+    const admin = Boolean(session?.connecte);
     container.removeAttribute('aria-busy');
     if (!technicians.length) {
         container.innerHTML = '<p class="settings-block__hint" tabindex="-1">Aucun nom de technicien enregistré sur le matériel.</p>';
@@ -84,13 +88,19 @@ export async function afficherEffacementTechnicien(container, options = {}) {
     const lignes = technicians
         .map((t, i) => `<option value="${i}">${escapeHtml(nomAffiche(t.name))} (${elements(t.count)})</option>`)
         .join('');
+    const acces = admin ? '' : `
+            <div class="atelier-acces">
+                <i class="fa-solid fa-lock" aria-hidden="true"></i>
+                <span>Seul un administrateur peut effacer un nom de technicien${NB}: l'effacement vaut pour tous les postes.</span>
+                <button type="button" class="settings-btn settings-btn--ghost" data-action="connexion-admin">Connexion administrateur…</button>
+            </div>`;
     container.innerHTML = `
-        <div class="post-settings" data-role="effacement">
+        <div class="post-settings" data-role="effacement">${acces}
             <label class="post-settings__label" for="settingsTechnicienNom">Technicien</label>
             <select class="post-settings__input" id="settingsTechnicienNom">${lignes}</select>
             <p class="post-settings__hint" id="settingsTechnicienQuestion" data-role="question" hidden></p>
             <div class="settings-actions">
-                <button type="button" class="settings-btn settings-btn--ghost" data-action="demander">
+                <button type="button" class="settings-btn settings-btn--ghost" data-action="demander" ${admin ? '' : 'disabled'}>
                     <i class="fa-solid fa-user-slash" aria-hidden="true"></i> Effacer ce nom…
                 </button>
                 <button type="button" class="settings-btn settings-btn--primary" data-action="confirmer"
@@ -118,6 +128,14 @@ export async function afficherEffacementTechnicien(container, options = {}) {
         erreur.classList.add('hidden');
         demander.focus();
     };
+    container.querySelector('[data-action="connexion-admin"]')?.addEventListener('click', (e) => {
+        ouvrirConnexionAdmin({
+            declencheur: e.currentTarget,
+            aide: 'L\'effacement d\'un nom de technicien vaut pour tous les postes : il est réservé à un '
+                + 'compte administrateur de l\'atelier. La session reste ouverte une heure sur ce poste.',
+            onConnecte: () => afficherEffacementTechnicien(container, { ...options, focus: true })
+        });
+    });
     choix.addEventListener('change', () => basculer(false));
     demander.addEventListener('click', () => {
         const t = technicians[Number(choix.value)];
@@ -141,19 +159,22 @@ export async function afficherEffacementTechnicien(container, options = {}) {
         annuler.disabled = true;
         confirmer.textContent = 'Effacement…';
         bloc.setAttribute('aria-busy', 'true');
-        let status = 0;
         try {
-            const res = await api.post('/api/lots/technicians/anonymize', { name: t.name });
-            status = res.status;
-            const body = await res.json().catch(() => ({}));
-            if (!res.ok) {
-                throw new Error(body?.error || `HTTP ${res.status}`);
+            const res = await window.electron.invoke('atelier:anonymiser-technicien', { name: t.name });
+            if (res?.code === 'reconnexion') {
+                // Session administrateur terminée : retour à l'état verrouillé
+                notifier?.(res.error, 'error');
+                await afficherEffacementTechnicien(container, { notifier, focus: true });
+                return;
             }
-            notifier?.(`Nom «${NB}${nomAffiche(t.name)}${NB}» effacé de ${elements(body.anonymises ?? 0)}.`, 'success');
+            if (!res?.success) {
+                throw new Error(res?.error || 'Effacement refusé.');
+            }
+            notifier?.(`Nom «${NB}${nomAffiche(t.name)}${NB}» effacé de ${elements(res.data?.anonymises ?? 0)}.`, 'success');
             await afficherEffacementTechnicien(container, { notifier, focus: true });
         } catch (err) {
             bloc.removeAttribute('aria-busy');
-            erreur.textContent = `Effacement impossible${NB}: ${messageErreur(err, status)}`;
+            erreur.textContent = `Effacement impossible${NB}: ${messageErreur(err, 0)}`;
             erreur.classList.remove('hidden');
             confirmer.textContent = 'Effacer le nom';
             confirmer.disabled = false;
