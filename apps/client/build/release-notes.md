@@ -1,3 +1,21 @@
+## Tracebay 3.8.2
+
+### Serveur pas à jour : un message clair
+- Quand le serveur de l'atelier est plus ancien que le poste, les onglets Branding et Types le disent : « Le serveur Tracebay est en version X, ce poste en version Y : mettez le serveur à jour », au lieu de « Tracebay ne répond pas ».
+- « Tracebay ne répond pas » ne s'affiche plus que si le serveur ne répond vraiment pas. Une erreur du serveur est signalée avec son code.
+
+### Réservé aux administrateurs
+- Le branding (nom, logo et couleur des PDF) ne peut être modifié que par un administrateur de l'atelier. L'onglet Branding l'indique : « Seul un administrateur peut modifier le branding ». Le serveur refuse toute modification venant d'un autre compte, même en dehors de l'application.
+- Effacer le nom d'un technicien (Paramètres > Confidentialité) est désormais réservé à un administrateur, car l'effacement vaut pour tous les postes. Sans connexion administrateur, le bouton est désactivé et « Connexion administrateur… » est proposé ; la connexion reste ouverte une heure sur le poste.
+
+### Construction des paquets
+- Outils de construction de GitHub mis à jour (versions maintenues, figées pour la sécurité).
+
+### À savoir
+- Mettre à jour le serveur en version 3.8.2 (`sudo tracebayctl update`) pour les nouveaux verrous : le serveur 3.8.2 annonce sa version, que le poste affiche quand le serveur est trop ancien.
+- Ordre conseillé : les postes d'abord, puis le serveur. Un poste en 3.8.1 face à un serveur 3.8.2 ne peut plus effacer un nom de technicien.
+- Aucune migration de données.
+
 ## Tracebay 3.8.1
 
 ### Linux : fenêtre invisible sous Wayland
