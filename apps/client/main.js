@@ -1347,9 +1347,11 @@ function createWindow() {
             `minimum=${taille.minWidth}x${taille.minHeight}`,
             maximiser ? 'maximisée' : '');
     }
+    // Diagnostic Wayland : TRACEBAY_FENETRE_SHOW=immediat affiche la fenêtre dès sa création
+    const showImmediat = process.env.TRACEBAY_FENETRE_SHOW === 'immediat';
     mainWindow = new BrowserWindow({
         ...taille,
-        show: false,
+        show: showImmediat,
         autoHideMenuBar: true,
         icon: windowIcon,
         webPreferences: {
@@ -1411,11 +1413,25 @@ function createWindow() {
     }
 
     // Charger l'index.html ; afficher la fenêtre et fermer le splash une fois prêt
+    // Linux : étapes de l'affichage dans le journal (fenêtre restée invisible sous Wayland)
+    const debutFenetre = Date.now();
+    const traceFenetre = (etape) => {
+        if (process.platform !== 'linux' || !mainWindow || mainWindow.isDestroyed()) {
+            return;
+        }
+        const b = mainWindow.getBounds();
+        console.log(`[Fenêtre] ${etape} +${Date.now() - debutFenetre} ms visible=${mainWindow.isVisible()}`
+            + ` ${b.width}x${b.height}`);
+    };
+    mainWindow.on('show', () => traceFenetre('show'));
+    mainWindow.webContents.once('render-process-gone', (_e, d) => traceFenetre(`renderer arrêté (${d?.reason})`));
+    app.once('child-process-gone', (_e, d) => traceFenetre(`processus ${d?.type} arrêté (${d?.reason})`));
+
     mainWindow.loadURL(`file://${path.join(__dirname, 'public', 'index.html')}`);
     let showMainCalled = false;
     // eslint-disable-next-line prefer-const -- affecté plus bas, lu avant dans la fermeture
     let showMainFallbackId;
-    const showMainAndCloseSplash = () => {
+    const showMainAndCloseSplash = (origine) => {
         if (showMainCalled) {
             return;
         }
@@ -1423,8 +1439,11 @@ function createWindow() {
         if (showMainFallbackId) {
             clearTimeout(showMainFallbackId);
         }
+        traceFenetre(`affichage demandé (${origine})`);
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.show();
+            mainWindow.focus();
+            setTimeout(() => traceFenetre('1 s après show()'), 1000);
         }
         const startupMs = startupBegin ? Math.round(Date.now() - startupBegin) : 0;
         if (startupMs > 0) {
@@ -1448,9 +1467,9 @@ function createWindow() {
         }
     };
     // Affichage au premier rendu (ready-to-show), ou à la fin du chargement si celui-ci vient avant
-    mainWindow.once('ready-to-show', showMainAndCloseSplash);
-    mainWindow.webContents.once('did-finish-load', showMainAndCloseSplash);
-    showMainFallbackId = setTimeout(showMainAndCloseSplash, 15000);
+    mainWindow.once('ready-to-show', () => showMainAndCloseSplash('ready-to-show'));
+    mainWindow.webContents.once('did-finish-load', () => showMainAndCloseSplash('did-finish-load'));
+    showMainFallbackId = setTimeout(() => showMainAndCloseSplash('repli 15 s'), 15000);
 
     // Ouvrir les liens externes (target="_blank" ou window.open) dans le navigateur système au lieu d'une nouvelle fenêtre Electron
     mainWindow.webContents.setWindowOpenHandler(({ url }) => {
