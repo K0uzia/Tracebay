@@ -123,3 +123,53 @@ test('serveur injoignable : erreur et bouton Réessayer dans les deux onglets', 
     expect(brandingEl.querySelector('[role="alert"]').textContent).toMatch(/Tracebay ne répond pas/);
     expect(typesEl.querySelector('[data-action="reessayer"]')).not.toBeNull();
 });
+
+describe('serveur plus ancien que le poste', () => {
+    const statut = (status, body = {}) => ({ ok: status < 400, status, json: async () => body });
+    const routes = (table) => api.get.mockImplementation(async (url) => {
+        const r = table[url];
+        if (r instanceof Error) {
+            throw r;
+        }
+        return r || statut(404);
+    });
+    beforeEach(() => {
+        window.APP_CONFIG = { appVersion: '3.8.2' };
+    });
+
+    test('types absents (404) : mettre le serveur à jour, pas « ne répond pas »', async () => {
+        routes({ '/api/branding': reponse(BRANDING), '/api/health': statut(200, { status: 'ok', version: '2.0.0' }) });
+        await ecran();
+        for (const el of [brandingEl, typesEl]) {
+            const alerte = el.querySelector('[role="alert"]').textContent;
+            expect(alerte).toMatch(/mettez le serveur à jour/);
+            expect(alerte).toContain('3.8.2');
+            expect(alerte).toContain('3.8.0');
+            expect(alerte).not.toMatch(/ne répond pas/);
+            expect(alerte).not.toContain('2.0.0');
+        }
+    });
+
+    test("branding absent aussi (serveur d'avant la 3.7.0) : même message", async () => {
+        routes({});
+        await ecran();
+        expect(brandingEl.querySelector('[role="alert"]').textContent).toMatch(/mettez le serveur à jour/);
+    });
+
+    test('version annoncée par le serveur (tracebay_version) : affichée', async () => {
+        routes({ '/api/branding': reponse(BRANDING), '/api/health': statut(200, { status: 'ok', tracebay_version: '3.7.2' }) });
+        await ecran();
+        expect(typesEl.querySelector('[role="alert"]').textContent)
+            .toContain(`Le serveur Tracebay est en version 3.7.2, ce poste en version 3.8.2${String.fromCharCode(160)}: mettez le serveur à jour.`);
+    });
+
+    test('erreur du serveur (500) : signalée comme telle, avec Réessayer', async () => {
+        routes({ '/api/branding': reponse(BRANDING), '/api/material-types': statut(500) });
+        await ecran();
+        const alerte = typesEl.querySelector('[role="alert"]').textContent;
+        expect(alerte).toMatch(/erreur du serveur/i);
+        expect(alerte).toContain('500');
+        expect(alerte).not.toMatch(/ne répond pas|mettez le serveur à jour/);
+        expect(typesEl.querySelector('[data-action="reessayer"]')).not.toBeNull();
+    });
+});

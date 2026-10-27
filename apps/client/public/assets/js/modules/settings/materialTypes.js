@@ -31,7 +31,7 @@ export function getMaterialTypesInfo() {
         cache = api.get('/api/material-types', { useCache: false })
             .then(async (res) => {
                 if (!res.ok) {
-                    throw new Error(`HTTP ${res.status}`);
+                    throw Object.assign(new Error(`HTTP ${res.status}`), { statut: res.status });
                 }
                 const body = await res.json();
                 return {
@@ -40,9 +40,13 @@ export function getMaterialTypesInfo() {
                     parDefaut: body.par_defaut === true
                 };
             })
-            .catch(() => {
+            .catch((err) => {
                 cache = null;
-                return { types: [...TYPES_DEPART], usage: [], parDefaut: true, indisponible: true };
+                // statut : code HTTP du serveur ; null si aucune réponse (réseau, serveur arrêté)
+                const statut = err?.statut ?? null;
+                return {
+                    types: [...TYPES_DEPART], usage: [], parDefaut: true, indisponible: true, statut
+                };
             });
     }
     return cache;

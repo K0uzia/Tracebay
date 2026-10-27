@@ -77,6 +77,39 @@ function lireFichier(file) {
     });
 }
 
+// Première version du serveur qui a les réglages Branding et Types (route /api/material-types)
+const VERSION_SERVEUR_REGLAGES = '3.8.0';
+
+/**
+ * Cause d'indisponibilité des réglages : serveur injoignable, plus ancien que le poste (route
+ * absente, 404) ou en erreur. Version du serveur lue dans /api/health (tracebay_version) si
+ * elle y figure ; le champ « version » historique (2.0.0 figé) n'est pas une version de Tracebay.
+ */
+async function causeIndisponibilite(statuts) {
+    const repondu = statuts.filter((s) => s !== null && s !== undefined);
+    if (!repondu.length) {
+        return { texte: `Réglages de l'atelier indisponibles${NB}: Tracebay ne répond pas.` };
+    }
+    const poste = window.APP_CONFIG?.appVersion || '?';
+    if (repondu.includes(404)) {
+        let version = null;
+        try {
+            const res = await api.get('/api/health', { useCache: false });
+            const v = res.ok ? (await res.json())?.tracebay_version : null;
+            version = /^\d+\.\d+\.\d+/.test(String(v || '')) ? String(v) : null;
+        } catch (_) { /* version inconnue */ }
+        const serveur = version
+            ? `est en version ${version}`
+            : `est antérieur à la version ${VERSION_SERVEUR_REGLAGES}`;
+        return { texte: `Le serveur Tracebay ${serveur}, ce poste en version ${poste}${NB}: mettez le serveur à jour.` };
+    }
+    const code = repondu.find((s) => s >= 400) || repondu[0];
+    return {
+        texte: `Réglages de l'atelier indisponibles${NB}: erreur du serveur Tracebay (code ${code}). `
+            + 'Réessayez ; si cela continue, l\'administrateur peut consulter le journal du serveur.'
+    };
+}
+
 const heure = (ms) => new Date(ms).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 const machines = (n) => (n === 1 ? '1 machine' : `${Number(n).toLocaleString('fr-FR')} machines`);
 
@@ -103,18 +136,20 @@ export default class AtelierSettings {
         }
         try {
             const [res, info, session] = await Promise.all([
-                api.get('/api/branding', { useCache: false }),
+                api.get('/api/branding', { useCache: false }).catch(() => null),
                 getMaterialTypesInfo(),
                 window.electron?.invoke ? window.electron.invoke('atelier:etat') : Promise.resolve({ connecte: false })
             ]);
-            if (!res.ok || info.indisponible) {
-                throw new Error('indisponible');
+            if (!res?.ok || info.indisponible) {
+                const statuts = [res ? res.status : null, info.indisponible ? info.statut : null];
+                this.renderErreur(await causeIndisponibilite(statuts));
+                return;
             }
             this.branding = await res.json();
             this.info = info;
             this.session = session?.connecte ? session : { connecte: false };
         } catch (_) {
-            this.renderErreur();
+            this.renderErreur(await causeIndisponibilite([null]));
             return;
         }
         this.logo = this.branding.logo || null;
@@ -127,12 +162,12 @@ export default class AtelierSettings {
         }
     }
 
-    renderErreur() {
+    renderErreur(cause) {
         for (const el of [this.brandingEl, this.typesEl]) {
             el.removeAttribute('aria-busy');
             el.innerHTML = `
                 <div class="post-settings">
-                    <p class="settings-error" role="alert">Réglages de l'atelier indisponibles${NB}: Tracebay ne répond pas.</p>
+                    <p class="settings-error" role="alert">${escapeHtml(cause.texte)}</p>
                     <div class="settings-actions">
                         <button type="button" class="settings-btn settings-btn--ghost" data-action="reessayer">Réessayer</button>
                     </div>
