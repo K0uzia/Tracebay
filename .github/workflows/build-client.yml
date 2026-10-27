@@ -445,18 +445,23 @@ jobs:
           mkdir -p "$RUNNER_TEMP/electron" && cd "$RUNNER_TEMP/electron"
           npm init -y > /dev/null
           npm install --no-audit --no-fund "electron@${{ matrix.electron }}" > /dev/null
-          echo "ELECTRON_BIN=$RUNNER_TEMP/electron/node_modules/electron/dist/electron" >> "$GITHUB_ENV"
+          # Binaire téléchargé à l'installation ; sinon (script d'installation sauté), à la main
+          E="$RUNNER_TEMP/electron/node_modules/electron"
+          [ -x "$E/dist/electron" ] || node "$E/install.js"
+          ls -l "$E/dist/electron"
+          echo "ELECTRON_BIN=$E/dist/electron" >> "$GITHUB_ENV"
           chmod +x "$GITHUB_WORKSPACE/.github/scripts/test-wayland.sh"
 
       - name: Wayland natif sous mutter
         env:
           NODE_ENV: production
         run: |
-          "$ELECTRON_BIN" --version
+          node -p "'Electron ' + require('$RUNNER_TEMP/electron/node_modules/electron/package.json').version"
           A="$GITHUB_WORKSPACE/apps/client"
           N="env TRACEBAY_OZONE_PLATFORM=wayland NODE_ENV=production $ELECTRON_BIN $A --no-sandbox"
           r=0
           dbus-run-session -- .github/scripts/test-wayland.sh e${{ matrix.electron }}-1440 1440x900 $N || r=1
+          dbus-run-session -- .github/scripts/test-wayland.sh e${{ matrix.electron }}-sans-gpu 1440x900 $N --disable-gpu || r=1
           dbus-run-session -- .github/scripts/test-wayland.sh e${{ matrix.electron }}-1920 1920x1080 $N || r=1
           echo "== Avertissements de géométrie (mutter)"
           if grep -h 'Invalid window geometry' "$RUNNER_TEMP"/journaux-wayland/mutter-*.log; then
