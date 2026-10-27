@@ -163,7 +163,8 @@ while [ "$essai" -le 2 ]; do
   setsid "$bin" > "$WS_RELAUNCH_LOG" 2>&1 < /dev/null &
   lance=$!
   sleep 8
-  if kill -0 "$lance" 2>/dev/null; then
+  # L'application peut s'être relancée elle-même pour réparer son affichage : chercher par nom
+  if kill -0 "$lance" 2>/dev/null || pgrep -x workspace >/dev/null 2>&1; then
     log "relaunch ok pid=$lance"
     exit 0
   fi

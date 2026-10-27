@@ -4,6 +4,16 @@
 # Le conteneur tourne en root : --no-sandbox est donc obligatoire ici (le bac à sable réel est testé
 # par test-maj-deb.sh, avec un utilisateur normal sur le runner).
 set -eu
+# Processus principaux de Tracebay (workspace ou electron, hors sous-processus --type=) : le PID
+# change quand l'application se relance pour réparer son affichage.
+vivants() {
+    for d in /proc/[0-9]*; do
+        c=$(cat "$d/comm" 2>/dev/null) || continue
+        case "$c" in workspace|electron) ;; *) continue ;; esac
+        tr '\0' ' ' < "$d/cmdline" 2>/dev/null | grep -q -- '--type=' && continue
+        echo "${d#/proc/}"
+    done
+}
 MODE="$1"
 # shellcheck source=/dev/null
 . /etc/os-release
@@ -76,9 +86,8 @@ Xvfb :99 -screen 0 1280x800x24 >/dev/null 2>&1 &
 export DISPLAY=:99
 sleep 2
 "$@" --no-sandbox > /tmp/app.log 2>&1 &
-APP=$!
 sleep 20
-if ! kill -0 "$APP" 2>/dev/null; then
+if [ -z "$(vivants)" ]; then
     echo "ÉCHEC : l'application s'est arrêtée avant 20 s"
     tail -n 40 /tmp/app.log
     exit 1
@@ -90,4 +99,5 @@ if [ -z "$fenetre" ]; then
     exit 1
 fi
 echo "OK : application lancée, fenêtre$fenetre"
-kill "$APP" 2>/dev/null || true
+grep -E '\[(Affichage|Fenêtre)\]' /tmp/app.log | head -n 10 || true
+for p in $(vivants); do kill "$p" 2>/dev/null || true; done

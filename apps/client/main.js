@@ -5,29 +5,88 @@
 const { app, BrowserWindow, ipcMain, shell, nativeImage, Menu, crashReporter, net, session, screen } = require('electron');
 const { tailleFenetre, sessionWayland, choisirPlateformeOzone } = require('./window-geometry');
 
-// Linux : sur une session Wayland avec XWayland, Tracebay passe par XWayland (FORCER_XWAYLAND)
-// tant que le Wayland natif n'est pas validé ; TRACEBAY_OZONE_PLATFORM=wayland ou x11 choisit.
-// Chromium fixe la plateforme avant ce script (appendSwitch sans effet) : relance unique avec
-// --ozone-platform, qui empêche toute nouvelle relance. Sans effet sous X11, Windows et macOS.
-const FORCER_XWAYLAND = true;
-const XWAYLAND = ['/usr/bin/Xwayland', '/usr/libexec/Xwayland'].some((f) => require('fs').existsSync(f));
-const PLATEFORME_OZONE = choisirPlateformeOzone({
-    platform: process.platform,
-    env: process.env,
-    switchActuel: app.commandLine.getSwitchValue('ozone-platform'),
-    forcerXWayland: FORCER_XWAYLAND,
-    xwayland: XWAYLAND
-});
-if (process.platform === 'linux' && FORCER_XWAYLAND && !XWAYLAND && sessionWayland(process.env)) {
-    console.warn('[Fenêtre] Xwayland absent : Wayland natif. Pour le repli XWayland, installer '
-        + 'xorg-x11-server-Xwayland (Fedora, RHEL, Rocky) ou xwayland (Debian, Ubuntu).');
-}
-const RELANCE_OZONE = Boolean(PLATEFORME_OZONE);
-if (RELANCE_OZONE) {
-    const args = [...process.argv.slice(1), `--ozone-platform=${PLATEFORME_OZONE}`];
+const {
+    echelle, modeDepart, modeSuivant, modeCourant, argumentsPour, lireEtat, ecrireEtat
+} = require('./display-mode');
+
+// Linux : mode d'affichage réparé automatiquement (display-mode.js). Natif d'abord ; un échec au
+// démarrage (processus GPU arrêté, fenêtre invisible ou vide) relance une fois dans le cran
+// suivant : sans GPU, puis XWayland s'il est installé. Mode gardé pour la version en cours.
+// Chromium fixe la plateforme avant ce script : tout changement passe par une relance.
+// TRACEBAY_OZONE_PLATFORM=x11|wayland, --ozone-platform ou --disable-gpu : choix manuel, respecté.
+const journalAffichage = (message) => console.log(`[Affichage] ${message}`);
+const AFFICHAGE = { auto: false, mode: null, modes: [], fichier: null };
+
+function relancerAffichage(args, raison) {
+    journalAffichage(`${raison} : relance (${args.filter((a) => a.startsWith('--')).join(' ')})`);
     app.relaunch(process.env.APPIMAGE ? { execPath: process.env.APPIMAGE, args } : { args });
     app.exit(0);
 }
+
+let RELANCE_OZONE = false;
+if (process.platform === 'linux') {
+    const argv = process.argv.slice(1);
+    const manuel = choisirPlateformeOzone({
+        platform: process.platform,
+        env: process.env,
+        switchActuel: app.commandLine.getSwitchValue('ozone-platform')
+    });
+    const mode = modeCourant(argv);
+    if (manuel) {
+        RELANCE_OZONE = true;
+        relancerAffichage([...argv, `--ozone-platform=${manuel}`], `TRACEBAY_OZONE_PLATFORM=${manuel}`);
+    } else if (mode) {
+        const wayland = sessionWayland(process.env) && process.env.XDG_SESSION_TYPE !== 'x11';
+        const xwayland = ['/usr/bin/Xwayland', '/usr/libexec/Xwayland'].some((f) => require('fs').existsSync(f));
+        if (wayland && !xwayland) {
+            journalAffichage('Xwayland absent : pas de repli XWayland possible (paquet '
+                + 'xorg-x11-server-Xwayland sur Fedora, RHEL, Rocky ; xwayland sur Debian, Ubuntu).');
+        }
+        AFFICHAGE.modes = echelle({ wayland, xwayland: xwayland && Boolean(process.env.DISPLAY) });
+        AFFICHAGE.fichier = require('path').join(app.getPath('userData'), 'affichage.json');
+        const etat = lireEtat(AFFICHAGE.fichier);
+        const voulu = modeDepart({ etat, version: app.getVersion(), modes: AFFICHAGE.modes });
+        if (voulu !== mode) {
+            RELANCE_OZONE = true;
+            relancerAffichage(argumentsPour(voulu, argv), `mode « ${voulu} » gardé pour cette version`);
+        } else {
+            Object.assign(AFFICHAGE, { auto: true, mode });
+            journalAffichage(`mode « ${mode} » (session ${wayland ? 'wayland' : 'x11'})`);
+        }
+    }
+}
+
+// Issue du premier affichage : mode gardé s'il marche, cran suivant sinon (une fois par lancement)
+let affichageTranche = false;
+function affichageReussi() {
+    if (!AFFICHAGE.auto || affichageTranche) {
+        return;
+    }
+    affichageTranche = true;
+    const date = new Date().toISOString();
+    ecrireEtat(AFFICHAGE.fichier, { version: app.getVersion(), mode: AFFICHAGE.mode, date });
+    journalAffichage(`mode « ${AFFICHAGE.mode} » validé pour la version ${app.getVersion()}`);
+}
+function echecAffichage(raison) {
+    if (!AFFICHAGE.auto || affichageTranche) {
+        return;
+    }
+    affichageTranche = true;
+    const suivant = modeSuivant(AFFICHAGE.mode, AFFICHAGE.modes);
+    if (!suivant) {
+        journalAffichage(`${raison} en mode « ${AFFICHAGE.mode} » : plus d'autre mode à essayer`);
+        return;
+    }
+    ecrireEtat(AFFICHAGE.fichier, {
+        version: app.getVersion(), mode: suivant, raison, date: new Date().toISOString()
+    });
+    relancerAffichage(argumentsPour(suivant, process.argv.slice(1)), `${raison} en mode « ${AFFICHAGE.mode} »`);
+}
+app.on('child-process-gone', (_event, details) => {
+    if (details?.type === 'GPU') {
+        echecAffichage(`processus GPU arrêté (${details.reason}, code ${details.exitCode})`);
+    }
+});
 const path = require('path');
 const { applyBranding, applyPdfColor, createBrandingCache } = require('./branding');
 const { createAtelierSession } = require('./atelier');
@@ -1425,7 +1484,27 @@ function createWindow() {
     };
     mainWindow.on('show', () => traceFenetre('show'));
     mainWindow.webContents.once('render-process-gone', (_e, d) => traceFenetre(`renderer arrêté (${d?.reason})`));
-    app.once('child-process-gone', (_e, d) => traceFenetre(`processus ${d?.type} arrêté (${d?.reason})`));
+
+    // 3 s après show() : fenêtre visible et image rendue (capture non vide), sinon cran suivant
+    const verifierAffichage = async () => {
+        traceFenetre('3 s après show()');
+        if (!AFFICHAGE.auto || !mainWindow || mainWindow.isDestroyed()) {
+            return;
+        }
+        let ok = mainWindow.isVisible();
+        if (ok) {
+            try {
+                ok = !(await mainWindow.webContents.capturePage()).isEmpty();
+            } catch (_) {
+                ok = false;
+            }
+        }
+        if (ok) {
+            affichageReussi();
+        } else {
+            echecAffichage('fenêtre invisible ou vide 3 s après l\'affichage');
+        }
+    };
 
     mainWindow.loadURL(`file://${path.join(__dirname, 'public', 'index.html')}`);
     let showMainCalled = false;
@@ -1440,10 +1519,13 @@ function createWindow() {
             clearTimeout(showMainFallbackId);
         }
         traceFenetre(`affichage demandé (${origine})`);
+        if (origine === 'repli 15 s') {
+            echecAffichage('aucun rendu en 15 s');
+        }
         if (mainWindow && !mainWindow.isDestroyed()) {
             mainWindow.show();
             mainWindow.focus();
-            setTimeout(() => traceFenetre('1 s après show()'), 1000);
+            setTimeout(verifierAffichage, 3000);
         }
         const startupMs = startupBegin ? Math.round(Date.now() - startupBegin) : 0;
         if (startupMs > 0) {

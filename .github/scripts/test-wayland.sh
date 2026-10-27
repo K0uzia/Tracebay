@@ -4,6 +4,16 @@
 # À lancer dans dbus-run-session. Code 0 si l'application tourne encore après 20 s.
 # Échanges Wayland (WAYLAND_DEBUG) gardés pour xdg_surface, xdg_toplevel et set_window_geometry.
 set -uo pipefail
+# Processus principaux de Tracebay (workspace ou electron, hors sous-processus --type=) : le PID
+# change quand l'application se relance pour réparer son affichage.
+vivants() {
+    for d in /proc/[0-9]*; do
+        c=$(cat "$d/comm" 2>/dev/null) || continue
+        case "$c" in workspace|electron) ;; *) continue ;; esac
+        tr '\0' ' ' < "$d/cmdline" 2>/dev/null | grep -q -- '--type=' && continue
+        echo "${d#/proc/}"
+    done
+}
 NOM=$1
 ECRAN=$2
 shift 2
@@ -29,16 +39,15 @@ fi
 BRUT="$XDG_RUNTIME_DIR/brut.log"
 env -u DISPLAY WAYLAND_DISPLAY=wayland-0 XDG_SESSION_TYPE=wayland WAYLAND_DEBUG=client "$@" \
     > "$BRUT" 2>&1 < /dev/null &
-APP=$!
 sleep 20
 r=0
-if kill -0 "$APP" 2>/dev/null; then
+if [ -n "$(vivants)" ]; then
     echo "OK ($NOM, écran $ECRAN) : application vivante après 20 s"
 else
     echo "ÉCHEC ($NOM, écran $ECRAN) : application arrêtée"
     r=1
 fi
-kill "$APP" 2>/dev/null
+for p in $(vivants); do kill "$p" 2>/dev/null; done
 sleep 1
 kill "$MUTTER" 2>/dev/null
 # Lignes WAYLAND_DEBUG : « [  1234.567]  -> objet@id.requête(…) »
@@ -47,7 +56,7 @@ grep -E '^\[ *[0-9]+\.[0-9]+\]' "$BRUT" | grep -E 'xdg_surface|xdg_toplevel|set_
 grep -vE '^\[ *[0-9]+\.[0-9]+\]' "$BRUT" > "$J/app-$NOM.log"
 rm -f "$BRUT"
 echo "-- application (app-$NOM.log)"
-grep -iE 'Fenêtre|geometr|ozone|prête|affichée|GPU process|arrêté' "$J/app-$NOM.log" | head -n 40
+grep -iE 'Affichage|Fenêtre|geometr|ozone|prête|affichée|GPU process|arrêté' "$J/app-$NOM.log" | head -n 40
 echo "-- géométrie envoyée par Chromium (wayland-$NOM.log)"
 grep -E 'set_window_geometry|set_min_size|set_max_size|ack_configure' "$J/wayland-$NOM.log" | head -n 12
 echo "-- mutter (avertissements)"

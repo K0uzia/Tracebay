@@ -26,9 +26,10 @@ ls -l /usr/bin/workspace /opt/Tracebay/chrome-sandbox /etc/apparmor.d/workspace 
 sysctl kernel.apparmor_restrict_unprivileged_userns kernel.unprivileged_userns_clone 2>&1 | tee -a "$J/fichiers.txt"
 
 /usr/bin/workspace > "$J/app-avant.log" 2>&1 < /dev/null &
-APP=$!
 sleep 15
-if ! kill -0 "$APP" 2>/dev/null; then
+# Instance en cours (son PID change si elle s'est relancée pour réparer son affichage)
+APP=$(instances | head -n 1)
+if [ -z "$APP" ]; then
     echo "ÉCHEC : premier lancement (avant mise à jour)"
     tail -n 30 "$J/app-avant.log"
     exit 1
