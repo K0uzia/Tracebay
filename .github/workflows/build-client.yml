@@ -397,7 +397,7 @@ jobs:
           docker run --rm -e RUNNER_TEMP=/j -v "$RUNNER_TEMP/journaux-el10:/j/journaux-wayland" \
             -v "$PWD/paquets:/p:ro" -v "$PWD/.github/scripts:/s:ro" almalinux:10 bash -c '
               dnf install -y -q mutter dbus-daemon dbus-tools /p/workspace.rpm > /dev/null || exit 1
-              rpm -q --recommends workspace
+              ldd /opt/Tracebay/workspace | grep 'not found' || echo 'ldd : aucune bibliothèque manquante'
               rpm -q xorg-x11-server-Xwayland || true
               N="env TRACEBAY_OZONE_PLATFORM=wayland /usr/bin/workspace --no-sandbox"
               r=0

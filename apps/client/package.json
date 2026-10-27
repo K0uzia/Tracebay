@@ -256,6 +256,17 @@
       ]
     },
     "rpm": {
+      "depends": [
+        "gtk3",
+        "libnotify",
+        "nss",
+        "(libXtst or libXtst6)",
+        "xdg-utils",
+        "at-spi2-core",
+        "(libuuid or libuuid1)",
+        "(mesa-libgbm or libgbm1)",
+        "(alsa-lib or libasound2)"
+      ],
       "artifactName": "workspace.${ext}",
       "fpm": [
         "--name",
@@ -267,9 +278,7 @@
         "--provides",
         "Tracebay",
         "--rpm-rpmbuild-define",
-        "_build_id_links none",
-        "--rpm-tag",
-        "Recommends: xorg-x11-server-Xwayland"
+        "_build_id_links none"
       ]
     }
   },

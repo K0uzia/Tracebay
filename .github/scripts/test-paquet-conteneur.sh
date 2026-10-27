@@ -42,7 +42,7 @@ case "$MODE" in
         if command -v apt-get >/dev/null 2>&1; then
             apt_installer xvfb x11-utils libgtk-3-0 libnss3 libxss1 libxtst6 libgbm1 libasound2 libsecret-1-0
         else
-            dnf install -y -q gtk3 nss libXScrnSaver libXtst mesa-libgbm alsa-lib libsecret >/dev/null
+            dnf install -y -q gtk3 nss libXtst mesa-libgbm alsa-lib libsecret >/dev/null
             affichage_dnf
         fi
         cp /p/workspace.AppImage /tmp/workspace.AppImage
@@ -66,8 +66,10 @@ case "$MODE" in
     rpm)
         dnf install -y -q /p/workspace.rpm
         rpm -q workspace
-        rpm -q --recommends workspace
+        rpm -q --requires workspace | grep -v '^rpmlib' | tr '\n' ' '; echo
         ls -l /usr/bin/workspace /opt/Tracebay/chrome-sandbox
+        echo "Bibliothèques manquantes (ldd) : $(ldd /opt/Tracebay/workspace | grep -c 'not found')"
+        ldd /opt/Tracebay/workspace | grep 'not found' || true
         affichage_dnf
         set -- /usr/bin/workspace
         ;;
