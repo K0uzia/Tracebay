@@ -583,9 +583,34 @@ class PageManager {
             const res = await window.electron.invoke('check-app-update', {});
             this._updateInfo = res;
             this.refreshUpdateUI();
+            this.relancerSiPublication(res);
         } catch (_) {
             // silent (pas de bruit UX au démarrage)
         }
+    }
+
+    /**
+     * Nouvelle version visible sans son empreinte (publication en cours sur GitHub) : nouvel essai
+     * toutes les 5 minutes, 6 fois au plus, au lieu d'un refus.
+     */
+    relancerSiPublication(res) {
+        if (!res?.enPublication) {
+            this._essaisPublication = 0;
+            return;
+        }
+        if (this._essaiPublicationId || (this._essaisPublication || 0) >= 6) {
+            return;
+        }
+        this._essaisPublication = (this._essaisPublication || 0) + 1;
+        this._essaiPublicationId = setTimeout(async () => {
+            this._essaiPublicationId = null;
+            try {
+                const suite = await window.electron.invoke('check-app-update', {});
+                this._updateInfo = suite;
+                this.refreshUpdateUI();
+                this.relancerSiPublication(suite);
+            } catch (_) { /* nouvel essai au prochain contrôle manuel */ }
+        }, 5 * 60 * 1000);
     }
 
     async loadSettingsModal() {
@@ -945,6 +970,7 @@ class PageManager {
                     this._updateDownloaded = true;
                 }
                 this.refreshUpdateUI();
+                this.relancerSiPublication(res);
             } catch (e) {
                 if (status) {
                     status.textContent = 'Erreur de vérification';
@@ -992,6 +1018,15 @@ class PageManager {
                         progressText.textContent = '0%';
                     }
                     const res = await window.electron.invoke('download-app-update', {});
+                    if (res?.enPublication) {
+                        // Publication pas terminée : ni erreur ni refus, nouvel essai automatique
+                        this._updateInfo = {
+                            ...this._updateInfo, available: false,
+                            enPublication: true, message: res.error
+                        };
+                        this.relancerSiPublication(this._updateInfo);
+                        return;
+                    }
                     if (!res?.success) {
                         throw new Error(res?.error || res?.detail || 'Téléchargement impossible');
                     }
@@ -1270,6 +1305,8 @@ class PageManager {
                 status.textContent = 'Vérification…';
             } else if (!info.success) {
                 status.textContent = info.error ? `Vérification impossible (${info.error})` : 'Vérification impossible';
+            } else if (info.enPublication) {
+                status.textContent = info.message || 'Mise à jour en cours de publication';
             } else if (available) {
                 status.textContent = `Mise à jour disponible : v${info.latestVersion} (actuelle v${info.currentVersion})`;
             } else {

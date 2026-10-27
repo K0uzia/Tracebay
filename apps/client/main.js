@@ -92,7 +92,7 @@ const { applyBranding, applyPdfColor, createBrandingCache } = require('./brandin
 const { createAtelierSession } = require('./atelier');
 const {
     detecterTypeInstallation, lireTypePaquet, sha512Fichier, empreintesYml,
-    scriptInstallationRoot, scriptHelper
+    scriptInstallationRoot, scriptHelper, publicationIncomplete, MESSAGE_PUBLICATION
 } = require('./linux-update');
 const {
     normaliserAdresse, lireAdressePoste, ecrireAdressePoste, migrerAdressePoste
@@ -827,6 +827,9 @@ async function downloadAndApplyAppImageUpdate() {
     }
 
     const meta = await fetchLatestUpdateMeta('AppImage');
+    if (publicationIncomplete(meta)) {
+        return { success: false, enPublication: true, error: MESSAGE_PUBLICATION };
+    }
     if (!meta?.downloadUrl) {
         return { success: false, error: 'Aucun asset AppImage trouvé sur la release' };
     }
@@ -877,6 +880,9 @@ async function downloadAndApplyAppImageUpdate() {
  */
 async function downloadAndApplyPackageUpdate(type) {
     const meta = await fetchLatestUpdateMeta(type);
+    if (publicationIncomplete(meta)) {
+        return { success: false, enPublication: true, error: MESSAGE_PUBLICATION };
+    }
     if (!meta?.downloadUrl) {
         return { success: false, error: `Aucun paquet .${type} trouvé sur la release` };
     }
@@ -1106,10 +1112,15 @@ ipcMain.handle('check-app-update', async () => {
         const meta = await fetchLatestUpdateMeta(packageType);
         const latest = normalizeSemver(meta?.latestVersion || '');
         const downloadUrl = meta?.downloadUrl || null;
-        const available = !!latest && compareSemver(latest, current) > 0;
+        const nouvelle = !!latest && compareSemver(latest, current) > 0;
+        // Version visible sans son empreinte : publication en cours, nouvel essai plus tard
+        const enPublication = nouvelle && publicationIncomplete(meta);
+        const available = nouvelle && !enPublication;
         return {
             success: true,
             available,
+            enPublication,
+            message: enPublication ? MESSAGE_PUBLICATION : null,
             currentVersion: current,
             latestVersion: latest || null,
             downloadUrl,

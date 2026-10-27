@@ -56,7 +56,7 @@
       "provider": "github",
       "owner": "K0uzia",
       "repo": "Tracebay",
-      "releaseType": "release"
+      "releaseType": "draft"
     },
     "files": [
       "main.js",

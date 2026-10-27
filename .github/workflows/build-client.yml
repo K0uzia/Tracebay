@@ -54,15 +54,46 @@ jobs:
       - name: Hygiène du dépôt
         run: node .claude/skills/desk-audit/scripts/check-repo.mjs
 
+  # Release créée une seule fois, en brouillon, avant les builds : les jobs Linux et Windows y déposent
+  # leurs fichiers (un brouillon n'a pas de tag unique, deux jobs en créeraient deux). Elle reste
+  # invisible des postes jusqu'au job sommes. Corps : section de la version dans release-notes.md.
+  brouillon:
+    needs: checks
+    if: github.ref == 'refs/heads/main' && !(github.event_name == 'workflow_dispatch' && github.event.inputs.publier == 'non')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Créer la release en brouillon
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="$(node -p "require('./apps/client/package.json').version")"
+          TAG="v$VERSION"
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "La release $TAG existe déjà : les builds y déposeront leurs fichiers."
+            exit 0
+          fi
+          awk -v v="## Tracebay $VERSION" '$0 == v { garder = 1; next } /^## / { garder = 0 } garder' \
+            apps/client/build/release-notes.md > notes-version.md
+          test -s notes-version.md || { echo "::error::Section « ## Tracebay $VERSION » absente de release-notes.md"; exit 1; }
+          gh release create "$TAG" --draft --title "$VERSION" --target "$GITHUB_SHA" --notes-file notes-version.md
+
   build-linux:
     # Plus ancien runner maintenu : outils de paquet (fpm, rpmbuild, mksquashfs) anciens. Sur
     # ubuntu-latest (26.04), le mksquashfs d'appimage@1.0.2 impose son libm.so.6 et échoue.
     # La glibc minimale vient d'Electron (binaires précompilés) : mesurée par le job test-maj-deb.
     runs-on: ubuntu-22.04
-    needs: checks
+    needs: [checks, brouillon]
     if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'linux' || github.event.inputs.platform == 'all'))
+      !cancelled() && needs.checks.result == 'success' &&
+      (needs.brouillon.result == 'success' || needs.brouillon.result == 'skipped') &&
+      (github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'linux' || github.event.inputs.platform == 'all')))
     permissions:
       contents: write
     steps:
@@ -111,14 +142,16 @@ jobs:
             apps/client/dist/*.deb
             apps/client/dist/*.rpm
             apps/client/dist/*.tar.gz
-            apps/client/dist/*.yml
+            apps/client/dist/latest*.yml
 
   build-windows:
     runs-on: windows-latest
-    needs: checks
+    needs: [checks, brouillon]
     if: |
-      github.event_name == 'push' ||
-      (github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'win' || github.event.inputs.platform == 'all'))
+      !cancelled() && needs.checks.result == 'success' &&
+      (needs.brouillon.result == 'success' || needs.brouillon.result == 'skipped') &&
+      (github.event_name == 'push' ||
+      (github.event_name == 'workflow_dispatch' && (github.event.inputs.platform == 'win' || github.event.inputs.platform == 'all')))
     permissions:
       contents: write
     steps:
@@ -162,7 +195,7 @@ jobs:
           path: |
             apps/client/dist/*.exe
             apps/client/dist/*.blockmap
-            apps/client/dist/*.yml
+            apps/client/dist/latest*.yml
 
   sommes:
     # SHA256SUMS.txt de tous les paquets construits : artefact, et pièce de la release quand elle est publiée.
@@ -193,11 +226,18 @@ jobs:
           name: sommes
           path: SHA256SUMS.txt
 
-      - name: Joindre à la release
+      - name: Joindre les sommes et rendre la release publique
         if: github.ref == 'refs/heads/main' && !(github.event_name == 'workflow_dispatch' && github.event.inputs.publier == 'non')
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN || secrets.GITHUB_TOKEN }}
-        run: gh release upload "v$(node -p "require('./apps/client/package.json').version")" SHA256SUMS.txt --clobber
+        # electron-builder crée la release en brouillon (releaseType draft) : invisible des postes tant
+        # que tous les paquets, latest*.yml et SHA256SUMS.txt ne sont pas joints. Elle devient publique ici,
+        # en dernier ; si un build échoue, elle reste en brouillon et aucun poste ne la voit.
+        run: |
+          TAG="v$(node -p "require('./apps/client/package.json').version")"
+          gh release upload "$TAG" SHA256SUMS.txt --clobber
+          gh release view "$TAG" --json assets --jq '.assets[].name' | sort
+          gh release edit "$TAG" --draft=false --latest
 
   # Recette des paquets Linux, seulement en workflow_dispatch avec publier=non :
   # lecture seule, aucun secret, ne peut pas publier.

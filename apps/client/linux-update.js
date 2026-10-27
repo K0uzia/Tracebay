@@ -59,6 +59,19 @@ function empreintesYml(texte) {
     return empreintes;
 }
 
+// Mises à jour vérifiées par empreinte (sha512 de latest-linux.yml) avant installation
+const TYPES_VERIFIES = ['AppImage', 'deb', 'rpm'];
+const MESSAGE_PUBLICATION = `Mise à jour en cours de publication${String.fromCharCode(160)}: `
+    + 'nouvel essai dans quelques minutes.';
+
+/**
+ * Vrai si la nouvelle version est visible sans son empreinte : publication pas encore terminée
+ * (latest-linux.yml pas encore en ligne). Le poste réessaie plus tard au lieu de refuser.
+ */
+function publicationIncomplete(meta) {
+    return TYPES_VERIFIES.includes(meta?.packageType) && !meta?.sha512;
+}
+
 /** Commandes d'installation exécutées en root, une seule élévation pour toute la chaîne. */
 const INSTALLATION = {
     deb: `if ! command -v dpkg >/dev/null 2>&1; then log "FAIL dpkg introuvable"; exit 1; fi
@@ -180,5 +193,5 @@ exit 1
 
 module.exports = {
     detecterTypeInstallation, lireTypePaquet, sha512Fichier, empreintesYml,
-    scriptInstallationRoot, scriptHelper
+    scriptInstallationRoot, scriptHelper, publicationIncomplete, MESSAGE_PUBLICATION
 };

@@ -9,7 +9,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 const {
     detecterTypeInstallation, lireTypePaquet, sha512Fichier, empreintesYml,
-    scriptInstallationRoot, scriptHelper
+    scriptInstallationRoot, scriptHelper, publicationIncomplete, MESSAGE_PUBLICATION
 } = require('../linux-update');
 
 const YML = `version: 3.8.1
@@ -107,5 +107,27 @@ describe('scripts du helper', () => {
         for (const script of [scriptHelper(), scriptInstallationRoot('deb'), scriptInstallationRoot('rpm')]) {
             expect(() => execFileSync('sh', ['-n'], { input: script })).not.toThrow();
         }
+    });
+});
+
+describe('publication en cours', () => {
+    test('paquet Linux sans empreinte publiée : publication incomplète', () => {
+        for (const packageType of ['AppImage', 'deb', 'rpm']) {
+            expect(publicationIncomplete({ packageType, sha512: null })).toBe(true);
+            expect(publicationIncomplete({ packageType, sha512: 'QUFB' })).toBe(false);
+        }
+    });
+
+    test('Windows, macOS, archive : non concernés (electron-updater ou mise à jour à la main)', () => {
+        for (const packageType of ['nsis', 'dmg', 'archive', 'portable']) {
+            expect(publicationIncomplete({ packageType, sha512: null })).toBe(false);
+        }
+        expect(publicationIncomplete(null)).toBe(false);
+    });
+
+    test('message : nouvel essai annoncé, pas de refus sec', () => {
+        expect(MESSAGE_PUBLICATION).toMatch(/en cours de publication/);
+        expect(MESSAGE_PUBLICATION).toMatch(/nouvel essai dans quelques minutes/);
+        expect(MESSAGE_PUBLICATION).not.toMatch(/refusée/);
     });
 });
