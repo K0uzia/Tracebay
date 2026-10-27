@@ -1,0 +1,41 @@
+/**
+ * Tableau Disques (session d'effacement). Largeurs en multiples de --ui-font, réglées sur le contenu réel.
+ * Colonnes étroites : 12.75 ; colonnes de contenu : 56.3.
+ * Tableau minimal : 69.05 x --ui-font, soit 967 px à 1280 px.
+ */
+
+.r-root #disques-session-table:not(#tb) {
+  --tb-fixed-u: 12.75;
+  --tb-flex: 56.3;
+}
+
+/* case à cocher */
+.r-root #disques-session-table:not(#tb) th.lot-table__th--select { --w: 3; }
+/* numéro de ligne */
+.r-root #disques-session-table:not(#tb) th.lot-table__th--num { --w: 2.25; }
+/* case Destruction physique */
+.r-root #disques-session-table:not(#tb) th.lot-table__th--destroy { --w: 3.75; }
+/* bouton supprimer */
+.r-root #disques-session-table:not(#tb) th.lot-table__th--action { --w: 3.75; }
+
+/* S/N disque (DSK-NEXA-551) */
+.r-root #disques-session-table:not(#tb) th.lot-table__th--sn { --w: 10.5; }
+/* liste : SSD, HDD */
+.r-root #disques-session-table:not(#tb) th.lot-table__th--type { --w: 5.5; }
+/* liste : Samsung, Seagate */
+.r-root #disques-session-table:not(#tb) th.lot-table__th--marque { --w: 7.5; }
+/* liste : 870 EVO, Barracuda 2TB */
+.r-root #disques-session-table:not(#tb) th.lot-table__th--modele { --w: 10; }
+/* saisie : 500 Go, 2 To */
+.r-root #disques-session-table:not(#tb) th.lot-table__th--taille { --w: 6; }
+/* liste : SATA, NVMe, USB */
+.r-root #disques-session-table:not(#tb) th.lot-table__th--interface { --w: 6; }
+/* texte : Secure E. + Sanitize, Destruction physique */
+.r-root #disques-session-table:not(#tb) th.lot-table__th--shred { --w: 10.8; }
+
+/* Libellé du shred à la taille et à la graisse des autres cellules (l'app le mettait en petit gras) */
+.r-root #disques-session-table:not(#tb) .disques-shred-text {
+  font-size: var(--ui-font);
+  font-weight: 500;
+  white-space: nowrap;
+}
