@@ -1,5 +1,5 @@
 # shellcheck shell=bash
-# tracebayctl set-branding, set-licence, logs, users, admin-password, user-delete.
+# tracebayctl set-branding, set-licence, logs, users, admin-password, admin-code, user-delete.
 
 # Empreintes SHA-256 des hachages de mots de passe publiés dans l'historique du dépôt (compte « admin »
 # de l'ancien schema.sql). Comparées dans PostgreSQL : aucun hachage n'est lu ni affiché.
@@ -208,6 +208,38 @@ cmd_admin_password() {
   rm -f "$corps"
   [[ "$TB_HTTP" == "200" ]] || die "Mot de passe refusé (HTTP ${TB_HTTP:-sans réponse}) : $(json_field error "$TB_REPONSE")"
   ok "Mot de passe de $nom changé."
+}
+
+# Code administrateur des postes : déverrouille l'adresse du serveur sur un poste. Robustesse vérifiée
+# par le serveur (une seule règle) ; le code ne passe que par un fichier 600, le serveur n'en garde
+# qu'une empreinte scrypt, envoyée aux postes.
+cmd_admin_code() {
+  local args=("$@") code code2 corps
+  case "${1:-}" in
+    -h | --help) usage_cmd admin-code; return 0 ;;
+    -*) die "Option inconnue : $1" 2 ;;
+  esac
+  require_root admin-code
+  with_lock admin-code "${args[@]}"
+  lock_note admin-code
+  exiger_api
+  if [[ -t 0 ]]; then
+    read -r -s -p "Code administrateur des postes (12 caractères au moins, pas de suite ni de mot courant) : " code
+    printf '\n' >&2
+    read -r -s -p "Une seconde fois : " code2
+    printf '\n' >&2
+    [[ "$code" == "$code2" ]] || die "Les deux saisies diffèrent : rien n'a changé."
+  else
+    IFS= read -r code || true
+    code2="$code"
+  fi
+  (($(nb_car "$code") >= 12)) || die "Code trop court (12 caractères au moins) : rien n'a changé."
+  corps="$(corps_json "{\"code\":$(json_str "$code"),\"confirmation\":$(json_str "$code2")}")"
+  unset code code2
+  api_admin PUT "/api/admin/poste/code" "$corps"
+  rm -f "$corps"
+  [[ "$TB_HTTP" == "200" ]] || die "Code refusé (HTTP ${TB_HTTP:-sans réponse}) : $(json_field error "$TB_REPONSE")"
+  ok "Code administrateur des postes enregistré. Les postes le reçoivent à leur prochaine connexion."
 }
 
 cmd_user_delete() {

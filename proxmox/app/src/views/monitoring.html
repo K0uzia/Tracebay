@@ -55,6 +55,7 @@
       <div class="nav-item" data-page="config-smtp"><span class="icon"><i class="fa-solid fa-envelope-open-text"></i></span> Email</div>
       <div class="nav-item" data-page="config-branding"><span class="icon"><i class="fa-solid fa-building"></i></span> Atelier</div>
       <div class="nav-item" data-page="config-licence"><span class="icon"><i class="fa-solid fa-key"></i></span> Licence</div>
+      <div class="nav-item" data-page="config-postes"><span class="icon"><i class="fa-solid fa-lock"></i></span> Postes</div>
     </nav>
     <div class="sidebar-footer">
       <button class="btn-logout" onclick="doLogout()">Déconnexion</button>
@@ -410,6 +411,39 @@
           </div>
           <p style="margin:0 0 0.75rem">Le nom de l'entreprise écrit dans la clé remplace celui du réglage d'atelier sur les PDF.</p>
           <button class="btn btn-primary" onclick="saveLicence()"><i class="fa-solid fa-floppy-disk"></i> Enregistrer la clé</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Postes : code administrateur et journal des changements d'adresse ── -->
+    <div class="page" id="page-config-postes">
+      <div class="page-header">
+        <h1>Postes</h1>
+        <p>Code administrateur qui déverrouille l'adresse du serveur sur les postes</p>
+      </div>
+      <div class="card">
+        <div class="card-header"><h2>Code administrateur des postes</h2></div>
+        <div class="card-body">
+          <p id="postes-code-etat" style="margin:0 0 0.75rem">Chargement…</p>
+          <p style="margin:0 0 0.75rem">Après sa première connexion, un poste garde l'adresse du serveur en lecture seule : la changer demande ce code. Le serveur n'en garde qu'une empreinte (scrypt, salée), envoyée aux postes à chaque connexion pour qu'ils vérifient le code même sans serveur. C'est une protection contre les erreurs de manipulation, pas contre une personne qui a les droits sur le poste.</p>
+          <div class="form-group">
+            <label class="form-label" for="postes-code">Nouveau code (12 caractères au moins, sans suite ni mot de passe courant)</label>
+            <input class="form-input" id="postes-code" type="password" autocomplete="new-password" maxlength="128">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="postes-code-confirmation">Une seconde fois</label>
+            <input class="form-input" id="postes-code-confirmation" type="password" autocomplete="new-password" maxlength="128">
+          </div>
+          <button class="btn btn-primary" onclick="savePostesCode()"><i class="fa-solid fa-floppy-disk"></i> Enregistrer le code</button>
+        </div>
+      </div>
+      <div class="card" style="margin-top:1rem">
+        <div class="card-header"><h2>Changements d'adresse sur les postes</h2></div>
+        <div class="card-body">
+          <table class="data-table">
+            <thead><tr><th scope="col">Date</th><th scope="col">Poste</th><th scope="col">Ancienne adresse</th><th scope="col">Nouvelle adresse</th></tr></thead>
+            <tbody id="postes-journal"></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -1099,7 +1133,7 @@ document.querySelectorAll('.nav-item').forEach(el => {
 function navigateTo(page) {
   document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.page === page));
   document.querySelectorAll('.page').forEach(el => el.classList.toggle('active', el.id === 'page-' + page));
-  const loaders = { dashboard: loadDashboard, users: loadUsers, agenda: loadAgenda, reception: loadReception, 'config-smtp': loadSmtpConfig, 'config-branding': loadBrandingConfig, 'config-licence': loadLicence, errors: loadLogErrors, db: loadLogDb, logs: () => loadLogAuth() };
+  const loaders = { dashboard: loadDashboard, users: loadUsers, agenda: loadAgenda, reception: loadReception, 'config-smtp': loadSmtpConfig, 'config-branding': loadBrandingConfig, 'config-licence': loadLicence, 'config-postes': loadPostes, errors: loadLogErrors, db: loadLogDb, logs: () => loadLogAuth() };
   if (loaders[page]) loaders[page]();
 }
 
@@ -2788,6 +2822,52 @@ async function saveLicence() {
   toast('Licence enregistrée : ' + (data.entreprise || ''));
   document.getElementById('licence-cle').value = '';
   loadLicence();
+}
+
+// ── Postes : code administrateur, journal ─────────────────────────────────────
+async function loadPostes() {
+  const etat = document.getElementById('postes-code-etat');
+  const verrou = await api('GET', '/api/poste/verrou');
+  if (verrou.error) { etat.textContent = verrou.error; }
+  else if (verrou.verrou) {
+    etat.textContent = 'Code défini' + (verrou.verrou.defini_le ? ' le ' + fmtDate(verrou.verrou.defini_le) : '') + '. Les postes verrouillent leur adresse à la prochaine connexion.';
+  } else {
+    etat.textContent = 'Aucun code défini : l\'adresse du serveur reste modifiable sur les postes.';
+  }
+  const corps = document.getElementById('postes-journal');
+  corps.textContent = '';
+  const journal = await api('GET', '/api/admin/poste/journal');
+  const entrees = journal.entrees || [];
+  if (!entrees.length) {
+    const tr = document.createElement('tr');
+    const td = document.createElement('td');
+    td.colSpan = 4;
+    td.textContent = journal.error || 'Aucun changement d\'adresse signalé.';
+    tr.appendChild(td);
+    corps.appendChild(tr);
+    return;
+  }
+  for (const e of entrees) {
+    const tr = document.createElement('tr');
+    for (const v of [fmtDate(e.date) || e.date || '-', e.poste || '-', e.ancienne || '-', e.nouvelle || '-']) {
+      const td = document.createElement('td');
+      td.textContent = v;
+      tr.appendChild(td);
+    }
+    corps.appendChild(tr);
+  }
+}
+
+async function savePostesCode() {
+  const champ = document.getElementById('postes-code');
+  const confirmation = document.getElementById('postes-code-confirmation');
+  if (champ.value !== confirmation.value) { toast('Les deux saisies diffèrent', 'error'); return; }
+  const data = await api('PUT', '/api/admin/poste/code', { code: champ.value, confirmation: confirmation.value });
+  champ.value = '';
+  confirmation.value = '';
+  if (data.error) { toast(data.error, 'error'); return; }
+  toast('Code administrateur des postes enregistré');
+  loadPostes();
 }
 
 function showSmtpTestModal() {

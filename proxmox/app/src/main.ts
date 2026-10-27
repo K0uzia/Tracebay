@@ -15,6 +15,7 @@ import { registerBrandingRoutes, pgBrandingStore } from './api/branding';
 import { LicenceService, pgLicenceStore, registerLicenceGuard, registerLicenceRoutes } from './api/licence';
 import { registerRgpdRoutes } from './api/rgpd';
 import { registerMaterialTypesRoutes } from './api/material-types';
+import { registerCodePosteRoutes } from './api/code-poste';
 import { registerCompression } from './middleware/compression';
 import { registerRateLimit, registerAuthRateLimit } from './middleware/rate-limit';
 import { registerAdminGuard, registrationAllowed } from './middleware/admin-guard';
@@ -189,6 +190,7 @@ function broadcastUserCount() {
     await registerLicenceRoutes(fastify, licence);
     await registerRgpdRoutes(fastify, query);
     await registerMaterialTypesRoutes(fastify, pgBrandingStore(query), query);
+    await registerCodePosteRoutes(fastify, pgBrandingStore(query));
 
     // Health check endpoint
     fastify.get('/api/health', async () => corpsSante({ environment: nodeEnv, cache: globalCache.stats() }));

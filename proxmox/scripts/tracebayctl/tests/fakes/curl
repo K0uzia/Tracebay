@@ -51,6 +51,7 @@ case "$methode $chemin" in
   "GET /api/licence") corps="${FAKE_LICENCE:-{\"success\":true,\"etat\":\"non_activee\",\"ecriture\":true,\"entreprise\":null}}" ;;
   "PUT /api/admin/users/"* | "DELETE /api/admin/users/"* | "DELETE /api/admin/branding/logo") code="${FAKE_PUT_CODE:-200}" corps="${FAKE_PUT_BODY:-{\"success\":true}}" ;;
   "PUT /api/admin/branding") code="${FAKE_PUT_CODE:-200}" corps="${FAKE_PUT_BODY:-{\"success\":true}}" ;;
+  "PUT /api/admin/poste/code") code="${FAKE_PUT_CODE:-200}" corps="${FAKE_PUT_BODY:-{\"success\":true,\"defini_le\":\"2026-10-27T15:00:00.000Z\"}}" ;;
   "PUT /api/admin/licence") code="${FAKE_PUT_CODE:-200}" corps="${FAKE_PUT_BODY:-{\"success\":true,\"etat\":\"active\",\"entreprise\":\"Atelier test\",\"expire\":\"2027-10-23\"}}" ;;
 esac
 

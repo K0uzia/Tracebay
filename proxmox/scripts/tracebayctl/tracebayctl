@@ -54,6 +54,8 @@ Atelier et comptes
                          Nom et logo (PNG, JPEG, WebP, 512 Ko) imprimés sur les PDF de tous les postes.
   set-licence CLE        Clé de licence de l'atelier (TB1...), vérifiée par le serveur ; - pour la lire sur stdin.
   admin-password NOM     Nouveau mot de passe d'un compte, saisi deux fois sans affichage.
+  admin-code             Code administrateur des postes (changer l'adresse du serveur sur un poste),
+                         saisi deux fois sans affichage.
   user-delete [--yes] NOM
                          Supprime un compte après confirmation ; journal d'activité anonymisé.
 
@@ -157,6 +159,15 @@ EOF
 tracebayctl admin-password NOM
   Saisie masquée, deux fois, 12 caractères au moins (sans terminal : une ligne sur l'entrée standard).
   Le serveur hache le mot de passe (bcrypt) ; rien n'est affiché ni passé en argument.
+EOF
+      ;;
+    admin-code)
+      cat <<'EOF'
+tracebayctl admin-code
+  Saisie masquée, deux fois (sans terminal : une ligne sur l'entrée standard). 12 caractères au moins ;
+  le serveur refuse les répétitions, les suites (abcdef, 123456, azerty) et les mots de passe courants.
+  Le serveur n'en garde qu'une empreinte scrypt (N=32768), envoyée aux postes : ils vérifient le code
+  même serveur injoignable. Le verrou protège contre l'erreur, pas contre qui a les droits du poste.
 EOF
       ;;
     user-delete)
@@ -300,6 +311,7 @@ main() {
     logs) cmd_logs "$@" ;;
     users) cmd_users "$@" ;;
     admin-password) cmd_admin_password "$@" ;;
+    admin-code) cmd_admin_code "$@" ;;
     user-delete) cmd_user_delete "$@" ;;
     install) cmd_install "$@" ;;
     install-cli) cmd_install_cli "$@" ;;

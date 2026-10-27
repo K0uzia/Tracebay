@@ -1,6 +1,6 @@
 {
   "name": "workspace-proxmox",
-  "version": "3.8.2",
+  "version": "3.8.3",
   "description": "Workspace Proxmox Backend API - Fastify + TypeScript",
   "main": "dist/main.js",
   "scripts": {

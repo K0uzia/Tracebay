@@ -133,3 +133,32 @@ png() { printf '\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR' > "$1"; }
   FAKE_COMPTES="|" run "$CTL" status
   [[ "$output" == *"Comptes"*"aucun compte de test ni mot de passe par défaut"* ]]
 }
+
+@test "admin-code : saisie hors terminal, envoyée par fichier, jamais en argument ni affichée" {
+  run bash -c 'printf "%s\n" "Capsule-Huelgoat-29" | "$0" admin-code' "$CTL"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  grep -q -- "-X PUT" "$FAKE_DIR/curl.log"
+  grep -q "/api/admin/poste/code" "$FAKE_DIR/curl.log"
+  grep -qF '{"code":"Capsule-Huelgoat-29","confirmation":"Capsule-Huelgoat-29"}' "$FAKE_DIR/curl.body"
+  grep -qF "x-admin-token: $SECRET_ADMIN" "$FAKE_DIR/curl.headers"
+  ! grep -q "Capsule-Huelgoat" "$FAKE_DIR/curl.log"
+  [[ "$output" != *"Capsule-Huelgoat"* ]]
+  [[ "$output" == *"Code administrateur des postes enregistré"* ]]
+  refuter_secrets "$output"
+}
+
+@test "admin-code : code refusé par le serveur, message du serveur affiché" {
+  export FAKE_PUT_CODE=400 FAKE_PUT_BODY='{"error":"Code trop simple : suite de caractères (abcdef, 123456, azerty…)."}'
+  run bash -c 'printf "%s\n" "abcdefghijklmn" | "$0" admin-code' "$CTL"
+  echo "$output"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"Code trop simple"* ]]
+}
+
+@test "admin-code : trop court, rien n'est envoyé" {
+  run bash -c 'echo court | "$0" admin-code' "$CTL"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"trop court"* ]]
+  ! grep -q "/api/admin/poste/code" "$FAKE_DIR/curl.log"
+}

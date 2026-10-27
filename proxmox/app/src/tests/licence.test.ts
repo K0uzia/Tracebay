@@ -126,6 +126,9 @@ describe('service de licence', () => {
 describe('lecture seule', () => {
   test('liste des écritures permises', () => {
     assert.equal(ecriturePermiseEnLectureSeule('DELETE', '/api/dons/:id', undefined), true);
+    // Code administrateur des postes et journal des changements d'adresse : dépannage toujours possible
+    assert.equal(ecriturePermiseEnLectureSeule('PUT', '/api/admin/poste/code', undefined), true);
+    assert.equal(ecriturePermiseEnLectureSeule('POST', '/api/poste/journal', undefined), true);
     assert.equal(ecriturePermiseEnLectureSeule('DELETE', '/api/prets-materiel/:id', undefined), true);
     assert.equal(ecriturePermiseEnLectureSeule('DELETE', '/api/agenda/events/:id', undefined), true);
     assert.equal(ecriturePermiseEnLectureSeule('DELETE', '/api/admin/users/:id', undefined), true);
