@@ -403,3 +403,62 @@ jobs:
           path: |
             ${{ runner.temp }}/journaux-wayland
             ${{ runner.temp }}/journaux-el10
+
+  # Essai : l'application (sources de cette branche) lancée par plusieurs versions d'Electron en
+  # Wayland natif sous mutter, pour savoir laquelle ne déclenche plus « Invalid window geometry ».
+  # --no-sandbox : Electron installé par npm (chrome-sandbox non setuid), essai CI seulement.
+  test-electron-wayland:
+    needs: checks
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publier == 'non'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        electron: ['39.5.2', '39.8.10', '43.8.3', '44.9.3', '45.0.0']
+    name: wayland electron ${{ matrix.electron }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Préparer
+        run: |
+          npm ci
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mutter dbus-x11
+          mkdir -p "$RUNNER_TEMP/electron" && cd "$RUNNER_TEMP/electron"
+          npm init -y > /dev/null
+          npm install --no-audit --no-fund "electron@${{ matrix.electron }}" > /dev/null
+          echo "ELECTRON_BIN=$RUNNER_TEMP/electron/node_modules/electron/dist/electron" >> "$GITHUB_ENV"
+          chmod +x "$GITHUB_WORKSPACE/.github/scripts/test-wayland.sh"
+
+      - name: Wayland natif sous mutter
+        env:
+          NODE_ENV: production
+        run: |
+          "$ELECTRON_BIN" --version
+          A="$GITHUB_WORKSPACE/apps/client"
+          N="env TRACEBAY_OZONE_PLATFORM=wayland NODE_ENV=production $ELECTRON_BIN $A --no-sandbox"
+          r=0
+          dbus-run-session -- .github/scripts/test-wayland.sh e${{ matrix.electron }}-1440 1440x900 $N || r=1
+          dbus-run-session -- .github/scripts/test-wayland.sh e${{ matrix.electron }}-1920 1920x1080 $N || r=1
+          echo "== Avertissements de géométrie (mutter)"
+          if grep -h 'Invalid window geometry' "$RUNNER_TEMP"/journaux-wayland/mutter-*.log; then
+            echo "GÉOMÉTRIE INVALIDE avec Electron ${{ matrix.electron }}"
+          else
+            echo "AUCUN avertissement de géométrie avec Electron ${{ matrix.electron }}"
+          fi
+          exit $r
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: journaux-electron-${{ matrix.electron }}
+          path: ${{ runner.temp }}/journaux-wayland
