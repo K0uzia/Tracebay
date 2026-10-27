@@ -243,7 +243,11 @@ jobs:
   # lecture seule, aucun secret, ne peut pas publier.
   test-paquets:
     needs: build-linux
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publier == 'non'
+    # !cancelled() et résultat explicite : sans fonction de statut, la condition vaut success(), faux
+    # dès qu'un job en amont (brouillon, sauté sans publication) a été sauté.
+    if: |
+      !cancelled() && needs.build-linux.result == 'success' &&
+      github.event_name == 'workflow_dispatch' && github.event.inputs.publier == 'non'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -278,7 +282,11 @@ jobs:
 
   test-maj-deb:
     needs: build-linux
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publier == 'non'
+    # !cancelled() et résultat explicite : sans fonction de statut, la condition vaut success(), faux
+    # dès qu'un job en amont (brouillon, sauté sans publication) a été sauté.
+    if: |
+      !cancelled() && needs.build-linux.result == 'success' &&
+      github.event_name == 'workflow_dispatch' && github.event.inputs.publier == 'non'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -356,7 +364,11 @@ jobs:
   # Seulement en workflow_dispatch avec publier=non : lecture seule, aucun secret.
   test-wayland:
     needs: build-linux
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publier == 'non'
+    # !cancelled() et résultat explicite : sans fonction de statut, la condition vaut success(), faux
+    # dès qu'un job en amont (brouillon, sauté sans publication) a été sauté.
+    if: |
+      !cancelled() && needs.build-linux.result == 'success' &&
+      github.event_name == 'workflow_dispatch' && github.event.inputs.publier == 'non'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
