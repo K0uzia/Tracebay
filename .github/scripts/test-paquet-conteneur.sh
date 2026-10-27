@@ -20,7 +20,8 @@ case "$MODE" in
         if command -v apt-get >/dev/null 2>&1; then
             apt_installer xvfb x11-utils libgtk-3-0 libnss3 libxss1 libxtst6 libgbm1 libasound2 libsecret-1-0
         else
-            dnf install -y -q xorg-x11-server-Xvfb xwininfo gtk3 nss libXScrnSaver libXtst mesa-libgbm alsa-lib libsecret >/dev/null
+            dnf install -y -q xorg-x11-server-Xvfb gtk3 nss libXScrnSaver libXtst mesa-libgbm alsa-lib libsecret >/dev/null
+            dnf install -y -q xwininfo >/dev/null 2>&1 || dnf install -y -q xorg-x11-utils >/dev/null
         fi
         cp /p/workspace.AppImage /tmp/workspace.AppImage
         chmod +x /tmp/workspace.AppImage
@@ -41,7 +42,8 @@ case "$MODE" in
         set -- /usr/bin/workspace
         ;;
     rpm)
-        dnf install -y -q xorg-x11-server-Xvfb xwininfo >/dev/null
+        dnf install -y -q xorg-x11-server-Xvfb >/dev/null
+        dnf install -y -q xwininfo >/dev/null 2>&1 || dnf install -y -q xorg-x11-utils >/dev/null
         dnf install -y -q /p/workspace.rpm
         rpm -q workspace
         ls -l /usr/bin/workspace /opt/Tracebay/chrome-sandbox

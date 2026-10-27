@@ -217,6 +217,9 @@ jobs:
           - { image: 'ubuntu:22.04', mode: deb }
           - { image: 'ubuntu:24.04', mode: deb }
           - { image: 'fedora:41', mode: rpm }
+          # Rocky Linux 10 (poste d'Alexandre) : AlmaLinux 10, même base RHEL 10
+          - { image: 'almalinux:10', mode: rpm }
+          - { image: 'almalinux:10', mode: appimage }
     name: test ${{ matrix.mode }} ${{ matrix.image }}
     steps:
       - uses: actions/checkout@v4
@@ -342,27 +345,61 @@ jobs:
           dbus-run-session -- .github/scripts/test-wayland.sh v380-large 1920x1080 /usr/bin/workspace
           dbus-run-session -- .github/scripts/test-wayland.sh v380-petit 1280x720 /usr/bin/workspace
 
-      - name: Cette branche sous Wayland
+      - name: Cette branche en Wayland natif (TRACEBAY_OZONE_PLATFORM=wayland)
         run: |
           sudo apt-get install -y -qq --reinstall "$GITHUB_WORKSPACE/paquets/workspace.deb" > /dev/null
-          dbus-run-session -- .github/scripts/test-wayland.sh branche-large 1920x1080 /usr/bin/workspace
-          dbus-run-session -- .github/scripts/test-wayland.sh branche-petit 1280x720 /usr/bin/workspace
+          N="env TRACEBAY_OZONE_PLATFORM=wayland /usr/bin/workspace"
+          dbus-run-session -- .github/scripts/test-wayland.sh branche-large 1920x1080 $N
+          dbus-run-session -- .github/scripts/test-wayland.sh branche-petit 1280x720 $N
+          # Session Wayland sans XWayland (pas de DISPLAY) : pas de repli, Wayland natif
+          dbus-run-session -- .github/scripts/test-wayland.sh branche-sans-xwayland 1440x900 /usr/bin/workspace
 
-      - name: Cette branche, repli XWayland demandé (TRACEBAY_OZONE_PLATFORM=x11, sous Xvfb)
+      - name: 'Cette branche, session Wayland avec XWayland (défaut, relance en XWayland, Xvfb)'
         run: |
           mkdir -p "$RUNNER_TEMP/journaux-wayland"
-          Xvfb :98 -screen 0 1280x720x24 > /dev/null 2>&1 &
+          Xvfb :98 -screen 0 1440x900x24 > /dev/null 2>&1 &
           sleep 2
-          LOG="$RUNNER_TEMP/journaux-wayland/app-x11.log"
-          DISPLAY=:98 TRACEBAY_OZONE_PLATFORM=x11 XDG_SESSION_TYPE=wayland /usr/bin/workspace > "$LOG" 2>&1 &
-          APP=$!
+          LOG="$RUNNER_TEMP/journaux-wayland/app-xwayland.log"
+          DISPLAY=:98 XDG_SESSION_TYPE=wayland /usr/bin/workspace > "$LOG" 2>&1 &
           sleep 20
-          grep -E 'Fenêtre' "$LOG"
-          kill "$APP" 2>/dev/null || true
+          grep -E 'Fenêtre' "$LOG" || true
+          DISPLAY=:98 xwininfo -root -tree | grep -i '"tracebay' | head -n 3
+          pgrep -a -x workspace | grep -v -- '--type=' || true
+          pkill -x workspace || true
           grep -q 'ozone=x11' "$LOG"
+
+      - name: Rocky Linux 10, ce que tireraient Xwayland et le paquet (dnf --assumeno)
+        continue-on-error: true
+        run: |
+          ls -l paquets/
+          docker run --rm -v "$PWD/paquets:/p:ro" rockylinux/rockylinux:10 bash -c '
+            cat /etc/rocky-release
+            echo "== xorg-x11-server-Xwayland seul"
+            dnf install --assumeno xorg-x11-server-Xwayland 2>&1 | grep -E "^(Install|Upgrade) |Total|Installed size|Taille" || true
+            echo "== workspace.rpm, dépendances faibles comprises (défaut de dnf)"
+            dnf install --assumeno /p/workspace.rpm 2>&1 | grep -E "^(Install|Upgrade) |Total|Installed size|Weak|Taille" || true
+            echo "== workspace.rpm, sans dépendances faibles"
+            dnf install --assumeno --setopt=install_weak_deps=False /p/workspace.rpm 2>&1 | grep -E "^(Install|Upgrade) |Total|Installed size|Taille" || true'
+
+      - name: AlmaLinux 10 (base de Rocky 10, mutter 47), Wayland natif, avec et sans GPU
+        continue-on-error: true
+        run: |
+          mkdir -p "$RUNNER_TEMP/journaux-el10"
+          docker run --rm -e RUNNER_TEMP=/j -v "$RUNNER_TEMP/journaux-el10:/j/journaux-wayland" \
+            -v "$PWD/paquets:/p:ro" -v "$PWD/.github/scripts:/s:ro" almalinux:10 bash -c '
+              dnf install -y -q mutter dbus-daemon dbus-tools /p/workspace.rpm > /dev/null || exit 1
+              rpm -q --recommends workspace
+              rpm -q xorg-x11-server-Xwayland || true
+              N="env TRACEBAY_OZONE_PLATFORM=wayland /usr/bin/workspace --no-sandbox"
+              r=0
+              dbus-run-session -- bash /s/test-wayland.sh el10-natif 1440x900 $N || r=1
+              dbus-run-session -- bash /s/test-wayland.sh el10-natif-sans-gpu 1440x900 $N --disable-gpu || r=1
+              exit $r'
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: journaux-wayland
-          path: ${{ runner.temp }}/journaux-wayland
+          path: |
+            ${{ runner.temp }}/journaux-wayland
+            ${{ runner.temp }}/journaux-el10

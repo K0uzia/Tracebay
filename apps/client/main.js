@@ -5,18 +5,28 @@
 const { app, BrowserWindow, ipcMain, shell, nativeImage, Menu, crashReporter, net, session, screen } = require('electron');
 const { tailleFenetre, sessionWayland, choisirPlateformeOzone } = require('./window-geometry');
 
-// Linux : plateforme d'affichage fixée avant « ready ». Wayland natif par défaut (Electron 39) ;
-// TRACEBAY_OZONE_PLATFORM=x11 ou --ozone-platform=x11 force XWayland. FORCER_XWAYLAND : repli par
-// défaut sur les sessions Wayland, sans effet sous X11.
-const FORCER_XWAYLAND = false;
+// Linux : sur une session Wayland avec XWayland, Tracebay passe par XWayland (FORCER_XWAYLAND)
+// tant que le Wayland natif n'est pas validé ; TRACEBAY_OZONE_PLATFORM=wayland ou x11 choisit.
+// Chromium fixe la plateforme avant ce script (appendSwitch sans effet) : relance unique avec
+// --ozone-platform, qui empêche toute nouvelle relance. Sans effet sous X11, Windows et macOS.
+const FORCER_XWAYLAND = true;
+const XWAYLAND = ['/usr/bin/Xwayland', '/usr/libexec/Xwayland'].some((f) => require('fs').existsSync(f));
 const PLATEFORME_OZONE = choisirPlateformeOzone({
     platform: process.platform,
     env: process.env,
     switchActuel: app.commandLine.getSwitchValue('ozone-platform'),
-    forcerXWayland: FORCER_XWAYLAND
+    forcerXWayland: FORCER_XWAYLAND,
+    xwayland: XWAYLAND
 });
-if (PLATEFORME_OZONE) {
-    app.commandLine.appendSwitch('ozone-platform', PLATEFORME_OZONE);
+if (process.platform === 'linux' && FORCER_XWAYLAND && !XWAYLAND && sessionWayland(process.env)) {
+    console.warn('[Fenêtre] Xwayland absent : Wayland natif. Pour le repli XWayland, installer '
+        + 'xorg-x11-server-Xwayland (Fedora, RHEL, Rocky) ou xwayland (Debian, Ubuntu).');
+}
+const RELANCE_OZONE = Boolean(PLATEFORME_OZONE);
+if (RELANCE_OZONE) {
+    const args = [...process.argv.slice(1), `--ozone-platform=${PLATEFORME_OZONE}`];
+    app.relaunch(process.env.APPIMAGE ? { execPath: process.env.APPIMAGE, args } : { args });
+    app.exit(0);
 }
 const path = require('path');
 const { applyBranding, applyPdfColor, createBrandingCache } = require('./branding');
@@ -138,7 +148,7 @@ function setPendingAppUpdate(info) {
 /**
  * Instance unique: empêcher le double lancement et remettre la fenêtre existante au premier plan.
  */
-const gotSingleInstanceLock = app.requestSingleInstanceLock();
+const gotSingleInstanceLock = !RELANCE_OZONE && app.requestSingleInstanceLock();
 if (!gotSingleInstanceLock) {
     app.quit();
 } else {
@@ -1318,17 +1328,24 @@ function createWindow() {
         }
         windowIcon = (img && !img.isEmpty()) ? img : appIconPath;
     }
-    // Taille minimale sous laquelle les vues (tableaux de réception) restent entières, ramenée
-    // dans la zone de travail : sous Wayland, une géométrie plus grande que l'écran est refusée.
+    // Ouverture à 85 % de la zone de travail, entre le minimum sous lequel les vues (tableaux de
+    // réception) restent entières et 1600 x 1000 ; écran plus petit que ce minimum : maximisée.
     // Aucune position : le gestionnaire de fenêtres (seul maître sous Wayland) la choisit.
     const zone = screen.getPrimaryDisplay()?.workAreaSize;
-    const voulue = { width: 1280, height: 800 };
-    const taille = tailleFenetre({ zone, voulue, minimum: { width: 960, height: 600 } });
+    const { maximiser, ...taille } = tailleFenetre({
+        zone,
+        minimum: { width: 960, height: 600 },
+        maximum: { width: 1600, height: 1000 },
+        proportion: 0.85,
+        repli: { width: 1280, height: 800 }
+    });
     if (process.platform === 'linux') {
         const session = sessionWayland(process.env) ? 'wayland' : 'x11';
         const ozone = app.commandLine.getSwitchValue('ozone-platform') || 'auto';
         console.log(`[Fenêtre] session=${session} ozone=${ozone} zone=${zone?.width}x${zone?.height}`,
-            `taille=${taille.width}x${taille.height} minimum=${taille.minWidth}x${taille.minHeight}`);
+            `taille=${taille.width}x${taille.height}`,
+            `minimum=${taille.minWidth}x${taille.minHeight}`,
+            maximiser ? 'maximisée' : '');
     }
     mainWindow = new BrowserWindow({
         ...taille,
@@ -1342,6 +1359,10 @@ function createWindow() {
             preload: path.join(__dirname, 'preload.js')
         }
     });
+
+    if (maximiser) {
+        mainWindow.maximize();
+    }
 
     // Désactiver complètement le menu (Alt n'affiche plus File / Edit / View…)
     Menu.setApplicationMenu(null);
@@ -1521,6 +1542,9 @@ function launchApp() {
  * Événement de démarrage Electron
  */
 app.on('ready', async () => {
+    if (RELANCE_OZONE) {
+        return;
+    }
     // Permissions web refusées par défaut (caméra, micro, géolocalisation, notifications...)
     const ALLOWED_PERMISSIONS = new Set(['clipboard-sanitized-write']);
     session.defaultSession.setPermissionRequestHandler((_wc, permission, callback) => callback(ALLOWED_PERMISSIONS.has(permission)));

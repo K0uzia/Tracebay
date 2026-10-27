@@ -266,7 +266,9 @@
         "--provides",
         "Tracebay",
         "--rpm-rpmbuild-define",
-        "_build_id_links none"
+        "_build_id_links none",
+        "--rpm-tag",
+        "Recommends: xorg-x11-server-Xwayland"
       ]
     }
   },

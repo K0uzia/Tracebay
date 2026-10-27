@@ -1,30 +1,35 @@
 /**
  * Géométrie de la fenêtre principale et plateforme d'affichage Linux (Wayland natif ou XWayland).
- * Sous Wayland, une fenêtre ne choisit pas sa position, et une taille ou un minimum plus grands que
- * la zone de travail (écran mis à l'échelle, 1920 x 1080 à 150 % = 1280 x 720) donnent une
- * géométrie refusée par le compositeur. Sans import Electron : testé avec Jest.
+ * Taille d'ouverture proportionnelle à l'écran, jamais plus grande que lui, sans position imposée
+ * (sous Wayland, la fenêtre ne choisit pas sa position). Sans import Electron : testé avec Jest.
  */
 
 const entier = (n) => (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0);
 
 /**
- * Taille initiale et minimum ramenés dans la zone de travail { width, height } de l'écran.
- * Zone illisible (0, NaN) : valeurs demandées telles quelles. Jamais de position (x, y).
+ * Taille d'ouverture adaptée à l'écran : une part (proportion) de la zone de travail { width,
+ * height }, bornée entre le minimum et le maximum. Zone plus petite que le minimum : minimum
+ * ramené à la zone et fenêtre maximisée. Zone illisible (0, NaN) : taille de repli.
+ * Jamais de position (x, y) : le gestionnaire de fenêtres la choisit.
  */
-function tailleFenetre({ zone, voulue, minimum }) {
+function tailleFenetre({ zone, minimum, maximum, proportion, repli }) {
     const zw = entier(zone?.width);
     const zh = entier(zone?.height);
     if (!zw || !zh) {
-        const { width, height } = voulue;
-        return { width, height, minWidth: minimum.width, minHeight: minimum.height };
+        return { ...repli, minWidth: minimum.width, minHeight: minimum.height, maximiser: false };
     }
+    const maximiser = zw < minimum.width || zh < minimum.height;
     const minWidth = Math.min(minimum.width, zw);
     const minHeight = Math.min(minimum.height, zh);
+    const borne = (part, min, max, dispo) => {
+        return Math.min(dispo, Math.max(min, Math.min(max, Math.floor(part))));
+    };
     return {
-        width: Math.max(minWidth, Math.min(voulue.width, zw)),
-        height: Math.max(minHeight, Math.min(voulue.height, zh)),
+        width: borne(zw * proportion, minWidth, maximum.width, zw),
+        height: borne(zh * proportion, minHeight, maximum.height, zh),
         minWidth,
-        minHeight
+        minHeight,
+        maximiser
     };
 }
 
@@ -34,11 +39,12 @@ function sessionWayland(env) {
 }
 
 /**
- * Plateforme Ozone à imposer avant « ready », ou null pour laisser Electron choisir :
- * --ozone-platform déjà passé : respecté ; TRACEBAY_OZONE_PLATFORM=x11|wayland : appliqué ;
- * forcerXWayland et session Wayland : x11. Rien hors Linux, rien sous X11.
+ * Plateforme Ozone à demander (par relance avec --ozone-platform), ou null pour garder celle
+ * d'Electron : --ozone-platform déjà passé : respecté ; TRACEBAY_OZONE_PLATFORM=x11|wayland :
+ * appliqué ; forcerXWayland, session Wayland, XWayland installé (xwayland) et actif (DISPLAY) :
+ * x11. Rien hors Linux, rien sous X11.
  */
-function choisirPlateformeOzone({ platform, env, switchActuel, forcerXWayland }) {
+function choisirPlateformeOzone({ platform, env, switchActuel, forcerXWayland, xwayland = true }) {
     if (platform !== 'linux' || switchActuel) {
         return null;
     }
@@ -46,7 +52,8 @@ function choisirPlateformeOzone({ platform, env, switchActuel, forcerXWayland })
     if (demande === 'x11' || demande === 'wayland') {
         return demande;
     }
-    return forcerXWayland && sessionWayland(env) ? 'x11' : null;
+    const repli = forcerXWayland && xwayland && sessionWayland(env) && env?.XDG_SESSION_TYPE !== 'x11';
+    return repli && env?.DISPLAY ? 'x11' : null;
 }
 
 module.exports = { tailleFenetre, sessionWayland, choisirPlateformeOzone };
