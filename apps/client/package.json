@@ -1,6 +1,6 @@
 {
   "name": "Tracebay",
-  "version": "3.8.0",
+  "version": "3.8.1",
   "main": "main.js",
   "homepage": "https://github.com/K0uzia/Tracebay#readme",
   "description": "Tracebay : traçabilité de matériel (lots, disques, archives) et agenda",
@@ -84,6 +84,10 @@
       "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
       "!**/{appveyor.yml,.travis.yml,circle.yml}",
       "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+    ],
+    "electronLanguages": [
+      "fr",
+      "en-US"
     ],
     "beforePack": "./scripts/third-party-licenses.js",
     "extraResources": [

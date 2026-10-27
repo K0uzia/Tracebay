@@ -1,3 +1,25 @@
+## Tracebay 3.8.1
+
+### Linux : fenêtre invisible sous Wayland
+- Sur les bureaux Linux récents qui utilisent Wayland (GNOME sur Rocky Linux 10, RHEL 10, Fedora, Ubuntu…), la fenêtre de Tracebay pouvait apparaître dans la liste des fenêtres tout en restant invisible et vide. C'est corrigé : Tracebay passe à une version récente et maintenue de son moteur (Electron 44), qui donne au bureau une taille de fenêtre correcte.
+- Si l'affichage échoue malgré tout au démarrage, Tracebay se relance tout seul avec un réglage plus sûr (sans accélération graphique, puis en XWayland s'il est installé) et garde le réglage qui marche. Après une mise à jour de Tracebay, il réessaie le réglage normal.
+- La fenêtre s'ouvre à une taille adaptée à l'écran : 85 % de l'espace disponible, et en plein écran sur les petits écrans.
+
+### Paquet .rpm
+- Le paquet .rpm s'installe de nouveau sur Rocky Linux 10, RHEL 10 et AlmaLinux 10 : il demandait une bibliothèque qui n'existe plus sur ces systèmes.
+- Il n'installe rien de plus pour l'affichage.
+
+### Sécurité
+- Moteur Electron 44, maintenu et à jour des correctifs de sécurité de Chromium (la version 39 ne recevait plus de correctifs).
+- Composant de mise à jour (electron-updater) corrigé : il pouvait transmettre des identifiants lors d'une redirection vers un autre site.
+
+### Plus léger
+- Seules les langues française et anglaise du moteur sont livrées : les paquets sont plus petits à télécharger.
+
+### À savoir
+- Aucune action sur le serveur, aucune migration de données.
+- Sous Linux, le journal de démarrage indique le mode d'affichage utilisé (lignes [Affichage] et [Fenêtre]) : lancer `workspace` dans un terminal pour le voir.
+
 ## Tracebay 3.8.0
 
 ### Paramètres : Branding et Types, réglages de l'atelier
