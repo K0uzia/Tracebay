@@ -10,6 +10,7 @@ export const ATELIER_ROUTES = new Set([
   'PUT /api/admin/branding',
   'DELETE /api/admin/branding/logo',
   'PUT /api/admin/material-types',
+  'POST /api/lots/technicians/anonymize',
 ]);
 
 function safeEqual(a: string, b: string): boolean {

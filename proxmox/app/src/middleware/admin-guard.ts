@@ -10,10 +10,18 @@ const PUBLIC_ROUTES = new Set([
   'POST /api/monitoring/errors',
 ]);
 
+// Routes hors de /api/admin réservées quand même aux administrateurs : effacement d'un nom de
+// technicien dans toute la base (Paramètres > Confidentialité des postes).
+const ROUTES_ADMIN_HORS_PREFIXE = new Set([
+  'POST /api/lots/technicians/anonymize',
+]);
+
 /** routeUrl : motif de la route trouvée (ex. /api/admin/lots/:id), jamais l'URL brute. */
 export function isAdminProtected(method: string, routeUrl: string | undefined): boolean {
   if (!routeUrl || method === 'OPTIONS') return false;
-  if (PUBLIC_ROUTES.has(`${method === 'HEAD' ? 'GET' : method} ${routeUrl}`)) return false;
+  const cle = `${method === 'HEAD' ? 'GET' : method} ${routeUrl}`;
+  if (PUBLIC_ROUTES.has(cle)) return false;
+  if (ROUTES_ADMIN_HORS_PREFIXE.has(cle)) return true;
   return (
     routeUrl === '/api/admin' ||
     routeUrl.startsWith('/api/admin/') ||
@@ -34,7 +42,9 @@ export function registerAdminGuard(fastify: FastifyInstance): void {
     if (!isAdminProtected(request.method, routeUrl)) return;
     if (hasAdminCredentials(request)) return;
     if (adminScope(request) === 'atelier') {
-      return reply.code(403).send({ error: "Jeton limité aux réglages d'atelier (nom, logo, couleur, types)." });
+      return reply.code(403).send({
+        error: "Jeton limité aux réglages d'atelier (nom, logo, couleur, types, effacement d'un technicien)."
+      });
     }
     if (compteSansDroitAdmin(request)) {
       return reply.code(403).send({ error: 'Réservé aux administrateurs : connexion administrateur requise.' });

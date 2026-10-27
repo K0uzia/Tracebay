@@ -18,6 +18,7 @@ import { registerMaterialTypesRoutes } from './api/material-types';
 import { registerCompression } from './middleware/compression';
 import { registerRateLimit, registerAuthRateLimit } from './middleware/rate-limit';
 import { registerAdminGuard, registrationAllowed } from './middleware/admin-guard';
+import { corpsSante } from './lib/sante';
 import { assertSecretsOrExit, getSecret } from './config/secrets';
 import { registerMonitoring } from './middleware/monitoring';
 import { globalMetrics } from './utils/metrics';
@@ -190,25 +191,7 @@ function broadcastUserCount() {
     await registerMaterialTypesRoutes(fastify, pgBrandingStore(query), query);
 
     // Health check endpoint
-    fastify.get('/api/health', async (request: FastifyRequest, reply: FastifyReply) => {
-      const cacheStats = globalCache.stats();
-      
-      return {
-        status: 'ok',
-        timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
-        environment: nodeEnv,
-        version: '2.0.0',
-        cache: {
-          size: cacheStats.size,
-          maxSize: cacheStats.maxSize,
-        },
-        memory: {
-          heapUsed: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-          heapTotal: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
-        },
-      };
-    });
+    fastify.get('/api/health', async () => corpsSante({ environment: nodeEnv, cache: globalCache.stats() }));
 
     // Metrics endpoint (Phase 5)
     fastify.get('/api/metrics', async (request: FastifyRequest, reply: FastifyReply) => {

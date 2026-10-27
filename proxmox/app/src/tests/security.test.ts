@@ -64,6 +64,9 @@ describe('garde admin', () => {
     assert.equal(isAdminProtected('POST', '/api/monitoring/errors'), false);
     assert.equal(isAdminProtected('GET', '/api/monitoring/errors'), true);
     assert.equal(isAdminProtected('GET', '/api/lots'), false);
+    // Effacement d'un nom de technicien dans toute la base : réservé aux administrateurs
+    assert.equal(isAdminProtected('POST', '/api/lots/technicians/anonymize'), true);
+    assert.equal(isAdminProtected('GET', '/api/lots/technicians'), false);
     assert.equal(isAdminProtected('GET', '/monitoring'), false);
     assert.equal(isAdminProtected('OPTIONS', '/api/admin/lots'), false);
     assert.equal(isAdminProtected('GET', undefined), false);
@@ -125,6 +128,31 @@ describe('branding verrouillé côté serveur', () => {
     assert.equal((await app.inject({ method: 'PUT', url: '/api/admin/branding', headers: bearer(expire) })).statusCode, 401);
     // Le jeton « atelier » ne vaut que pour le branding et les types
     assert.equal((await app.inject({ method: 'DELETE', url: '/api/admin/dons/3', headers: bearer(atelier) })).statusCode, 403);
+    await app.close();
+  });
+});
+
+describe('effacement du nom d\'un technicien réservé aux administrateurs', () => {
+  test('401 sans jeton, 403 pour un compte non admin, jeton « atelier » et admin acceptés', async () => {
+    const app = Fastify();
+    registerAdminGuard(app);
+    app.post('/api/lots/technicians/anonymize', async () => ({ success: true, anonymises: 2 }));
+    app.get('/api/lots/technicians', async () => ({ technicians: [] }));
+    await app.ready();
+    const url = '/api/lots/technicians/anonymize';
+    const payload = { name: 'Jean' };
+    const bearer = (t: string) => ({ authorization: `Bearer ${t}` });
+    const technicien = jwt.sign({ id: 7, username: 'tech', role: 'technicien' }, STRONG.JWT_SECRET, { expiresIn: '7d' });
+
+    assert.equal((await app.inject({ method: 'POST', url, payload })).statusCode, 401);
+    const refus = await app.inject({ method: 'POST', url, payload, headers: bearer(technicien) });
+    assert.equal(refus.statusCode, 403);
+    assert.match(refus.json().error, /administrateur/);
+    assert.equal((await app.inject({ method: 'POST', url, payload, headers: bearer(signAdminJwt({ admin: true, scope: 'atelier' })) })).statusCode, 200);
+    assert.equal((await app.inject({ method: 'POST', url, payload, headers: bearer(signAdminJwt({ admin: true })) })).statusCode, 200);
+    assert.equal((await app.inject({ method: 'POST', url, payload, headers: { 'x-admin-token': STRONG.ADMIN_TOKEN } })).statusCode, 200);
+    // La liste des noms reste lisible par tous les postes
+    assert.equal((await app.inject({ method: 'GET', url: '/api/lots/technicians' })).statusCode, 200);
     await app.close();
   });
 });

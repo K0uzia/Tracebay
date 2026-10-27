@@ -115,7 +115,7 @@ describe('types de matériel', () => {
 
 describe('jeton à portée « atelier »', () => {
   test('ouvre seulement les trois routes de l\'atelier', async () => {
-    assert.deepEqual([...ATELIER_ROUTES].sort(), ['DELETE /api/admin/branding/logo', 'PUT /api/admin/branding', 'PUT /api/admin/material-types']);
+    assert.deepEqual([...ATELIER_ROUTES].sort(), ['DELETE /api/admin/branding/logo', 'POST /api/lots/technicians/anonymize', 'PUT /api/admin/branding', 'PUT /api/admin/material-types']);
     const { f } = await app();
     const h = { authorization: `Bearer ${atelier()}` };
     assert.equal((await f.inject({ method: 'PUT', url: '/api/admin/branding', headers: h, payload: { company_name: 'Atelier' } })).statusCode, 200);
