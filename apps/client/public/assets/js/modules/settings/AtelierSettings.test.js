@@ -49,7 +49,9 @@ test('lecture seule : réglages affichés, champs désactivés, mention et bouto
     await ecran();
     expect(brandingEl.querySelector('#atelierNom').value).toBe('LA CAPSULE');
     expect(brandingEl.querySelector('fieldset').disabled).toBe(true);
-    expect(brandingEl.textContent).toContain('Défini par l\'administrateur de l\'atelier');
+    expect(brandingEl.textContent).toContain('Seul un administrateur peut modifier le branding');
+    expect(brandingEl.textContent).toContain('tous les postes');
+    expect(typesEl.textContent).toContain('Défini par l\'administrateur de l\'atelier');
     expect(brandingEl.querySelector('[data-action="modifier"]')).not.toBeNull();
     expect(brandingEl.querySelector('.post-settings__footer').hidden).toBe(true);
     expect(brandingEl.querySelector('[name="pdf_color_hex"]').value).toBe('#2D3073');

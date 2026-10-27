@@ -177,7 +177,7 @@ export default class AtelierSettings {
     }
 
     /** Bandeau commun : qui définit ces réglages, et accès administrateur. */
-    accesHtml() {
+    accesHtml(onglet) {
         if (this.edition) {
             return `
                 <div class="atelier-acces atelier-acces--edition" role="status">
@@ -189,7 +189,9 @@ export default class AtelierSettings {
         return `
             <div class="atelier-acces">
                 <i class="fa-solid fa-lock" aria-hidden="true"></i>
-                <span>Défini par l'administrateur de l'atelier, pour tous les postes.</span>
+                <span>${onglet === 'branding'
+        ? 'Seul un administrateur peut modifier le branding. Il s\'applique à tous les postes.'
+        : 'Défini par l\'administrateur de l\'atelier, pour tous les postes.'}</span>
                 <button type="button" class="settings-btn settings-btn--ghost" data-action="modifier">Modifier (administrateur)…</button>
             </div>`;
     }
@@ -212,7 +214,7 @@ export default class AtelierSettings {
         const ro = this.edition ? '' : 'disabled';
         const nomFixe = b.nom_impose === true;
         this.brandingEl.innerHTML = `
-            ${this.accesHtml()}
+            ${this.accesHtml('branding')}
             <form class="post-settings" novalidate>
                 <fieldset class="post-settings__group" ${ro}>
                     <legend>Branding des PDF</legend>
@@ -416,7 +418,7 @@ export default class AtelierSettings {
         const usage = usageParType(this.types, this.info.usage);
         const horsListe = usage.filter((u) => !u.dansLaListe);
         this.typesEl.innerHTML = `
-            ${this.accesHtml()}
+            ${this.accesHtml('types')}
             <form class="post-settings" novalidate>
                 <fieldset class="post-settings__group" ${ro}>
                     <legend>Types de matériel</legend>
