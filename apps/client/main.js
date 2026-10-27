@@ -97,6 +97,10 @@ const {
 const {
     normaliserAdresse, lireAdressePoste, ecrireAdressePoste, migrerAdressePoste
 } = require('./server-address');
+const {
+    OUVERTURE_MS, verrouValide, verifierCode, attenteMs, apresEchec, decisionVerrou, ajouterJournal,
+    lireJson, ecrireJson
+} = require('./connexion-verrou');
 const { verifierLicence, jourParis } = require('./licence');
 const CLE_PUBLIQUE_LICENCE = require('./licence-cle-publique');
 const url = require('url');
@@ -164,8 +168,19 @@ if (!process.env.SERVER_MODE) {
     if (adresse) {
         currentConfig = { ...currentConfig, url: adresse.serverUrl, ws: adresse.serverWsUrl };
         ADRESSE_SOURCE = 'poste';
+    } else if (!environments[MODE]?.url) {
+        // Paquet sans adresse livrée (3.8.3 et plus) et poste jamais configuré : premier lancement
+        ADRESSE_SOURCE = 'aucune';
     }
 }
+
+// Verrou de l'adresse (connexion-verrou.js) : empreinte du code administrateur des postes reçue du
+// serveur, essais, journal des changements d'adresse et identifiant aléatoire du poste.
+const FICHIER_VERROU = path.join(app.getPath('userData'), 'connexion-verrou.json');
+const FICHIER_ESSAIS = path.join(app.getPath('userData'), 'connexion-essais.json');
+const FICHIER_JOURNAL = path.join(app.getPath('userData'), 'connexion-journal.json');
+const FICHIER_POSTE = path.join(app.getPath('userData'), 'poste.json');
+let ouvertureJusqua = 0;
 
 // Utiliser la config locale par défaut
 if (!currentConfig || !currentConfig.url) {
@@ -1641,6 +1656,8 @@ function launchApp() {
     appLaunched = true;
     setSplashMessage('Chargement en cours…');
     createWindow();
+    // Serveur injoignable : verrou et journal au prochain lancement
+    synchroniserVerrou().catch(() => {});
     checkServerConnection().then(() => {
         if (!serverConnected) {
             console.log('🔌 Mode hors-ligne: Le client démarre sans connexion serveur');
@@ -3432,9 +3449,83 @@ async function testerAdresse(saisie) {
     }
 }
 
+function verrouActif() {
+    return !process.env.SERVER_MODE && verrouValide(lireJson(FICHIER_VERROU));
+}
+
+function identifiantPoste() {
+    const connu = lireJson(FICHIER_POSTE)?.id;
+    if (typeof connu === 'string' && /^poste-[0-9a-f]{6}$/.test(connu)) {
+        return connu;
+    }
+    const id = `poste-${require('crypto').randomBytes(3).toString('hex')}`;
+    try {
+        ecrireJson(FICHIER_POSTE, { id });
+    } catch (_) { /* identifiant recalculé au prochain lancement */ }
+    return id;
+}
+
+/** Au démarrage : empreinte du code administrateur, puis changements d'adresse en attente. */
+async function synchroniserVerrou() {
+    if (ADRESSE_SOURCE !== 'poste') {
+        return;
+    }
+    const res = await fetch(`${SERVER_URL}/api/poste/verrou`, {
+        signal: AbortSignal.timeout(5000)
+    });
+    const decision = decisionVerrou(res.status, await res.json().catch(() => null));
+    if (decision.action === 'enregistrer') {
+        ecrireJson(FICHIER_VERROU, decision.verrou);
+    } else {
+        console.log(`[Connexion] ${decision.journal}`);
+    }
+    const journal = lireJson(FICHIER_JOURNAL);
+    if (Array.isArray(journal) && journal.length) {
+        const envoi = await fetch(`${SERVER_URL}/api/poste/journal`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entrees: journal }),
+            signal: AbortSignal.timeout(5000)
+        });
+        if (envoi.ok) {
+            ecrireJson(FICHIER_JOURNAL, []);
+        }
+    }
+}
+
+/** Code administrateur vérifié sur le poste, même serveur injoignable : 10 minutes d'ouverture. */
+async function deverrouillerAdresse(code) {
+    const verrou = lireJson(FICHIER_VERROU);
+    if (!verrouValide(verrou)) {
+        return { success: true, ouvertJusqua: 0 };
+    }
+    const essais = lireJson(FICHIER_ESSAIS) || { echecs: 0 };
+    const attente = attenteMs(essais, Date.now());
+    if (attente) {
+        return { success: false, attenteMs: attente, error: `Trop d'essais : nouvel essai dans ${Math.ceil(attente / 60000)} min.` };
+    }
+    if (await verifierCode(typeof code === 'string' ? code : '', verrou)) {
+        ecrireJson(FICHIER_ESSAIS, { echecs: 0 });
+        ouvertureJusqua = Date.now() + OUVERTURE_MS;
+        return { success: true, ouvertJusqua: ouvertureJusqua };
+    }
+    const suite = apresEchec(essais, Date.now());
+    ecrireJson(FICHIER_ESSAIS, suite);
+    const reste = attenteMs(suite, Date.now());
+    return {
+        success: false,
+        attenteMs: reste,
+        error: reste ? `Code incorrect. Trop d'essais : nouvel essai dans ${Math.ceil(reste / 60000)} min.` : 'Code incorrect.'
+    };
+}
+
 function enregistrerAdresse(saisie) {
     if (process.env.SERVER_MODE) {
         return { success: false, error: 'SERVER_MODE est défini (développement) : il choisit le serveur.' };
+    }
+    if (verrouActif() && !(ouvertureJusqua > Date.now())) {
+        const error = 'Adresse verrouillée : saisissez le code administrateur.';
+        return { success: false, verrouille: true, error };
     }
     const a = normaliserAdresse(saisie);
     if (!a.ok) {
@@ -3442,6 +3533,15 @@ function enregistrerAdresse(saisie) {
     }
     try {
         ecrireAdressePoste(FICHIER_ADRESSE, a);
+        if (ADRESSE_SOURCE === 'poste' && a.serverUrl !== SERVER_URL) {
+            const entree = {
+                ancienne: SERVER_URL,
+                nouvelle: a.serverUrl,
+                date: new Date().toISOString(),
+                poste: identifiantPoste()
+            };
+            ecrireJson(FICHIER_JOURNAL, ajouterJournal(lireJson(FICHIER_JOURNAL), entree));
+        }
     } catch (e) {
         return { success: false, error: `Enregistrement impossible : ${e?.message || e}` };
     }
@@ -3455,8 +3555,16 @@ function enregistrerAdresse(saisie) {
 }
 
 atelierHandle('connexion:adresse', () => ({
-    success: true, serverUrl: SERVER_URL, source: ADRESSE_SOURCE, fichier: FICHIER_ADRESSE
+    success: true,
+    serverUrl: ADRESSE_SOURCE === 'aucune' ? '' : SERVER_URL,
+    source: ADRESSE_SOURCE,
+    fichier: FICHIER_ADRESSE,
+    verrouille: verrouActif(),
+    ouvertJusqua: ouvertureJusqua > Date.now() ? ouvertureJusqua : 0,
+    attenteMs: attenteMs(lireJson(FICHIER_ESSAIS), Date.now()),
+    poste: identifiantPoste()
 }));
+atelierHandle('connexion:deverrouiller', (payload) => deverrouillerAdresse(payload?.code));
 atelierHandle('connexion:tester', (payload) => testerAdresse(payload?.adresse));
 atelierHandle('connexion:enregistrer', (payload) => enregistrerAdresse(payload?.adresse));
 atelierHandle('atelier:connexion', (payload) => atelierSession.connexion(payload));

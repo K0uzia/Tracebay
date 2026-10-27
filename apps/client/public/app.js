@@ -93,6 +93,8 @@ class PageManager {
         await this.loadComponent('header', './components/header.html', () => this.initializeAuth());
         // Check MAJ en arrière-plan pour afficher le ping Paramètres si nécessaire
         this.checkUpdateInBackground();
+        // Poste jamais configuré (aucune adresse livrée ni enregistrée) : adresse demandée
+        this.verifierPremierLancement();
 
         // Page sauvegardée, ou agenda par défaut (accueil/dossier/tracabilite → redirection)
         const lastPage = this.getLastPage();
@@ -568,6 +570,19 @@ class PageManager {
                 profileDropdown.classList.add('hidden');
             });
         }
+    }
+
+    /** Premier lancement : saisie de l'adresse du serveur dans un dialogue modal. */
+    async verifierPremierLancement() {
+        try {
+            const etat = await window.electron?.invoke?.('connexion:adresse');
+            if (etat?.source !== 'aucune') {
+                return;
+            }
+            const module = './assets/js/modules/settings/ConnexionSettings.js';
+            const { ouvrirPremierLancement } = await import(module);
+            await ouvrirPremierLancement({ notifier: (m, t) => this.showNotification(m, t) });
+        } catch (_) { /* Paramètres > Connexion reste accessible */ }
     }
 
     async checkUpdateInBackground() {

@@ -51,7 +51,7 @@ Dernier audit : 19 octobre 2026, version 3.4.0, branche `main` (client Electron)
 | P2 | Tests | 4 fichiers de tests, rien sur `main.js` (environ 3 200 lignes : PDF, IPC, mises à jour). |
 | P2 | `main.js` monolithique | À découper en modules (fenêtres, IPC, PDF, mises à jour). |
 | P2 | Chemins de partage en dur | `/mnt/team/#TEAM/...` dans `main.js` et dans le renderer (`tracabilite.js`, `historique.js`, `FolderConfig.js`). À passer en configuration. |
-| P2 | IP du serveur en dur | `192.168.1.62` dans `api.js` et `connection.json`. |
+| P2 | IP du serveur en dur | `203.0.113.10` dans `api.js` et `connection.json`. |
 | P2 | Ancien nom « workspace » | Clés `localStorage`, nom d'exécutable, paquet deb. Le renommage exige une migration des données. |
 | P2 | `demo/` | CSS dupliquées depuis le client. |
 | P2 | Avertissements ESLint | 213, surtout des `console.log` à remplacer par le `Logger` existant. |

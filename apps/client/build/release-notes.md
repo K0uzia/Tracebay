@@ -1,3 +1,25 @@
+## Tracebay 3.8.3
+
+### Adresse du serveur protégée
+- Après sa première connexion à un serveur dont l'administrateur a défini un code, un poste garde l'adresse du serveur en lecture seule : une erreur de saisie ne peut plus le couper du serveur.
+- Pour la changer : Paramètres > Connexion, « Modifier (code administrateur)… ». Le code ouvre la modification pour 10 minutes. Après 5 codes faux, il faut attendre (1 minute, puis de plus en plus longtemps).
+- Le code est défini sur le serveur par un administrateur (`sudo tracebayctl admin-code`, ou page de monitoring, onglet Postes). Le poste n'en reçoit qu'une empreinte, jamais le code, et peut le vérifier même quand le serveur ne répond plus.
+- Chaque changement d'adresse est signalé au serveur (page de monitoring, onglet Postes).
+- Ce verrou protège contre les erreurs, pas contre une personne qui a les droits d'administration sur l'ordinateur.
+
+### Premier lancement
+- Tracebay n'embarque plus d'adresse de serveur : au premier lancement d'un poste neuf, il demande l'adresse du serveur de l'atelier, avec un bouton Tester. Les postes déjà installés gardent la leur.
+
+### Publication des mises à jour
+- Une nouvelle version n'est visible des postes qu'une fois tous ses fichiers publiés. Si un poste voit une mise à jour encore incomplète, il l'indique (« Mise à jour en cours de publication ») et réessaie seul quelques minutes plus tard.
+- Les notes de version s'affichent sur la page de chaque version.
+
+### À savoir
+- Ordre : mettre à jour le serveur en 3.8.3 (`sudo tracebayctl update`), définir le code (`sudo tracebayctl admin-code`), puis mettre à jour les postes. Les postes se verrouillent à leur connexion suivante.
+- Sans code défini, ou face à un serveur plus ancien, l'adresse reste modifiable comme avant.
+- Un poste installé avant la 3.8.0 et mis à jour directement en 3.8.3 demandera l'adresse du serveur une fois.
+- Aucune migration de données.
+
 ## Tracebay 3.8.2
 
 ### Serveur pas à jour : un message clair

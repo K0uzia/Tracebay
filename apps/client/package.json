@@ -1,6 +1,6 @@
 {
   "name": "Tracebay",
-  "version": "3.8.2",
+  "version": "3.8.3",
   "main": "main.js",
   "homepage": "https://github.com/K0uzia/Tracebay#readme",
   "description": "Tracebay : traçabilité de matériel (lots, disques, archives) et agenda",
@@ -67,6 +67,7 @@
       "atelier.js",
       "linux-update.js",
       "server-address.js",
+      "connexion-verrou.js",
       "window-geometry.js",
       "display-mode.js",
       "config/**/*",

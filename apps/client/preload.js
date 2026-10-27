@@ -30,6 +30,7 @@ const ALLOWED_CHANNELS = {
         'connexion:adresse',
         'connexion:tester',
         'connexion:enregistrer',
+        'connexion:deverrouiller',
         'settings:get-auto-launch',
         'settings:set-auto-launch',
         'atelier:etat',
