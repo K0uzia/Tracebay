@@ -158,6 +158,23 @@ Les destinataires des envois de PDF par e-mail ne sont pas enregistrés en base.
 2. `set-licence` avec la clé de l'atelier, émise dans Kouzia Hub.
 3. Publier les postes en 3.7.0.
 
+## Code administrateur des postes (à partir de la 3.8.3)
+
+Un poste (version 3.8.3 et plus) garde l'adresse du serveur en lecture seule après sa première connexion : la changer dans Paramètres > Connexion demande le code administrateur des postes. Sans code défini, l'adresse reste modifiable (comportement d'avant).
+
+```bash
+sudo tracebayctl admin-code               # définir ou changer le code, saisi deux fois sans affichage
+```
+
+Ou depuis la page de monitoring, onglet Postes, qui montre aussi le journal des changements d'adresse remontés par les postes.
+
+- Le code est choisi par l'administrateur : 12 caractères au moins ; le serveur refuse les répétitions, les suites (`abcdef`, `123456`, `azerty`) et les mots de passe courants.
+- Le serveur ne garde qu'une empreinte scrypt salée (N=32768, r=8, p=1) et l'envoie aux postes à chaque connexion : ils vérifient le code même quand le serveur est injoignable, ce qui est justement le cas où l'on change l'adresse. Cette empreinte se trouve donc sur chaque poste : un code long et peu prévisible est indispensable.
+- Sur le poste : 5 essais, puis attente progressive (1, 2, 4… minutes, 1 heure au plus) ; le code ouvre la modification pour 10 minutes ; chaque changement d'adresse est journalisé et remonté au serveur à la reconnexion.
+- **Limite** : le verrou protège contre les erreurs de manipulation, pas contre une personne qui a les droits sur le poste (elle peut modifier les fichiers de Tracebay dans son dossier de données).
+- Code perdu : `tracebayctl admin-code` en définit un nouveau, reçu par les postes à leur prochaine connexion. Un poste dont l'adresse est déjà fausse garde l'ancienne empreinte : supprimer `connexion-verrou.json` dans son dossier de données (Windows : `%APPDATA%\Tracebay`, Linux : `~/.config/Tracebay`), ou réinstaller Tracebay sur ce poste.
+- Ordre de mise à jour : le serveur d'abord, puis les postes ; ensuite définir le code.
+
 ## Import ponctuel de données
 
 Aucun import automatique. Pour une reprise exceptionnelle : générer le fichier hors du dépôt (`proxmox/scripts/rebuild_import_sql_from_pdfs.py`), le relire, l'appliquer une fois, puis le supprimer. Il contient des données personnelles et ne doit jamais être commité (il est ignoré par git).
@@ -175,6 +192,7 @@ sudo tracebayctl start | stop | restart
 sudo tracebayctl test-api                 # contrôles sans écriture
 sudo tracebayctl users                    # comptes (jamais les hachages)
 sudo tracebayctl admin-password NOM       # nouveau mot de passe, saisie masquée
+sudo tracebayctl admin-code                # code administrateur des postes, saisie masquée
 sudo tracebayctl user-delete NOM          # suppression d'un compte, journal anonymisé
 cd proxmox/docker && docker compose exec db psql -U Admin -d workspace_db    # PostgreSQL n'est pas publié sur le réseau
 ```
