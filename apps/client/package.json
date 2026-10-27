@@ -67,6 +67,7 @@
       "atelier.js",
       "linux-update.js",
       "server-address.js",
+      "window-geometry.js",
       "config/**/*",
       "assets/**/*",
       "public/**/*",

@@ -2,7 +2,22 @@
  * Tracebay Client - Electron Main Process
  * Gère la fenêtre d'application et la connexion au serveur distant
  */
-const { app, BrowserWindow, ipcMain, shell, nativeImage, Menu, crashReporter, net, session } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, nativeImage, Menu, crashReporter, net, session, screen } = require('electron');
+const { tailleFenetre, sessionWayland, choisirPlateformeOzone } = require('./window-geometry');
+
+// Linux : plateforme d'affichage fixée avant « ready ». Wayland natif par défaut (Electron 39) ;
+// TRACEBAY_OZONE_PLATFORM=x11 ou --ozone-platform=x11 force XWayland. FORCER_XWAYLAND : repli par
+// défaut sur les sessions Wayland, sans effet sous X11.
+const FORCER_XWAYLAND = false;
+const PLATEFORME_OZONE = choisirPlateformeOzone({
+    platform: process.platform,
+    env: process.env,
+    switchActuel: app.commandLine.getSwitchValue('ozone-platform'),
+    forcerXWayland: FORCER_XWAYLAND
+});
+if (PLATEFORME_OZONE) {
+    app.commandLine.appendSwitch('ozone-platform', PLATEFORME_OZONE);
+}
 const path = require('path');
 const { applyBranding, applyPdfColor, createBrandingCache } = require('./branding');
 const { createAtelierSession } = require('./atelier');
@@ -1303,12 +1318,20 @@ function createWindow() {
         }
         windowIcon = (img && !img.isEmpty()) ? img : appIconPath;
     }
+    // Taille minimale sous laquelle les vues (tableaux de réception) restent entières, ramenée
+    // dans la zone de travail : sous Wayland, une géométrie plus grande que l'écran est refusée.
+    // Aucune position : le gestionnaire de fenêtres (seul maître sous Wayland) la choisit.
+    const zone = screen.getPrimaryDisplay()?.workAreaSize;
+    const voulue = { width: 1280, height: 800 };
+    const taille = tailleFenetre({ zone, voulue, minimum: { width: 960, height: 600 } });
+    if (process.platform === 'linux') {
+        const session = sessionWayland(process.env) ? 'wayland' : 'x11';
+        const ozone = app.commandLine.getSwitchValue('ozone-platform') || 'auto';
+        console.log(`[Fenêtre] session=${session} ozone=${ozone} zone=${zone?.width}x${zone?.height}`,
+            `taille=${taille.width}x${taille.height} minimum=${taille.minWidth}x${taille.minHeight}`);
+    }
     mainWindow = new BrowserWindow({
-        width: 1280,
-        height: 800,
-        // Taille minimale sous laquelle les vues (tableaux de réception) restent entières
-        minWidth: 960,
-        minHeight: 600,
+        ...taille,
         show: false,
         autoHideMenuBar: true,
         icon: windowIcon,
@@ -1403,6 +1426,8 @@ function createWindow() {
             }, 800);
         }
     };
+    // Affichage au premier rendu (ready-to-show), ou à la fin du chargement si celui-ci vient avant
+    mainWindow.once('ready-to-show', showMainAndCloseSplash);
     mainWindow.webContents.once('did-finish-load', showMainAndCloseSplash);
     showMainFallbackId = setTimeout(showMainAndCloseSplash, 15000);
 

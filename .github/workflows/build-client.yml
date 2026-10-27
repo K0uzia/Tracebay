@@ -307,3 +307,62 @@ jobs:
         with:
           name: journaux-maj-deb
           path: ${{ runner.temp }}/journaux
+
+  # Wayland natif sous mutter (compositeur de GNOME) sans écran : 3.8.0 publiée contre cette
+  # branche, sur un écran large et sur un écran plus petit que la fenêtre par défaut (1280 x 800).
+  # Seulement en workflow_dispatch avec publier=non : lecture seule, aucun secret.
+  test-wayland:
+    needs: build-linux
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.publier == 'non'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: client-linux
+          path: paquets
+
+      - name: Préparer (mutter, Xvfb, 3.8.0 publiée)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq mutter dbus-x11 xvfb x11-utils
+          mutter --version
+          curl -fsSL -o "$RUNNER_TEMP/workspace-3.8.0.deb" https://github.com/K0uzia/Tracebay/releases/download/v3.8.0/workspace.deb
+          chmod +x .github/scripts/test-wayland.sh
+
+      - name: 3.8.0 publiée sous Wayland (reproduction)
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y -qq --reinstall "$RUNNER_TEMP/workspace-3.8.0.deb" > /dev/null
+          dbus-run-session -- .github/scripts/test-wayland.sh v380-large 1920x1080 /usr/bin/workspace
+          dbus-run-session -- .github/scripts/test-wayland.sh v380-petit 1280x720 /usr/bin/workspace
+
+      - name: Cette branche sous Wayland
+        run: |
+          sudo apt-get install -y -qq --reinstall "$GITHUB_WORKSPACE/paquets/workspace.deb" > /dev/null
+          dbus-run-session -- .github/scripts/test-wayland.sh branche-large 1920x1080 /usr/bin/workspace
+          dbus-run-session -- .github/scripts/test-wayland.sh branche-petit 1280x720 /usr/bin/workspace
+
+      - name: Cette branche, repli XWayland demandé (TRACEBAY_OZONE_PLATFORM=x11, sous Xvfb)
+        run: |
+          mkdir -p "$RUNNER_TEMP/journaux-wayland"
+          Xvfb :98 -screen 0 1280x720x24 > /dev/null 2>&1 &
+          sleep 2
+          LOG="$RUNNER_TEMP/journaux-wayland/app-x11.log"
+          DISPLAY=:98 TRACEBAY_OZONE_PLATFORM=x11 XDG_SESSION_TYPE=wayland /usr/bin/workspace > "$LOG" 2>&1 &
+          APP=$!
+          sleep 20
+          grep -E 'Fenêtre' "$LOG"
+          kill "$APP" 2>/dev/null || true
+          grep -q 'ozone=x11' "$LOG"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: journaux-wayland
+          path: ${{ runner.temp }}/journaux-wayland
