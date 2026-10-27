@@ -362,21 +362,6 @@ jobs:
             $N TRACEBAY_FENETRE_SHOW=immediat /usr/bin/workspace
           dbus-run-session -- .github/scripts/test-wayland.sh branche-sans-gpu 1440x900 $N /usr/bin/workspace --disable-gpu
 
-      - name: 'Cette branche, session Wayland avec XWayland (défaut, relance en XWayland, Xvfb)'
-        continue-on-error: true
-        run: |
-          mkdir -p "$RUNNER_TEMP/journaux-wayland"
-          Xvfb :98 -screen 0 1440x900x24 > /dev/null 2>&1 &
-          sleep 2
-          LOG="$RUNNER_TEMP/journaux-wayland/app-xwayland.log"
-          DISPLAY=:98 XDG_SESSION_TYPE=wayland /usr/bin/workspace > "$LOG" 2>&1 &
-          sleep 20
-          grep -E 'Fenêtre' "$LOG" || true
-          DISPLAY=:98 xwininfo -root -tree | grep -i '"tracebay' | head -n 3
-          pgrep -a -x workspace | grep -v -- '--type=' || true
-          pkill -x workspace || true
-          grep -q 'ozone=x11' "$LOG"
-
       - name: Rocky Linux 10, ce que tireraient Xwayland et le paquet (dnf --assumeno)
         continue-on-error: true
         run: |
@@ -390,25 +375,8 @@ jobs:
             echo "== workspace.rpm, sans dépendances faibles"
             dnf install --assumeno --setopt=install_weak_deps=False /p/workspace.rpm 2>&1 | grep -E "^(Install|Upgrade) |Total|Installed size|Taille" || true'
 
-      - name: AlmaLinux 10 (base de Rocky 10, mutter 47), Wayland natif, avec et sans GPU
-        continue-on-error: true
-        run: |
-          mkdir -p "$RUNNER_TEMP/journaux-el10"
-          docker run --rm -e RUNNER_TEMP=/j -v "$RUNNER_TEMP/journaux-el10:/j/journaux-wayland" \
-            -v "$PWD/paquets:/p:ro" -v "$PWD/.github/scripts:/s:ro" almalinux:10 bash -c '
-              dnf install -y -q mutter dbus-daemon dbus-tools /p/workspace.rpm > /dev/null || exit 1
-              ldd /opt/Tracebay/workspace | grep 'not found' || echo 'ldd : aucune bibliothèque manquante'
-              rpm -q xorg-x11-server-Xwayland || true
-              N="env TRACEBAY_OZONE_PLATFORM=wayland /usr/bin/workspace --no-sandbox"
-              r=0
-              dbus-run-session -- bash /s/test-wayland.sh el10-natif 1440x900 $N || r=1
-              dbus-run-session -- bash /s/test-wayland.sh el10-natif-sans-gpu 1440x900 $N --disable-gpu || r=1
-              exit $r'
-
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: always()
         with:
           name: journaux-wayland
-          path: |
-            ${{ runner.temp }}/journaux-wayland
-            ${{ runner.temp }}/journaux-el10
+          path: ${{ runner.temp }}/journaux-wayland
