@@ -315,7 +315,7 @@ export async function registerMonitoringRoutes(
   });
 
   // ─────────────────────────────────────────────
-  // Issues (client_errors) — admin only
+  // Issues (client_errors) : admin only
   // ─────────────────────────────────────────────
 
   fastify.get<{ Querystring: { limit?: string; offset?: string; status?: string; errorType?: string } }>(

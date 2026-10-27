@@ -1,6 +1,6 @@
 /**
  * Configuration générique pour l'ouverture de dossiers
- * Géré via le panel monitoring — ne pas modifier manuellement
+ * Géré via le panel monitoring : ne pas modifier manuellement
  */
 
 export const folderConfig = {
