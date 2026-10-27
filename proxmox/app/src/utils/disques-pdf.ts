@@ -88,7 +88,7 @@ function parseSizeToTo(size: string | undefined): number {
   return 0;
 }
 
-/** Build count_by_interface: "5 SATA, 3 SAS — Total : 8 disques" */
+/** Build count_by_interface: "5 SATA, 3 SAS, total : 8 disques" */
 export function buildCountByInterface(disks: DisqueRow[]): string {
   const byIf: Record<string, number> = {};
   for (const d of disks) {
@@ -101,10 +101,10 @@ export function buildCountByInterface(disks: DisqueRow[]): string {
     .sort((a, b) => a.localeCompare(b));
   const total = disks.length;
   if (parts.length === 0) return `Total : ${total} disque(s)`;
-  return `${parts.join(', ')} — Total : ${total} disque(s)`;
+  return `${parts.join(', ')}, total : ${total} disque(s)`;
 }
 
-/** Build size_by_interface: "SATA : 9 To, SAS : 6 To" — affiche toutes les interfaces, même 0 To */
+/** Build size_by_interface: "SATA : 9 To, SAS : 6 To", affiche toutes les interfaces, même 0 To */
 export function buildSizeByInterface(disks: DisqueRow[]): string {
   const byIf: Record<string, number> = {};
   for (const d of disks) {
@@ -115,7 +115,7 @@ export function buildSizeByInterface(disks: DisqueRow[]): string {
   const parts = Object.entries(byIf)
     .sort((a, b) => a[0].localeCompare(b[0]))
     .map(([iface, to]) => `${iface} : ${formatTo(to)} To`);
-  return parts.length ? parts.join(', ') : '—';
+  return parts.length ? parts.join(', ') : '-';
 }
 
 function formatTo(to: number): string {
@@ -155,14 +155,14 @@ export function generateDisquesPdf(sessionDate: string, disks: DisqueRow[]): Pro
     const margin = 50;
     let y = margin;
 
-    // —— En-tête (style .pdf-header) ———
+    // En-tête (style .pdf-header)
     doc.fontSize(22).font('Helvetica-Bold').fillColor(PDF_COLORS.primary);
     doc.text('Certificat d\'effacement sécurisé des données', margin, y);
     y = doc.y + 12;
     doc.moveTo(margin, y).lineTo(545, y).strokeColor(PDF_COLORS.tableBorder).lineWidth(2).stroke();
     y += 16;
 
-    // —— Bloc infos session (style .pdf-info) ———
+    // Bloc infos session (style .pdf-info)
     doc.fontSize(12).font('Helvetica-Bold').fillColor(PDF_COLORS.text).text('Informations de la session', margin, y);
     y += 14;
     doc.fontSize(10).font('Helvetica');
@@ -179,7 +179,7 @@ export function generateDisquesPdf(sessionDate: string, disks: DisqueRow[]): Pro
     doc.fillColor(PDF_COLORS.value).text(buildSizeByInterface(disks), margin + 120, y);
     y += 20;
 
-    // —— Méthode (style .pdf-method) ———
+    // Méthode (style .pdf-method)
     doc.fontSize(12).font('Helvetica-Bold').fillColor(PDF_COLORS.text).text('Méthode', margin, y);
     y += 14;
     doc.fontSize(11).font('Helvetica-Bold').fillColor(PDF_COLORS.primary).text('Méthode utilisée pour les HDD', margin, y);
@@ -198,7 +198,7 @@ export function generateDisquesPdf(sessionDate: string, disks: DisqueRow[]): Pro
     doc.text('Destruction physique par perçage ; niveaux H2-H3 et E1-E2 (DIN).', margin, y, { align: 'justify', width: 495 });
     y = doc.y + 18;
 
-    // —— Détail des disques (style .pdf-detail / .pdf-table) ———
+    // Détail des disques (style .pdf-detail / .pdf-table)
     doc.fontSize(12).font('Helvetica-Bold').fillColor(PDF_COLORS.text).text('Détail des disques', margin, y);
     y += 14;
 

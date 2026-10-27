@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-/** Racine montée côté serveur (CT Docker) pour les PDFs équipe — doit correspondre aux chemins en base. */
+/** Racine montée côté serveur (CT Docker) pour les PDFs équipe : doit correspondre aux chemins en base. */
 export const TEAM_BASE_PATH = process.env.TEAM_BASE_PATH || '/mnt/team/#TEAM';
 
 export function normalizeStoredPdfPath(rawPath: string): string {

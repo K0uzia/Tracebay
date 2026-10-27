@@ -267,7 +267,7 @@ CREATE INDEX IF NOT EXISTS idx_client_errors_timestamp ON client_errors(timestam
 CREATE INDEX IF NOT EXISTS idx_client_errors_resolved ON client_errors(resolved);
 CREATE INDEX IF NOT EXISTS idx_client_errors_type ON client_errors(error_type);
 
--- Config Applications (presets + apps) — persistant en base pour le client
+-- Config Applications (presets + apps) : persistant en base pour le client
 CREATE TABLE IF NOT EXISTS app_presets (
   id SERIAL PRIMARY KEY,
   preset_key VARCHAR(100) NOT NULL UNIQUE,
@@ -304,7 +304,7 @@ CREATE TABLE IF NOT EXISTS commande_categories (
 );
 CREATE INDEX IF NOT EXISTS idx_commande_categories_name ON commande_categories(name);
 
--- Commandes (entête + lignes) — réception onglet Commande
+-- Commandes (entête + lignes) : réception onglet Commande
 CREATE TABLE IF NOT EXISTS commandes (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -354,7 +354,7 @@ CREATE INDEX IF NOT EXISTS idx_dons_date ON dons(date DESC);
 CREATE INDEX IF NOT EXISTS idx_dons_created_at ON dons(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_dons_user_id ON dons(user_id);
 
--- Prêts matériel (réception — fiche PDF + lignes JSON)
+-- Prêts matériel (réception : fiche PDF + lignes JSON)
 CREATE TABLE IF NOT EXISTS prets_materiel (
   id SERIAL PRIMARY KEY,
   user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
@@ -391,7 +391,7 @@ CREATE INDEX IF NOT EXISTS idx_entrees_type ON entrees(type);
 CREATE INDEX IF NOT EXISTS idx_entrees_lot_id ON entrees(lot_id);
 CREATE INDEX IF NOT EXISTS idx_entrees_disque_session_id ON entrees(disque_session_id);
 
--- Config Dossiers (presets + globals) — persistant en base pour le client
+-- Config Dossiers (presets + globals) : persistant en base pour le client
 CREATE TABLE IF NOT EXISTS folder_globals (
   id SERIAL PRIMARY KEY,
   blacklist TEXT,

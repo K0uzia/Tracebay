@@ -40,7 +40,7 @@
         <div class="sub">Agenda · Réception</div>
       </div>
     </div>
-    <div class="sidebar-user">Connecté en tant que<strong id="sidebar-username">—</strong></div>
+    <div class="sidebar-user">Connecté en tant que<strong id="sidebar-username">-</strong></div>
     <nav>
       <div class="nav-section">Tableau de bord</div>
       <div class="nav-item active" data-page="dashboard"><span class="icon"><i class="fa-solid fa-gauge"></i></span> Dashboard</div>
@@ -67,13 +67,13 @@
 
     <!-- ── Dashboard ── -->
     <div class="page active" id="page-dashboard">
-      <div class="page-header"><h1>Dashboard</h1><p>Vue d'ensemble — Agenda, Réception et supervision</p></div>
+      <div class="page-header"><h1>Dashboard</h1><p>Vue d'ensemble : Agenda, Réception et supervision</p></div>
       <div class="stats-row" id="dash-stats">
-        <div class="stat-card blue"><div class="label">Clients connectés</div><div class="value" id="ds-connected">—</div></div>
-        <div class="stat-card green"><div class="label">Comptes (inscrits)</div><div class="value" id="ds-users">—</div></div>
-        <div class="stat-card info" style="--info:#8b5cf6"><div class="label">Événements agenda</div><div class="value" id="ds-events">—</div></div>
-        <div class="stat-card orange"><div class="label">Lots</div><div class="value" id="ds-lots">—</div></div>
-        <div class="stat-card green"><div class="label">Uptime</div><div class="value" id="ds-uptime" style="font-size:18px">—</div></div>
+        <div class="stat-card blue"><div class="label">Clients connectés</div><div class="value" id="ds-connected">-</div></div>
+        <div class="stat-card green"><div class="label">Comptes (inscrits)</div><div class="value" id="ds-users">-</div></div>
+        <div class="stat-card info" style="--info:#8b5cf6"><div class="label">Événements agenda</div><div class="value" id="ds-events">-</div></div>
+        <div class="stat-card orange"><div class="label">Lots</div><div class="value" id="ds-lots">-</div></div>
+        <div class="stat-card green"><div class="label">Uptime</div><div class="value" id="ds-uptime" style="font-size:18px">-</div></div>
       </div>
 
       <div class="card server-control-card">
@@ -115,7 +115,7 @@
 
     <!-- ── Utilisateurs ── -->
     <div class="page" id="page-users">
-      <div class="page-header"><h1>Utilisateurs</h1><p>Gérer les comptes — l’ID est attribué par la base (ordre de création)</p></div>
+      <div class="page-header"><h1>Utilisateurs</h1><p>Gérer les comptes : l’ID est attribué par la base (ordre de création)</p></div>
       <div class="card">
         <div class="card-header">
           <div class="toolbar">
@@ -457,7 +457,7 @@
           <h2>Tables</h2>
           <div class="toolbar">
             <select id="db-table-select" onchange="loadDbTable()">
-              <option value="">— Choisir une table —</option>
+              <option value="">Choisir une table</option>
             </select>
             <button class="btn btn-secondary btn-sm" onclick="loadDbTable()"><i class="fa-solid fa-rotate-right"></i></button>
           </div>
@@ -624,7 +624,7 @@
           </select>
         </div>
       </div>
-      <div class="form-group"><label>Chemin PDF</label><div id="lot-form-pdf-path-display" class="pdf-path-readonly" title="">—</div></div>
+      <div class="form-group"><label>Chemin PDF</label><div id="lot-form-pdf-path-display" class="pdf-path-readonly" title="">-</div></div>
       <div class="lot-items-section">
         <h4>Articles</h4>
         <div class="table-wrap">
@@ -651,8 +651,8 @@
     <div class="modal-body">
       <input type="hidden" id="disque-session-edit-id">
       <div class="form-group"><label>Nom</label><input type="text" id="disque-session-form-name" placeholder="Nom du lot disques"></div>
-      <div class="form-group"><label>Date</label><div id="disque-session-date-display" class="pdf-path-readonly">—</div></div>
-      <div class="form-group"><label>Chemin PDF</label><div id="disque-session-pdf-path-display" class="pdf-path-readonly" title="">—</div></div>
+      <div class="form-group"><label>Date</label><div id="disque-session-date-display" class="pdf-path-readonly">-</div></div>
+      <div class="form-group"><label>Chemin PDF</label><div id="disque-session-pdf-path-display" class="pdf-path-readonly" title="">-</div></div>
       <div class="lot-items-section">
         <h4>Disques</h4>
         <div class="table-wrap">
@@ -711,9 +711,9 @@
       <div class="card" style="margin-bottom:12px">
         <div class="card-body" style="padding:12px">
           <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
-            <div><div class="text-muted">ID</div><div id="commande-detail-id">—</div></div>
-            <div><div class="text-muted">Nom</div><div id="commande-detail-name">—</div></div>
-            <div><div class="text-muted">Date</div><div id="commande-detail-date">—</div></div>
+            <div><div class="text-muted">ID</div><div id="commande-detail-id">-</div></div>
+            <div><div class="text-muted">Nom</div><div id="commande-detail-name">-</div></div>
+            <div><div class="text-muted">Date</div><div id="commande-detail-date">-</div></div>
           </div>
         </div>
       </div>
@@ -721,7 +721,7 @@
         <div class="form-group"><label>Nom</label><input id="commande-edit-name" type="text"></div>
         <div class="form-group"><label>Date</label><input id="commande-edit-date" type="date"></div>
       </div>
-      <div class="form-group" style="margin-bottom:8px"><label>PDF</label><div id="commande-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">—</div></div>
+      <div class="form-group" style="margin-bottom:8px"><label>PDF</label><div id="commande-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">-</div></div>
       <div class="table-wrap" style="margin-top:12px">
         <table class="log-table"><thead><tr><th>Produit</th><th>Quantité</th><th>Prix unit.</th><th>Frais port</th><th>Date</th><th>Lien</th></tr></thead>
         <tbody id="commande-detail-lignes-tbody"></tbody></table>
@@ -744,8 +744,8 @@
       <div class="card" style="margin-bottom:12px">
         <div class="card-body" style="padding:12px">
           <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px">
-            <div><div class="text-muted">ID</div><div id="don-detail-id">—</div></div>
-            <div><div class="text-muted">Lot</div><div id="don-detail-lot">—</div></div>
+            <div><div class="text-muted">ID</div><div id="don-detail-id">-</div></div>
+            <div><div class="text-muted">Lot</div><div id="don-detail-lot">-</div></div>
           </div>
         </div>
       </div>
@@ -753,7 +753,7 @@
         <div class="form-group"><label>Nom lot</label><input id="don-edit-lot-name" type="text"></div>
         <div class="form-group"><label>Date</label><input id="don-edit-date" type="date"></div>
       </div>
-      <div class="form-group" style="margin-bottom:8px"><label>PDF</label><div id="don-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">—</div></div>
+      <div class="form-group" style="margin-bottom:8px"><label>PDF</label><div id="don-detail-pdf" class="pdf-path-readonly" style="display:inline-block;max-width:100%">-</div></div>
       <div class="table-wrap" style="margin-top:12px">
         <table class="log-table"><thead><tr><th>Matériel</th><th>Modèle</th><th>Type</th><th>S/N</th><th>Date</th><th>Nom prénom</th></tr></thead>
         <tbody id="don-detail-lines-tbody"></tbody></table>
@@ -774,8 +774,8 @@
     <div class="modal-header"><h3>Détail prêt matériel</h3><button class="modal-close" onclick="closeModal('pret-detail-modal')">×</button></div>
     <div class="modal-body">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div><div class="text-muted">ID</div><div id="pret-detail-id">—</div></div>
-        <div><div class="text-muted">PDF</div><div id="pret-detail-pdf" class="pdf-path-readonly">—</div></div>
+        <div><div class="text-muted">ID</div><div id="pret-detail-id">-</div></div>
+        <div><div class="text-muted">PDF</div><div id="pret-detail-pdf" class="pdf-path-readonly">-</div></div>
       </div>
       <div id="pret-detail-edit-fields" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
         <div class="form-group"><label>Référence</label><input id="pret-edit-reference" type="text"></div>
@@ -860,16 +860,16 @@ function toast(msg, type = 'success') {
 }
 
 function fmtDate(s) {
-  if (!s) return '—';
+  if (!s) return '-';
   const d = parseDateFlexible(s);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
   return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
 }
 
 function fmtDateOnly(s) {
-  if (!s) return '—';
+  if (!s) return '-';
   const d = parseDateFlexible(s);
-  if (Number.isNaN(d.getTime())) return '—';
+  if (Number.isNaN(d.getTime())) return '-';
   return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
 }
 
@@ -1005,7 +1005,7 @@ function statusBadge(s) {
   const key = String(s || '').trim();
   const map = { received:'info', in_progress:'warning', finished:'success', recovered:'success', autres:'info', autres_custom:'info', other:'info' };
   const label = { received:'Reçu', in_progress:'En cours', finished:'Terminé', recovered:'Récupéré', autres:'Autres', autres_custom:'Autres', other:'Autres' };
-  const shown = key || '—';
+  const shown = key || '-';
   return `<span class="badge badge-${map[key]||'info'}">${label[key]||shown}</span>`;
 }
 
@@ -1178,7 +1178,7 @@ async function loadServerStatus() {
     const label = (key, val) => {
       const v = (val || '').toLowerCase();
       const ok = v === 'active' || v === 'running' || v === 'online';
-      return `<div class="server-status-item"><span class="server-status-label">${key}</span><span class="server-status-value ${ok ? 'ok' : 'nok'}">${(val || '—')}</span></div>`;
+      return `<div class="server-status-item"><span class="server-status-label">${key}</span><span class="server-status-value ${ok ? 'ok' : 'nok'}">${(val || '-')}</span></div>`;
     };
     grid.innerHTML = label('Systemd', s.systemd) + label('Container API', s.containerApi) + label('Container DB', s.containerDb) + label('API HTTP', s.apiHttp) + label('WebSocket', s.websocket);
     if (urlEl) urlEl.textContent = 'Accès : ' + (s.accessUrl || '');
@@ -1223,9 +1223,9 @@ async function loadDashboard() {
       api('GET', '/api/admin/logs/db'),
     ]);
     if (stats) {
-      document.getElementById('ds-connected').textContent = ws?.count ?? stats.connectedUsers ?? '—';
+      document.getElementById('ds-connected').textContent = ws?.count ?? stats.connectedUsers ?? '-';
       const uptimeSec = stats.uptime ?? stats.systemHealth?.uptime;
-      const up = uptimeSec ? formatUptime(uptimeSec) : '—';
+      const up = uptimeSec ? formatUptime(uptimeSec) : '-';
       document.getElementById('ds-uptime').textContent = up;
     }
     if (db && db.stats) {
@@ -1245,14 +1245,14 @@ async function loadDashboard() {
     if (!authenticated.length) {
       tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucun client connecté</td></tr>';
     } else {
-      tbody.innerHTML = authenticated.map(u => `<tr><td>${escHtml(u.username || '—')}</td><td><code>${escHtml(u.ip || '—')}</code></td><td>${fmtDate(u.connectedAt)}</td></tr>`).join('');
+      tbody.innerHTML = authenticated.map(u => `<tr><td>${escHtml(u.username || '-')}</td><td><code>${escHtml(u.ip || '-')}</code></td><td>${fmtDate(u.connectedAt)}</td></tr>`).join('');
     }
 
     const tbodyAnon = document.getElementById('dash-anon-table');
     if (!anonymous.length) {
       tbodyAnon.innerHTML = '<tr class="empty-row"><td colspan="2">Aucune connexion anonyme</td></tr>';
     } else {
-      tbodyAnon.innerHTML = anonymous.map(u => `<tr><td><code>${escHtml(u.ip || '—')}</code></td><td>${fmtDate(u.connectedAt)}</td></tr>`).join('');
+      tbodyAnon.innerHTML = anonymous.map(u => `<tr><td><code>${escHtml(u.ip || '-')}</code></td><td>${fmtDate(u.connectedAt)}</td></tr>`).join('');
     }
   } catch(e) { console.error(e); }
 }
@@ -1291,12 +1291,12 @@ function renderUsers(list) {
     return `<tr class="${deleted ? 'user-row-deleted' : ''}">
       <td><strong class="user-id">${u.id}</strong></td>
       <td><strong>${escHtml(u.username)}</strong>${deletedBadge}${u.has_password === false || u.has_password === 'false' ? ' <span class="badge badge-warning" title="Aucun mot de passe">Mdp requis</span>' : ''}</td>
-      <td>${escHtml(u.email||'—')}</td>
+      <td>${escHtml(u.email||'-')}</td>
       <td><span class="badge badge-${u.role==='admin'?'admin':'user'}">${u.role||'user'}</span></td>
       <td>${fmtDate(u.created_at)}</td>
       <td><div class="actions-cell">
         ${!deleted ? `<button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="openUserModal(${u.id})"><i class="fa-solid fa-pen"></i></button>
-        <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteUser(${u.id},'${escHtml(u.username)}')"><i class="fa-solid fa-trash"></i></button>` : '—'}
+        <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteUser(${u.id},'${escHtml(u.username)}')"><i class="fa-solid fa-trash"></i></button>` : '-'}
       </div></td>
     </tr>`;
   }).join('');
@@ -1367,10 +1367,10 @@ async function loadAgenda() {
     <tr>
       <td>${e.id}</td>
       <td>${escHtml(e.title)}</td>
-      <td>${escHtml(e.username||'—')}</td>
+      <td>${escHtml(e.username||'-')}</td>
       <td>${fmtDate(e.start)}</td>
       <td>${fmtDate(e.end)}</td>
-      <td>${escHtml(e.location||'—')}</td>
+      <td>${escHtml(e.location||'-')}</td>
       <td><div class="actions-cell">
         <button class="btn btn-secondary btn-sm btn-icon" onclick="openAgendaModal(${e.id})"><i class="fa-solid fa-pen"></i></button>
         <button class="btn btn-danger btn-sm btn-icon" onclick="deleteAgenda(${e.id})"><i class="fa-solid fa-trash"></i></button>
@@ -1449,10 +1449,10 @@ async function loadLots() {
     const pathTitle = l.pdf_path ? ` title="${escHtml(l.pdf_path)}"` : '';
     const pdfCell = l.pdf_path
       ? `<span class="pdf-path-cell"><span class="pdf-path"${pathTitle}>${pathEsc}</span> <a href="${base}/api/lots/${l.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="Ouvrir dans un nouvel onglet">PDF</a></span>`
-      : '<span class="pdf-path">—</span>';
+      : '<span class="pdf-path">-</span>';
     return `<tr>
       <td>${l.id}</td>
-      <td>${escHtml(l.name||'—')}</td>
+      <td>${escHtml(l.name||'-')}</td>
       <td>${statusBadge(l.status)}</td>
       <td>${l.item_count}</td>
       <td>${fmtDate(l.received_at)}</td>
@@ -1485,7 +1485,7 @@ function openLotModal(id, editable = true) {
   lotModalEditable = editable;
   document.getElementById('lot-edit-id').value = id;
   const pathEl = document.getElementById('lot-form-pdf-path-display');
-  if (pathEl) { pathEl.textContent = '—'; pathEl.title = ''; }
+  if (pathEl) { pathEl.textContent = '-'; pathEl.title = ''; }
   document.getElementById('lot-items-tbody').innerHTML = '<tr><td colspan="8" class="text-muted">Chargement…</td></tr>';
   openModal('lot-modal');
   api('GET', '/api/admin/lots/' + id).then(data => {
@@ -1493,7 +1493,7 @@ function openLotModal(id, editable = true) {
     const lot = data.lot;
     document.getElementById('lot-form-name').value = lot.name || '';
     document.getElementById('lot-form-status').value = lot.status || 'received';
-    if (pathEl) { pathEl.textContent = lot.pdf_path || '—'; pathEl.title = lot.pdf_path || ''; }
+    if (pathEl) { pathEl.textContent = lot.pdf_path || '-'; pathEl.title = lot.pdf_path || ''; }
     const items = lot.items || [];
     const tbody = document.getElementById('lot-items-tbody');
     if (!items.length) {
@@ -1503,7 +1503,7 @@ function openLotModal(id, editable = true) {
         const currentState = String(it.state || '').trim();
         const baseStates = ['', 'Reconditionnés', 'HS', 'Pour pièces', 'Autres'];
         const states = baseStates.includes(currentState) ? baseStates : [...baseStates, currentState];
-        const stateOpts = states.map(s => `<option value="${escHtml(s)}" ${currentState === s ? 'selected' : ''}>${s || '—'}</option>`).join('');
+        const stateOpts = states.map(s => `<option value="${escHtml(s)}" ${currentState === s ? 'selected' : ''}>${s || '-'}</option>`).join('');
         const itemType = it.type || it.category || '';
         const itemBrand = it.marque_name || it.marque || it.brand || '';
         const itemModel = it.modele_name || it.modele || it.model || '';
@@ -1599,10 +1599,10 @@ async function loadCommandes() {
     tbody.innerHTML = list.map(c => {
       const pdfCell = c.pdf_path
         ? `<a href="${base}/api/commandes/${c.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="${escHtml(c.pdf_path)}">PDF</a>`
-        : '—';
+        : '-';
       return `<tr>
         <td>${c.id}</td>
-        <td>${escHtml(c.name || '—')}</td>
+        <td>${escHtml(c.name || '-')}</td>
         <td>${fmtDate(c.date)}</td>
         <td>${pdfCell}</td>
         <td><div class="actions-cell">
@@ -1631,10 +1631,10 @@ async function loadDons() {
     tbody.innerHTML = list.map(d => {
       const pdfCell = d.pdf_path
         ? `<a href="${base}/api/dons/${d.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="${escHtml(d.pdf_path)}">PDF</a>`
-        : '—';
+        : '-';
       return `<tr>
         <td>${d.id}</td>
-        <td>${escHtml(d.lot_name || '—')}</td>
+        <td>${escHtml(d.lot_name || '-')}</td>
         <td>${fmtDate(d.date)}</td>
         <td>${pdfCell}</td>
         <td><div class="actions-cell">
@@ -1661,16 +1661,16 @@ async function loadPrets() {
     if (!list.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="7">Aucun prêt</td></tr>'; return; }
     tbody.innerHTML = list.map(p => {
       const base = BASE;
-      const ref = escHtml(p.reference || '—');
-      const borrower = escHtml(p.borrower_name || '—');
-      const d0 = escHtml(String(p.date_debut || p.date || '').slice(0, 10) || '—');
-      const d1 = escHtml(String(p.date_fin || '').slice(0, 10) || '—');
+      const ref = escHtml(p.reference || '-');
+      const borrower = escHtml(p.borrower_name || '-');
+      const d0 = escHtml(String(p.date_debut || p.date || '').slice(0, 10) || '-');
+      const d1 = escHtml(String(p.date_fin || '').slice(0, 10) || '-');
       let linesCount = 0;
       if (Array.isArray(p.lines)) linesCount = p.lines.length;
       else if (typeof p.lines === 'string') { try { const arr = JSON.parse(p.lines); if (Array.isArray(arr)) linesCount = arr.length; } catch(_) {} }
       const pdf = p.pdf_path
         ? `<a href="${base}/api/prets-materiel/${p.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="${escHtml(p.pdf_path)}">PDF</a>`
-        : '<span class="text-muted">—</span>';
+        : '<span class="text-muted">-</span>';
       return `<tr>
         <td>${escHtml(p.id)}</td>
         <td class="table-cell-ellipsis" title="${ref}">${ref}</td>
@@ -1693,8 +1693,8 @@ async function openPretModal(id) {
     const p = data?.pret || data?.data || data?.item || null;
     if (!p) throw new Error('Prêt matériel introuvable');
     currentPretDetail = p;
-    document.getElementById('pret-detail-id').textContent = String(p.id || '—');
-    document.getElementById('pret-detail-pdf').textContent = String(p.pdf_path || '—');
+    document.getElementById('pret-detail-id').textContent = String(p.id || '-');
+    document.getElementById('pret-detail-pdf').textContent = String(p.pdf_path || '-');
     const link = document.getElementById('pret-detail-pdf-link');
     if (link) {
       link.href = p.pdf_path ? `${BASE}/api/prets-materiel/${p.id}/pdf` : '#';
@@ -1814,8 +1814,8 @@ function renderCommandeDetailModal() {
     ? lignes.map((l, i) => {
       const link = l.link || l.link_url || l.url || l.product_link || '';
       if (!editable) {
-        const ship = l.shipping_cost != null ? `${Number(l.shipping_cost).toFixed(2)} €` : '—';
-        return `<tr><td>${escHtml((l.product_name_ref || l.product_name || '—'))}</td><td>${l.quantity || 0}</td><td>${l.unit_price != null ? l.unit_price : '—'}</td><td>${ship}</td><td>${fmtDate(l.date || c.date || c.created_at)}</td><td>${link ? `<a href="${escHtml(link)}" target="_blank" rel="noopener">Ouvrir</a>` : '—'}</td></tr>`;
+        const ship = l.shipping_cost != null ? `${Number(l.shipping_cost).toFixed(2)} €` : '-';
+        return `<tr><td>${escHtml((l.product_name_ref || l.product_name || '-'))}</td><td>${l.quantity || 0}</td><td>${l.unit_price != null ? l.unit_price : '-'}</td><td>${ship}</td><td>${fmtDate(l.date || c.date || c.created_at)}</td><td>${link ? `<a href="${escHtml(link)}" target="_blank" rel="noopener">Ouvrir</a>` : '-'}</td></tr>`;
       }
       return `<tr>
         <td><input class="form-input cmd-line-product" data-idx="${i}" value="${escHtml(l.product_name_ref || l.product_name || '')}"></td>
@@ -1827,10 +1827,10 @@ function renderCommandeDetailModal() {
       </tr>`;
     }).join('')
     : '<tr class="empty-row"><td colspan="6">Aucune ligne</td></tr>';
-  document.getElementById('commande-detail-id').textContent = c.id || '—';
-  document.getElementById('commande-detail-name').textContent = c.name || '—';
-  document.getElementById('commande-detail-date').textContent = fmtDate(c.date) || '—';
-  document.getElementById('commande-detail-pdf').textContent = c.pdf_path || '—';
+  document.getElementById('commande-detail-id').textContent = c.id || '-';
+  document.getElementById('commande-detail-name').textContent = c.name || '-';
+  document.getElementById('commande-detail-date').textContent = fmtDate(c.date) || '-';
+  document.getElementById('commande-detail-pdf').textContent = c.pdf_path || '-';
   document.getElementById('commande-detail-lignes-tbody').innerHTML = lignesHtml;
   document.getElementById('commande-detail-edit-fields').style.display = editable ? 'grid' : 'none';
   document.getElementById('commande-detail-save-btn').style.display = editable ? '' : 'none';
@@ -1894,7 +1894,7 @@ function renderDonDetailModal() {
     ? lines.map((l, i) => {
       const fullName = [l.nom || '', l.prenom || ''].filter(Boolean).join(' ').trim();
       if (!editable) {
-        return `<tr><td>${escHtml(l.materiel || '—')}</td><td>${escHtml(l.modele || '—')}</td><td>${escHtml(l.type || '—')}</td><td>${escHtml(l.serial_number || '—')}</td><td>${fmtDate(l.date || d.date || d.created_at)}</td><td>${escHtml(fullName || '—')}</td></tr>`;
+        return `<tr><td>${escHtml(l.materiel || '-')}</td><td>${escHtml(l.modele || '-')}</td><td>${escHtml(l.type || '-')}</td><td>${escHtml(l.serial_number || '-')}</td><td>${fmtDate(l.date || d.date || d.created_at)}</td><td>${escHtml(fullName || '-')}</td></tr>`;
       }
       return `<tr>
         <td><input class="form-input don-line-materiel" data-idx="${i}" value="${escHtml(l.materiel || '')}"></td>
@@ -1906,9 +1906,9 @@ function renderDonDetailModal() {
       </tr>`;
     }).join('')
     : '<tr class="empty-row"><td colspan="6">Aucune ligne</td></tr>';
-  document.getElementById('don-detail-id').textContent = d.id || '—';
-  document.getElementById('don-detail-lot').textContent = d.lot_name || '—';
-  document.getElementById('don-detail-pdf').textContent = d.pdf_path || '—';
+  document.getElementById('don-detail-id').textContent = d.id || '-';
+  document.getElementById('don-detail-lot').textContent = d.lot_name || '-';
+  document.getElementById('don-detail-pdf').textContent = d.pdf_path || '-';
   document.getElementById('don-detail-lines-tbody').innerHTML = linesHtml;
   document.getElementById('don-detail-edit-fields').style.display = editable ? 'grid' : 'none';
   document.getElementById('don-detail-save-btn').style.display = editable ? '' : 'none';
@@ -1978,7 +1978,7 @@ async function loadCommandeProducts() {
     if (!items.length) { tbody.innerHTML = '<tr class="empty-row"><td colspan="3">Aucun matériel</td></tr>'; return; }
     tbody.innerHTML = items.map(p => `<tr>
       <td>${p.id}</td>
-      <td>${escHtml(p.name || '—')}</td>
+      <td>${escHtml(p.name || '-')}</td>
       <td><div class="actions-cell">
         <button class="btn btn-secondary btn-sm btn-icon" title="Modifier" onclick="editCommandeProduct(${p.id}, '${(p.name||'').replace(/\\/g,'\\\\').replace(/'/g, "\\'")}')"><i class="fa-solid fa-pen"></i></button>
         <button class="btn btn-danger btn-sm btn-icon" title="Supprimer" onclick="deleteCommandeProduct(${p.id})"><i class="fa-solid fa-trash"></i></button>
@@ -2054,12 +2054,12 @@ async function loadDisquesSessions() {
     const pathTitle = s.pdf_path ? ` title="${escHtml(s.pdf_path)}"` : '';
     const pdfCell = s.pdf_path
       ? `<span class="pdf-path-cell"><span class="pdf-path"${pathTitle}>${pathEsc}</span> <a href="${base}/api/disques/sessions/${s.id}/pdf" target="_blank" rel="noopener" class="btn btn-secondary btn-sm" title="Ouvrir le PDF">PDF</a></span>`
-      : '<span class="pdf-path">—</span>';
+      : '<span class="pdf-path">-</span>';
     return `<tr>
       <td>${s.id}</td>
-      <td>${escHtml(s.name || '—')}</td>
+      <td>${escHtml(s.name || '-')}</td>
       <td>${fmtDate(s.date)}</td>
-      <td>${s.disk_count != null ? s.disk_count : '—'}</td>
+      <td>${s.disk_count != null ? s.disk_count : '-'}</td>
       <td>${pdfCell}</td>
       <td><div class="actions-cell">
         <button class="btn btn-secondary btn-sm" title="Détail" onclick="openDisqueSessionDetail(${s.id})">Détail</button>
@@ -2088,17 +2088,17 @@ function openDisqueSessionModal(id, editable = true) {
   disqueModalEditable = editable;
   document.getElementById('disque-session-edit-id').value = id;
   document.getElementById('disque-session-form-name').value = '';
-  document.getElementById('disque-session-date-display').textContent = '—';
+  document.getElementById('disque-session-date-display').textContent = '-';
   const pathEl = document.getElementById('disque-session-pdf-path-display');
-  if (pathEl) { pathEl.textContent = '—'; pathEl.title = ''; }
+  if (pathEl) { pathEl.textContent = '-'; pathEl.title = ''; }
   document.getElementById('disque-session-disks-tbody').innerHTML = '<tr><td colspan="7" class="text-muted">Chargement…</td></tr>';
   openModal('disque-session-modal');
   api('GET', '/api/admin/disques/sessions/' + id).then(data => {
     if (data.error) { toast(data.error, 'error'); return; }
     const session = data.session;
     document.getElementById('disque-session-form-name').value = session.name || '';
-    document.getElementById('disque-session-date-display').textContent = fmtDate(session.date) || '—';
-    if (pathEl) { pathEl.textContent = session.pdf_path || '—'; pathEl.title = session.pdf_path || ''; }
+    document.getElementById('disque-session-date-display').textContent = fmtDate(session.date) || '-';
+    if (pathEl) { pathEl.textContent = session.pdf_path || '-'; pathEl.title = session.pdf_path || ''; }
     const disks = session.disks || [];
     const tbody = document.getElementById('disque-session-disks-tbody');
     if (!disks.length) {
@@ -2106,7 +2106,7 @@ function openDisqueSessionModal(id, editable = true) {
     } else {
       tbody.innerHTML = disks.map(d => `
         <tr data-disk-id="${d.id != null ? d.id : ''}">
-          <td>${d.id != null ? d.id : '—'}</td>
+          <td>${d.id != null ? d.id : '-'}</td>
           <td><input type="text" class="form-input disque-item-serial" value="${escHtml(d.serial || d.serial_number || '')}" placeholder="N° série"></td>
           <td><input type="text" class="form-input disque-item-marque" value="${escHtml(d.marque || d.brand || '')}" placeholder="Marque"></td>
           <td><input type="text" class="form-input disque-item-modele" value="${escHtml(d.modele || d.model || '')}" placeholder="Modèle"></td>
@@ -2183,7 +2183,7 @@ function openPdfPreview(btn) {
   iframe.style.display = 'none';
   iframe.src = '';
   fallback.style.display = 'none';
-  pathEl.textContent = pdfPath || '—';
+  pathEl.textContent = pdfPath || '-';
   openModal('pdf-preview-modal');
   const url = BASE + '/api/lots/' + lotId + '/pdf';
   fetch(url, { credentials: 'include' }).then(function (r) {
@@ -2217,7 +2217,7 @@ async function loadMarques() {
 
 function selectMarque(id, name) {
   currentMarqueId = id;
-  document.getElementById('modeles-title').textContent = `Modèles — ${name}`;
+  document.getElementById('modeles-title').textContent = `Modèles : ${name}`;
   document.getElementById('btn-add-modele').style.display = '';
   loadModeles(id);
 }
@@ -2303,7 +2303,7 @@ async function loadLogDb() {
     { label: 'Marques', value: s.marques, cls: 'green' },
     { label: 'Modèles', value: s.modeles, cls: 'green' },
   ];
-  row.innerHTML = items.map(i => `<div class="stat-card ${i.cls}"><div class="label">${i.label}</div><div class="value">${i.value ?? '—'}</div></div>`).join('');
+  row.innerHTML = items.map(i => `<div class="stat-card ${i.cls}"><div class="label">${i.label}</div><div class="value">${i.value ?? '-'}</div></div>`).join('');
   loadDbTablesList();
 }
 
@@ -2311,7 +2311,7 @@ async function loadDbTablesList() {
   const data = await api('GET', '/api/admin/db/tables');
   const sel = document.getElementById('db-table-select');
   const tables = data.tables || [];
-  sel.innerHTML = '<option value="">— Choisir une table —</option>' + tables.map(t => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
+  sel.innerHTML = '<option value="">Choisir une table</option>' + tables.map(t => `<option value="${escHtml(t)}">${escHtml(t)}</option>`).join('');
 }
 
 async function loadDbTable() {
@@ -2338,7 +2338,7 @@ async function loadDbTable() {
     tbody.innerHTML = rows.map((r, idx) => {
       const cells = dbCurrentColumns.map(c => {
         let v = r[c];
-        if (v === null || v === undefined) v = '—';
+        if (v === null || v === undefined) v = '-';
         else if (c === 'password_hash') v = '••••••••';
         else if (typeof v === 'object') v = JSON.stringify(v);
         else v = String(v);
@@ -2373,7 +2373,7 @@ function openDbRowModal(tableName, rowId, rowData) {
     else val = String(val);
     return '<div class="form-group"><label class="form-label">' + escHtml(c) + '</label><input type="text" class="form-input" id="db-edit-' + escHtml(c) + '" value="' + escHtml(val) + '"></div>';
   }).join('');
-  document.getElementById('db-row-modal-title').textContent = 'Modifier la ligne — ' + tableName;
+  document.getElementById('db-row-modal-title').textContent = 'Modifier la ligne : ' + tableName;
   openModal('db-row-modal');
 }
 
@@ -2435,17 +2435,17 @@ async function loadLogReception() {
 
 function renderIssueRow(e, showType) {
   const isFeedback = e.error_type === 'feedback' || e.error_type === 'bug_report';
-  const mainText = isFeedback ? (e.user_message || e.error_message || '—') : (e.error_message || '—');
+  const mainText = isFeedback ? (e.user_message || e.error_message || '-') : (e.error_message || '-');
   const detail = isFeedback && e.error_message && e.error_message !== e.user_message
     ? `<div class="issue-detail">${escHtml(String(e.error_message).substring(0, 80))}</div>` : '';
   const notes = e.notes ? `<div class="issue-notes" title="${escHtml(e.notes)}">${escHtml(String(e.notes).substring(0, 60))}${e.notes.length > 60 ? '…' : ''}</div>` : '';
   const notesEsc = (e.notes || '').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   const typeLabels = { uncaught_error: '⚡ Erreur JS', unhandled_rejection: '⚠ Promise' };
-  const typeCell = showType ? `<td><code class="issue-type">${escHtml(typeLabels[e.error_type] || e.error_type || '—')}</code></td>` : '';
+  const typeCell = showType ? `<td><code class="issue-type">${escHtml(typeLabels[e.error_type] || e.error_type || '-')}</code></td>` : '';
   return `<tr data-id="${e.id}" data-notes="${notesEsc}">
     <td class="issue-id">#${e.id}</td>${typeCell}
     <td class="issue-message"><div class="issue-main">${escHtml(mainText)}</div>${detail}${notes}</td>
-    <td class="issue-client">${escHtml(e.client_id||'—')}</td>
+    <td class="issue-client">${escHtml(e.client_id||'-')}</td>
     <td class="issue-date">${fmtDate(e.timestamp)}</td>
     <td><span class="badge ${e.resolved?'badge-success':'badge-danger'}">${e.resolved?'Résolue':'Ouverte'}</span></td>
     <td class="issue-actions">

@@ -2061,7 +2061,7 @@ function broadcastUserCount() {
       }
     });
 
-    // ——— Disques (sessions shred) ———
+    // Disques (sessions shred)
     fastify.get('/api/disques/sessions', async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const { year, month } = request.query as { year?: string; month?: string };
@@ -3436,7 +3436,7 @@ function broadcastUserCount() {
       }
     });
 
-    // ——— Prêts matériel (réception) ———
+    // Prêts matériel (réception)
     fastify.get('/api/prets-materiel/tracabilite', async (_request: FastifyRequest, reply: FastifyReply) => {
       try {
         const result = await query(
@@ -3736,7 +3736,7 @@ function broadcastUserCount() {
       }
     });
 
-    // API Entrées (réception) — sans auth
+    // API Entrées (réception) : sans auth
     fastify.get('/api/entrees', async (request: FastifyRequest, reply: FastifyReply) => {
       try {
         const { limit = '100', offset = '0', type } = request.query as { limit?: string; offset?: string; type?: string };

@@ -22,7 +22,7 @@ Dates en base : colonne date / received_at = date dans le nom du PDF si présent
 du chemin (…/2026/Mars/…), sinon jour du mtime du fichier. Les created_at / updated_at (hors lignes métier) utilisent
 le mtime du PDF pour éviter que tout soit regroupé sur l’instant d’exécution de l’import SQL.
 
-Lots : statut « finished » + finished_at = mtime du PDF — ce sont des archives PDF déjà bouclées ; sinon elles
+Lots : statut « finished » + finished_at = mtime du PDF : ce sont des archives PDF déjà bouclées ; sinon elles
 resteraient en « received » et rempliraient l’inventaire (lots actifs = tout sauf finished côté API).
 
 Hypothèses de nommage fournies:
@@ -53,7 +53,7 @@ from decimal import Decimal, InvalidOperation
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 TIME_RE = re.compile(r"^\d{2}-\d{2}-\d{2}$")
 
-# Mois français (dossiers type …/2026/Mars/…) → numéro 1–12
+# Mois français (dossiers type …/2026/Mars/…) → numéro 1 à 12
 _MONTH_FR: dict[str, int] = {}
 for i, names in enumerate(
     [
