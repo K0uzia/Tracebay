@@ -333,7 +333,7 @@ jobs:
       - name: Préparer (mutter, Xvfb, 3.8.0 publiée)
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y -qq mutter dbus-x11 xvfb x11-utils
+          sudo apt-get install -y -qq mutter dbus-x11 xvfb x11-utils xwayland
           mutter --version
           curl -fsSL -o "$RUNNER_TEMP/workspace-3.8.0.deb" https://github.com/K0uzia/Tracebay/releases/download/v3.8.0/workspace.deb
           chmod +x .github/scripts/test-wayland.sh
@@ -354,7 +354,16 @@ jobs:
           # Session Wayland sans XWayland (pas de DISPLAY) : pas de repli, Wayland natif
           dbus-run-session -- .github/scripts/test-wayland.sh branche-sans-xwayland 1440x900 /usr/bin/workspace
 
+      - name: Cette branche en Wayland natif, essais d'affichage (show immédiat, sans GPU)
+        continue-on-error: true
+        run: |
+          N="env TRACEBAY_OZONE_PLATFORM=wayland"
+          dbus-run-session -- .github/scripts/test-wayland.sh branche-show-immediat 1440x900 \
+            $N TRACEBAY_FENETRE_SHOW=immediat /usr/bin/workspace
+          dbus-run-session -- .github/scripts/test-wayland.sh branche-sans-gpu 1440x900 $N /usr/bin/workspace --disable-gpu
+
       - name: 'Cette branche, session Wayland avec XWayland (défaut, relance en XWayland, Xvfb)'
+        continue-on-error: true
         run: |
           mkdir -p "$RUNNER_TEMP/journaux-wayland"
           Xvfb :98 -screen 0 1440x900x24 > /dev/null 2>&1 &
