@@ -30,7 +30,8 @@ export function signAdminJwt(payload: Record<string, any>, ttlSeconds: number = 
   return `${header}.${body}.${hmac(`${header}.${body}`)}`;
 }
 
-export function verifyAdminJwt(token: string): Record<string, any> | null {
+/** JWT HS256 signé par ce serveur et non expiré (compte ordinaire ou admin), sinon null. */
+function verifyJwt(token: string): Record<string, any> | null {
   try {
     const parts = token.split('.');
     if (parts.length !== 3) return null;
@@ -38,10 +39,15 @@ export function verifyAdminJwt(token: string): Record<string, any> | null {
     if (!safeEqual(sig, hmac(`${header}.${body}`))) return null;
     const payload = JSON.parse(Buffer.from(body, 'base64url').toString());
     if (typeof payload.exp !== 'number' || payload.exp < Math.floor(Date.now() / 1000)) return null;
-    return payload.admin === true ? payload : null;
+    return payload;
   } catch {
     return null;
   }
+}
+
+export function verifyAdminJwt(token: string): Record<string, any> | null {
+  const payload = verifyJwt(token);
+  return payload?.admin === true ? payload : null;
 }
 
 /** Jeton admin présenté en en-tête (x-admin-token ou Authorization: Bearer), jamais en URL. */
@@ -59,6 +65,16 @@ export function adminScope(request: FastifyRequest): 'complet' | 'atelier' | nul
   const payload = verifyAdminJwt(token);
   if (!payload) return null;
   return payload.scope === 'atelier' ? 'atelier' : 'complet';
+}
+
+/**
+ * Vrai si la requête présente le jeton valide d'un compte connecté sans droit admin
+ * (connexion ordinaire /api/auth/login, même pour un compte au rôle admin) : 403, pas 401.
+ */
+export function compteSansDroitAdmin(request: FastifyRequest): boolean {
+  const token = presentedToken(request);
+  if (!token || adminScope(request)) return false;
+  return verifyJwt(token) !== null;
 }
 
 /** Clé « MÉTHODE /motif » de la route trouvée (ex. PUT /api/admin/branding). */

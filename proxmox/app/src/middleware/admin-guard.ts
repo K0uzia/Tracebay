@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { adminScope, hasAdminCredentials } from '../lib/admin-auth';
+import { adminScope, compteSansDroitAdmin, hasAdminCredentials } from '../lib/admin-auth';
 
 // Routes admin et monitoring restées publiques : connexion admin, configuration lue par le
 // client Electron (FolderManager), remontée d'erreurs du client.
@@ -23,7 +23,11 @@ export function isAdminProtected(method: string, routeUrl: string | undefined): 
   );
 }
 
-/** Exige ADMIN_TOKEN ou un JWT admin sur /api/admin/*, /api/monitoring/* et /api/metrics. */
+/**
+ * Exige ADMIN_TOKEN ou un JWT admin sur /api/admin/*, /api/monitoring/* et /api/metrics
+ * (dont les écritures du branding et des types) : 401 sans droit présenté, 403 pour un compte
+ * connecté sans droit admin ou un jeton « atelier » hors de ses routes.
+ */
 export function registerAdminGuard(fastify: FastifyInstance): void {
   fastify.addHook('onRequest', async (request: FastifyRequest, reply: FastifyReply) => {
     const routeUrl = (request as any).routeOptions?.url ?? (request as any).routerPath;
@@ -31,6 +35,9 @@ export function registerAdminGuard(fastify: FastifyInstance): void {
     if (hasAdminCredentials(request)) return;
     if (adminScope(request) === 'atelier') {
       return reply.code(403).send({ error: "Jeton limité aux réglages d'atelier (nom, logo, couleur, types)." });
+    }
+    if (compteSansDroitAdmin(request)) {
+      return reply.code(403).send({ error: 'Réservé aux administrateurs : connexion administrateur requise.' });
     }
     return reply.code(401).send({ error: 'Non autorisé : jeton administrateur requis.' });
   });

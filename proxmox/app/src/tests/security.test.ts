@@ -1,6 +1,7 @@
 import { test, describe, before } from 'node:test';
 import assert from 'node:assert/strict';
 import Fastify from 'fastify';
+import jwt from 'jsonwebtoken';
 import { findSecretProblems } from '../config/secrets';
 import { signAdminJwt, verifyAdminJwt } from '../lib/admin-auth';
 import { isAdminProtected, registerAdminGuard, registrationAllowed } from '../middleware/admin-guard';
@@ -90,6 +91,40 @@ describe('garde admin', () => {
     assert.equal(withJwt.statusCode, 200);
     assert.equal((await app.inject({ method: 'GET', url: '/api/admin/config/folders' })).statusCode, 200);
     assert.equal((await app.inject({ method: 'GET', url: '/api/lots' })).statusCode, 200);
+    await app.close();
+  });
+});
+
+describe('branding verrouillé côté serveur', () => {
+  test('écritures du branding : 401 sans jeton, 403 pour un compte non admin, admin accepté', async () => {
+    const app = Fastify();
+    registerAdminGuard(app);
+    app.put('/api/admin/branding', async () => ({ ok: true }));
+    app.delete('/api/admin/branding/logo', async () => ({ ok: true }));
+    app.delete('/api/admin/dons/:id', async () => ({ ok: true }));
+    await app.ready();
+    const bearer = (t: string) => ({ authorization: `Bearer ${t}` });
+    // Jeton d'un compte ordinaire (connexion /api/auth/login), même s'il porte le rôle admin
+    const technicien = jwt.sign({ id: 7, username: 'tech', role: 'technicien' }, STRONG.JWT_SECRET, { expiresIn: '7d' });
+    const adminOrdinaire = jwt.sign({ id: 1, username: 'admin', role: 'admin' }, STRONG.JWT_SECRET, { expiresIn: '7d' });
+    const atelier = signAdminJwt({ id: 1, admin: true, scope: 'atelier' });
+
+    for (const [method, url] of [['PUT', '/api/admin/branding'], ['DELETE', '/api/admin/branding/logo']] as const) {
+      assert.equal((await app.inject({ method, url, payload: method === 'PUT' ? { company_name: 'X' } : undefined })).statusCode, 401);
+      const refus = await app.inject({ method, url, headers: bearer(technicien), payload: method === 'PUT' ? { company_name: 'X' } : undefined });
+      assert.equal(refus.statusCode, 403);
+      assert.match(refus.json().error, /administrateur/);
+      assert.equal((await app.inject({ method, url, headers: bearer(adminOrdinaire) })).statusCode, 403);
+      assert.equal((await app.inject({ method, url, headers: bearer(atelier) })).statusCode, 200);
+      assert.equal((await app.inject({ method, url, headers: bearer(signAdminJwt({ admin: true })) })).statusCode, 200);
+      assert.equal((await app.inject({ method, url, headers: { 'x-admin-token': STRONG.ADMIN_TOKEN } })).statusCode, 200);
+    }
+    // Jeton altéré ou expiré : pas un compte reconnu, donc 401
+    assert.equal((await app.inject({ method: 'PUT', url: '/api/admin/branding', headers: bearer(technicien.slice(0, -2) + 'xx') })).statusCode, 401);
+    const expire = jwt.sign({ id: 7, role: 'technicien' }, STRONG.JWT_SECRET, { expiresIn: -10 });
+    assert.equal((await app.inject({ method: 'PUT', url: '/api/admin/branding', headers: bearer(expire) })).statusCode, 401);
+    // Le jeton « atelier » ne vaut que pour le branding et les types
+    assert.equal((await app.inject({ method: 'DELETE', url: '/api/admin/dons/3', headers: bearer(atelier) })).statusCode, 403);
     await app.close();
   });
 });
